@@ -50,9 +50,9 @@ namespace Coflnet.Sky.Sniper.Services
             using var stream = new MemoryStream();
             await MessagePackSerializer.SerializeAsync(stream, lookups.Keys.ToList());
             stream.Position = 0;
-            Console.WriteLine("saving list");
+            logger.LogInformation("saving list");
             await client.PutObjectAsync("sky-sniper", "itemList", stream, stream.Length);
-            Console.WriteLine("saved list " + stream.Length);
+            logger.LogInformation("saved list " + stream.Length);
             foreach (var item in lookups)
             {
                 using var itemStream = new MemoryStream();
@@ -82,10 +82,7 @@ namespace Coflnet.Sky.Sniper.Services
             }
             catch (Exception e)
             {
-                Console.WriteLine("failed to load ids " + response.Length);
-
-                Console.WriteLine(e.Message);
-                Console.WriteLine(e.StackTrace);
+                logger.LogError("failed to load ids " + response.Length);
             }
             return items;
         }

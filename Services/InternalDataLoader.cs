@@ -48,7 +48,7 @@ namespace Coflnet.Sky.Sniper.Services
                     return Task.CompletedTask;
                 sniper.TestNewAuction(a);
                 Console.Write("n");
-                return saveifreached(a);
+                return Task.CompletedTask;
             }, stoppingToken, "sky-sniper");
         }
 
@@ -125,12 +125,14 @@ namespace Coflnet.Sky.Sniper.Services
             }, stoppingToken, "sky-sniper");
         }
 
+        private static bool saving = false;
         private async Task saveifreached(hypixel.SaveAuction a)
         {
             if (a.UId % 1000 == 0)
                 Console.WriteLine("processed 1k " + sniper.Lookups.Sum(l => l.Value.Lookup.Count));
-            if (a.UId % 10000 == 0)
+            if (a.UId % 1000 == 0 && !saving)
             {
+                saving = true;
                 Console.WriteLine("consumed sold");
                 try
                 {
@@ -141,6 +143,7 @@ namespace Coflnet.Sky.Sniper.Services
                     Console.WriteLine("could not save " + e.Message);
                     Console.WriteLine(e.StackTrace);
                 }
+                saving = false;
             }
         }
     }
