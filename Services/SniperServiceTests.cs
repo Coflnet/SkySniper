@@ -1,7 +1,9 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Coflnet.Sky.Sniper.Models;
 using hypixel;
 using Microsoft.VisualBasic;
 using NUnit.Framework;
@@ -47,7 +49,7 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void UsesLbinFirst()
         {
-            var service = new SniperService(null, new MockPersistenceManager());
+            var service = new SniperService();
             var found = new List<LowPricedAuction>();
             service.FoundSnipe += found.Add;
 
@@ -57,19 +59,19 @@ namespace Coflnet.Sky.Sniper.Services
             service.TestNewAuction(firstAuction);
             service.TestNewAuction(secondAuction);
             Assert.AreEqual(1000, found.First().TargetPrice);
-            Assert.AreEqual(LowPricedAuction.FinderType.MEDIAN_SNIPER, found.First().Finder);
+            Assert.AreEqual(LowPricedAuction.FinderType.SNIPER_MEDIAN, found.First().Finder);
             Assert.AreEqual(900, found.Last().TargetPrice);
             Assert.AreEqual(LowPricedAuction.FinderType.SNIPER, found.Last().Finder);
             // first is sold
             service.AddSoldItem(firstAuction);
             service.TestNewAuction(secondAuction);
             Assert.AreEqual(900, found.Last().TargetPrice);
-            Assert.AreEqual(LowPricedAuction.FinderType.MEDIAN_SNIPER, found.Last().Finder);
+            Assert.AreEqual(LowPricedAuction.FinderType.SNIPER_MEDIAN, found.Last().Finder);
         }
         [Test]
         public void FallbackOnNomatch()
         {
-            var service = new SniperService(null, new MockPersistenceManager());
+            var service = new SniperService();
             var found = new List<LowPricedAuction>();
             service.FoundSnipe += found.Add;
             service.TestNewAuction(highestValAuction);
@@ -84,7 +86,7 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void UsesMedianCorrectly()
         {
-            var service = new SniperService(null, new MockPersistenceManager());
+            var service = new SniperService();
             var found = new List<LowPricedAuction>();
             service.FoundSnipe += found.Add;
             service.AddSoldItem(highestValAuction);
@@ -107,7 +109,7 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void LoadTest()
         {
-            var service = new SniperService(null, new MockPersistenceManager());
+            var service = new SniperService();
             var start = Stopwatch.StartNew();
             for (int i = 0; i < 1000; i++)
             {
@@ -119,12 +121,12 @@ namespace Coflnet.Sky.Sniper.Services
 
     public class MockPersistenceManager : IPersitanceManager
     {
-        public Task LoadLookups()
+        public Task LoadLookups(SniperService service)
         {
             return Task.CompletedTask;
         }
 
-        public Task SaveLookups()
+        public Task SaveLookup(ConcurrentDictionary<string, PriceLookup> lookups)
         {
             return Task.CompletedTask;
         }

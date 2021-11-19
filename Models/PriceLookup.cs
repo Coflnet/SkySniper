@@ -30,9 +30,9 @@ namespace Coflnet.Sky.Sniper.Models
         public override bool Equals(object obj)
         {
             return obj is AuctionKey key &&
-                    (key.Enchants == null && this.Enchants == null || key.Enchants.SequenceEqual(this.Enchants)) &&
+                    (key.Enchants == null && this.Enchants == null || (this.Enchants != null && key.Enchants != null && key.Enchants.SequenceEqual(this.Enchants))) &&
                    Reforge == key.Reforge &&
-                   (key.Modifiers == null && this.Modifiers == null || key.Modifiers.SequenceEqual(this.Modifiers)) &&
+                   (key.Modifiers == null && this.Modifiers == null || (this.Modifiers != null && key.Modifiers != null && key.Modifiers.SequenceEqual(this.Modifiers))) &&
                    Tier == key.Tier &&
                    Count == key.Count;
         }
@@ -105,7 +105,7 @@ namespace Coflnet.Sky.Sniper.Models
         /// <summary>
         /// Second lowest bin, used if the lowest bin got sold
         /// </summary>
-        [Key(2)]
+        [Key(3)]
         public ReferencePrice SecondLbin;
     }
 

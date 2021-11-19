@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,6 +8,7 @@ using Coflnet.Sky.Sniper.Models;
 using MessagePack;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Minio;
 
 namespace Coflnet.Sky.Sniper.Services
@@ -14,44 +16,55 @@ namespace Coflnet.Sky.Sniper.Services
     public class MinioPersistanceManager : IPersitanceManager
     {
         private IConfiguration config;
-        private SniperService service;
+        //private SniperService service;
+        private ILogger<MinioPersistanceManager> logger;
 
-        public MinioPersistanceManager(IConfiguration config, SniperService service)
+        public MinioPersistanceManager(IConfiguration config, ILogger<MinioPersistanceManager> logger)
         {
             this.config = config;
-            this.service = service;
+            this.logger = logger;
         }
 
-        public async Task LoadLookups()
+        public async Task LoadLookups(SniperService service)
         {
             var client = new MinioClient(config["MINIO_HOST"], config["MINIO_KEY"], config["MINIO_SECRET"]);
             List<string> items = await GetIemIds(client);
-            foreach (var itemName in items)
+            foreach (var itemTag in items)
             {
-                await LoadItem(client, itemName);
+                try 
+                {
+
+                var lookup = await LoadItem(client, itemTag);
+                service.AddLookupData(itemTag, lookup);
+                } catch(Exception e)
+                {
+                    logger.LogError(e,"Could not load item " + itemTag);
+                }
             }
         }
 
 
-        public async Task SaveLookups()
+        public async Task SaveLookup(ConcurrentDictionary<string, PriceLookup> lookups)
         {
             var client = new MinioClient(config["MINIO_HOST"], config["MINIO_KEY"], config["MINIO_SECRET"]);
             using var stream = new MemoryStream();
-            await MessagePackSerializer.SerializeAsync(stream, service.Lookups.Keys.ToList());
+            await MessagePackSerializer.SerializeAsync(stream, lookups.Keys.ToList());
             stream.Position = 0;
             Console.WriteLine("saving list");
             await client.PutObjectAsync("sky-sniper", "itemList", stream, stream.Length);
             Console.WriteLine("saved list " + stream.Length);
-            foreach (var item in service.Lookups)
+            foreach (var item in lookups)
             {
                 using var itemStream = new MemoryStream();
                 await MessagePackSerializer.SerializeAsync(itemStream, item.Value);
                 itemStream.Position = 0;
                 await client.PutObjectAsync("sky-sniper", item.Key, itemStream, itemStream.Length);
+                Console.Write(" saved " + item.Key);
             }
+            Console.WriteLine();
         }
 
-        public async Task<List<string>> GetIemIds(MinioClient client)
+        private async Task<List<string>> GetIemIds(MinioClient client)
         {
             List<string> items = new List<string>();
             if (!await client.BucketExistsAsync("sky-sniper"))
@@ -77,7 +90,7 @@ namespace Coflnet.Sky.Sniper.Services
             return items;
         }
 
-        private async Task LoadItem(MinioClient client, string itemName)
+        private async Task<PriceLookup> LoadItem(MinioClient client, string itemName)
         {
             var result = new MemoryStream();
             await client.GetObjectAsync("sky-sniper", itemName, stream =>
@@ -86,8 +99,8 @@ namespace Coflnet.Sky.Sniper.Services
 
             });
             result.Position = 0;
-            var loadedVal = await MessagePackSerializer.DeserializeAsync<PriceLookup>(result);
-            service.AddLookupData(itemName,loadedVal);
+            return await MessagePackSerializer.DeserializeAsync<PriceLookup>(result);
+            //service.AddLookupData(itemName,loadedVal);
         }
     }
 }

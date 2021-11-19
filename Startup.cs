@@ -33,8 +33,8 @@ namespace SkySniper
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "SkySniper", Version = "v1" });
             });
-
-            services.AddHostedService<SniperService>();
+            services.AddSingleton<SniperService>();
+            services.AddHostedService<InternalDataLoader>();
             services.AddSingleton<IPersitanceManager, MinioPersistanceManager>();
         }
 

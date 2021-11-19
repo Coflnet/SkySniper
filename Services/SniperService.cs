@@ -2,26 +2,17 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Coflnet.Sky.Sniper.Models;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Minio.DataModel;
 using Newtonsoft.Json;
 
 namespace Coflnet.Sky.Sniper.Services
 {
-    public interface IPersitanceManager
-    {
-        Task LoadLookups();
-        Task SaveLookups();
-    }
-    public class SniperService : BackgroundService
+    public class SniperService
     {
         public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>();
-        private IConfiguration config;
-        private IPersitanceManager persitance;
+        private IHostApplicationLifetime applicationLifetime;
 
         public event Action<LowPricedAuction> FoundSnipe;
         private HashSet<string> IncludeKeys = new HashSet<string>()
@@ -56,8 +47,8 @@ namespace Coflnet.Sky.Sniper.Services
             "expertise_kills", // unkown kind of kills
             "bow_kills", // huricane bow
             "raider_kills", // raiders axe
-            "sword_kills", 
-            "ethermerge", 
+            "sword_kills",
+            "ethermerge",
             "edition", // great spook stuff
             "hpc", // hot potato books
             "tuned_transmission", // aotv upgrade
@@ -84,14 +75,17 @@ ORDER BY l.`AuctionId`  DESC;
             "rarity_upgrades",
             "winning_bid",
             "skin"
-
         };
 
 
-        public SniperService(IConfiguration config, IPersitanceManager persitance)
+        public SniperService()
         {
-            this.config = config;
-            this.persitance = persitance;
+
+            this.FoundSnipe += la =>
+            {
+                if (la.Finder == LowPricedAuction.FinderType.SNIPER && (float)la.Auction.StartingBid / la.TargetPrice <  0.8 && la.TargetPrice > 1_000_000)
+                    Console.WriteLine($"A: {la.Auction.Uuid} {la.Auction.StartingBid} -> {la.TargetPrice}  {KeyFromSaveAuction(la.Auction)}");
+            };
         }
 
         public int GetPrice(hypixel.SaveAuction auction)
@@ -119,19 +113,20 @@ ORDER BY l.`AuctionId`  DESC;
         /// <param name="loadedVal"></param>
         public void AddLookupData(string itemTag, PriceLookup loadedVal)
         {
-            Lookups.AddOrUpdate(itemTag, loadedVal,(key,value)=>{
+            Lookups.AddOrUpdate(itemTag, loadedVal, (key, value) =>
+            {
                 foreach (var item in loadedVal.Lookup)
                 {
-                    if(!value.Lookup.TryGetValue(item.Key, out ReferenceAuctions existingBucket))
+                    if (!value.Lookup.TryGetValue(item.Key, out ReferenceAuctions existingBucket))
                     {
                         value.Lookup[item.Key] = item.Value;
                         continue;
                     }
                     existingBucket.References = item.Value.References;
                     existingBucket.Price = item.Value.Price;
-                    if(existingBucket.LastLbin.Price == default)
+                    if (existingBucket.LastLbin.Price == default)
                         existingBucket.LastLbin = item.Value.LastLbin;
-                    if(existingBucket.SecondLbin.Price == default)
+                    if (existingBucket.SecondLbin.Price == default)
                         existingBucket.SecondLbin = item.Value.SecondLbin;
                 }
                 return value;
@@ -219,7 +214,9 @@ ORDER BY l.`AuctionId`  DESC;
             if (dropLevel == 0)
             {
                 key.Enchants = auction.Enchantments
-                    ?.Where(e => e.Level >= 6 || Coflnet.Sky.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level >= e.Level).Any())
+                    ?.Where(e => e.Level >= 6 && e.Type != hypixel.Enchantment.EnchantmentType.feather_falling 
+                         && e.Type != hypixel.Enchantment.EnchantmentType.infinite_quiver 
+                    || Coflnet.Sky.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
                     .Select(e => new Enchantment() { Lvl = e.Level, Type = e.Type }).ToList();
 
                 key.Modifiers = auction.FlatenedNBT?.Where(n => IncludeKeys.Contains(n.Key) || n.Value == "PERFECT")
@@ -232,7 +229,7 @@ ORDER BY l.`AuctionId`  DESC;
                             .OrderByDescending(n => n.Key)
                             .ToList();
                 key.Enchants = auction.Enchantments
-                    ?.Where(e => e.Level > 6 || Coflnet.Sky.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level >= e.Level).Any())
+                    ?.Where(e => Coflnet.Sky.Constants.RelevantEnchants.Where(relevant => relevant.Type == e.Type && relevant.Level <= e.Level).Any())
                     .Select(e => new Enchantment() { Lvl = e.Level, Type = e.Type }).ToList();
             }
             else
@@ -250,7 +247,7 @@ ORDER BY l.`AuctionId`  DESC;
         private static KeyValuePair<string, string> NormalizeData(KeyValuePair<string, string> s)
         {
             if (s.Key == "exp")
-                return NormalizeNumberTo(s, 1_000_000);
+                return NormalizeNumberTo(s, 4_000_000);
             if (s.Key == "winning_bid")
                 return NormalizeNumberTo(s, 10_000_000);
             if (s.Key.EndsWith("_kills"))
@@ -270,6 +267,12 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (s.Key == "hpc")
                 return NormalizeNumberTo(s, 15);
+            if(s.Key == "heldItem")
+                return new KeyValuePair<string, string>("petItem",s.Value switch {
+                    "MINOS_RELIC" => "MINOS_RELIC",
+                    "DWARF_TURTLE_SHELMET" => "DWARF_TURTLE_SHELMET",
+                    _ => null
+                });
 
             return s;
         }
@@ -279,22 +282,8 @@ ORDER BY l.`AuctionId`  DESC;
             return new KeyValuePair<string, string>(s.Key, (((int)double.Parse(s.Value)) / groupingSize).ToString());
         }
 
-        protected override Task ExecuteAsync(CancellationToken stoppingToken)
-        {
-            Task newAuctions = ConsumeNewAuctions(stoppingToken);
-            Task soldAuctions = LoadLookupsAndProcessSells(stoppingToken);
 
-            return Task.WhenAll(newAuctions, soldAuctions);
-        }
 
-        private Task ConsumeNewAuctions(CancellationToken stoppingToken)
-        {
-            return Kafka.KafkaConsumer.Consume<hypixel.SaveAuction>(config["KAFKA_HOST"], config["TOPICS:NEW_AUCTION"], a =>
-            {
-                TestNewAuction(a);
-                return Task.CompletedTask;
-            }, stoppingToken, "sky-sniper");
-        }
 
         public void TestNewAuction(hypixel.SaveAuction auction)
         {
@@ -311,6 +300,10 @@ ORDER BY l.`AuctionId`  DESC;
                         continue;
                     bucket = CreateAndAddBucket(auction);
                 }
+                if (bucket == null)
+                {
+                    Console.WriteLine("is null");
+                }
                 // only trigger lbin if also below median or median is not set
                 if (bucket.LastLbin.Price > lbinPrice && (bucket.Price > lbinPrice || bucket.Price == 0))
                 {
@@ -319,7 +312,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 else if (bucket.Price > medPrice)
                 {
-                    FoundAFlip(auction, bucket, LowPricedAuction.FinderType.MEDIAN_SNIPER, bucket.Price);
+                    FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, bucket.Price);
                     i += 10;
                 }
 
@@ -339,7 +332,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private void FoundAFlip(hypixel.SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, int targetPrice)
         {
-            FoundSnipe.Invoke(new LowPricedAuction()
+            FoundSnipe?.Invoke(new LowPricedAuction()
             {
                 Auction = auction,
                 Finder = type,
@@ -348,37 +341,5 @@ ORDER BY l.`AuctionId`  DESC;
             });
         }
 
-        private async Task LoadLookupsAndProcessSells(CancellationToken stoppingToken)
-        {
-            try
-            {
-                await persitance.LoadLookups();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-                Console.WriteLine(e.StackTrace);
-            }
-            Console.WriteLine("loaded lookup");
-            await Kafka.KafkaConsumer.Consume<hypixel.SaveAuction>(config["KAFKA_HOST"], config["TOPICS:SOLD_AUCTION"], async a =>
-            {
-                AddSoldItem(a);
-                if (a.UId % 10000 == 0)
-                {
-                    Console.WriteLine("consumed sold");
-                    try
-                    {
-                        await persitance.SaveLookups();
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("could not save " + e.Message);
-                        Console.WriteLine(e.StackTrace);
-                    }
-                }
-            }, stoppingToken, "sky-sniper");
-            // persist before exiting
-            await persitance.SaveLookups();
-        }
     }
 }
