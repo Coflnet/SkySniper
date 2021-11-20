@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Confluent.Kafka;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using OpenTracing.Util;
@@ -15,13 +16,23 @@ namespace Coflnet.Sky.Sniper.Services
         private IConfiguration config;
         private IPersitanceManager persitance;
         private Queue<AhStateSumary> RecentUpdates = new Queue<AhStateSumary>();
+        private string LowPricedAuctionTopic;
+        private static ProducerConfig producerConfig;
 
         public InternalDataLoader(SniperService sniper, IConfiguration config, IPersitanceManager persitance)
         {
             this.sniper = sniper;
             this.config = config;
             this.persitance = persitance;
+            LowPricedAuctionTopic = config["TOPICS:LOW_PRICED"];
+            producerConfig = new ProducerConfig
+            {
+                BootstrapServers = config["KAFKA_HOST"],
+                LingerMs = 1
+            };
         }
+
+
 
         protected override Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -36,7 +47,26 @@ namespace Coflnet.Sky.Sniper.Services
 
             });
 
+
             return Task.WhenAll(newAuctions, soldAuctions, ActiveUpdater(stoppingToken));
+        }
+
+        private async Task StartProducer(CancellationToken stoppingToken)
+        {
+
+            using (var lpp = new ProducerBuilder<string, LowPricedAuction>(producerConfig).SetValueSerializer(hypixel.SerializerFactory.GetSerializer<LowPricedAuction>()).Build())
+                sniper.FoundSnipe += flip =>
+                {
+                    lpp.Produce(LowPricedAuctionTopic, new Message<string, LowPricedAuction>()
+                    {
+                        Key = flip.Auction.Uuid,
+                        Value = flip
+                    });
+                };
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                await Task.Delay(2000);
+            }
         }
 
 
@@ -47,7 +77,6 @@ namespace Coflnet.Sky.Sniper.Services
                 if (!a.Bin)
                     return Task.CompletedTask;
                 sniper.TestNewAuction(a);
-                Console.Write("n");
                 return Task.CompletedTask;
             }, stoppingToken, "sky-sniper");
         }
@@ -143,6 +172,7 @@ namespace Coflnet.Sky.Sniper.Services
                     Console.WriteLine("could not save " + e.Message);
                     Console.WriteLine(e.StackTrace);
                 }
+                await Task.Delay(TimeSpan.FromMinutes(2));
                 saving = false;
             }
         }
