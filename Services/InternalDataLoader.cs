@@ -48,21 +48,21 @@ namespace Coflnet.Sky.Sniper.Services
             });
 
 
-            return Task.WhenAll(newAuctions, soldAuctions, ActiveUpdater(stoppingToken));
+            return Task.WhenAll(newAuctions, soldAuctions, ActiveUpdater(stoppingToken),StartProducer(stoppingToken));
         }
 
         private async Task StartProducer(CancellationToken stoppingToken)
         {
 
-            using (var lpp = new ProducerBuilder<string, LowPricedAuction>(producerConfig).SetValueSerializer(hypixel.SerializerFactory.GetSerializer<LowPricedAuction>()).Build())
-                sniper.FoundSnipe += flip =>
+            using var lpp = new ProducerBuilder<string, LowPricedAuction>(producerConfig).SetValueSerializer(hypixel.SerializerFactory.GetSerializer<LowPricedAuction>()).Build();
+            sniper.FoundSnipe += flip =>
+            {
+                lpp.Produce(LowPricedAuctionTopic, new Message<string, LowPricedAuction>()
                 {
-                    lpp.Produce(LowPricedAuctionTopic, new Message<string, LowPricedAuction>()
-                    {
-                        Key = flip.Auction.Uuid,
-                        Value = flip
-                    });
-                };
+                    Key = flip.Auction.Uuid,
+                    Value = flip
+                });
+            };
             while (!stoppingToken.IsCancellationRequested)
             {
                 await Task.Delay(2000);
