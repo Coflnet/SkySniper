@@ -83,7 +83,7 @@ ORDER BY l.`AuctionId`  DESC;
 
             this.FoundSnipe += la =>
             {
-                if (la.Finder == LowPricedAuction.FinderType.SNIPER && (float)la.Auction.StartingBid / la.TargetPrice <  0.8 && la.TargetPrice > 1_000_000)
+                if (la.Finder == LowPricedAuction.FinderType.SNIPER && (float)la.Auction.StartingBid / la.TargetPrice < 0.8 && la.TargetPrice > 1_000_000)
                     Console.WriteLine($"A: {la.Auction.Uuid} {la.Auction.StartingBid} -> {la.TargetPrice}  {KeyFromSaveAuction(la.Auction)}");
             };
         }
@@ -160,6 +160,10 @@ ORDER BY l.`AuctionId`  DESC;
                 .Select(a => a.Last())  // only use one (the last) price from each seller
                 .ToList();
             size = deduplicated.Count();
+            if (size <= 2)
+            {
+                bucket.Price = 0; // to low vol
+            }
             bucket.Price = deduplicated
                 .Take(9)
                 .OrderByDescending(b => b.Price)
@@ -180,10 +184,15 @@ ORDER BY l.`AuctionId`  DESC;
             return new ReferencePrice()
             {
                 AuctionId = auction.UId,
-                Day = (short)(DateTime.Now - new DateTime(2021, 9, 25)).TotalDays,
+                Day = GetCurrentDay(),
                 Price = (int)(auction.HighestBidAmount == 0 ? auction.StartingBid : auction.HighestBidAmount),
                 Seller = auction.AuctioneerId == null ? (short)(auction.SellerId % (2 << 14)) : Convert.ToInt16(auction.AuctioneerId.Substring(0, 4), 16)
             };
+        }
+
+        private static short GetCurrentDay()
+        {
+            return (short)(DateTime.Now - new DateTime(2021, 9, 25)).TotalDays;
         }
 
         private ReferenceAuctions GetReferenceAuctions(hypixel.SaveAuction auction)
@@ -214,8 +223,8 @@ ORDER BY l.`AuctionId`  DESC;
             if (dropLevel == 0)
             {
                 key.Enchants = auction.Enchantments
-                    ?.Where(e => e.Level >= 6 && e.Type != hypixel.Enchantment.EnchantmentType.feather_falling 
-                         && e.Type != hypixel.Enchantment.EnchantmentType.infinite_quiver 
+                    ?.Where(e => e.Level >= 6 && e.Type != hypixel.Enchantment.EnchantmentType.feather_falling
+                         && e.Type != hypixel.Enchantment.EnchantmentType.infinite_quiver
                     || Coflnet.Sky.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
                     .Select(e => new Enchantment() { Lvl = e.Level, Type = e.Type }).ToList();
 
@@ -267,8 +276,9 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (s.Key == "hpc")
                 return NormalizeNumberTo(s, 15);
-            if(s.Key == "heldItem")
-                return new KeyValuePair<string, string>("petItem",s.Value switch {
+            if (s.Key == "heldItem")
+                return new KeyValuePair<string, string>("petItem", s.Value switch
+                {
                     "MINOS_RELIC" => "MINOS_RELIC",
                     "DWARF_TURTLE_SHELMET" => "DWARF_TURTLE_SHELMET",
                     _ => null
@@ -332,12 +342,13 @@ ORDER BY l.`AuctionId`  DESC;
 
         private void FoundAFlip(hypixel.SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, int targetPrice)
         {
+            bucket.References.TryPeek(out ReferencePrice price);
             FoundSnipe?.Invoke(new LowPricedAuction()
             {
                 Auction = auction,
                 Finder = type,
                 TargetPrice = targetPrice,
-                DailyVolume = bucket.References.LastOrDefault().Day
+                DailyVolume = (float)bucket.References.Count / (GetCurrentDay() - price.Day)
             });
         }
 
