@@ -281,6 +281,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     "MINOS_RELIC" => "MINOS_RELIC",
                     "DWARF_TURTLE_SHELMET" => "DWARF_TURTLE_SHELMET",
+                    "QUICK_CLAW" => "QUICK_CLAW",
                     _ => null
                 });
 

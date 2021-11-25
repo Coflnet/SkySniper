@@ -40,5 +40,19 @@ namespace SkySniper.Controllers
         {
             return service.Lookups[itemId];
         }
+
+
+        /// <summary>
+        /// Retrieve lookup references
+        /// </summary>
+        /// <param name="itemId"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("references")]
+        public IEnumerable<long> GetLookups(hypixel.SaveAuction auction)
+        {
+            return service.GetReferenceUids(auction);
+        }
     }
 }
