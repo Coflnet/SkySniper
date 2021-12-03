@@ -31,14 +31,25 @@ namespace Coflnet.Sky.Sniper.Services
             List<string> items = await GetIemIds(client);
             foreach (var itemTag in items)
             {
-                try 
+                try
                 {
-
-                var lookup = await LoadItem(client, itemTag);
-                service.AddLookupData(itemTag, lookup);
-                } catch(Exception e)
+                    PriceLookup lookup = null;
+                    try
+                    {
+                        lookup = await LoadItem(client, itemTag);
+                    }
+                    catch (Exception ex)
+                    {
+                        await Task.Delay(100);
+                        logger.LogError(ex, "Could not load item once " + itemTag);
+                        // retry
+                        lookup = await LoadItem(client, itemTag);
+                    }
+                    service.AddLookupData(itemTag, lookup);
+                }
+                catch (Exception e)
                 {
-                    logger.LogError(e,"Could not load item " + itemTag);
+                    logger.LogError(e, "Could not load item twice " + itemTag);
                 }
             }
         }

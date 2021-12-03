@@ -19,6 +19,11 @@ namespace Coflnet.Sky.Sniper.Services
         private string LowPricedAuctionTopic;
         private static ProducerConfig producerConfig;
 
+        Prometheus.Counter foundFlipCount = Prometheus.Metrics
+                    .CreateCounter("sky_sniper_found_flips", "Number of flips found");
+        Prometheus.Counter auctionsReceived = Prometheus.Metrics
+                    .CreateCounter("sky_sniper_auction_received", "Number of auctions received");
+
         public InternalDataLoader(SniperService sniper, IConfiguration config, IPersitanceManager persitance)
         {
             this.sniper = sniper;
@@ -48,7 +53,7 @@ namespace Coflnet.Sky.Sniper.Services
             });
 
 
-            return Task.WhenAll(newAuctions, soldAuctions, ActiveUpdater(stoppingToken),StartProducer(stoppingToken));
+            return Task.WhenAll(newAuctions, soldAuctions, ActiveUpdater(stoppingToken), StartProducer(stoppingToken));
         }
 
         private async Task StartProducer(CancellationToken stoppingToken)
@@ -57,11 +62,13 @@ namespace Coflnet.Sky.Sniper.Services
             using var lpp = new ProducerBuilder<string, LowPricedAuction>(producerConfig).SetValueSerializer(hypixel.SerializerFactory.GetSerializer<LowPricedAuction>()).Build();
             sniper.FoundSnipe += flip =>
             {
+
                 lpp.Produce(LowPricedAuctionTopic, new Message<string, LowPricedAuction>()
                 {
                     Key = flip.Auction.Uuid,
                     Value = flip
                 });
+                foundFlipCount.Inc();
             };
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -77,6 +84,7 @@ namespace Coflnet.Sky.Sniper.Services
                 if (!a.Bin)
                     return Task.CompletedTask;
                 sniper.TestNewAuction(a);
+                auctionsReceived.Inc();
                 return Task.CompletedTask;
             }, stoppingToken, "sky-sniper");
         }
@@ -155,11 +163,14 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         private static bool saving = false;
+        private static int saveCount = 1;
         private async Task saveifreached(hypixel.SaveAuction a)
         {
-            if (a.UId % 1000 == 0)
-                Console.WriteLine("processed 1k " + sniper.Lookups.Sum(l => l.Value.Lookup.Count));
-            if (a.UId % 1000 == 0 && !saving)
+            if (a.UId % 1000 != 0)
+                return;
+            Console.WriteLine($"processed 1k {sniper.Lookups.Sum(l => l.Value.Lookup.Count)} {saveCount} -");
+            saveCount++;
+            if (!saving && saveCount % 10 == 0)
             {
                 saving = true;
                 Console.WriteLine("consumed sold");
