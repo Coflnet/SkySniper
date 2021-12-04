@@ -4,8 +4,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Confluent.Kafka;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using OpenTracing.Util;
 
 namespace Coflnet.Sky.Sniper.Services
@@ -19,12 +21,14 @@ namespace Coflnet.Sky.Sniper.Services
         private string LowPricedAuctionTopic;
         private static ProducerConfig producerConfig;
 
+        private ILogger<InternalDataLoader> logger;
+
         Prometheus.Counter foundFlipCount = Prometheus.Metrics
                     .CreateCounter("sky_sniper_found_flips", "Number of flips found");
         Prometheus.Counter auctionsReceived = Prometheus.Metrics
                     .CreateCounter("sky_sniper_auction_received", "Number of auctions received");
 
-        public InternalDataLoader(SniperService sniper, IConfiguration config, IPersitanceManager persitance)
+        public InternalDataLoader(SniperService sniper, IConfiguration config, IPersitanceManager persitance, ILogger<InternalDataLoader> logger)
         {
             this.sniper = sniper;
             this.config = config;
@@ -35,6 +39,7 @@ namespace Coflnet.Sky.Sniper.Services
                 BootstrapServers = config["KAFKA_HOST"],
                 LingerMs = 1
             };
+            this.logger = logger;
         }
 
 
@@ -77,9 +82,29 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
 
-        private Task ConsumeNewAuctions(CancellationToken stoppingToken)
+        private async Task ConsumeNewAuctions(CancellationToken stoppingToken)
         {
-            return Kafka.KafkaConsumer.Consume<hypixel.SaveAuction>(config["KAFKA_HOST"], config["TOPICS:NEW_AUCTION"], a =>
+            // load active auctions
+            using (var context = new hypixel.HypixelContext())
+            {
+                logger.LogInformation("loading active auctions");
+                try
+                {
+                    var topId = (await context.Auctions.MaxAsync(a => a.Id)) - 5_000_000;
+                    var active = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
+                                        .Where(a => a.Id > topId && a.End > DateTime.Now)
+                                        .ToListAsync();
+                    foreach (var item in active)
+                    {
+                        sniper.TestNewAuction(item, false);
+                    }
+                } catch(Exception e)
+                {
+                    logger.LogError(e,"loading active auctions");
+                }
+            }
+            logger.LogInformation("loaded active auctions, starting consuming");
+            await Kafka.KafkaConsumer.Consume<hypixel.SaveAuction>(config["KAFKA_HOST"], config["TOPICS:NEW_AUCTION"], a =>
             {
                 if (!a.Bin)
                     return Task.CompletedTask;

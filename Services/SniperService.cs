@@ -296,7 +296,7 @@ ORDER BY l.`AuctionId`  DESC;
 
 
 
-        public void TestNewAuction(hypixel.SaveAuction auction)
+        public void TestNewAuction(hypixel.SaveAuction auction, bool triggerEvents = true)
         {
             var lookup = Lookups.GetOrAdd(auction.Tag, key => new PriceLookup());
             var l = lookup.Lookup;
@@ -315,33 +315,45 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     Console.WriteLine("is null");
                 }
-                // only trigger lbin if also below median or median is not set
-                if (bucket.LastLbin.Price > lbinPrice && (bucket.Price > lbinPrice || bucket.Price == 0))
-                {
-                    FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, bucket.LastLbin.Price);
-                    i += 10;
-                }
-                else if (bucket.Price > medPrice)
-                {
-                    FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, bucket.Price);
-                    i += 10;
-                }
+                if (triggerEvents)
+                    i = FindFlip(auction, lbinPrice, medPrice, i, bucket);
 
-                // update lbin
-                if (bucket.LastLbin.Price > cost || bucket.LastLbin.Price == 0)
-                {
-                    bucket.SecondLbin = bucket.LastLbin;
-                    bucket.LastLbin = CreateReferenceFromAuction(auction);
-                }
-                else if (bucket.SecondLbin.Price == 0 || bucket.SecondLbin.Price > cost)
-                {
-                    // set second lbin to fallback when lbin is sold
-                    bucket.SecondLbin = CreateReferenceFromAuction(auction);
-                }
+                UpdateLbin(auction, cost, bucket);
             }
         }
 
-        private void FoundAFlip(hypixel.SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, int targetPrice)
+        private int FindFlip(hypixel.SaveAuction auction, double lbinPrice, double medPrice, int i, ReferenceAuctions bucket)
+        {
+            // only trigger lbin if also below median or median is not set
+            if (bucket.LastLbin.Price > lbinPrice && (bucket.Price > lbinPrice))// || bucket.Price == 0))
+            {
+                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, bucket.LastLbin.Price, bucket.LastLbin.AuctionId.ToString("X"));
+                i += 10;
+            }
+            else if (bucket.Price > medPrice)
+            {
+                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, bucket.Price, bucket.References.Last().AuctionId.ToString("X"));
+            }
+
+            return i;
+        }
+
+        private static void UpdateLbin(hypixel.SaveAuction auction, long cost, ReferenceAuctions bucket)
+        {
+            // update lbin
+            if (bucket.LastLbin.Price > cost || bucket.LastLbin.Price == 0)
+            {
+                bucket.SecondLbin = bucket.LastLbin;
+                bucket.LastLbin = CreateReferenceFromAuction(auction);
+            }
+            else if (bucket.SecondLbin.Price == 0 || bucket.SecondLbin.Price > cost)
+            {
+                // set second lbin to fallback when lbin is sold
+                bucket.SecondLbin = CreateReferenceFromAuction(auction);
+            }
+        }
+
+        private void FoundAFlip(hypixel.SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, int targetPrice, string reference)
         {
             bucket.References.TryPeek(out ReferencePrice price);
             FoundSnipe?.Invoke(new LowPricedAuction()
@@ -349,7 +361,8 @@ ORDER BY l.`AuctionId`  DESC;
                 Auction = auction,
                 Finder = type,
                 TargetPrice = targetPrice,
-                DailyVolume = (float)bucket.References.Count / (GetCurrentDay() - price.Day)
+                DailyVolume = (float)bucket.References.Count / (GetCurrentDay() - price.Day),
+                AdditionalProps = new Dictionary<string, string>() { { "reference", reference } }
             });
         }
 
