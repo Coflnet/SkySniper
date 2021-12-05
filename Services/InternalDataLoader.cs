@@ -46,6 +46,14 @@ namespace Coflnet.Sky.Sniper.Services
 
         protected override Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            var loadActive = Task.Run(async () =>
+            {
+                while (!stoppingToken.IsCancellationRequested)
+                {
+                    await LoadActiveAuctions(stoppingToken);
+                    await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken);
+                }
+            });
             Task newAuctions = ConsumeNewAuctions(stoppingToken);
             Task soldAuctions = LoadLookupsAndProcessSells(stoppingToken);
 
@@ -58,7 +66,7 @@ namespace Coflnet.Sky.Sniper.Services
             });
 
 
-            return Task.WhenAll(newAuctions, soldAuctions, ActiveUpdater(stoppingToken), StartProducer(stoppingToken));
+            return Task.WhenAll(newAuctions, soldAuctions, ActiveUpdater(stoppingToken), StartProducer(stoppingToken), loadActive);
         }
 
         private async Task StartProducer(CancellationToken stoppingToken)
@@ -84,25 +92,7 @@ namespace Coflnet.Sky.Sniper.Services
 
         private async Task ConsumeNewAuctions(CancellationToken stoppingToken)
         {
-            // load active auctions
-            using (var context = new hypixel.HypixelContext())
-            {
-                logger.LogInformation("loading active auctions");
-                try
-                {
-                    var topId = (await context.Auctions.MaxAsync(a => a.Id)) - 5_000_000;
-                    var active = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
-                                        .Where(a => a.Id > topId && a.End > DateTime.Now)
-                                        .ToListAsync();
-                    foreach (var item in active)
-                    {
-                        sniper.TestNewAuction(item, false);
-                    }
-                } catch(Exception e)
-                {
-                    logger.LogError(e,"loading active auctions");
-                }
-            }
+
             logger.LogInformation("loaded active auctions, starting consuming");
             await Kafka.KafkaConsumer.Consume<hypixel.SaveAuction>(config["KAFKA_HOST"], config["TOPICS:NEW_AUCTION"], a =>
             {
@@ -112,6 +102,31 @@ namespace Coflnet.Sky.Sniper.Services
                 auctionsReceived.Inc();
                 return Task.CompletedTask;
             }, stoppingToken, "sky-sniper");
+        }
+
+        private async Task LoadActiveAuctions(CancellationToken stoppingToken)
+        {
+            // load active auctions
+            using (var context = new hypixel.HypixelContext())
+            {
+                logger.LogInformation("loading active auctions");
+                try
+                {
+                    var topId = (await context.Auctions.MaxAsync(a => a.Id)) - 5_000_000;
+                    var active = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
+                                        .Where(a => a.Id > topId && a.End > DateTime.Now)
+                                        .ToListAsync(stoppingToken);
+                    foreach (var item in active)
+                    {
+                        sniper.TestNewAuction(item, false);
+                    }
+                    logger.LogInformation("finished loading active auctions " + active);
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, "loading active auctions");
+                }
+            }
         }
 
         private async Task ActiveUpdater(CancellationToken stoppingToken)

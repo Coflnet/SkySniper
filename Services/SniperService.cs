@@ -327,12 +327,12 @@ ORDER BY l.`AuctionId`  DESC;
             // only trigger lbin if also below median or median is not set
             if (bucket.LastLbin.Price > lbinPrice && (bucket.Price > lbinPrice))// || bucket.Price == 0))
             {
-                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, bucket.LastLbin.Price, bucket.LastLbin.AuctionId.ToString("X"));
+                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, bucket.LastLbin.Price, bucket.LastLbin.AuctionId);
                 i += 10;
             }
             else if (bucket.Price > medPrice)
             {
-                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, bucket.Price, bucket.References.Last().AuctionId.ToString("X"));
+                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, bucket.Price, bucket.References.Last().AuctionId);
             }
 
             return i;
@@ -353,7 +353,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private void FoundAFlip(hypixel.SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, int targetPrice, string reference)
+        private void FoundAFlip(hypixel.SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, int targetPrice, long reference)
         {
             bucket.References.TryPeek(out ReferencePrice price);
             FoundSnipe?.Invoke(new LowPricedAuction()
@@ -362,7 +362,7 @@ ORDER BY l.`AuctionId`  DESC;
                 Finder = type,
                 TargetPrice = targetPrice,
                 DailyVolume = (float)bucket.References.Count / (GetCurrentDay() - price.Day),
-                AdditionalProps = new Dictionary<string, string>() { { "reference", reference } }
+                AdditionalProps = new Dictionary<string, string>() { { "reference", hypixel.AuctionService.Instance.GetUuid(reference) } }
             });
         }
 
