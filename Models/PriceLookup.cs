@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using Coflnet.Sky.Sniper.Services;
 using MessagePack;
 
 namespace Coflnet.Sky.Sniper.Models
@@ -107,6 +108,8 @@ namespace Coflnet.Sky.Sniper.Models
         /// </summary>
         [Key(3)]
         public ReferencePrice SecondLbin;
+        [IgnoreMember]
+        public float Volume => (float)References.Count / (SniperService.GetCurrentDay() - (References.TryPeek(out ReferencePrice price) ? price.Day : 0));
     }
 
     [MessagePackObject]

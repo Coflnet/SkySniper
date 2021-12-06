@@ -190,7 +190,7 @@ ORDER BY l.`AuctionId`  DESC;
             };
         }
 
-        private static short GetCurrentDay()
+        public static short GetCurrentDay()
         {
             return (short)(DateTime.Now - new DateTime(2021, 9, 25)).TotalDays;
         }
@@ -295,7 +295,6 @@ ORDER BY l.`AuctionId`  DESC;
 
 
 
-
         public void TestNewAuction(hypixel.SaveAuction auction, bool triggerEvents = true)
         {
             var lookup = Lookups.GetOrAdd(auction.Tag, key => new PriceLookup());
@@ -305,7 +304,8 @@ ORDER BY l.`AuctionId`  DESC;
             var medPrice = auction.StartingBid * 1.1;
             for (int i = 0; i < 3; i++)
             {
-                if (!l.TryGetValue(KeyFromSaveAuction(auction, i), out ReferenceAuctions bucket))
+                var key = KeyFromSaveAuction(auction, i);
+                if (!l.TryGetValue(key, out ReferenceAuctions bucket))
                 {
                     if (i != 0)
                         continue;
@@ -316,23 +316,25 @@ ORDER BY l.`AuctionId`  DESC;
                     Console.WriteLine("is null");
                 }
                 if (triggerEvents)
-                    i = FindFlip(auction, lbinPrice, medPrice, i, bucket);
+                    i = FindFlip(auction, lbinPrice, medPrice, i, bucket, key);
 
                 UpdateLbin(auction, cost, bucket);
             }
         }
 
-        private int FindFlip(hypixel.SaveAuction auction, double lbinPrice, double medPrice, int i, ReferenceAuctions bucket)
+        private int FindFlip(hypixel.SaveAuction auction, double lbinPrice, double medPrice, int i, ReferenceAuctions bucket, AuctionKey key)
         {
             // only trigger lbin if also below median or median is not set
-            if (bucket.LastLbin.Price > lbinPrice && (bucket.Price > lbinPrice))// || bucket.Price == 0))
+            if (bucket.LastLbin.Price > lbinPrice && (bucket.Price > medPrice) && bucket.Volume > 0.2f)// || bucket.Price == 0))
             {
-                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, bucket.LastLbin.Price, bucket.LastLbin.AuctionId);
+                var props = CreateReference(bucket.LastLbin.AuctionId, key);
+                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, bucket.LastLbin.Price, props);
                 i += 10;
             }
             else if (bucket.Price > medPrice)
             {
-                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, bucket.Price, bucket.References.Last().AuctionId);
+                var props = CreateReference(bucket.References.Last().AuctionId, key);
+                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, bucket.Price, props);
             }
 
             return i;
@@ -353,18 +355,24 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private void FoundAFlip(hypixel.SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, int targetPrice, long reference)
+        private void FoundAFlip(hypixel.SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, int targetPrice, Dictionary<string, string> props)
         {
-            bucket.References.TryPeek(out ReferencePrice price);
             FoundSnipe?.Invoke(new LowPricedAuction()
             {
                 Auction = auction,
                 Finder = type,
                 TargetPrice = targetPrice,
-                DailyVolume = (float)bucket.References.Count / (GetCurrentDay() - price.Day),
-                AdditionalProps = new Dictionary<string, string>() { { "reference", hypixel.AuctionService.Instance.GetUuid(reference) } }
+                DailyVolume = bucket.Volume,
+                AdditionalProps = props
             });
         }
 
+        private static Dictionary<string, string> CreateReference(long reference, AuctionKey key)
+        {
+            return new Dictionary<string, string>() {
+                { "reference", hypixel.AuctionService.Instance.GetUuid(reference) },
+                { "key", key.ToString() }
+            };
+        }
     }
 }
