@@ -336,6 +336,10 @@ ORDER BY l.`AuctionId`  DESC;
                 var props = CreateReference(bucket.References.Last().AuctionId, key);
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, bucket.Price, props);
             }
+            else if (auction.UId % 10 == 0)
+            {
+                Console.Write("p");
+            }
 
             return i;
         }

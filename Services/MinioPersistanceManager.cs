@@ -70,7 +70,8 @@ namespace Coflnet.Sky.Sniper.Services
                 await MessagePackSerializer.SerializeAsync(itemStream, item.Value);
                 itemStream.Position = 0;
                 await client.PutObjectAsync("sky-sniper", item.Key, itemStream, itemStream.Length);
-                Console.Write(" saved " + item.Key);
+                if (!string.IsNullOrEmpty(item.Key) && item.Key.StartsWith('S'))
+                    Console.Write(" saved " + item.Key);
             }
             Console.WriteLine();
         }

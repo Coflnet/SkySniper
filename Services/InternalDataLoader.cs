@@ -27,6 +27,8 @@ namespace Coflnet.Sky.Sniper.Services
                     .CreateCounter("sky_sniper_found_flips", "Number of flips found");
         Prometheus.Counter auctionsReceived = Prometheus.Metrics
                     .CreateCounter("sky_sniper_auction_received", "Number of auctions received");
+        Prometheus.Counter soldReceived = Prometheus.Metrics
+                    .CreateCounter("sky_sniper_sold_received", "Number of sold auctions received");
 
         public InternalDataLoader(SniperService sniper, IConfiguration config, IPersitanceManager persitance, ILogger<InternalDataLoader> logger)
         {
@@ -92,16 +94,23 @@ namespace Coflnet.Sky.Sniper.Services
 
         private async Task ConsumeNewAuctions(CancellationToken stoppingToken)
         {
-
-            logger.LogInformation("loaded active auctions, starting consuming");
-            await Kafka.KafkaConsumer.Consume<hypixel.SaveAuction>(config["KAFKA_HOST"], config["TOPICS:NEW_AUCTION"], a =>
+            try
             {
-                if (!a.Bin)
+                logger.LogInformation("consuming new ");
+                await Kafka.KafkaConsumer.Consume<hypixel.SaveAuction>(config["KAFKA_HOST"], config["TOPICS:NEW_AUCTION"], a =>
+                {
+                    auctionsReceived.Inc();
+                    if (!a.Bin)
+                        return Task.CompletedTask;
+                    sniper.TestNewAuction(a);
                     return Task.CompletedTask;
-                sniper.TestNewAuction(a);
-                auctionsReceived.Inc();
-                return Task.CompletedTask;
-            }, stoppingToken, "sky-sniper");
+                }, stoppingToken, "sky-sniper");
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, "consuming new auction");
+            }
+            logger.LogError("done with consuming");
         }
 
         private async Task LoadActiveAuctions(CancellationToken stoppingToken)
@@ -120,7 +129,7 @@ namespace Coflnet.Sky.Sniper.Services
                     {
                         sniper.TestNewAuction(item, false);
                     }
-                    logger.LogInformation("finished loading active auctions " + active);
+                    logger.LogInformation("finished loading active auctions " + active.Count);
                 }
                 catch (Exception e)
                 {
@@ -177,7 +186,7 @@ namespace Coflnet.Sky.Sniper.Services
                 }
                 catch (Exception e)
                 {
-                    dev.Logger.Instance.Error(e, "processing inactive auctions");
+                    logger.LogError(e, "processing inactive auctions");
                 }
         }
 
@@ -196,9 +205,12 @@ namespace Coflnet.Sky.Sniper.Services
             Console.WriteLine("loaded lookup");
             await Kafka.KafkaConsumer.Consume<hypixel.SaveAuction>(config["KAFKA_HOST"], config["TOPICS:SOLD_AUCTION"], async a =>
             {
+                soldReceived.Inc();
                 sniper.AddSoldItem(a);
-                Console.Write("s");
+                if (a.UId % 10 == 0)
+                    Console.Write("s");
                 await saveifreached(a);
+
             }, stoppingToken, "sky-sniper");
         }
 
@@ -210,18 +222,16 @@ namespace Coflnet.Sky.Sniper.Services
                 return;
             Console.WriteLine($"processed 1k {sniper.Lookups.Sum(l => l.Value.Lookup.Count)} {saveCount} -");
             saveCount++;
-            if (!saving && saveCount % 10 == 0)
+            if (!saving && saveCount % 30 == 0)
             {
                 saving = true;
-                Console.WriteLine("consumed sold");
                 try
                 {
                     await persitance.SaveLookup(sniper.Lookups);
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("could not save " + e.Message);
-                    Console.WriteLine(e.StackTrace);
+                    logger.LogError(e, "could not save ");
                 }
                 await Task.Delay(TimeSpan.FromMinutes(2));
                 saving = false;
