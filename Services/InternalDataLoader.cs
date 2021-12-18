@@ -123,7 +123,7 @@ namespace Coflnet.Sky.Sniper.Services
                 {
                     var topId = (await context.Auctions.MaxAsync(a => a.Id)) - 5_000_000;
                     var active = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
-                                        .Where(a => a.Id > topId && a.End > DateTime.Now)
+                                        .Where(a => a.Id > topId && a.End > DateTime.Now && a.Bin == true)
                                         .ToListAsync(stoppingToken);
                     foreach (var item in active)
                     {
