@@ -144,7 +144,7 @@ ORDER BY l.`AuctionId`  DESC;
                 bucket = CreateAndAddBucket(auction);
             }
             if (bucket.References.Where(r => r.AuctionId == auction.UId).Any())
-                return;
+                return; // duplicate
             bucket.References.Enqueue(CreateReferenceFromAuction(auction));
             if (bucket.LastLbin.AuctionId == auction.UId)
             {

@@ -130,6 +130,15 @@ namespace Coflnet.Sky.Sniper.Services
                         sniper.TestNewAuction(item, false);
                     }
                     logger.LogInformation("finished loading active auctions " + active.Count);
+
+                    var sold = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
+                                        .Where(a => a.Id > topId + 4_500_000 && a.End < DateTime.Now && a.Bin == true && a.HighestBidAmount > 0)
+                                        .ToListAsync(stoppingToken);
+                    foreach (var item in sold)
+                    {
+                        sniper.AddSoldItem(item);
+                    }
+                    logger.LogInformation("finished loading sold auctions " + sold.Count);
                 }
                 catch (Exception e)
                 {
