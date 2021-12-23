@@ -282,6 +282,7 @@ ORDER BY l.`AuctionId`  DESC;
                     "MINOS_RELIC" => "MINOS_RELIC",
                     "DWARF_TURTLE_SHELMET" => "DWARF_TURTLE_SHELMET",
                     "QUICK_CLAW" => "QUICK_CLAW",
+                    "PET_ITEM_TIER_BOOST" => "TB",
                     _ => null
                 });
 
