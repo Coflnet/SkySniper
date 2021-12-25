@@ -152,46 +152,7 @@ namespace Coflnet.Sky.Sniper.Services
             while (!stoppingToken.IsCancellationRequested)
                 try
                 {
-                    await Kafka.KafkaConsumer.Consume<AhStateSumary>(hypixel.Program.KafkaHost, config["TOPICS:AH_SUMARY"], async sum =>
-                    {
-                        Console.WriteLine("\n-->Consumed update sumary " + sum.Time);
-                        using var spancontext = GlobalTracer.Instance.BuildSpan("AhSumaryUpdate").StartActive();
-                        if (sum.Time < DateTime.Now - TimeSpan.FromMinutes(5))
-                            return;
-                        RecentUpdates.Enqueue(sum);
-
-                        if (RecentUpdates.Min(r => r.Time) > DateTime.Now - TimeSpan.FromMinutes(4))
-                            return;
-                        var completeLookup = new Dictionary<long, long>();
-                        foreach (var sumary in RecentUpdates)
-                        {
-                            foreach (var item in sumary.ActiveAuctions)
-                            {
-                                completeLookup[item.Key] = item.Value;
-                            }
-                        }
-                        await Task.Yield();
-
-                        foreach (var item in sniper.Lookups)
-                        {
-                            foreach (var lookup in item.Value.Lookup)
-                            {
-                                if (!completeLookup.ContainsKey(lookup.Value.SecondLbin.AuctionId))
-                                {
-                                    lookup.Value.SecondLbin = default;
-                                }
-                                if (!completeLookup.ContainsKey(lookup.Value.LastLbin.AuctionId))
-                                {
-                                    lookup.Value.LastLbin = lookup.Value.SecondLbin;
-                                    lookup.Value.SecondLbin = default;
-                                }
-                            }
-                        }
-
-                        if (RecentUpdates.Peek().Time < DateTime.Now - TimeSpan.FromMinutes(5))
-                            RecentUpdates.Dequeue();
-
-                    }, stoppingToken);
+                    await Kafka.KafkaConsumer.Consume<AhStateSumary>(hypixel.Program.KafkaHost, config["TOPICS:AH_SUMARY"], ProcessSumary, stoppingToken);
                 }
                 catch (Exception e)
                 {
@@ -199,6 +160,46 @@ namespace Coflnet.Sky.Sniper.Services
                 }
         }
 
+        private async Task ProcessSumary(AhStateSumary sum)
+        {
+
+            Console.WriteLine("\n-->Consumed update sumary " + sum.Time);
+            using var spancontext = GlobalTracer.Instance.BuildSpan("AhSumaryUpdate").StartActive();
+            if (sum.Time < DateTime.Now - TimeSpan.FromMinutes(5))
+                return;
+            RecentUpdates.Enqueue(sum);
+
+            if (RecentUpdates.Min(r => r.Time) > DateTime.Now - TimeSpan.FromMinutes(4))
+                return;
+            var completeLookup = new Dictionary<long, long>();
+            foreach (var sumary in RecentUpdates)
+            {
+                foreach (var item in sumary.ActiveAuctions)
+                {
+                    completeLookup[item.Key] = item.Value;
+                }
+            }
+            await Task.Yield();
+
+            foreach (var item in sniper.Lookups)
+            {
+                foreach (var lookup in item.Value.Lookup)
+                {
+                    if (!completeLookup.ContainsKey(lookup.Value.SecondLbin.AuctionId))
+                    {
+                        lookup.Value.SecondLbin = default;
+                    }
+                    if (!completeLookup.ContainsKey(lookup.Value.LastLbin.AuctionId))
+                    {
+                        lookup.Value.LastLbin = lookup.Value.SecondLbin;
+                        lookup.Value.SecondLbin = default;
+                    }
+                }
+            }
+
+            if (RecentUpdates.Peek().Time < DateTime.Now - TimeSpan.FromMinutes(5))
+                RecentUpdates.Dequeue();
+        }
 
         private async Task LoadLookupsAndProcessSells(CancellationToken stoppingToken)
         {
@@ -234,7 +235,7 @@ namespace Coflnet.Sky.Sniper.Services
             if (!saving && saveCount % 20 == 0)
             {
                 saving = true;
-                var task = Task.Run(async() =>
+                var task = Task.Run(async () =>
                 {
                     try
                     {
