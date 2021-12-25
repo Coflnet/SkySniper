@@ -231,19 +231,22 @@ namespace Coflnet.Sky.Sniper.Services
                 return;
             Console.WriteLine($"processed 1k {sniper.Lookups.Sum(l => l.Value.Lookup.Count)} {saveCount} -");
             saveCount++;
-            if (!saving && saveCount % 30 == 0)
+            if (!saving && saveCount % 20 == 0)
             {
                 saving = true;
-                try
+                var task = Task.Run(async() =>
                 {
-                    await persitance.SaveLookup(sniper.Lookups);
-                }
-                catch (Exception e)
-                {
-                    logger.LogError(e, "could not save ");
-                }
-                await Task.Delay(TimeSpan.FromMinutes(2));
-                saving = false;
+                    try
+                    {
+                        await persitance.SaveLookup(sniper.Lookups);
+                    }
+                    catch (Exception e)
+                    {
+                        logger.LogError(e, "could not save ");
+                    }
+                    await Task.Delay(TimeSpan.FromMinutes(2));
+                    saving = false;
+                });
             }
         }
     }
