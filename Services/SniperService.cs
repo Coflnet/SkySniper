@@ -329,7 +329,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (bucket.LastLbin.Price > lbinPrice && (bucket.Price > medPrice) && bucket.Volume > 0.2f)// || bucket.Price == 0))
             {
                 var props = CreateReference(bucket.LastLbin.AuctionId, key);
-                props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => hypixel.AuctionService.Instance.GetUuid(a.AuctionId)));
+                props["med"] = string.Join(',', bucket.References.Take(10).Select(a => hypixel.AuctionService.Instance.GetUuid(a.AuctionId)));
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, bucket.LastLbin.Price, props);
                 i += 10;
             }
