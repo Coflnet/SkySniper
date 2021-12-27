@@ -155,7 +155,7 @@ ORDER BY l.`AuctionId`  DESC;
                 bucket.References.TryDequeue(out ReferencePrice ra);
             var deduplicated = bucket.References
                 .OrderByDescending(b => b.Day)
-                .Take(30)
+                .Take(60)
                 .GroupBy(a => a.Seller)
                 .Select(a => a.Last())  // only use one (the last) price from each seller
                 .ToList();
@@ -163,11 +163,20 @@ ORDER BY l.`AuctionId`  DESC;
             if (size <= 2)
             {
                 bucket.Price = 0; // to low vol
+                return;
             }
-            bucket.Price = deduplicated
-                .Take(9)
+            // short term protects against price drops after updates
+            int shortTermPrice = GetMedian(deduplicated.OrderByDescending(b=>b.Day).Take(9).ToList());
+            // long term protects against market manipulation
+            int longSpanPrice = GetMedian(deduplicated.Take(45).ToList());
+            bucket.Price = Math.Min(shortTermPrice,longSpanPrice);
+        }
+
+        private static int GetMedian(List<ReferencePrice> deduplicated)
+        {
+            return deduplicated
                 .OrderByDescending(b => b.Price)
-                .Skip(size < 5 ? size / 2 : 4)
+                .Skip(deduplicated.Count / 2)
                 .Select(b => b.Price)
                 .First();
         }
