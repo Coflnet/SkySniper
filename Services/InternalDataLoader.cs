@@ -94,30 +94,33 @@ namespace Coflnet.Sky.Sniper.Services
 
         private async Task ConsumeNewAuctions(CancellationToken stoppingToken)
         {
-            try
-            {
-                logger.LogInformation("consuming new ");
-                await Kafka.KafkaConsumer.Consume<hypixel.SaveAuction>(config["KAFKA_HOST"], config["TOPICS:NEW_AUCTION"], a =>
+            while (!stoppingToken.IsCancellationRequested)
+                try
                 {
-                    auctionsReceived.Inc();
-                    if (!a.Bin)
+                    logger.LogInformation("consuming new ");
+                    await Kafka.KafkaConsumer.ConsumeBatch<hypixel.SaveAuction>(config["KAFKA_HOST"], config["TOPICS:NEW_AUCTION"], auctions =>
+                    {
+                        foreach (var a in auctions)
+                        {
+                            auctionsReceived.Inc();
+                            if (!a.Bin)
+                                continue;
+                            try
+                            {
+                                sniper.TestNewAuction(a);
+                            }
+                            catch (Exception e)
+                            {
+                                logger.LogError(e, "testing new auction failed");
+                            }
+                        }
                         return Task.CompletedTask;
-                    try
-                    {
-                        sniper.TestNewAuction(a);
-                    }
-                    catch (Exception e)
-                    {
-                        logger.LogError(e, "testing new auction failed");
-                    }
-
-                    return Task.CompletedTask;
-                }, stoppingToken, "sky-sniper");
-            }
-            catch (Exception e)
-            {
-                logger.LogError(e, "consuming new auction");
-            }
+                    }, stoppingToken, "sky-sniper");
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, "consuming new auction");
+                }
             logger.LogError("done with consuming");
         }
 
