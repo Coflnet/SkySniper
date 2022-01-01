@@ -102,7 +102,15 @@ namespace Coflnet.Sky.Sniper.Services
                     auctionsReceived.Inc();
                     if (!a.Bin)
                         return Task.CompletedTask;
-                    sniper.TestNewAuction(a);
+                    try
+                    {
+                        sniper.TestNewAuction(a);
+                    }
+                    catch (Exception e)
+                    {
+                        logger.LogError(e, "testing new auction failed");
+                    }
+
                     return Task.CompletedTask;
                 }, stoppingToken, "sky-sniper");
             }
