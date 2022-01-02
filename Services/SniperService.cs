@@ -166,10 +166,10 @@ ORDER BY l.`AuctionId`  DESC;
                 return;
             }
             // short term protects against price drops after updates
-            int shortTermPrice = GetMedian(deduplicated.OrderByDescending(b=>b.Day).Take(9).ToList());
+            int shortTermPrice = GetMedian(deduplicated.OrderByDescending(b => b.Day).Take(9).ToList());
             // long term protects against market manipulation
             int longSpanPrice = GetMedian(deduplicated.Take(45).ToList());
-            bucket.Price = Math.Min(shortTermPrice,longSpanPrice);
+            bucket.Price = Math.Min(shortTermPrice, longSpanPrice);
         }
 
         private static int GetMedian(List<ReferencePrice> deduplicated)
@@ -372,6 +372,8 @@ ORDER BY l.`AuctionId`  DESC;
 
         private void FoundAFlip(hypixel.SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, int targetPrice, Dictionary<string, string> props)
         {
+            if (targetPrice < 200_000)
+                return; // to low
             FoundSnipe?.Invoke(new LowPricedAuction()
             {
                 Auction = auction,

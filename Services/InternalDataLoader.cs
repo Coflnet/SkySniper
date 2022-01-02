@@ -77,7 +77,6 @@ namespace Coflnet.Sky.Sniper.Services
             using var lpp = new ProducerBuilder<string, LowPricedAuction>(producerConfig).SetValueSerializer(hypixel.SerializerFactory.GetSerializer<LowPricedAuction>()).Build();
             sniper.FoundSnipe += flip =>
             {
-
                 lpp.Produce(LowPricedAuctionTopic, new Message<string, LowPricedAuction>()
                 {
                     Key = flip.Auction.Uuid,
