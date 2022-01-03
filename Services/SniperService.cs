@@ -53,6 +53,7 @@ namespace Coflnet.Sky.Sniper.Services
             "hpc", // hot potato books
             "tuned_transmission", // aotv upgrade
             "power_ability_scroll", // i have no clue
+            "captured_player" // cake souls
         };
         /** NOTES
         yogsKilled - needs further be looked into
