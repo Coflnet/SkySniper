@@ -77,7 +77,8 @@ namespace Coflnet.Sky.Sniper.Services
             using var lpp = new ProducerBuilder<string, LowPricedAuction>(producerConfig).SetValueSerializer(hypixel.SerializerFactory.GetSerializer<LowPricedAuction>()).Build();
             sniper.FoundSnipe += flip =>
             {
-                flip.Auction.Context["fsend"] = DateTime.Now.ToString();
+                if (a.Context != null)
+                    flip.Auction.Context["fsend"] = DateTime.Now.ToString();
                 lpp.Produce(LowPricedAuctionTopic, new Message<string, LowPricedAuction>()
                 {
                     Key = flip.Auction.Uuid,
@@ -105,7 +106,8 @@ namespace Coflnet.Sky.Sniper.Services
                             auctionsReceived.Inc();
                             if (!a.Bin)
                                 continue;
-                            a.Context["frec"] = DateTime.Now.ToString();
+                            if (a.Context != null)
+                                a.Context["frec"] = DateTime.Now.ToString();
                             try
                             {
                                 sniper.TestNewAuction(a);
