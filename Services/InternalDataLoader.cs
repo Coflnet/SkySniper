@@ -78,7 +78,7 @@ namespace Coflnet.Sky.Sniper.Services
             sniper.FoundSnipe += flip =>
             {
                 if (flip.Auction.Context != null)
-                    flip.Auction.Context["fsend"] = DateTime.Now.ToString();
+                    flip.Auction.Context["fsend"] = (DateTime.Now - flip.Auction.FindTime).ToString();
                 lpp.Produce(LowPricedAuctionTopic, new Message<string, LowPricedAuction>()
                 {
                     Key = flip.Auction.Uuid,
@@ -107,7 +107,7 @@ namespace Coflnet.Sky.Sniper.Services
                             if (!a.Bin)
                                 continue;
                             if (a.Context != null)
-                                a.Context["frec"] = DateTime.Now.ToString();
+                                a.Context["frec"] = (DateTime.Now - a.FindTime).ToString();
                             try
                             {
                                 sniper.TestNewAuction(a);
