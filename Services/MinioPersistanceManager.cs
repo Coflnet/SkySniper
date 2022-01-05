@@ -16,7 +16,6 @@ namespace Coflnet.Sky.Sniper.Services
     public class MinioPersistanceManager : IPersitanceManager
     {
         private IConfiguration config;
-        //private SniperService service;
         private ILogger<MinioPersistanceManager> logger;
 
         public MinioPersistanceManager(IConfiguration config, ILogger<MinioPersistanceManager> logger)
