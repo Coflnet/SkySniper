@@ -313,9 +313,16 @@ ORDER BY l.`AuctionId`  DESC;
             var cost = auction.StartingBid;
             var lbinPrice = auction.StartingBid * 1.05;
             var medPrice = auction.StartingBid * 1.1;
+            var lastKey = new AuctionKey();
             for (int i = 0; i < 3; i++)
             {
                 var key = KeyFromSaveAuction(auction, i);
+                if(i > 0 && key == lastKey)
+                {
+                    return; // already checked that
+                } 
+                lastKey = key;
+
                 if (!l.TryGetValue(key, out ReferenceAuctions bucket))
                 {
                     if (i != 0)
