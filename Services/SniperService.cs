@@ -360,7 +360,8 @@ ORDER BY l.`AuctionId`  DESC;
         private int FindFlip(hypixel.SaveAuction auction, double lbinPrice, double medPrice, int i, ReferenceAuctions bucket, AuctionKey key)
         {
             // only trigger lbin if also below median or median is not set
-            if (bucket.LastLbin.Price > lbinPrice && (bucket.Price > medPrice) && bucket.Volume > 0.2f)// || bucket.Price == 0))
+            var volume = bucket.Volume;
+            if (bucket.LastLbin.Price > lbinPrice && (bucket.Price > lbinPrice) && volume > 0.2f)// || bucket.Price == 0))
             {
                 var props = CreateReference(bucket.LastLbin.AuctionId, key);
                 props["med"] = string.Join(',', bucket.References.Take(10).Select(a => hypixel.AuctionService.Instance.GetUuid(a.AuctionId)));
@@ -376,15 +377,16 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 if (auction.UId % 10 == 0)
                     Console.Write("p");
-                Logs.Enqueue(new LogEntry()
-                {
-                    Key = key,
-                    LBin = bucket.LastLbin.Price,
-                    Median = bucket.Price,
-                    Uuid = auction.Uuid,
-                    Volume = bucket.Volume
-                });
-                if(Logs.Count > 2000)
+                if (volume == 0 || bucket.LastLbin.Price == 0 || bucket.Price == 0 || bucket.Price > MIN_TARGET)
+                    Logs.Enqueue(new LogEntry()
+                    {
+                        Key = key,
+                        LBin = bucket.LastLbin.Price,
+                        Median = bucket.Price,
+                        Uuid = auction.Uuid,
+                        Volume = bucket.Volume
+                    });
+                if (Logs.Count > 2000)
                     PrintLogQueue();
             }
 
@@ -393,7 +395,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         public void PrintLogQueue()
         {
-            while(Logs.TryDequeue(out LogEntry result))
+            while (Logs.TryDequeue(out LogEntry result))
             {
                 Console.WriteLine($"Info: NF {result.Uuid} {result.Median} \t{result.LBin} {result.Volume} {result.Key}");
             }
@@ -425,6 +427,14 @@ ORDER BY l.`AuctionId`  DESC;
                 TargetPrice = targetPrice,
                 DailyVolume = bucket.Volume,
                 AdditionalProps = props
+            });
+            Logs.Enqueue(new LogEntry()
+            {
+                Key = props.GetValueOrDefault("key"),
+                LBin = bucket.LastLbin.Price,
+                Median = bucket.Price,
+                Uuid = auction.Uuid,
+                Volume = bucket.Volume
             });
         }
 
