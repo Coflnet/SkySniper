@@ -6,11 +6,13 @@ using Coflnet.Sky.Sniper.Models;
 using Microsoft.Extensions.Hosting;
 using Minio.DataModel;
 using Newtonsoft.Json;
+using Coflnet.Sky;
 
 namespace Coflnet.Sky.Sniper.Services
 {
     public class SniperService
     {
+        public static int MIN_TARGET = 200_000;
         public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>();
         private IHostApplicationLifetime applicationLifetime;
 
@@ -161,7 +163,7 @@ ORDER BY l.`AuctionId`  DESC;
                 .Select(a => a.Last())  // only use one (the last) price from each seller
                 .ToList();
             size = deduplicated.Count();
-            if (size <= 2)
+            if (size < 2)
             {
                 bucket.Price = 0; // to low vol
                 return;
@@ -248,8 +250,21 @@ ORDER BY l.`AuctionId`  DESC;
                             .OrderByDescending(n => n.Key)
                             .ToList();
                 key.Enchants = auction.Enchantments
-                    ?.Where(e => Coflnet.Sky.Constants.RelevantEnchants.Where(relevant => relevant.Type == e.Type && relevant.Level <= e.Level).Any())
+                    ?.Where(e => Coflnet.Sky.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
                     .Select(e => new Enchantment() { Lvl = e.Level, Type = e.Type }).ToList();
+                if (key?.Enchants?.Count == 0)
+                {
+                    var enchant = Constants.SelectBest(auction.Enchantments);
+                    key.Enchants = new List<Enchantment>() { new Enchantment() { Lvl = enchant.Level, Type = enchant.Type } };
+                }
+            }
+            else if (dropLevel == 2)
+            {
+                var enchant = Constants.SelectBest(auction.Enchantments);
+                if (enchant == default)
+                    key.Enchants = new List<Enchantment>();
+                else
+                    key.Enchants = new List<Enchantment>() { new Enchantment() { Lvl = enchant.Level, Type = enchant.Type } };
             }
             else
             {
@@ -314,13 +329,13 @@ ORDER BY l.`AuctionId`  DESC;
             var lbinPrice = auction.StartingBid * 1.05;
             var medPrice = auction.StartingBid * 1.1;
             var lastKey = new AuctionKey();
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 4; i++)
             {
                 var key = KeyFromSaveAuction(auction, i);
-                if(i > 0 && key == lastKey)
+                if (i > 0 && key == lastKey)
                 {
                     return; // already checked that
-                } 
+                }
                 lastKey = key;
 
                 if (!l.TryGetValue(key, out ReferenceAuctions bucket))
@@ -380,7 +395,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private void FoundAFlip(hypixel.SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, int targetPrice, Dictionary<string, string> props)
         {
-            if (targetPrice < 200_000)
+            if (targetPrice < MIN_TARGET)
                 return; // to low
             FoundSnipe?.Invoke(new LowPricedAuction()
             {

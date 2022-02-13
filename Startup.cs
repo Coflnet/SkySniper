@@ -49,7 +49,7 @@ namespace SkySniper
                 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "SkySniper v1"));
             }
 
-            app.UseHttpsRedirection();
+            app.UseResponseCaching();
 
             app.UseRouting();
 
