@@ -16,6 +16,8 @@ namespace Coflnet.Sky.Sniper.Services
         public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>();
         private IHostApplicationLifetime applicationLifetime;
 
+        private ConcurrentQueue<LogEntry> Logs = new ConcurrentQueue<LogEntry>();
+
         public event Action<LowPricedAuction> FoundSnipe;
         private HashSet<string> IncludeKeys = new HashSet<string>()
         {
@@ -370,12 +372,31 @@ ORDER BY l.`AuctionId`  DESC;
                 var props = CreateReference(bucket.References.Last().AuctionId, key);
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, bucket.Price, props);
             }
-            else if (auction.UId % 10 == 0)
+            else
             {
-                Console.Write("p");
+                if (auction.UId % 10 == 0)
+                    Console.Write("p");
+                Logs.Enqueue(new LogEntry()
+                {
+                    Key = key,
+                    LBin = bucket.LastLbin.Price,
+                    Median = bucket.Price,
+                    Uuid = auction.Uuid,
+                    Volume = bucket.Volume
+                });
+                if(Logs.Count > 2000)
+                    PrintLogQueue();
             }
 
             return i;
+        }
+
+        public void PrintLogQueue()
+        {
+            while(Logs.TryDequeue(out LogEntry result))
+            {
+                Console.WriteLine($"Info: NF {result.Uuid} {result.Median} \t{result.LBin} {result.Volume} {result.Key}");
+            }
         }
 
         private static void UpdateLbin(hypixel.SaveAuction auction, long cost, ReferenceAuctions bucket)

@@ -213,6 +213,8 @@ namespace Coflnet.Sky.Sniper.Services
 
             if (RecentUpdates.Peek().Time < DateTime.Now - TimeSpan.FromMinutes(5))
                 RecentUpdates.Dequeue();
+
+            sniper.PrintLogQueue();
         }
 
         private async Task LoadLookupsAndProcessSells(CancellationToken stoppingToken)
