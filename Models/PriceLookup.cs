@@ -66,6 +66,15 @@ namespace Coflnet.Sky.Sniper.Models
         public AuctionKey()
         {
         }
+
+        public static bool operator ==(AuctionKey a, AuctionKey b)
+        {
+            return a.Equals(b);
+        }
+        public static bool operator !=(AuctionKey a, AuctionKey b)
+        {
+            return !a.Equals(b);
+        }
     }
 
     [MessagePackObject]
