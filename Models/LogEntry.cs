@@ -7,6 +7,7 @@ namespace Coflnet.Sky.Sniper.Models
         public long Median;
         public long LBin;
         public float Volume;
+        public LowPricedAuction.FinderType Finder;
     }
 
 }

@@ -397,7 +397,8 @@ ORDER BY l.`AuctionId`  DESC;
         {
             while (Logs.TryDequeue(out LogEntry result))
             {
-                Console.WriteLine($"Info: NF {result.Uuid} {result.Median} \t{result.LBin} {result.Volume} {result.Key}");
+                var finderName = result.Finder == LowPricedAuction.FinderType.UNKOWN ? "NF" : result.Finder.ToString();
+                Console.WriteLine($"Info: {finderName} {result.Uuid} {result.Median} \t{result.LBin} {result.Volume} {result.Key}");
             }
         }
 
@@ -434,7 +435,8 @@ ORDER BY l.`AuctionId`  DESC;
                 LBin = bucket.LastLbin.Price,
                 Median = bucket.Price,
                 Uuid = auction.Uuid,
-                Volume = bucket.Volume
+                Volume = bucket.Volume,
+                Finder = type
             });
         }
 
