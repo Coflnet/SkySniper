@@ -59,6 +59,8 @@ namespace Coflnet.Sky.Sniper.Services
             "power_ability_scroll", // i have no clue
             "captured_player", // cake souls
             "MUSIC", //rune
+            "DRAGON", //rune
+            "TIDAL", //rune
             "ENCHANT" // rune
         };
         /** NOTES
