@@ -160,7 +160,7 @@ ORDER BY l.`AuctionId`  DESC;
                 bucket.LastLbin.Price = 0; // the lowest bin was sold
             }
             var size = bucket.References.Count;
-            if (size > 120)
+            if (size > 90)
                 bucket.References.TryDequeue(out ReferencePrice ra);
             var deduplicated = bucket.References
                 .OrderByDescending(b => b.Day)
