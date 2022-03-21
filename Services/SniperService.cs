@@ -287,7 +287,7 @@ ORDER BY l.`AuctionId`  DESC;
         private static KeyValuePair<string, string> NormalizeData(KeyValuePair<string, string> s)
         {
             if (s.Key == "exp")
-                return NormalizeNumberTo(s, 4_000_000);
+                return NormalizeNumberTo(s, 4_225_538);
             if (s.Key == "winning_bid")
                 return NormalizeNumberTo(s, 10_000_000);
             if (s.Key.EndsWith("_kills"))
@@ -320,9 +320,10 @@ ORDER BY l.`AuctionId`  DESC;
             return s;
         }
 
-        private static KeyValuePair<string, string> NormalizeNumberTo(KeyValuePair<string, string> s, int groupingSize)
+        public static KeyValuePair<string, string> NormalizeNumberTo(KeyValuePair<string, string> s, int groupingSize, int highestGroup = int.MaxValue)
         {
-            return new KeyValuePair<string, string>(s.Key, (((int)double.Parse(s.Value)) / groupingSize).ToString());
+            var group = ((long)double.Parse(s.Value)) / groupingSize;
+            return new KeyValuePair<string, string>(s.Key, Math.Min(group, highestGroup).ToString());
         }
 
 

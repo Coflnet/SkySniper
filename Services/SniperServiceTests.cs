@@ -92,6 +92,19 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        [TestCase("400001","0")]
+        [TestCase("4225539","1")]
+        [TestCase("9700001","2")]
+        [TestCase("25353220","5")]
+        [TestCase("25353230","6")]
+        [TestCase("25770000000","6")]
+        public void Grouping(string input, string expected)
+        {
+            var a = SniperService.NormalizeNumberTo(new KeyValuePair<string, string>("a",input), 4_225_538, 6);
+            Assert.AreEqual(expected,a.Value);
+        }
+
+        [Test]
         public void FallbackOnNomatch()
         {
             service.AddSoldItem(highestValAuction);
