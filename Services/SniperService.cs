@@ -376,6 +376,7 @@ ORDER BY l.`AuctionId`  DESC;
             else if (bucket.Price > medPrice)
             {
                 var props = CreateReference(bucket.References.Last().AuctionId, key);
+                props["med"] = string.Join(',', bucket.References.Take(10).Select(a => hypixel.AuctionService.Instance.GetUuid(a.AuctionId)));
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, bucket.Price, props);
             }
             else
