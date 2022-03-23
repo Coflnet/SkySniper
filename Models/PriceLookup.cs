@@ -117,6 +117,11 @@ namespace Coflnet.Sky.Sniper.Models
         /// </summary>
         [Key(3)]
         public ReferencePrice SecondLbin;
+        /// <summary>
+        /// The day of the oldest used reference for <see cref="Price"/>
+        /// </summary>
+        [Key(4)]
+        public short OldestRef;
         [IgnoreMember]
         public float Volume => (float)(References.TryPeek(out ReferencePrice price)
                         ? (float)References.Count / (SniperService.GetCurrentDay() - price.Day + 1)

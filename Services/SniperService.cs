@@ -175,7 +175,9 @@ ORDER BY l.`AuctionId`  DESC;
                 return;
             }
             // short term protects against price drops after updates
-            int shortTermPrice = GetMedian(deduplicated.OrderByDescending(b => b.Day).Take(9).ToList());
+            var shortTermList = deduplicated.OrderByDescending(b => b.Day).Take(9).ToList();
+            int shortTermPrice = GetMedian(shortTermList);
+            bucket.OldestRef = shortTermList.Min(s=>s.Day);
             // long term protects against market manipulation
             int longSpanPrice = GetMedian(deduplicated.Take(45).ToList());
             bucket.Price = Math.Min(shortTermPrice, longSpanPrice);
@@ -427,6 +429,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (targetPrice < MIN_TARGET)
                 return; // to low
+            props["refAge"] = (GetCurrentDay() - bucket.OldestRef).ToString();
             FoundSnipe?.Invoke(new LowPricedAuction()
             {
                 Auction = auction,
