@@ -289,7 +289,7 @@ ORDER BY l.`AuctionId`  DESC;
         private static KeyValuePair<string, string> NormalizeData(KeyValuePair<string, string> s)
         {
             if (s.Key == "exp")
-                return NormalizeNumberTo(s, 4_225_538);
+                return NormalizeNumberTo(s, 4_225_538, 6);
             if (s.Key == "winning_bid")
                 return NormalizeNumberTo(s, 10_000_000);
             if (s.Key.EndsWith("_kills"))
