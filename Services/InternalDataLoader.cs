@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Coflnet.Sky.Core;
 using Confluent.Kafka;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -74,7 +75,7 @@ namespace Coflnet.Sky.Sniper.Services
         private async Task StartProducer(CancellationToken stoppingToken)
         {
 
-            using var lpp = new ProducerBuilder<string, LowPricedAuction>(producerConfig).SetValueSerializer(hypixel.SerializerFactory.GetSerializer<LowPricedAuction>()).Build();
+            using var lpp = new ProducerBuilder<string, LowPricedAuction>(producerConfig).SetValueSerializer(SerializerFactory.GetSerializer<LowPricedAuction>()).Build();
             sniper.FoundSnipe += flip =>
             {
                 if (flip.Auction.Context != null)
@@ -99,7 +100,7 @@ namespace Coflnet.Sky.Sniper.Services
                 try
                 {
                     logger.LogInformation("consuming new ");
-                    await Kafka.KafkaConsumer.ConsumeBatch<hypixel.SaveAuction>(config["KAFKA_HOST"], config["TOPICS:NEW_AUCTION"], auctions =>
+                    await Kafka.KafkaConsumer.ConsumeBatch<SaveAuction>(config["KAFKA_HOST"], config["TOPICS:NEW_AUCTION"], auctions =>
                     {
                         foreach (var a in auctions)
                         {
@@ -130,7 +131,7 @@ namespace Coflnet.Sky.Sniper.Services
         private async Task LoadActiveAuctions(CancellationToken stoppingToken)
         {
             // load active auctions
-            using (var context = new hypixel.HypixelContext())
+            using (var context = new HypixelContext())
             {
                 logger.LogInformation("loading active auctions");
                 try
@@ -166,7 +167,7 @@ namespace Coflnet.Sky.Sniper.Services
             while (!stoppingToken.IsCancellationRequested)
                 try
                 {
-                    await Kafka.KafkaConsumer.Consume<AhStateSumary>(hypixel.Program.KafkaHost, config["TOPICS:AH_SUMARY"], ProcessSumary, stoppingToken);
+                    await Kafka.KafkaConsumer.Consume<AhStateSumary>(Program.KafkaHost, config["TOPICS:AH_SUMARY"], ProcessSumary, stoppingToken);
                 }
                 catch (Exception e)
                 {
@@ -229,7 +230,7 @@ namespace Coflnet.Sky.Sniper.Services
                 Console.WriteLine(e.StackTrace);
             }
             Console.WriteLine("loaded lookup");
-            await Kafka.KafkaConsumer.Consume<hypixel.SaveAuction>(config["KAFKA_HOST"], config["TOPICS:SOLD_AUCTION"], async a =>
+            await Kafka.KafkaConsumer.Consume<SaveAuction>(config["KAFKA_HOST"], config["TOPICS:SOLD_AUCTION"], async a =>
             {
                 soldReceived.Inc();
                 sniper.AddSoldItem(a);
@@ -242,7 +243,7 @@ namespace Coflnet.Sky.Sniper.Services
 
         private static bool saving = false;
         private static int saveCount = 1;
-        private Task SaveIfReached(hypixel.SaveAuction a)
+        private Task SaveIfReached(SaveAuction a)
         {
             if (a.UId % 1000 != 0)
                 return Task.CompletedTask;

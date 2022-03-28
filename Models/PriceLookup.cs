@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Services;
 using MessagePack;
 
@@ -20,11 +21,11 @@ namespace Coflnet.Sky.Sniper.Models
         [Key(0)]
         public List<Enchantment> Enchants;
         [Key(1)]
-        public hypixel.ItemReferences.Reforge Reforge;
+        public ItemReferences.Reforge Reforge;
         [Key(2)]
         public List<KeyValuePair<string, string>> Modifiers;
         [Key(3)]
-        public hypixel.Tier Tier;
+        public Tier Tier;
         [Key(4)]
         public byte Count;
 
@@ -54,7 +55,7 @@ namespace Coflnet.Sky.Sniper.Models
             return Newtonsoft.Json.JsonConvert.SerializeObject(this);
         }
 
-        public AuctionKey(List<Enchantment> enchants, hypixel.ItemReferences.Reforge reforge, List<KeyValuePair<string, string>> modifiers, hypixel.Tier tier, byte count)
+        public AuctionKey(List<Enchantment> enchants, ItemReferences.Reforge reforge, List<KeyValuePair<string, string>> modifiers, Tier tier, byte count)
         {
             Enchants = enchants;
             Reforge = reforge;
@@ -81,7 +82,7 @@ namespace Coflnet.Sky.Sniper.Models
     public class Enchantment
     {
         [Key(0)]
-        public hypixel.Enchantment.EnchantmentType Type;
+        public Core.Enchantment.EnchantmentType Type;
         [Key(1)]
         public byte Lvl;
 

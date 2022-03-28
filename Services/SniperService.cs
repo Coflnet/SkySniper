@@ -7,6 +7,7 @@ using Microsoft.Extensions.Hosting;
 using Minio.DataModel;
 using Newtonsoft.Json;
 using Coflnet.Sky;
+using Coflnet.Sky.Core;
 
 namespace Coflnet.Sky.Sniper.Services
 {
@@ -97,7 +98,7 @@ ORDER BY l.`AuctionId`  DESC;
             };
         }
 
-        public int GetPrice(hypixel.SaveAuction auction)
+        public int GetPrice(SaveAuction auction)
         {
             if (TryGetReferenceAuctions(auction, out ReferenceAuctions bucket))
             {
@@ -108,7 +109,7 @@ ORDER BY l.`AuctionId`  DESC;
             return 0;
         }
 
-        public IEnumerable<long> GetReferenceUids(hypixel.SaveAuction auction)
+        public IEnumerable<long> GetReferenceUids(SaveAuction auction)
         {
             if (TryGetReferenceAuctions(auction, out ReferenceAuctions bucket))
                 return bucket.References.Select(r => r.AuctionId);
@@ -142,7 +143,7 @@ ORDER BY l.`AuctionId`  DESC;
             });
         }
 
-        public void AddSoldItem(hypixel.SaveAuction auction)
+        public void AddSoldItem(SaveAuction auction)
         {
             if (!Lookups.ContainsKey(auction.Tag))
             {
@@ -192,14 +193,14 @@ ORDER BY l.`AuctionId`  DESC;
                 .First();
         }
 
-        private ReferenceAuctions CreateAndAddBucket(hypixel.SaveAuction auction, int dropLevel = 0)
+        private ReferenceAuctions CreateAndAddBucket(SaveAuction auction, int dropLevel = 0)
         {
             ReferenceAuctions bucket = new ReferenceAuctions();
             Lookups[auction.Tag].Lookup.TryAdd(KeyFromSaveAuction(auction, dropLevel), bucket);
             return bucket;
         }
 
-        private static ReferencePrice CreateReferenceFromAuction(hypixel.SaveAuction auction)
+        private static ReferencePrice CreateReferenceFromAuction(SaveAuction auction)
         {
             return new ReferencePrice()
             {
@@ -215,12 +216,12 @@ ORDER BY l.`AuctionId`  DESC;
             return (short)(DateTime.Now - new DateTime(2021, 9, 25)).TotalDays;
         }
 
-        private ReferenceAuctions GetReferenceAuctions(hypixel.SaveAuction auction)
+        private ReferenceAuctions GetReferenceAuctions(SaveAuction auction)
         {
             return Lookups[auction.Tag].Lookup[KeyFromSaveAuction(auction)];
         }
 
-        private bool TryGetReferenceAuctions(hypixel.SaveAuction auction, out ReferenceAuctions bucket)
+        private bool TryGetReferenceAuctions(SaveAuction auction, out ReferenceAuctions bucket)
         {
             bucket = null;
             if (!Lookups.TryGetValue(auction.Tag, out PriceLookup lookup))
@@ -234,19 +235,19 @@ ORDER BY l.`AuctionId`  DESC;
         }
 
 
-        private AuctionKey KeyFromSaveAuction(hypixel.SaveAuction auction, int dropLevel = 0)
+        private AuctionKey KeyFromSaveAuction(SaveAuction auction, int dropLevel = 0)
         {
             var key = new AuctionKey();
 
 
-            key.Reforge = Coflnet.Sky.Constants.RelevantReforges.Contains(auction.Reforge) ? auction.Reforge : hypixel.ItemReferences.Reforge.Any;
+            key.Reforge = Coflnet.Sky.Core.Constants.RelevantReforges.Contains(auction.Reforge) ? auction.Reforge : ItemReferences.Reforge.Any;
             if (dropLevel == 0)
             {
                 key.Enchants = auction.Enchantments
-                    ?.Where(e => e.Level >= 6 && e.Type != hypixel.Enchantment.EnchantmentType.feather_falling
-                         && e.Type != hypixel.Enchantment.EnchantmentType.infinite_quiver
-                    || Coflnet.Sky.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
-                    .Select(e => new Enchantment() { Lvl = e.Level, Type = e.Type }).ToList();
+                    ?.Where(e => e.Level >= 6 && e.Type != Core.Enchantment.EnchantmentType.feather_falling
+                         && e.Type != Core.Enchantment.EnchantmentType.infinite_quiver
+                    || Coflnet.Sky.Core.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
+                    .Select(e => new Models.Enchantment() { Lvl = e.Level, Type = e.Type }).ToList();
 
                 key.Modifiers = auction.FlatenedNBT?.Where(n => IncludeKeys.Contains(n.Key) || n.Value == "PERFECT")
                                 .OrderByDescending(n => n.Key)
@@ -258,26 +259,26 @@ ORDER BY l.`AuctionId`  DESC;
                             .OrderByDescending(n => n.Key)
                             .ToList();
                 key.Enchants = auction.Enchantments
-                    ?.Where(e => Coflnet.Sky.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
-                    .Select(e => new Enchantment() { Lvl = e.Level, Type = e.Type }).ToList();
+                    ?.Where(e => Coflnet.Sky.Core.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
+                    .Select(e => new Models.Enchantment() { Lvl = e.Level, Type = e.Type }).ToList();
                 if (key?.Enchants?.Count == 0)
                 {
                     var enchant = Constants.SelectBest(auction.Enchantments);
-                    key.Enchants = new List<Enchantment>() { new Enchantment() { Lvl = enchant.Level, Type = enchant.Type } };
+                    key.Enchants = new List<Models.Enchantment>() { new Models.Enchantment() { Lvl = enchant.Level, Type = enchant.Type } };
                 }
             }
             else if (dropLevel == 2)
             {
                 var enchant = Constants.SelectBest(auction.Enchantments);
                 if (enchant == default)
-                    key.Enchants = new List<Enchantment>();
+                    key.Enchants = new List<Models.Enchantment>();
                 else
-                    key.Enchants = new List<Enchantment>() { new Enchantment() { Lvl = enchant.Level, Type = enchant.Type } };
+                    key.Enchants = new List<Models.Enchantment>() { new Models.Enchantment() { Lvl = enchant.Level, Type = enchant.Type } };
             }
             else
             {
                 //key.Modifiers = new List<KeyValuePair<string, string>>();
-                key.Enchants = new List<Enchantment>();
+                key.Enchants = new List<Models.Enchantment>();
             }
 
             key.Tier = auction.Tier;
@@ -330,7 +331,7 @@ ORDER BY l.`AuctionId`  DESC;
 
 
 
-        public void TestNewAuction(hypixel.SaveAuction auction, bool triggerEvents = true)
+        public void TestNewAuction(SaveAuction auction, bool triggerEvents = true)
         {
             var lookup = Lookups.GetOrAdd(auction.Tag, key => new PriceLookup());
             var l = lookup.Lookup;
@@ -364,21 +365,21 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private int FindFlip(hypixel.SaveAuction auction, double lbinPrice, double medPrice, int i, ReferenceAuctions bucket, AuctionKey key)
+        private int FindFlip(SaveAuction auction, double lbinPrice, double medPrice, int i, ReferenceAuctions bucket, AuctionKey key)
         {
             // only trigger lbin if also below median or median is not set
             var volume = bucket.Volume;
             if (bucket.LastLbin.Price > lbinPrice && (bucket.Price > lbinPrice) && volume > 0.2f)// || bucket.Price == 0))
             {
                 var props = CreateReference(bucket.LastLbin.AuctionId, key);
-                props["med"] = string.Join(',', bucket.References.Take(10).Select(a => hypixel.AuctionService.Instance.GetUuid(a.AuctionId)));
+                props["med"] = string.Join(',', bucket.References.Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, Math.Min(bucket.LastLbin.Price, bucket.Price), props);
                 i += 10;
             }
             else if (bucket.Price > medPrice)
             {
                 var props = CreateReference(bucket.References.Last().AuctionId, key);
-                props["med"] = string.Join(',', bucket.References.Take(10).Select(a => hypixel.AuctionService.Instance.GetUuid(a.AuctionId)));
+                props["med"] = string.Join(',', bucket.References.Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, bucket.Price, props);
             }
             else
@@ -410,7 +411,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private static void UpdateLbin(hypixel.SaveAuction auction, long cost, ReferenceAuctions bucket)
+        private static void UpdateLbin(SaveAuction auction, long cost, ReferenceAuctions bucket)
         {
             // update lbin
             if (bucket.LastLbin.Price > cost || bucket.LastLbin.Price == 0)
@@ -425,7 +426,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private void FoundAFlip(hypixel.SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, int targetPrice, Dictionary<string, string> props)
+        private void FoundAFlip(SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, int targetPrice, Dictionary<string, string> props)
         {
             if (targetPrice < MIN_TARGET)
                 return; // to low
@@ -452,7 +453,7 @@ ORDER BY l.`AuctionId`  DESC;
         private static Dictionary<string, string> CreateReference(long reference, AuctionKey key)
         {
             return new Dictionary<string, string>() {
-                { "reference", hypixel.AuctionService.Instance.GetUuid(reference) },
+                { "reference", AuctionService.Instance.GetUuid(reference) },
                 { "key", key.ToString() }
             };
         }

@@ -1,3 +1,5 @@
+using Coflnet.Sky.Core;
+
 namespace Coflnet.Sky.Sniper.Models
 {
     public class LogEntry 

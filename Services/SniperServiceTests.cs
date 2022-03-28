@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Models;
-using hypixel;
 using Microsoft.VisualBasic;
 using NUnit.Framework;
 
@@ -20,7 +20,7 @@ namespace Coflnet.Sky.Sniper.Services
         [SetUp]
         public void Setup()
         {
-            firstAuction = new hypixel.SaveAuction()
+            firstAuction = new SaveAuction()
             {
                 Tag = "1",
                 FlatenedNBT = new System.Collections.Generic.Dictionary<string, string>() { { "skin", "bear" } },
@@ -29,7 +29,7 @@ namespace Coflnet.Sky.Sniper.Services
                 UId = 4,
                 AuctioneerId = "12aaa"
             };
-            secondAuction = new hypixel.SaveAuction()
+            secondAuction = new SaveAuction()
             {
                 Tag = "1",
                 FlatenedNBT = new System.Collections.Generic.Dictionary<string, string>() { { "skin", "bear" } },
@@ -40,7 +40,7 @@ namespace Coflnet.Sky.Sniper.Services
             };
 
 
-            highestValAuction = new hypixel.SaveAuction()
+            highestValAuction = new SaveAuction()
             {
                 Tag = "1",
                 FlatenedNBT = new System.Collections.Generic.Dictionary<string, string>() { { "skin", "bear" } },
@@ -143,17 +143,17 @@ namespace Coflnet.Sky.Sniper.Services
         public void RandomEnchantLbin()
         {
             var a = Dupplicate(highestValAuction);
-            var targetEnchant = new hypixel.Enchantment(hypixel.Enchantment.EnchantmentType.ultimate_chimera, 1);
-            a.Enchantments = new List<hypixel.Enchantment>(){
+            var targetEnchant = new Core.Enchantment(Core.Enchantment.EnchantmentType.ultimate_chimera, 1);
+            a.Enchantments = new List<Core.Enchantment>(){
                 targetEnchant
             };
             service.AddSoldItem(Dupplicate(a));
             service.AddSoldItem(Dupplicate(a));
             service.AddSoldItem(Dupplicate(a));
 
-            a.Enchantments = new List<hypixel.Enchantment>(){
+            a.Enchantments = new List<Core.Enchantment>(){
                 targetEnchant,
-                new hypixel.Enchantment(hypixel.Enchantment.EnchantmentType.sharpness, 6)
+                new Core.Enchantment(Core.Enchantment.EnchantmentType.sharpness, 6)
             };
             a.StartingBid = 5;
             service.TestNewAuction(a);
