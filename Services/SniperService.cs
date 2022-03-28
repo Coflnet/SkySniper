@@ -176,7 +176,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return;
             }
             // short term protects against price drops after updates
-            var shortTermList = deduplicated.OrderByDescending(b => b.Day).Take(5).ToList();
+            var shortTermList = deduplicated.OrderByDescending(b => b.Day).Take(3).ToList();
             int shortTermPrice = GetMedian(shortTermList);
             bucket.OldestRef = shortTermList.Min(s=>s.Day);
             // long term protects against market manipulation
