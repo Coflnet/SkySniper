@@ -176,7 +176,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return;
             }
             // short term protects against price drops after updates
-            var shortTermList = deduplicated.OrderByDescending(b => b.Day).Take(9).ToList();
+            var shortTermList = deduplicated.OrderByDescending(b => b.Day).Take(5).ToList();
             int shortTermPrice = GetMedian(shortTermList);
             bucket.OldestRef = shortTermList.Min(s=>s.Day);
             // long term protects against market manipulation
@@ -372,14 +372,14 @@ ORDER BY l.`AuctionId`  DESC;
             if (bucket.LastLbin.Price > lbinPrice && (bucket.Price > lbinPrice) && volume > 0.2f)// || bucket.Price == 0))
             {
                 var props = CreateReference(bucket.LastLbin.AuctionId, key);
-                props["med"] = string.Join(',', bucket.References.Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
+                props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, Math.Min(bucket.LastLbin.Price, bucket.Price), props);
                 i += 10;
             }
             else if (bucket.Price > medPrice)
             {
                 var props = CreateReference(bucket.References.Last().AuctionId, key);
-                props["med"] = string.Join(',', bucket.References.Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
+                props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, bucket.Price, props);
             }
             else
