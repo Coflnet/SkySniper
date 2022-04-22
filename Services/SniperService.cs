@@ -84,7 +84,8 @@ ORDER BY l.`AuctionId`  DESC;
         {
             "rarity_upgrades",
             "winning_bid",
-            "skin"
+            "skin",
+            "exp"
         };
 
 
@@ -178,7 +179,7 @@ ORDER BY l.`AuctionId`  DESC;
             // short term protects against price drops after updates
             var shortTermList = deduplicated.OrderByDescending(b => b.Day).Take(3).ToList();
             int shortTermPrice = GetMedian(shortTermList);
-            bucket.OldestRef = shortTermList.Min(s=>s.Day);
+            bucket.OldestRef = shortTermList.Min(s => s.Day);
             // long term protects against market manipulation
             int longSpanPrice = GetMedian(deduplicated.Take(45).ToList());
             bucket.Price = Math.Min(shortTermPrice, longSpanPrice);
@@ -251,7 +252,7 @@ ORDER BY l.`AuctionId`  DESC;
 
                 key.Modifiers = auction.FlatenedNBT?.Where(n => IncludeKeys.Contains(n.Key) || n.Value == "PERFECT")
                                 .OrderByDescending(n => n.Key)
-                                .Select(NormalizeData).ToList();
+                                .Select(i => NormalizeData(i, auction.Tag)).ToList();
             }
             else if (dropLevel == 1)
             {
@@ -287,10 +288,13 @@ ORDER BY l.`AuctionId`  DESC;
             return key;
         }
 
-        private static KeyValuePair<string, string> NormalizeData(KeyValuePair<string, string> s)
+        private static KeyValuePair<string, string> NormalizeData(KeyValuePair<string, string> s, string tag)
         {
             if (s.Key == "exp")
-                return NormalizeNumberTo(s, 4_225_538, 6);
+                if (tag == "PET_GOLDEN_DRAGON")
+                    return NormalizeNumberTo(s, 30_036_483, 7);
+                else
+                    return NormalizeNumberTo(s, 4_225_538, 6);
             if (s.Key == "winning_bid")
                 return NormalizeNumberTo(s, 10_000_000);
             if (s.Key.EndsWith("_kills"))
