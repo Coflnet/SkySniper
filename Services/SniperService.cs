@@ -22,6 +22,9 @@ namespace Coflnet.Sky.Sniper.Services
         public event Action<LowPricedAuction> FoundSnipe;
         private HashSet<string> IncludeKeys = new HashSet<string>()
         {
+            // nether update
+            "life_regeneration",
+            
             "backpack_color",
             // potion "level", // not engough impact
             // "item_tier", // mostly found on armor, unsure what it does
