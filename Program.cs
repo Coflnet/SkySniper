@@ -7,7 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace SkySniper
+namespace Coflnet.Sky.Sniper
 {
     public class SnipProgram
     {

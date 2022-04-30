@@ -9,22 +9,23 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Coflnet.Sky.Core;
 
-namespace SkySniper.Controllers
+namespace Coflnet.Sky.Sniper.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
-    public class ApiController : ControllerBase
+    [Route("/api/[controller]")]
+    public class SniperController : ControllerBase
     {
-        private readonly ILogger<ApiController> _logger;
+        private readonly ILogger<SniperController> _logger;
         private SniperService service;
 
-        public ApiController(ILogger<ApiController> logger, SniperService service)
+        public SniperController(ILogger<SniperController> logger, SniperService service)
         {
             _logger = logger;
             this.service = service;
         }
 
         [HttpGet]
+        [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Any, NoStore = false)]
         public IEnumerable<string> GetIds()
         {
             return service.Lookups.Keys;
@@ -55,6 +56,19 @@ namespace SkySniper.Controllers
         public IEnumerable<long> GetLookups(SaveAuction auction)
         {
             return service.GetReferenceUids(auction);
+        }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="auctions"></param>
+        /// <returns></returns>
+        [Route("price")]
+        [HttpPost]
+        public IEnumerable<PriceEstimate> GetPrices(IEnumerable<SaveAuction> auctions)
+        {
+            return auctions.Select(a=>service.GetPrice(a));
         }
 
 

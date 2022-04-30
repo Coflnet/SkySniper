@@ -93,7 +93,7 @@ namespace Coflnet.Sky.Sniper.Services
             }
             catch (Exception e)
             {
-                logger.LogError("failed to load ids " + response.Length);
+                logger.LogError(e, "failed to load ids " + response.Length);
             }
             return items;
         }

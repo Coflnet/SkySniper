@@ -1,2 +1,4 @@
 bin
 obj
+!Client/generate.sh
+Client/*

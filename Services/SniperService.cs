@@ -102,15 +102,21 @@ ORDER BY l.`AuctionId`  DESC;
             };
         }
 
-        public int GetPrice(SaveAuction auction)
+        public PriceEstimate GetPrice(SaveAuction auction)
         {
+            if(auction == null)
+                return null;
             if (TryGetReferenceAuctions(auction, out ReferenceAuctions bucket))
             {
-                if (bucket.LastLbin.Price != 0)
-                    return bucket.LastLbin.Price;
-                return bucket.Price;
+                return new PriceEstimate()
+                {
+                    Lbin = bucket.LastLbin,
+                    Median = bucket.Price,
+                    SLbin = bucket.SecondLbin,
+                    Volume = bucket.Volume
+                };
             }
-            return 0;
+            return new PriceEstimate();
         }
 
         public IEnumerable<long> GetReferenceUids(SaveAuction auction)
@@ -230,7 +236,9 @@ ORDER BY l.`AuctionId`  DESC;
                 return true;
             if (l.TryGetValue(KeyFromSaveAuction(auction, 1), out bucket))
                 return true;
-            return l.TryGetValue(KeyFromSaveAuction(auction, 2), out bucket);
+            if (l.TryGetValue(KeyFromSaveAuction(auction, 2), out bucket))
+                return true;
+            return l.TryGetValue(KeyFromSaveAuction(auction, 3), out bucket);
         }
 
         private static List<KeyValuePair<string, string>> EmptyModifiers = new();

@@ -133,17 +133,17 @@ namespace Coflnet.Sky.Sniper.Models
     public struct ReferencePrice
     {
         [Key(0)]
-        public long AuctionId;
+        public long AuctionId { get; set; }
         [Key(1)]
-        public int Price;
+        public int Price { get; set; }
         [Key(2)]
-        public short Day;
+        public short Day { get; set; }
         /// <summary>
         /// first two bytes of the sellerId
         /// used for antimarketmanipulation
         /// </summary>
         [Key(3)]
-        public short Seller;
+        public short Seller { get; set; }
     }
 
 }
