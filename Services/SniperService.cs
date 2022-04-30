@@ -24,7 +24,7 @@ namespace Coflnet.Sky.Sniper.Services
         {
             // nether update
             "life_regeneration",
-            
+
             "backpack_color",
             // potion "level", // not engough impact
             // "item_tier", // mostly found on armor, unsure what it does
@@ -220,11 +220,6 @@ ORDER BY l.`AuctionId`  DESC;
             return (short)(DateTime.Now - new DateTime(2021, 9, 25)).TotalDays;
         }
 
-        private ReferenceAuctions GetReferenceAuctions(SaveAuction auction)
-        {
-            return Lookups[auction.Tag].Lookup[KeyFromSaveAuction(auction)];
-        }
-
         private bool TryGetReferenceAuctions(SaveAuction auction, out ReferenceAuctions bucket)
         {
             bucket = null;
@@ -238,7 +233,7 @@ ORDER BY l.`AuctionId`  DESC;
             return l.TryGetValue(KeyFromSaveAuction(auction, 2), out bucket);
         }
 
-
+        private static List<KeyValuePair<string, string>> EmptyModifiers = new();
         private AuctionKey KeyFromSaveAuction(SaveAuction auction, int dropLevel = 0)
         {
             var key = new AuctionKey();
@@ -278,11 +273,13 @@ ORDER BY l.`AuctionId`  DESC;
                     key.Enchants = new List<Models.Enchantment>();
                 else
                     key.Enchants = new List<Models.Enchantment>() { new Models.Enchantment() { Lvl = enchant.Level, Type = enchant.Type } };
+                key.Modifiers = EmptyModifiers;
             }
             else
             {
                 //key.Modifiers = new List<KeyValuePair<string, string>>();
                 key.Enchants = new List<Models.Enchantment>();
+                key.Modifiers = EmptyModifiers;
             }
 
             key.Tier = auction.Tier;
@@ -352,7 +349,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var key = KeyFromSaveAuction(auction, i);
                 if (i > 0 && key == lastKey)
                 {
-                    return; // already checked that
+                    continue; // already checked that
                 }
                 lastKey = key;
 
