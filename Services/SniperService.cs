@@ -104,19 +104,42 @@ ORDER BY l.`AuctionId`  DESC;
 
         public PriceEstimate GetPrice(SaveAuction auction)
         {
-            if(auction == null)
+            if (auction == null)
                 return null;
-            if (TryGetReferenceAuctions(auction, out ReferenceAuctions bucket))
+
+            var result = new PriceEstimate();
+            if (Lookups.TryGetValue(auction.Tag, out PriceLookup lookup))
             {
-                return new PriceEstimate()
+                var l = lookup.Lookup;
+                for (int i = 0; i < 4; i++)
                 {
-                    Lbin = bucket.LastLbin,
-                    Median = bucket.Price,
-                    SLbin = bucket.SecondLbin,
-                    Volume = bucket.Volume
-                };
+                    if (l.TryGetValue(KeyFromSaveAuction(auction, i), out ReferenceAuctions bucket))
+                    {
+                        if (result.Lbin.AuctionId == default && bucket.LastLbin.AuctionId != default)
+                            result.Lbin = bucket.LastLbin;
+                        if (result.SLbin.AuctionId == default && bucket.SecondLbin.AuctionId != default)
+                            result.SLbin = bucket.SecondLbin;
+                        if (result.Median == default && bucket.Price != default)
+                        {
+                            result.Median = bucket.Price;
+                            result.Volume = bucket.Volume;
+                        }
+                    }
+                }
+                if (result.Median == default)
+                {
+                    Console.WriteLine("Finding closest lbin brute for " + KeyFromSaveAuction(auction));
+                    var cheapest = l.MinBy(l=>l.Value.Price);
+                    result.Median = cheapest.Value.Price;
+                    result.Volume = cheapest.Value.Volume;
+                }
+                if (result.Lbin.Price == default)
+                {
+                    var cheapest = l.Where(l=>l.Value.LastLbin.Price > 0).MinBy(l=>l.Value.LastLbin.Price);
+                    result.Lbin = cheapest.Value.LastLbin;
+                }
             }
-            return new PriceEstimate();
+            return result;
         }
 
         public IEnumerable<long> GetReferenceUids(SaveAuction auction)

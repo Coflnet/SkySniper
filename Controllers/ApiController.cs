@@ -68,7 +68,18 @@ namespace Coflnet.Sky.Sniper.Controllers
         [HttpPost]
         public IEnumerable<PriceEstimate> GetPrices(IEnumerable<SaveAuction> auctions)
         {
-            return auctions.Select(a=>service.GetPrice(a));
+            return auctions.Select(a =>
+            {
+                try
+                {
+                    return service.GetPrice(a);
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "getting price for auction");
+                }
+                return new PriceEstimate();
+            });
         }
 
 
@@ -93,9 +104,9 @@ namespace Coflnet.Sky.Sniper.Controllers
                 numbers.Add(0f);
                 numbers.Add(0f);
                 numbers.Add(0f);
-                AddDate(numbers,  p.End);
-                
-                var enchants = Enum.GetValues<Coflnet.Sky.Core.Enchantment.EnchantmentType>().Select(t=> 0f).ToArray();
+                AddDate(numbers, p.End);
+
+                var enchants = Enum.GetValues<Coflnet.Sky.Core.Enchantment.EnchantmentType>().Select(t => 0f).ToArray();
                 foreach (var item in p.Enchantments)
                 {
                     enchants[item.Item1] = ((float)item.Item2) / 10;
