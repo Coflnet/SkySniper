@@ -45,7 +45,7 @@ namespace Coflnet.Sky.Sniper.Services
             "exp", // collected experience of pets
             "rarity_upgrades", // recomb
             "winning_bid", // price paid for midas
-            "dungeon_item_level", // "stars"
+            "dungeon_item_level", "upgrade_level", // "stars"
             "farming_for_dummies_count",
             "unlocked_slots", // available gemstone slots
             "gemstone_slots", // old unlocked slots
@@ -129,7 +129,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (result.Median == default)
                 {
                     Console.WriteLine("Finding closest lbin brute for " + KeyFromSaveAuction(auction));
-                    var cheapest = l.MinBy(l=>l.Value.Price);
+                    var cheapest = l.Where(l=>l.Value.Price > 0 && l.Value.References.Count > 0).MinBy(l=>l.Value.Price);
                     result.Median = cheapest.Value.Price;
                     result.Volume = cheapest.Value.Volume;
                 }
@@ -355,6 +355,8 @@ ORDER BY l.`AuctionId`  DESC;
                     "PET_ITEM_TIER_BOOST" => "TB",
                     _ => null
                 });
+            if(s.Key == "upgrade_level")
+                return new KeyValuePair<string, string>("dungeon_item_level", s.Value);
 
             return s;
         }
