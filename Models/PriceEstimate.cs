@@ -7,6 +7,7 @@ namespace Coflnet.Sky.Sniper.Models
         public int Median { get; set; }
         public float Volume { get; set; }
         public int FourthPercentile { get; set; }
+        public string LbinKey { get; set; }
+        public string MedianKey { get; set; }
     }
-
 }

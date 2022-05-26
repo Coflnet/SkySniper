@@ -116,27 +116,33 @@ ORDER BY l.`AuctionId`  DESC;
                     if (l.TryGetValue(KeyFromSaveAuction(auction, i), out ReferenceAuctions bucket))
                     {
                         if (result.Lbin.AuctionId == default && bucket.LastLbin.AuctionId != default)
+                        {
                             result.Lbin = bucket.LastLbin;
+                            result.LbinKey = KeyFromSaveAuction(auction, i).ToString();
+                        }
                         if (result.SLbin.AuctionId == default && bucket.SecondLbin.AuctionId != default)
                             result.SLbin = bucket.SecondLbin;
                         if (result.Median == default && bucket.Price != default)
                         {
                             result.Median = bucket.Price;
                             result.Volume = bucket.Volume;
+                            result.MedianKey = KeyFromSaveAuction(auction, i).ToString();
                         }
                     }
                 }
                 if (result.Median == default)
                 {
                     Console.WriteLine("Finding closest lbin brute for " + KeyFromSaveAuction(auction));
-                    var cheapest = l.Where(l=>l.Value.Price > 0 && l.Value.References.Count > 0).MinBy(l=>l.Value.Price);
+                    var cheapest = l.Where(l => l.Value.Price > 0 && l.Value.References.Count > 0).MinBy(l => l.Value.Price);
                     result.Median = cheapest.Value.Price;
                     result.Volume = cheapest.Value.Volume;
+                    result.MedianKey = cheapest.Key.ToString();
                 }
                 if (result.Lbin.Price == default)
                 {
-                    var cheapest = l.Where(l=>l.Value.LastLbin.Price > 0).MinBy(l=>l.Value.LastLbin.Price);
+                    var cheapest = l.Where(l => l.Value.LastLbin.Price > 0).MinBy(l => l.Value.LastLbin.Price);
                     result.Lbin = cheapest.Value.LastLbin;
+                    result.LbinKey = cheapest.Key.ToString();
                 }
             }
             return result;
@@ -355,7 +361,7 @@ ORDER BY l.`AuctionId`  DESC;
                     "PET_ITEM_TIER_BOOST" => "TB",
                     _ => null
                 });
-            if(s.Key == "upgrade_level")
+            if (s.Key == "upgrade_level")
                 return new KeyValuePair<string, string>("dungeon_item_level", s.Value);
 
             return s;
