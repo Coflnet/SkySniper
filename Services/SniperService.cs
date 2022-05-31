@@ -25,6 +25,7 @@ namespace Coflnet.Sky.Sniper.Services
             // nether update
             "life_regeneration",
 
+            "dye_item",
             "backpack_color",
             // potion "level", // not engough impact
             // "item_tier", // mostly found on armor, unsure what it does
