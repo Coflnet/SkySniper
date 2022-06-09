@@ -321,6 +321,11 @@ ORDER BY l.`AuctionId`  DESC;
             }
 
             key.Tier = auction.Tier;
+            if(auction.Tag == "ENCHANTED_BOOK")
+            {
+                // rarities don't matter for enchanted books and often used for scamming
+                key.Tier = Tier.UNCOMMON;
+            }
             key.Count = (byte)auction.Count;
 
             return key;
