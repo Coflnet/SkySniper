@@ -68,6 +68,8 @@ namespace Coflnet.Sky.Sniper.Controllers
         [HttpPost]
         public IEnumerable<PriceEstimate> GetPrices(IEnumerable<SaveAuction> auctions)
         {
+            if(auctions == null)
+                return new List<PriceEstimate>();
             return auctions.Select(a =>
             {
                 try
