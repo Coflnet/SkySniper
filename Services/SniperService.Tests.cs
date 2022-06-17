@@ -188,7 +188,7 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 service.TestNewAuction(firstAuction);
             }
-            Assert.Less(start.ElapsedMilliseconds, 15);
+            Assert.Less(start.ElapsedMilliseconds, 30);
         }
     }
 
