@@ -105,7 +105,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         public PriceEstimate GetPrice(SaveAuction auction)
         {
-            if (auction == null)
+            if (auction == null || auction.Tag == null)
                 return null;
 
             var result = new PriceEstimate();
