@@ -202,14 +202,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         public void AddSoldItem(SaveAuction auction)
         {
-            if (!Lookups.ContainsKey(auction.Tag))
-            {
-                Lookups[auction.Tag] = new PriceLookup();
-            }
-            if (!TryGetReferenceAuctions(auction, out ReferenceAuctions bucket))
-            {
-                bucket = CreateAndAddBucket(auction);
-            }
+            ReferenceAuctions bucket = GetBucketForAuction(auction);
             if (bucket.References.Where(r => r.AuctionId == auction.UId).Any())
                 return; // duplicate
             var reference = CreateReferenceFromAuction(auction);
@@ -239,6 +232,20 @@ ORDER BY l.`AuctionId`  DESC;
             // long term protects against market manipulation
             int longSpanPrice = GetMedian(deduplicated.Take(45).ToList());
             bucket.Price = Math.Min(shortTermPrice, longSpanPrice);
+        }
+
+        public ReferenceAuctions GetBucketForAuction(SaveAuction auction)
+        {
+            if (!Lookups.ContainsKey(auction.Tag))
+            {
+                Lookups[auction.Tag] = new PriceLookup();
+            }
+            if (!TryGetReferenceAuctions(auction, out ReferenceAuctions bucket))
+            {
+                bucket = CreateAndAddBucket(auction);
+            }
+
+            return bucket;
         }
 
         private static int GetMedian(List<ReferencePrice> deduplicated)
