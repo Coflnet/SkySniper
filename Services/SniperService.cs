@@ -179,6 +179,8 @@ ORDER BY l.`AuctionId`  DESC;
                     }
                     existingBucket.References = item.Value.References;
                     existingBucket.Price = item.Value.Price;
+                    if (item.Value.Lbins == null)
+                        item.Value.Lbins = new();
                     // migrate last lbin
                     if (item.Value.LastLbin.Price != default)
                     {
@@ -190,6 +192,7 @@ ORDER BY l.`AuctionId`  DESC;
                         if (!existingBucket.Lbins.Contains(binAuction))
                             existingBucket.Lbins.Add(binAuction);
                     }
+                    item.Value.Lbins.Sort(ReferencePrice.Compare);
                 }
                 return value;
             });
@@ -476,6 +479,8 @@ ORDER BY l.`AuctionId`  DESC;
         private static void UpdateLbin(SaveAuction auction, long cost, ReferenceAuctions bucket)
         {
             var item = CreateReferenceFromAuction(auction);
+            if(bucket.Lbins == null)
+                bucket.Lbins = new ();
             if (!bucket.Lbins.Contains(item))
             {
                 bucket.Lbins.Add(item);
