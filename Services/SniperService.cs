@@ -130,11 +130,15 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (result.Median == default)
                 {
-                    Console.WriteLine("Finding closest lbin brute for " + KeyFromSaveAuction(auction));
-                    var cheapest = l.Where(l => l.Value.Price > 0 && l.Value.References.Count > 0).MinBy(l => l.Value.Price);
-                    result.Median = cheapest.Value.Price;
-                    result.Volume = cheapest.Value.Volume;
-                    result.MedianKey = cheapest.Key.ToString();
+                    Console.WriteLine("Finding closest median brute for " + KeyFromSaveAuction(auction));
+                    var relevant = l.Where(l => l.Value.Price > 0 && l.Value.References.Count > 0).ToArray();
+                    if (relevant.Length > 0)
+                    {
+                        var cheapest = relevant.MinBy(l => l.Value.Price);
+                        result.Median = cheapest.Value.Price;
+                        result.Volume = cheapest.Value.Volume;
+                        result.MedianKey = cheapest.Key.ToString();
+                    }
                 }
                 if (result.Lbin.Price == default && l.Count > 0)
                 {
