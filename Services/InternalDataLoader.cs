@@ -140,6 +140,7 @@ namespace Coflnet.Sky.Sniper.Services
                     var topId = (await context.Auctions.MaxAsync(a => a.Id)) - 5_000_000;
                     var active = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
                                         .Where(a => a.Id > topId && a.End > DateTime.Now && a.Bin == true)
+                                        .AsNoTracking()
                                         .ToListAsync(stoppingToken);
                     foreach (var item in active)
                     {
@@ -149,6 +150,7 @@ namespace Coflnet.Sky.Sniper.Services
 
                     var sold = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
                                         .Where(a => a.Id > topId + 4_800_000 && a.End < DateTime.Now && a.Bin == true && a.HighestBidAmount > 0)
+                                        .AsNoTracking()
                                         .ToListAsync(stoppingToken);
                     foreach (var item in sold)
                     {
@@ -165,13 +167,18 @@ namespace Coflnet.Sky.Sniper.Services
 
         private async Task LoadSellHistory(CancellationToken stoppinToken)
         {
-            using var context = new HypixelContext();
-            var maxId = context.Auctions.Max(a => a.Id);
+            var maxId = 0;
+            using (var context = new HypixelContext())
+            {
+                maxId = context.Auctions.Max(a => a.Id);
+            }
+
             var batchSize = 15_000;
             for (var batchStart = maxId - 10_000_000; batchStart < maxId; batchStart += batchSize)
             {
                 try
                 {
+                    using var context = new HypixelContext();
                     await LoadSellsBatch(context, batchSize, batchStart, stoppinToken);
                 }
                 catch (System.Exception e)
@@ -179,6 +186,7 @@ namespace Coflnet.Sky.Sniper.Services
                     logger.LogError(e, "failed to load sells batch " + batchStart);
                     await Task.Delay(2000);
                 }
+                await Task.Delay(500);
             }
         }
 
@@ -187,6 +195,7 @@ namespace Coflnet.Sky.Sniper.Services
             var end = batchStart + batchSize;
             var sold = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
                                     .Where(a => a.Id > batchStart && a.Id < end && a.Bin && a.HighestBidAmount > 0)
+                                    .AsNoTracking()
                                     .ToListAsync(stoppinToken);
             foreach (var item in sold)
             {
