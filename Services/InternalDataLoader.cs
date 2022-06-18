@@ -148,15 +148,17 @@ namespace Coflnet.Sky.Sniper.Services
                     }
                     logger.LogInformation("finished loading active auctions " + active.Count);
 
-                    var sold = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
-                                        .Where(a => a.Id > topId + 4_800_000 && a.End < DateTime.Now && a.Bin == true && a.HighestBidAmount > 0)
+                    var sold = context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
+                                        .Where(a => a.Id > topId + 4_100_000 && a.End < DateTime.Now && a.Bin == true && a.HighestBidAmount > 0)
                                         .AsNoTracking()
-                                        .ToListAsync(stoppingToken);
-                    foreach (var item in sold)
+                                        .AsAsyncEnumerable();
+                    var count = 0;
+                    await foreach (var item in sold)
                     {
                         sniper.AddSoldItem(item);
+
                     }
-                    logger.LogInformation("finished loading sold auctions " + sold.Count);
+                    logger.LogInformation("finished loading sold auctions " + count);
                 }
                 catch (Exception e)
                 {
@@ -172,6 +174,7 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 maxId = context.Auctions.Max(a => a.Id);
             }
+            await Task.Delay(TimeSpan.FromMinutes(1), stoppinToken);
 
             var batchSize = 15_000;
             for (var batchStart = maxId - 10_000_000; batchStart < maxId; batchStart += batchSize)
