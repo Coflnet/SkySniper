@@ -131,8 +131,8 @@ ORDER BY l.`AuctionId`  DESC;
                 if (result.Median == default)
                 {
                     var key = KeyFromSaveAuction(auction);
-                    if (key.GetHashCode() % 30 == 0)
-                        Console.WriteLine("Finding closest median brute for " + key);
+                    if (key.GetHashCode() % 3 == 0 && DateTime.Now.Millisecond % 30 == 0)
+                        Console.WriteLine("Finding closest median brute for " + auction.Tag + key);
                     var relevant = l.Where(l => l.Value.Price > 0 && l.Value.References.Count > 0).ToArray();
                     if (relevant.Length > 0)
                     {
