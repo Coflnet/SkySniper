@@ -132,7 +132,7 @@ namespace Coflnet.Sky.Sniper.Models
 
         [IgnoreMember]
         public float Volume => (float)(References.TryPeek(out ReferencePrice price)
-                        ? (float)References.Count / (SniperService.GetCurrentDay() - price.Day + 1)
+                        ? (float)References.Count / (SniperService.GetDay() - price.Day + 1)
                         : 0);
     }
 

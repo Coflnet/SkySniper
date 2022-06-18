@@ -269,15 +269,17 @@ ORDER BY l.`AuctionId`  DESC;
             return new ReferencePrice()
             {
                 AuctionId = auction.UId,
-                Day = GetCurrentDay(),
+                Day = GetDay(auction.End),
                 Price = (int)(auction.HighestBidAmount == 0 ? auction.StartingBid : auction.HighestBidAmount),
                 Seller = auction.AuctioneerId == null ? (short)(auction.SellerId % (2 << 14)) : Convert.ToInt16(auction.AuctioneerId.Substring(0, 4), 16)
             };
         }
 
-        public static short GetCurrentDay()
+        public static short GetDay(DateTime date = default)
         {
-            return (short)(DateTime.Now - new DateTime(2021, 9, 25)).TotalDays;
+            if(date == default)
+                date = DateTime.Now;
+            return (short)(date - new DateTime(2021, 9, 25)).TotalDays;
         }
 
         private bool TryGetReferenceAuctions(SaveAuction auction, out ReferenceAuctions bucket)
@@ -501,7 +503,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (targetPrice < MIN_TARGET)
                 return; // to low
-            props["refAge"] = (GetCurrentDay() - bucket.OldestRef).ToString();
+            props["refAge"] = (GetDay() - bucket.OldestRef).ToString();
             FoundSnipe?.Invoke(new LowPricedAuction()
             {
                 Auction = auction,
