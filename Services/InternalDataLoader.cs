@@ -170,20 +170,32 @@ namespace Coflnet.Sky.Sniper.Services
             var batchSize = 20_000;
             for (var batchStart = maxId - 20_000_000; batchStart < maxId; batchStart += batchSize)
             {
-                var end = batchStart + batchSize;
-                var sold = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
-                                        .Where(a => a.Id > batchStart && a.Id < end && a.Bin == true && a.HighestBidAmount > 0)
-                                        .ToListAsync(stoppinToken);
-                foreach (var item in sold)
+                try
                 {
-                    if (sniper.GetBucketForAuction(item).References.Count > 8)
-                        continue;
-                    sniper.AddSoldItem(item);
+                    await LoadSellsBatch(context, batchSize, batchStart, stoppinToken);
                 }
-                await Task.Delay(50);
-                if ((batchStart / batchSize) % 10 == 0)
-                    Console.WriteLine($"Loaded batch {batchStart} - {end}");
+                catch (System.Exception)
+                {
+                    logger.LogError("failed to load sells batch " + batchStart);
+                }
             }
+        }
+
+        private async Task LoadSellsBatch(HypixelContext context, int batchSize, int batchStart, CancellationToken stoppinToken)
+        {
+            var end = batchStart + batchSize;
+            var sold = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
+                                    .Where(a => a.Id > batchStart && a.Id < end && a.Bin == true && a.HighestBidAmount > 0)
+                                    .ToListAsync(stoppinToken);
+            foreach (var item in sold)
+            {
+                if (sniper.GetBucketForAuction(item).References.Count > 8)
+                    continue;
+                sniper.AddSoldItem(item);
+            }
+            await Task.Delay(50);
+            if ((batchStart / batchSize) % 10 == 0)
+                Console.WriteLine($"Loaded batch {batchStart} - {end}");
         }
 
         private async Task ActiveUpdater(CancellationToken stoppingToken)
