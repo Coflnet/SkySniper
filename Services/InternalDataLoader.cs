@@ -200,6 +200,8 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 foreach (var lookup in item.Value.Lookup)
                 {
+                    if(lookup.Value.Lbins == null)
+                        lookup.Value.Lbins = new ();
                     foreach (var binAuction in lookup.Value.Lbins.ToList())
                     {
                         if (!completeLookup.ContainsKey(binAuction.AuctionId))

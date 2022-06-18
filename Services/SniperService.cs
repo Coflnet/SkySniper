@@ -130,7 +130,8 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (result.Median == default)
                 {
-                    Console.WriteLine("Finding closest median brute for " + KeyFromSaveAuction(auction));
+                    if (auction.UId % 30 == 0)
+                        Console.WriteLine("Finding closest median brute for " + KeyFromSaveAuction(auction));
                     var relevant = l.Where(l => l.Value.Price > 0 && l.Value.References.Count > 0).ToArray();
                     if (relevant.Length > 0)
                     {
@@ -479,8 +480,8 @@ ORDER BY l.`AuctionId`  DESC;
         private static void UpdateLbin(SaveAuction auction, long cost, ReferenceAuctions bucket)
         {
             var item = CreateReferenceFromAuction(auction);
-            if(bucket.Lbins == null)
-                bucket.Lbins = new ();
+            if (bucket.Lbins == null)
+                bucket.Lbins = new();
             if (!bucket.Lbins.Contains(item))
             {
                 bucket.Lbins.Add(item);
