@@ -128,7 +128,7 @@ namespace Coflnet.Sky.Sniper.Models
         [Key(5)]
         public List<ReferencePrice> Lbins = new ();
         [IgnoreMember]
-        public ReferencePrice Lbin => Lbins.FirstOrDefault();
+        public ReferencePrice Lbin => Lbins?.FirstOrDefault() ?? default;
 
         [IgnoreMember]
         public float Volume => (float)(References.TryPeek(out ReferencePrice price)
