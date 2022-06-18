@@ -68,9 +68,9 @@ namespace Coflnet.Sky.Sniper.Services
 
 
             service.TestNewAuction(firstAuction);
-            service.TestNewAuction(secondAuction);
             Assert.AreEqual(1000, found.First().TargetPrice);
             Assert.AreEqual(LowPricedAuction.FinderType.SNIPER_MEDIAN, found.First().Finder);
+            service.TestNewAuction(secondAuction);
             Assert.AreEqual(900, found.Last().TargetPrice);
             Assert.AreEqual(LowPricedAuction.FinderType.SNIPER, found.Last().Finder);
             // first is sold
@@ -115,8 +115,8 @@ namespace Coflnet.Sky.Sniper.Services
             service.TestNewAuction(highestValAuction);
             var anotherAuction = new SaveAuction(highestValAuction)
             { UId = 563, StartingBid = 500, AuctioneerId = "00000", FlatenedNBT = highestValAuction.FlatenedNBT };
-            
-            anotherAuction.Enchantments = new (){
+
+            anotherAuction.Enchantments = new(){
                 new Core.Enchantment(Core.Enchantment.EnchantmentType.sharpness,7),
                 new Core.Enchantment(Core.Enchantment.EnchantmentType.critical,6)
             };
@@ -177,6 +177,32 @@ namespace Coflnet.Sky.Sniper.Services
             a.StartingBid = 5;
             service.TestNewAuction(a);
             Assert.AreEqual(1000, found.First().TargetPrice);
+        }
+
+        [Test]
+        public void LbinUpdateTest()
+        {
+            highestValAuction.StartingBid = 5;
+            var a = Dupplicate(highestValAuction);
+            a.HighestBidAmount = 500;
+            var b = Dupplicate(highestValAuction);
+            b.HighestBidAmount = 1000;
+            var c = Dupplicate(highestValAuction);
+            c.HighestBidAmount = 700;
+            var d = Dupplicate(highestValAuction);
+            d.HighestBidAmount = 900;
+            service.TestNewAuction(a);
+            service.TestNewAuction(b);
+            service.TestNewAuction(c);
+            service.TestNewAuction(d);
+
+            service.AddSoldItem(a);
+            service.AddSoldItem(b);
+            service.AddSoldItem(c);
+
+            var price = service.GetPrice(a);
+
+            Assert.AreEqual(900, price.Lbin.Price);
         }
 
 

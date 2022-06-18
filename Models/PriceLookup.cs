@@ -112,21 +112,36 @@ namespace Coflnet.Sky.Sniper.Models
         [Key(1)]
         public ConcurrentQueue<ReferencePrice> References = new ConcurrentQueue<ReferencePrice>();
         [Key(2)]
+        [Obsolete("replaed by Lbins ")]
         public ReferencePrice LastLbin;
         /// <summary>
         /// Second lowest bin, used if the lowest bin got sold
         /// </summary>
         [Key(3)]
+        [Obsolete("replaed by Lbins ", true)]
         public ReferencePrice SecondLbin;
         /// <summary>
         /// The day of the oldest used reference for <see cref="Price"/>
         /// </summary>
         [Key(4)]
         public short OldestRef;
+        [Key(5)]
+        public List<ReferencePrice> Lbins = new ();
+        [IgnoreMember]
+        public ReferencePrice Lbin => Lbins.FirstOrDefault();
+
         [IgnoreMember]
         public float Volume => (float)(References.TryPeek(out ReferencePrice price)
                         ? (float)References.Count / (SniperService.GetCurrentDay() - price.Day + 1)
                         : 0);
+    }
+
+    public class ReferenceComparer : IComparer<ReferencePrice>
+    {
+        public int Compare(ReferencePrice x, ReferencePrice y)
+        {
+            return x.Price.CompareTo(y.Price);
+        }
     }
 
     [MessagePackObject]
@@ -144,6 +159,22 @@ namespace Coflnet.Sky.Sniper.Models
         /// </summary>
         [Key(3)]
         public short Seller { get; set; }
+
+        public static ReferenceComparer Compare = new ReferenceComparer();
+
+        public override bool Equals(object obj)
+        {
+            return obj is ReferencePrice price &&
+                   AuctionId == price.AuctionId &&
+                   Price == price.Price &&
+                   Day == price.Day &&
+                   Seller == price.Seller;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(AuctionId, Seller);
+        }
     }
 
 }

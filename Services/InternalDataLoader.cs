@@ -200,15 +200,14 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 foreach (var lookup in item.Value.Lookup)
                 {
-                    if (!completeLookup.ContainsKey(lookup.Value.SecondLbin.AuctionId))
+                    foreach (var binAuction in lookup.Value.Lbins.ToList())
                     {
-                        lookup.Value.SecondLbin = default;
+                        if (!completeLookup.ContainsKey(binAuction.AuctionId))
+                        {
+                            lookup.Value.Lbins.Remove(binAuction);
+                        }
                     }
-                    if (!completeLookup.ContainsKey(lookup.Value.LastLbin.AuctionId))
-                    {
-                        lookup.Value.LastLbin = lookup.Value.SecondLbin;
-                        lookup.Value.SecondLbin = default;
-                    }
+                    lookup.Value.Lbins.Sort(Models.ReferencePrice.Compare);
                 }
             }
 

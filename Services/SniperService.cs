@@ -15,7 +15,6 @@ namespace Coflnet.Sky.Sniper.Services
     {
         public static int MIN_TARGET = 200_000;
         public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>();
-        private IHostApplicationLifetime applicationLifetime;
 
         private ConcurrentQueue<LogEntry> Logs = new ConcurrentQueue<LogEntry>();
 
@@ -116,13 +115,11 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (l.TryGetValue(KeyFromSaveAuction(auction, i), out ReferenceAuctions bucket))
                     {
-                        if (result.Lbin.AuctionId == default && bucket.LastLbin.AuctionId != default)
+                        if (result.Lbin.AuctionId == default && bucket.Lbin.AuctionId != default)
                         {
-                            result.Lbin = bucket.LastLbin;
+                            result.Lbin = bucket.Lbin;
                             result.LbinKey = KeyFromSaveAuction(auction, i).ToString();
                         }
-                        if (result.SLbin.AuctionId == default && bucket.SecondLbin.AuctionId != default)
-                            result.SLbin = bucket.SecondLbin;
                         if (result.Median == default && bucket.Price != default)
                         {
                             result.Median = bucket.Price;
@@ -139,10 +136,10 @@ ORDER BY l.`AuctionId`  DESC;
                     result.Volume = cheapest.Value.Volume;
                     result.MedianKey = cheapest.Key.ToString();
                 }
-                if (result.Lbin.Price == default)
+                if (result.Lbin.Price == default && l.Count > 0)
                 {
-                    var cheapest = l.Where(l => l.Value.LastLbin.Price > 0).MinBy(l => l.Value.LastLbin.Price);
-                    result.Lbin = cheapest.Value.LastLbin;
+                    var cheapest = l.Where(l => l.Value.Lbin.Price > 0).MinBy(l => l.Value.Lbin.Price);
+                    result.Lbin = cheapest.Value.Lbin;
                     result.LbinKey = cheapest.Key.ToString();
                 }
             }
@@ -157,7 +154,7 @@ ORDER BY l.`AuctionId`  DESC;
         }
 
         /// <summary>
-        /// Adds persisted loockup data
+        /// Adds persisted lookup data
         /// </summary>
         /// <param name="itemTag"></param>
         /// <param name="loadedVal"></param>
@@ -174,10 +171,17 @@ ORDER BY l.`AuctionId`  DESC;
                     }
                     existingBucket.References = item.Value.References;
                     existingBucket.Price = item.Value.Price;
-                    if (existingBucket.LastLbin.Price == default)
-                        existingBucket.LastLbin = item.Value.LastLbin;
-                    if (existingBucket.SecondLbin.Price == default)
-                        existingBucket.SecondLbin = item.Value.SecondLbin;
+                    // migrate last lbin
+                    if (item.Value.LastLbin.Price != default)
+                    {
+                        existingBucket.Lbins.Add(item.Value.LastLbin);
+                    }
+                    // load all non-empty lbins
+                    foreach (var binAuction in item.Value.Lbins)
+                    {
+                        if(!existingBucket.Lbins.Contains(binAuction))
+                            existingBucket.Lbins.Add(binAuction);
+                    }
                 }
                 return value;
             });
@@ -195,11 +199,11 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (bucket.References.Where(r => r.AuctionId == auction.UId).Any())
                 return; // duplicate
-            bucket.References.Enqueue(CreateReferenceFromAuction(auction));
-            if (bucket.LastLbin.AuctionId == auction.UId)
-            {
-                bucket.LastLbin.Price = 0; // the lowest bin was sold
-            }
+            var reference = CreateReferenceFromAuction(auction);
+            // move reference to sold
+            bucket.References.Enqueue(reference);
+            bucket.Lbins.Remove(reference);
+
             var size = bucket.References.Count;
             if (size > 90)
                 bucket.References.TryDequeue(out ReferencePrice ra);
@@ -419,11 +423,11 @@ ORDER BY l.`AuctionId`  DESC;
         {
             // only trigger lbin if also below median or median is not set
             var volume = bucket.Volume;
-            if (bucket.LastLbin.Price > lbinPrice && (bucket.Price > lbinPrice) && volume > 0.2f)// || bucket.Price == 0))
+            if (bucket.Lbin.Price > lbinPrice && (bucket.Price > lbinPrice) && volume > 0.2f)// || bucket.Price == 0))
             {
-                var props = CreateReference(bucket.LastLbin.AuctionId, key);
+                var props = CreateReference(bucket.Lbin.AuctionId, key);
                 props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
-                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, Math.Min(bucket.LastLbin.Price, bucket.Price), props);
+                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, Math.Min(bucket.Lbin.Price, bucket.Price), props);
                 i += 10;
             }
             else if (bucket.Price > medPrice)
@@ -436,11 +440,11 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 if (auction.UId % 10 == 0)
                     Console.Write("p");
-                if (volume == 0 || bucket.LastLbin.Price == 0 || bucket.Price == 0 || bucket.Price > MIN_TARGET)
+                if (volume == 0 || bucket.Lbin.Price == 0 || bucket.Price == 0 || bucket.Price > MIN_TARGET)
                     Logs.Enqueue(new LogEntry()
                     {
                         Key = key,
-                        LBin = bucket.LastLbin.Price,
+                        LBin = bucket.Lbin.Price,
                         Median = bucket.Price,
                         Uuid = auction.Uuid,
                         Volume = bucket.Volume
@@ -463,16 +467,11 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static void UpdateLbin(SaveAuction auction, long cost, ReferenceAuctions bucket)
         {
-            // update lbin
-            if (bucket.LastLbin.Price > cost || bucket.LastLbin.Price == 0)
+            var item = CreateReferenceFromAuction(auction);
+            if(!bucket.Lbins.Contains(item))
             {
-                bucket.SecondLbin = bucket.LastLbin;
-                bucket.LastLbin = CreateReferenceFromAuction(auction);
-            }
-            else if (bucket.SecondLbin.Price == 0 || bucket.SecondLbin.Price > cost)
-            {
-                // set second lbin to fallback when lbin is sold
-                bucket.SecondLbin = CreateReferenceFromAuction(auction);
+                bucket.Lbins.Add(item);
+                bucket.Lbins.Sort(ReferencePrice.Compare);
             }
         }
 
@@ -492,7 +491,7 @@ ORDER BY l.`AuctionId`  DESC;
             Logs.Enqueue(new LogEntry()
             {
                 Key = props.GetValueOrDefault("key"),
-                LBin = bucket.LastLbin.Price,
+                LBin = bucket.Lbin.Price,
                 Median = bucket.Price,
                 Uuid = auction.Uuid,
                 Volume = bucket.Volume,
