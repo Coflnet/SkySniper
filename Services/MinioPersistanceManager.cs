@@ -39,7 +39,7 @@ namespace Coflnet.Sky.Sniper.Services
                     }
                     catch (Exception ex)
                     {
-                        await Task.Delay(100);
+                        await Task.Delay(300);
                         logger.LogError(ex, "Could not load item once " + itemTag);
                         // retry
                         lookup = await LoadItem(client, itemTag);
@@ -48,6 +48,7 @@ namespace Coflnet.Sky.Sniper.Services
                 }
                 catch (Exception e)
                 {
+                    await Task.Delay(200);
                     logger.LogError(e, "Could not load item twice " + itemTag);
                 }
             }
