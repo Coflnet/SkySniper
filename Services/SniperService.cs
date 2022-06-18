@@ -138,9 +138,13 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (result.Lbin.Price == default && l.Count > 0)
                 {
-                    var cheapest = l.Where(l => l.Value.Lbin.Price > 0).MinBy(l => l.Value.Lbin.Price);
-                    result.Lbin = cheapest.Value.Lbin;
-                    result.LbinKey = cheapest.Key.ToString();
+                    var relevant = l.Where(l => l.Value.Lbin.Price > 0).ToArray();
+                    if (relevant.Length > 0)
+                    {
+                        var cheapest = relevant.MinBy(l => l.Value.Lbin.Price);
+                        result.Lbin = cheapest.Value.Lbin;
+                        result.LbinKey = cheapest.Key.ToString();
+                    }
                 }
             }
             return result;
@@ -179,7 +183,7 @@ ORDER BY l.`AuctionId`  DESC;
                     // load all non-empty lbins
                     foreach (var binAuction in item.Value.Lbins)
                     {
-                        if(!existingBucket.Lbins.Contains(binAuction))
+                        if (!existingBucket.Lbins.Contains(binAuction))
                             existingBucket.Lbins.Add(binAuction);
                     }
                 }
@@ -325,7 +329,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
 
             key.Tier = auction.Tier;
-            if(auction.Tag == "ENCHANTED_BOOK")
+            if (auction.Tag == "ENCHANTED_BOOK")
             {
                 // rarities don't matter for enchanted books and often used for scamming
                 key.Tier = Tier.UNCOMMON;
@@ -468,7 +472,7 @@ ORDER BY l.`AuctionId`  DESC;
         private static void UpdateLbin(SaveAuction auction, long cost, ReferenceAuctions bucket)
         {
             var item = CreateReferenceFromAuction(auction);
-            if(!bucket.Lbins.Contains(item))
+            if (!bucket.Lbins.Contains(item))
             {
                 bucket.Lbins.Add(item);
                 bucket.Lbins.Sort(ReferencePrice.Compare);
