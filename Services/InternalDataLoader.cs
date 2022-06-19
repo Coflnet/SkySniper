@@ -132,38 +132,48 @@ namespace Coflnet.Sky.Sniper.Services
         private async Task LoadActiveAuctions(CancellationToken stoppingToken)
         {
             // load active auctions
-            using (var context = new HypixelContext())
+
+            logger.LogInformation("loading active auctions");
+            try
             {
-                logger.LogInformation("loading active auctions");
-                try
+                int topId = 0;
+                using (var context = new HypixelContext())
                 {
-                    var topId = (await context.Auctions.MaxAsync(a => a.Id)) - 5_000_000;
-                    var active = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
+                    topId = (await context.Auctions.MaxAsync(a => a.Id)) - 5_000_000;
+                    var active = context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
                                         .Where(a => a.Id > topId && a.End > DateTime.Now && a.Bin == true)
                                         .AsNoTracking()
-                                        .ToListAsync(stoppingToken);
-                    foreach (var item in active)
+                                        .AsAsyncEnumerable();
+
+                    var count = 0;
+                    await foreach (var item in active)
                     {
                         sniper.TestNewAuction(item, false);
+                        count++;
                     }
-                    logger.LogInformation("finished loading active auctions " + active.Count);
+                    logger.LogInformation("finished loading active auctions " + count);
+                }
 
+                await Task.Delay(3000);
+
+                using (var context = new HypixelContext())
+                {
                     var sold = context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
-                                        .Where(a => a.Id > topId + 4_100_000 && a.End < DateTime.Now && a.Bin == true && a.HighestBidAmount > 0)
+                                        .Where(a => a.Id > topId + 4_900_000 && a.End < DateTime.Now && a.Bin == true && a.HighestBidAmount > 0)
                                         .AsNoTracking()
                                         .AsAsyncEnumerable();
                     var count = 0;
                     await foreach (var item in sold)
                     {
                         sniper.AddSoldItem(item);
-
+                        count++;
                     }
                     logger.LogInformation("finished loading sold auctions " + count);
                 }
-                catch (Exception e)
-                {
-                    logger.LogError(e, "loading active auctions");
-                }
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, "loading active auctions");
             }
         }
 
