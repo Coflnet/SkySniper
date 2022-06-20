@@ -113,7 +113,8 @@ ORDER BY l.`AuctionId`  DESC;
                 var l = lookup.Lookup;
                 for (int i = 0; i < 4; i++)
                 {
-                    if (l.TryGetValue(KeyFromSaveAuction(auction, i), out ReferenceAuctions bucket))
+                    var bkey = KeyFromSaveAuction(auction, i);
+                    if (l.TryGetValue(bkey, out ReferenceAuctions bucket))
                     {
                         if (result.Lbin.AuctionId == default && bucket.Lbin.AuctionId != default)
                         {
@@ -133,7 +134,8 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (key.GetHashCode() % 3 == 0 && DateTime.Now.Millisecond % 30 == 0)
                         Console.WriteLine("Finding closest median brute for " + auction.Tag + key);
-                    var closest = l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0 && l.Value.References.Count > 3).OrderBy(m => key.Similarity(m.Key)).FirstOrDefault();
+                    var closest = l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0 && l.Value.References.Count > 3)
+                                    .OrderByDescending(m => key.Similarity(m.Key)).FirstOrDefault();
 
                     if (closest.Key != default)
                     {
@@ -145,7 +147,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (result.Lbin.Price == default && l.Count > 0)
                 {
-                    var closest = l.Where(l => l.Key != null && l.Value?.Lbin.Price > 0 ).OrderBy(m => key.Similarity(m.Key)).FirstOrDefault();
+                    var closest = l.Where(l => l.Key != null && l.Value?.Lbin.Price > 0 ).OrderByDescending(m => key.Similarity(m.Key)).FirstOrDefault();
                     if (closest.Key != default)
                     {
                         result.Lbin = closest.Value.Lbin;

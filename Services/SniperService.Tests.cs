@@ -87,8 +87,8 @@ namespace Coflnet.Sky.Sniper.Services
                 Uuid = new System.Random().Next().ToString(),
                 UId = new System.Random().Next(),
                 AuctioneerId = new System.Random().Next().ToString(),
-                FlatenedNBT = origin.FlatenedNBT
-            };
+                FlatenedNBT = new Dictionary<string, string>(origin.FlatenedNBT)
+        };
         }
 
         [Test]
@@ -203,6 +203,35 @@ namespace Coflnet.Sky.Sniper.Services
             var price = service.GetPrice(a);
 
             Assert.AreEqual(900, price.Lbin.Price);
+        }
+        [Test]
+        public void LbinSimilarity()
+        {
+            highestValAuction.StartingBid = 5;
+            var a = Dupplicate(highestValAuction);
+            a.HighestBidAmount = 501;
+            a.FlatenedNBT["exp"] = "0";
+            a.FlatenedNBT["candyUsed"] = "2";
+            var b = Dupplicate(highestValAuction);
+            b.HighestBidAmount = 1000;
+            b.FlatenedNBT["heldItem"] = "something";
+            var c = Dupplicate(highestValAuction);
+            c.HighestBidAmount = 700;
+            c.Enchantments = new List<Core.Enchantment>(){
+                new Core.Enchantment(Core.Enchantment.EnchantmentType.sharpness,6)
+            };
+            var d = Dupplicate(highestValAuction);
+            d.HighestBidAmount = 900;
+            service.TestNewAuction(a);
+            service.TestNewAuction(b);
+            service.TestNewAuction(c);
+            service.TestNewAuction(d);
+
+            highestValAuction.FlatenedNBT["skin"] = "something";
+            highestValAuction.FlatenedNBT["heldItem"] = "something";
+            var price = service.GetPrice(highestValAuction);
+
+            Assert.AreEqual(1000, price.Lbin.Price);
         }
 
 

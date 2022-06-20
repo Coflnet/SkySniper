@@ -83,7 +83,7 @@ namespace Coflnet.Sky.Sniper.Models
         }
         public static bool operator !=(AuctionKey a, AuctionKey b)
         {
-            return !a.Equals(b);
+            return !(a?.Equals(b) ?? true);
         }
     }
 
