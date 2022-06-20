@@ -145,7 +145,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (result.Lbin.Price == default && l.Count > 0)
                 {
-                    var closest = l.Where(l => l.Value.Lbin.Price > 0).OrderBy(m => key.Similarity(m.Key)).FirstOrDefault();
+                    var closest = l.Where(l => l.Key != null && l.Value?.Lbin.Price > 0 ).OrderBy(m => key.Similarity(m.Key)).FirstOrDefault();
                     if (closest.Key != default)
                     {
                         result.Lbin = closest.Value.Lbin;
