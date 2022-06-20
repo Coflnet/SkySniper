@@ -133,19 +133,24 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (key.GetHashCode() % 3 == 0 && DateTime.Now.Millisecond % 30 == 0)
                         Console.WriteLine("Finding closest median brute for " + auction.Tag + key);
-                    var closest = l.Where(l => l.Value.Price > 0 && l.Value.References.Count > 0).OrderByDescending(m => key.Distance(m.Key)).First();
+                    var closest = l.Where(l => l.Value.Price > 0 && l.Value.References.Count > 3).OrderByDescending(m => key.Distance(m.Key)).FirstOrDefault();
 
-                    result.Median = closest.Value.Price;
-                    result.Volume = closest.Value.Volume;
-                    result.MedianKey = closest.Key.ToString();
+                    if (closest.Key != default)
+                    {
+                        result.Median = closest.Value.Price;
+                        result.Volume = closest.Value.Volume;
+                        result.MedianKey = closest.Key.ToString();
+                    }
 
                 }
                 if (result.Lbin.Price == default && l.Count > 0)
                 {
-                    var closest = l.Where(l => l.Value.Lbin.Price > 0).OrderByDescending(m => key.Distance(m.Key)).First();
-                    result.Lbin = closest.Value.Lbin;
-                    result.LbinKey = closest.Key.ToString();
-
+                    var closest = l.Where(l => l.Value.Lbin.Price > 0).OrderByDescending(m => key.Distance(m.Key)).FirstOrDefault();
+                    if (closest.Key != default)
+                    {
+                        result.Lbin = closest.Value.Lbin;
+                        result.LbinKey = closest.Key.ToString();
+                    }
                 }
             }
             return result;
