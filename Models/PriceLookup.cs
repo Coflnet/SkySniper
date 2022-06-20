@@ -39,10 +39,22 @@ namespace Coflnet.Sky.Sniper.Models
                    Count == key.Count;
         }
 
-        bool Reached()
+        public int Distance(AuctionKey key)
         {
-            Console.WriteLine("reached");
-            return true;
+            if(key == null)
+                return 100000;
+            var sum = 0;
+            if(this.Tier == key.Tier)
+                sum++;
+            if(this.Reforge == key.Reforge)
+                sum++;
+            if(this.Count == key.Count)
+                sum+=this.Count;
+            if(this.Enchants != null && key.Enchants != null)
+                sum += this.Enchants.Count(e => key.Enchants.Any(k => k.Lvl == e.Lvl && k.Type == e.Type));
+            if(this.Modifiers != null && key.Modifiers != null)
+                sum += this.Modifiers.Count(m => key.Modifiers.Any(k => k.Key == m.Key && k.Value == m.Value));
+            return sum;
         }
 
         public override int GetHashCode()

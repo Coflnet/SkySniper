@@ -128,29 +128,24 @@ ORDER BY l.`AuctionId`  DESC;
                         }
                     }
                 }
+                var key = KeyFromSaveAuction(auction);
                 if (result.Median == default)
                 {
-                    var key = KeyFromSaveAuction(auction);
                     if (key.GetHashCode() % 3 == 0 && DateTime.Now.Millisecond % 30 == 0)
                         Console.WriteLine("Finding closest median brute for " + auction.Tag + key);
-                    var relevant = l.Where(l => l.Value.Price > 0 && l.Value.References.Count > 0).ToArray();
-                    if (relevant.Length > 0)
-                    {
-                        var cheapest = relevant.MinBy(l => l.Value.Price);
-                        result.Median = cheapest.Value.Price;
-                        result.Volume = cheapest.Value.Volume;
-                        result.MedianKey = cheapest.Key.ToString();
-                    }
+                    var closest = l.Where(l => l.Value.Price > 0 && l.Value.References.Count > 0).OrderByDescending(m => key.Distance(m.Key)).First();
+
+                    result.Median = closest.Value.Price;
+                    result.Volume = closest.Value.Volume;
+                    result.MedianKey = closest.Key.ToString();
+
                 }
                 if (result.Lbin.Price == default && l.Count > 0)
                 {
-                    var relevant = l.Where(l => l.Value.Lbin.Price > 0).ToArray();
-                    if (relevant.Length > 0)
-                    {
-                        var cheapest = relevant.MinBy(l => l.Value.Lbin.Price);
-                        result.Lbin = cheapest.Value.Lbin;
-                        result.LbinKey = cheapest.Key.ToString();
-                    }
+                    var closest = l.Where(l => l.Value.Lbin.Price > 0).OrderByDescending(m => key.Distance(m.Key)).First();
+                    result.Lbin = closest.Value.Lbin;
+                    result.LbinKey = closest.Key.ToString();
+
                 }
             }
             return result;
@@ -277,7 +272,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         public static short GetDay(DateTime date = default)
         {
-            if(date == default)
+            if (date == default)
                 date = DateTime.Now;
             return (short)(date - new DateTime(2021, 9, 25)).TotalDays;
         }
