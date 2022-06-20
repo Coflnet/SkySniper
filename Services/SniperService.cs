@@ -83,7 +83,7 @@ ORDER BY l.`AuctionId`  DESC;
         */
 
         // stuff changing value by 5+M
-        private HashSet<string> VeryValuable = new HashSet<string>()
+        public static HashSet<string> VeryValuable = new HashSet<string>()
         {
             "rarity_upgrades",
             "winning_bid",
