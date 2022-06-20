@@ -133,7 +133,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (key.GetHashCode() % 3 == 0 && DateTime.Now.Millisecond % 30 == 0)
                         Console.WriteLine("Finding closest median brute for " + auction.Tag + key);
-                    var closest = l.Where(l => l.Value.Price > 0 && l.Value.References.Count > 3).OrderBy(m => key.Similarity(m.Key)).FirstOrDefault();
+                    var closest = l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0 && l.Value.References.Count > 3).OrderBy(m => key.Similarity(m.Key)).FirstOrDefault();
 
                     if (closest.Key != default)
                     {
