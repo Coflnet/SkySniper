@@ -61,7 +61,7 @@ namespace Coflnet.Sky.Sniper.Models
 
         public override string ToString()
         {
-            return Newtonsoft.Json.JsonConvert.SerializeObject(this);
+            return $"{(Enchants == null ? "nm" : string.Join(',',Enchants.Select(m=>m.ToString())))} {Reforge} {(Modifiers == null ? "nm" : string.Join(',',Modifiers.Select(m=>m.ToString())))} {Tier} {Count}";
         }
 
         public AuctionKey(List<Enchantment> enchants, ItemReferences.Reforge reforge, List<KeyValuePair<string, string>> modifiers, Tier tier, byte count)

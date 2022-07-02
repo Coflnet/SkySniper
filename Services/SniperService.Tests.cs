@@ -70,6 +70,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.TestNewAuction(firstAuction);
             Assert.AreEqual(1000, found.First().TargetPrice);
             Assert.AreEqual(LowPricedAuction.FinderType.SNIPER_MEDIAN, found.First().Finder);
+            service.FinishedUpdate();
             service.TestNewAuction(secondAuction);
             Assert.AreEqual(900, found.Last().TargetPrice);
             Assert.AreEqual(LowPricedAuction.FinderType.SNIPER, found.Last().Finder);
@@ -195,6 +196,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.TestNewAuction(b);
             service.TestNewAuction(c);
             service.TestNewAuction(d);
+            service.FinishedUpdate();
 
             service.AddSoldItem(a);
             service.AddSoldItem(b);
@@ -225,6 +227,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.TestNewAuction(a);
             service.TestNewAuction(b);
             service.TestNewAuction(c);
+            service.FinishedUpdate();
             service.TestNewAuction(d);
 
             highestValAuction.FlatenedNBT["skin"] = "something";
