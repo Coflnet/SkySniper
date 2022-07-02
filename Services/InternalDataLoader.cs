@@ -276,6 +276,7 @@ namespace Coflnet.Sky.Sniper.Services
                 RecentUpdates.Dequeue();
 
             sniper.PrintLogQueue();
+            sniper.FinishedUpdate();
         }
 
         private async Task LoadLookupsAndProcessSells(CancellationToken stoppingToken)

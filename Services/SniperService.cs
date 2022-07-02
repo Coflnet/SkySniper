@@ -17,6 +17,7 @@ namespace Coflnet.Sky.Sniper.Services
         public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>();
 
         private ConcurrentQueue<LogEntry> Logs = new ConcurrentQueue<LogEntry>();
+        private ConcurrentQueue<(SaveAuction, ReferenceAuctions)> LbinUpdates = new();
 
         public event Action<LowPricedAuction> FoundSnipe;
         private HashSet<string> IncludeKeys = new HashSet<string>()
@@ -67,12 +68,30 @@ namespace Coflnet.Sky.Sniper.Services
             "TIDAL", //rune
             "ENCHANT" // rune
         };
-        /** NOTES
-        yogsKilled - needs further be looked into
-        skeletorKills - to low volume to include 
-        farmed_cultivating - tells the state of the cultivating enchant (already taken care of)
 
-        */
+        public void FinishedUpdate()
+        {
+            while (LbinUpdates.TryDequeue(out var update))
+            {
+                var (auction, bucket) = update;
+                var key = auction.Uuid;
+                var item = CreateReferenceFromAuction(auction);
+                if (bucket.Lbins == null)
+                    bucket.Lbins = new();
+                if (!bucket.Lbins.Contains(item))
+                {
+                    bucket.Lbins.Add(item);
+                    bucket.Lbins.Sort(ReferencePrice.Compare);
+                }
+            }
+        }
+
+        /** NOTES
+yogsKilled - needs further be looked into
+skeletorKills - to low volume to include 
+farmed_cultivating - tells the state of the cultivating enchant (already taken care of)
+
+*/
         /* select helper
 SELECT l.AuctionId,l.KeyId,l.Value,a.StartingBid, a.HighestBidAmount,a.Uuid,a.Tag,a.End FROM `NBTLookups` l, Auctions a
 where KeyId = 128
@@ -147,7 +166,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (result.Lbin.Price == default && l.Count > 0)
                 {
-                    var closest = l.Where(l => l.Key != null && l.Value?.Lbin.Price > 0 ).OrderByDescending(m => key.Similarity(m.Key)).FirstOrDefault();
+                    var closest = l.Where(l => l.Key != null && l.Value?.Lbin.Price > 0).OrderByDescending(m => key.Similarity(m.Key)).FirstOrDefault();
                     if (closest.Key != default)
                     {
                         result.Lbin = closest.Value.Lbin;
@@ -439,7 +458,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (triggerEvents)
                     i = FindFlip(auction, lbinPrice, medPrice, i, bucket, key);
 
-                UpdateLbin(auction, cost, bucket);
+                UpdateLbin(auction, bucket);
             }
         }
 
@@ -489,16 +508,9 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private static void UpdateLbin(SaveAuction auction, long cost, ReferenceAuctions bucket)
+        private void UpdateLbin(SaveAuction auction, ReferenceAuctions bucket)
         {
-            var item = CreateReferenceFromAuction(auction);
-            if (bucket.Lbins == null)
-                bucket.Lbins = new();
-            if (!bucket.Lbins.Contains(item))
-            {
-                bucket.Lbins.Add(item);
-                bucket.Lbins.Sort(ReferencePrice.Compare);
-            }
+            LbinUpdates.Enqueue((auction, bucket));
         }
 
         private void FoundAFlip(SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, int targetPrice, Dictionary<string, string> props)
