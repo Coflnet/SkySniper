@@ -53,8 +53,8 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    await LoadActiveAuctions(stoppingToken);
-                    await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken);
+                    await LoadActiveAuctions(stoppingToken).ConfigureAwait(false);
+                    await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken).ConfigureAwait(false);
                 }
             });
             Task newAuctions = ConsumeNewAuctions(stoppingToken);
@@ -120,7 +120,7 @@ namespace Coflnet.Sky.Sniper.Services
                             }
                         }
                         return Task.CompletedTask;
-                    }, stoppingToken, "sky-sniper");
+                    }, stoppingToken, "sky-sniper").ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -313,7 +313,7 @@ namespace Coflnet.Sky.Sniper.Services
             if (!saving && saveCount % 20 == 0)
             {
                 saving = true;
-                var task = Task.Run(async () =>
+                _ = Task.Run(async () =>
                 {
                     try
                     {
@@ -325,7 +325,7 @@ namespace Coflnet.Sky.Sniper.Services
                     }
                     await Task.Delay(TimeSpan.FromMinutes(2));
                     saving = false;
-                });
+                }).ConfigureAwait(false);
             }
             return Task.CompletedTask;
         }
