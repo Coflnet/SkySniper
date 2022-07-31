@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Coflnet.Sky.Sniper.Services;
 using MessagePack;
+using Newtonsoft.Json;
 
 namespace Coflnet.Sky.Sniper.Models
 {
@@ -16,12 +17,14 @@ namespace Coflnet.Sky.Sniper.Models
         public ConcurrentQueue<ReferencePrice> References = new ConcurrentQueue<ReferencePrice>();
         [Key(2)]
         [Obsolete("replaed by Lbins ")]
+        [JsonIgnore]
         public ReferencePrice LastLbin;
         /// <summary>
         /// Second lowest bin, used if the lowest bin got sold
         /// </summary>
-        [Key(3)]
+        [IgnoreMember]
         [Obsolete("replaed by Lbins ", true)]
+        [JsonIgnore]
         public ReferencePrice SecondLbin;
         /// <summary>
         /// The day of the oldest used reference for <see cref="Price"/>
@@ -31,6 +34,7 @@ namespace Coflnet.Sky.Sniper.Models
         [Key(5)]
         public List<ReferencePrice> Lbins = new ();
         [IgnoreMember]
+        [JsonIgnore]
         public ReferencePrice Lbin => Lbins?.FirstOrDefault() ?? default;
 
         [IgnoreMember]

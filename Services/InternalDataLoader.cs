@@ -151,6 +151,7 @@ namespace Coflnet.Sky.Sniper.Services
                         sniper.TestNewAuction(item, false);
                         count++;
                     }
+                    sniper.FinishedUpdate();
                     logger.LogInformation("finished loading active auctions " + count);
                 }
 

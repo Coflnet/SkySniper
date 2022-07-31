@@ -17,14 +17,17 @@ namespace Coflnet.Sky.Sniper.Controllers
     {
         private readonly ILogger<SniperController> _logger;
         private SniperService service;
+        private ITokenService tokenService;
 
-        public SniperController(ILogger<SniperController> logger, SniperService service)
+        public SniperController(ILogger<SniperController> logger, SniperService service, ITokenService tokenService)
         {
             _logger = logger;
             this.service = service;
+            this.tokenService = tokenService;
         }
 
         [HttpGet]
+        [Route("lookup")]
         [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Any, NoStore = false)]
         public IEnumerable<string> GetIds()
         {
@@ -35,13 +38,52 @@ namespace Coflnet.Sky.Sniper.Controllers
         /// Retrieve item lookup state transfer
         /// </summary>
         /// <param name="itemId"></param>
-        /// <param name="token"></param>
+        /// <param name="Authorization"></param>
         /// <returns></returns>
         [HttpGet]
-        [Route("{itemId}")]
-        public PriceLookup GetLookup(string itemId, string token)
+        [Route("lookup/{itemId}")]
+        public byte[] GetLookup(string itemId, [FromHeader] string Authorization)
         {
+            CountUsageAndValidate(Authorization);
+            return MessagePack.MessagePackSerializer.Serialize(service.Lookups[itemId]);
+        }
+
+        /// <summary>
+        /// Retrieve item lookup state transfer
+        /// </summary>
+        /// <param name="itemId"></param>
+        /// <param name="Authorization"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("dump/{itemId}")]
+        public PriceLookup GetLookupJson(string itemId, [FromHeader] string Authorization)
+        {
+            CountUsageAndValidate(Authorization);
             return service.Lookups[itemId];
+        }
+
+        private void CountUsageAndValidate(string Authorization)
+        {
+            try
+            {
+                if (!tokenService.HasTokenAccess(Authorization))
+                    throw new CoflnetException("invalid_token", "The passed access token is invalid");
+            }
+            catch (JWT.Exceptions.TokenExpiredException)
+            {
+                throw new CoflnetException("token_expired", "The passed access token is no longer valid");
+            }
+            catch (System.FormatException)
+            {
+                throw new CoflnetException("invalid_token", "The passed access token is invalid");
+            }
+        }
+
+        [HttpGet]
+        [Route("token")]
+        public string Token()
+        {
+            return tokenService.CreateToken();
         }
 
 
@@ -68,7 +110,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         [HttpPost]
         public IEnumerable<PriceEstimate> GetPrices(IEnumerable<SaveAuction> auctions)
         {
-            if(auctions == null)
+            if (auctions == null)
                 return new List<PriceEstimate>();
             return auctions.Select(a =>
             {
