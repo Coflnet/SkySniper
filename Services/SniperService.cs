@@ -248,10 +248,10 @@ ORDER BY l.`AuctionId`  DESC;
             }
             // short term protects against price drops after updates
             var shortTermList = deduplicated.OrderByDescending(b => b.Day).Take(3).ToList();
-            int shortTermPrice = GetMedian(shortTermList);
+            var shortTermPrice = GetMedian(shortTermList);
             bucket.OldestRef = shortTermList.Min(s => s.Day);
             // long term protects against market manipulation
-            int longSpanPrice = GetMedian(deduplicated.Take(45).ToList());
+            var longSpanPrice = GetMedian(deduplicated.Take(45).ToList());
             bucket.Price = Math.Min(shortTermPrice, longSpanPrice);
         }
 
@@ -269,7 +269,7 @@ ORDER BY l.`AuctionId`  DESC;
             return bucket;
         }
 
-        private static int GetMedian(List<ReferencePrice> deduplicated)
+        private static long GetMedian(List<ReferencePrice> deduplicated)
         {
             return deduplicated
                 .OrderByDescending(b => b.Price)
@@ -513,7 +513,7 @@ ORDER BY l.`AuctionId`  DESC;
             LbinUpdates.Enqueue((auction, bucket));
         }
 
-        private void FoundAFlip(SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, int targetPrice, Dictionary<string, string> props)
+        private void FoundAFlip(SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, long targetPrice, Dictionary<string, string> props)
         {
             if (targetPrice < MIN_TARGET)
                 return; // to low

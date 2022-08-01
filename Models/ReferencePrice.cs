@@ -9,7 +9,7 @@ namespace Coflnet.Sky.Sniper.Models
         [Key(0)]
         public long AuctionId { get; set; }
         [Key(1)]
-        public int Price { get; set; }
+        public long Price { get; set; }
         [Key(2)]
         public short Day { get; set; }
         /// <summary>

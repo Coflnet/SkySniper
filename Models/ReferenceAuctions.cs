@@ -12,7 +12,7 @@ namespace Coflnet.Sky.Sniper.Models
     public class ReferenceAuctions
     {
         [Key(0)]
-        public int Price;
+        public long Price;
         [Key(1)]
         public ConcurrentQueue<ReferencePrice> References = new ConcurrentQueue<ReferencePrice>();
         [Key(2)]
