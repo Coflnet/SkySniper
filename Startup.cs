@@ -51,9 +51,13 @@ namespace Coflnet.Sky.Sniper
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-                app.UseSwagger();
-                app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "SkySniper v1"));
             }
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "SkySniper v1");
+                c.RoutePrefix = "api";
+            });
 
             app.UseResponseCaching();
 
@@ -76,7 +80,7 @@ namespace Coflnet.Sky.Sniper
                         context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
                         await context.Response.WriteAsync(
                                         JsonConvert.SerializeObject(new { ex.Slug, ex.Message }));
-                        
+
                     }
                     else
                     {

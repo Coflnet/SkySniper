@@ -42,10 +42,10 @@ namespace Coflnet.Sky.Sniper.Controllers
         /// <returns></returns>
         [HttpGet]
         [Route("lookup/{itemId}")]
-        public byte[] GetLookup(string itemId, [FromHeader] string Authorization)
+        public string GetLookup(string itemId, [FromHeader] string Authorization)
         {
             CountUsageAndValidate(Authorization);
-            return MessagePack.MessagePackSerializer.Serialize(service.Lookups[itemId]);
+            return Convert.ToBase64String(MessagePack.MessagePackSerializer.Serialize(service.Lookups[itemId]));
         }
 
         /// <summary>
@@ -67,7 +67,7 @@ namespace Coflnet.Sky.Sniper.Controllers
             try
             {
                 if (!tokenService.HasTokenAccess(Authorization))
-                    throw new CoflnetException("invalid_token", "The passed access token is invalid");
+                    throw new CoflnetException("invalid_token", "The passed access token is invalid (limit probably used up)");
             }
             catch (JWT.Exceptions.TokenExpiredException)
             {
