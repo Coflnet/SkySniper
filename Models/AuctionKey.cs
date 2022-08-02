@@ -47,8 +47,16 @@ namespace Coflnet.Sky.Sniper.Models
             else
                 sum-=this.Enchants?.Count ?? 0 + key.Enchants?.Count ?? 0;
             if(this.Modifiers != null && key.Modifiers != null)
-                sum += this.Modifiers.Count(m => key.Modifiers.Any(k => k.Key == m.Key && k.Value == m.Value)) 
-                    + this.Modifiers.Where(m=> SniperService.VeryValuable.Contains(m.Key)).Count(m => key.Modifiers.Any(k => k.Key == m.Key && k.Value == m.Value)) * 10;
+            {
+
+                sum += this.Modifiers.Count(m => key.Modifiers.Any(k => k.Key == m.Key && k.Value == m.Value)) * 2;
+                sum -= (this.Modifiers.Count() + key.Modifiers.Count());
+
+                var valuableCount = this.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).Count();
+                var valuableOtherCount = key.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).Count();
+                var matching = this.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).Count(m => key.Modifiers.Any(k => k.Key == m.Key && k.Value == m.Value));
+                sum += (matching * 3 - valuableCount - valuableOtherCount) * 5;
+            }
             else
                 sum-=this.Modifiers?.Count ?? 0 - key.Modifiers?.Count ?? 0;
             return sum;
