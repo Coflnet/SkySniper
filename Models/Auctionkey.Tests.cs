@@ -57,7 +57,7 @@ namespace Coflnet.Sky.Sniper.Models
             var sniperService = new SniperService();
             var keyA = sniperService.KeyFromSaveAuction(auctionA);
             var keyB = sniperService.KeyFromSaveAuction(b);
-            Assert.AreEqual(keyA.Similarity(keyB), keyA.Similarity(keyA));
+            Assert.Less(keyA.Similarity(keyB), keyA.Similarity(keyA));
         }
     }
 
