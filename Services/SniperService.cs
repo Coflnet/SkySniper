@@ -212,7 +212,7 @@ ORDER BY l.`AuctionId`  DESC;
                     // load all non-empty lbins
                     foreach (var binAuction in item.Value.Lbins)
                     {
-                        if (!existingBucket.Lbins.Contains(binAuction))
+                        if (!existingBucket.Lbins.Contains(binAuction) && binAuction.Price > 0)
                             existingBucket.Lbins.Add(binAuction);
                     }
                     item.Value.Lbins.Sort(ReferencePrice.Compare);
@@ -291,7 +291,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 AuctionId = auction.UId,
                 Day = GetDay(auction.End),
-                Price = (int)(auction.HighestBidAmount == 0 ? auction.StartingBid : auction.HighestBidAmount),
+                Price = auction.HighestBidAmount == 0 ? auction.StartingBid : auction.HighestBidAmount,
                 Seller = auction.AuctioneerId == null ? (short)(auction.SellerId % (2 << 14)) : Convert.ToInt16(auction.AuctioneerId.Substring(0, 4), 16)
             };
         }
