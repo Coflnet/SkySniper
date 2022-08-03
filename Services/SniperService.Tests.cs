@@ -81,7 +81,7 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(LowPricedAuction.FinderType.SNIPER_MEDIAN, found.Last().Finder);
         }
 
-        private static SaveAuction Dupplicate(SaveAuction origin)
+        public static SaveAuction Dupplicate(SaveAuction origin)
         {
             return new SaveAuction(origin)
             {
@@ -246,7 +246,7 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 service.TestNewAuction(firstAuction);
             }
-            Assert.Less(start.ElapsedMilliseconds, 30);
+            Assert.Less(start.ElapsedMilliseconds, 40);
         }
     }
 

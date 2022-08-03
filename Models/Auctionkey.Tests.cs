@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Coflnet.Sky.Core;
+using Coflnet.Sky.Sniper.Services;
 using NUnit.Framework;
 
 namespace Coflnet.Sky.Sniper.Models
@@ -33,7 +35,7 @@ namespace Coflnet.Sky.Sniper.Models
         public void NoModsNoError()
         {
             var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() };
-            var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>()  };
+            var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() };
             // by default reforge and tier match
             Assert.AreEqual(key.Similarity(key), keyB.Similarity(key));
         }
@@ -44,6 +46,18 @@ namespace Coflnet.Sky.Sniper.Models
             var keyB = new AuctionKey() { Enchants = new List<Enchantment>() { new Enchantment() { Lvl = 1, Type = Core.Enchantment.EnchantmentType.angler } } };
             // by default reforge and tier match
             Assert.Greater(key.Similarity(key), keyB.Similarity(key));
+        }
+        [Test]
+        public void RecombCadyRelicLbinSimilarity()
+        {
+            var auctionA = new SaveAuction() { FlatenedNBT = new(), Tag = "CANDY_RELIC", Tier = Tier.LEGENDARY };
+            var b = Services.SniperServiceTests.Dupplicate(auctionA);
+            b.FlatenedNBT.Add("rarity_upgrades", "1");
+            b.Tier = Tier.MYTHIC;
+            var sniperService = new SniperService();
+            var keyA = sniperService.KeyFromSaveAuction(auctionA);
+            var keyB = sniperService.KeyFromSaveAuction(b);
+            Assert.AreEqual(keyA.Similarity(keyB), keyA.Similarity(keyA));
         }
     }
 

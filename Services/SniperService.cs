@@ -319,7 +319,7 @@ ORDER BY l.`AuctionId`  DESC;
         }
 
         private static List<KeyValuePair<string, string>> EmptyModifiers = new();
-        private AuctionKey KeyFromSaveAuction(SaveAuction auction, int dropLevel = 0)
+        public AuctionKey KeyFromSaveAuction(SaveAuction auction, int dropLevel = 0)
         {
             var key = new AuctionKey();
 

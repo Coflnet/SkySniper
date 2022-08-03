@@ -38,6 +38,8 @@ namespace Coflnet.Sky.Sniper.Models
             var sum = 0;
             if(this.Tier == key.Tier)
                 sum++;
+            else 
+                sum--;
             if(this.Reforge == key.Reforge)
                 sum++;
             if(this.Count == key.Count)
