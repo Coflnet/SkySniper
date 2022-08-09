@@ -50,6 +50,7 @@ namespace Coflnet.Sky.Sniper.Models
         [Test]
         public void RecombCadyRelicLbinSimilarity()
         {
+            // the issue likely has something to do with enrichments, TODO: add enrichments
             var auctionA = new SaveAuction() { FlatenedNBT = new(), Tag = "CANDY_RELIC", Tier = Tier.LEGENDARY };
             var b = Services.SniperServiceTests.Dupplicate(auctionA);
             b.FlatenedNBT.Add("rarity_upgrades", "1");

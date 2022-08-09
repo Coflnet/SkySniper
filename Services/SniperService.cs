@@ -20,10 +20,10 @@ namespace Coflnet.Sky.Sniper.Services
         private ConcurrentQueue<(SaveAuction, ReferenceAuctions)> LbinUpdates = new();
 
         public event Action<LowPricedAuction> FoundSnipe;
-        private HashSet<string> IncludeKeys = new HashSet<string>()
+        private readonly HashSet<string> IncludeKeys = new HashSet<string>()
         {
             // nether update
-            "life_regeneration",
+            //"life_regeneration",
 
             "dye_item",
             "backpack_color",
@@ -69,6 +69,18 @@ namespace Coflnet.Sky.Sniper.Services
             "ENCHANT" // rune
         };
 
+        private static readonly Dictionary<string, short> ShardAttributes = new(){
+            {"mana_pool", 1},
+            {"breeze", 1},
+            {"speed", 2},
+            {"life_regeneration", 2},
+            {"fishing_experience", 2},
+            {"ignition", 2},
+            {"blazing_fortune", 2},
+            {"double_hook", 3},
+            //{"lifeline", 3} to low volume
+        };
+
         public void FinishedUpdate()
         {
             while (LbinUpdates.TryDequeue(out var update))
@@ -109,6 +121,7 @@ ORDER BY l.`AuctionId`  DESC;
             "skin",
             "exp"
         };
+        private static KeyValuePair<string, string> Ignore = new KeyValuePair<string, string>(string.Empty, string.Empty);
 
 
         public SniperService()
@@ -119,6 +132,10 @@ ORDER BY l.`AuctionId`  DESC;
                 if (la.Finder == LowPricedAuction.FinderType.SNIPER && (float)la.Auction.StartingBid / la.TargetPrice < 0.8 && la.TargetPrice > 1_000_000)
                     Console.WriteLine($"A: {la.Auction.Uuid} {la.Auction.StartingBid} -> {la.TargetPrice}  {KeyFromSaveAuction(la.Auction)}");
             };
+            foreach (var item in ShardAttributes)
+            {
+                IncludeKeys.Add(item.Key);
+            }
         }
 
         public PriceEstimate GetPrice(SaveAuction auction)
@@ -335,7 +352,8 @@ ORDER BY l.`AuctionId`  DESC;
 
                 key.Modifiers = auction.FlatenedNBT?.Where(n => IncludeKeys.Contains(n.Key) || n.Value == "PERFECT")
                                 .OrderByDescending(n => n.Key)
-                                .Select(i => NormalizeData(i, auction.Tag)).ToList();
+                                .Select(i => NormalizeData(i, auction.Tag))
+                                .Where(i => i.Key != Ignore.Key).ToList();
             }
             else if (dropLevel == 1)
             {
@@ -416,6 +434,13 @@ ORDER BY l.`AuctionId`  DESC;
                 });
             if (s.Key == "upgrade_level")
                 return new KeyValuePair<string, string>("dungeon_item_level", s.Value);
+            if (ShardAttributes.TryGetValue(s.Key, out var minLvl))
+            {
+                if (int.Parse(s.Value) >= minLvl)
+                    return s;
+
+                return Ignore;
+            }
 
             return s;
         }
