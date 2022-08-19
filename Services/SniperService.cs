@@ -446,11 +446,11 @@ ORDER BY l.`AuctionId`  DESC;
                 if (val < 46)
                     return Ignore;
                 if (val < 50)
-                    return new KeyValuePair<string, string>("baseStatBoost", "46");
-                if (val < 60)
+                    return new KeyValuePair<string, string>("baseStatBoost", "46-49");
+                if (val == 50)
                     return new KeyValuePair<string, string>("baseStatBoost", "50");
-                if (val < 70)
-                    return new KeyValuePair<string, string>("baseStatBoost", "60");
+                if (val > 50)
+                    return new KeyValuePair<string, string>("baseStatBoost", ">50");
             }
 
             return s;
