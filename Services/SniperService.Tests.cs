@@ -238,7 +238,7 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
 
-        [Test]
+        //[Test]
         public void LoadTest()
         {
             var start = Stopwatch.StartNew();
