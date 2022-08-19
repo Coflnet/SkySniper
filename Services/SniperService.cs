@@ -22,8 +22,7 @@ namespace Coflnet.Sky.Sniper.Services
         public event Action<LowPricedAuction> FoundSnipe;
         private readonly HashSet<string> IncludeKeys = new HashSet<string>()
         {
-            // nether update
-            //"life_regeneration",
+            "baseStatBoostPercentage",
 
             "dye_item",
             "backpack_color",
@@ -440,6 +439,18 @@ ORDER BY l.`AuctionId`  DESC;
                     return s;
 
                 return Ignore;
+            }
+            if(s.Key == "baseStatBoostPercentage")
+            {
+                var val = int.Parse(s.Value);
+                if (val < 46)
+                    return Ignore;
+                if (val < 50)
+                    return new KeyValuePair<string, string>("baseStatBoost", "46");
+                if (val < 60)
+                    return new KeyValuePair<string, string>("baseStatBoost", "50");
+                if (val < 70)
+                    return new KeyValuePair<string, string>("baseStatBoost", "60");
             }
 
             return s;
