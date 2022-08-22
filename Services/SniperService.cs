@@ -506,6 +506,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var props = CreateReference(bucket.Lbin.AuctionId, key);
                 props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
+                props["mVal"] = bucket.Price.ToString();
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, Math.Min(bucket.Lbin.Price, bucket.Price), props);
                 i += 10;
             }
