@@ -33,22 +33,23 @@ namespace Coflnet.Sky.Sniper.Models
 
         public int Similarity(AuctionKey key)
         {
-            if(key == null)
+            if (key == null)
                 return -100000;
             var sum = 0;
-            if(this.Tier == key.Tier)
+            if (this.Tier == key.Tier)
                 sum++;
-            else 
-                sum--;
-            if(this.Reforge == key.Reforge)
-                sum++;
-            if(this.Count == key.Count)
-                sum+=this.Count;
-            if(this.Enchants != null && key.Enchants != null)
-                sum += this.Enchants.Count(e => key.Enchants.Any(k => k.Lvl == e.Lvl && k.Type == e.Type));
             else
-                sum-=this.Enchants?.Count ?? 0 + key.Enchants?.Count ?? 0;
-            if(this.Modifiers != null && key.Modifiers != null)
+                sum--;
+            sum -= Math.Abs(this.Reforge - key.Reforge);
+            if (this.Count == key.Count)
+                sum += this.Count;
+            if (this.Enchants != null && key.Enchants != null)
+            {
+                sum += this.Enchants.Count(e => key.Enchants.Any(k => k.Lvl == e.Lvl && k.Type == e.Type)) * 3;
+            }
+            sum -= this.Enchants?.Count ?? 0 + key.Enchants?.Count ?? 0;
+
+            if (this.Modifiers != null && key.Modifiers != null)
             {
 
                 sum += this.Modifiers.Count(m => key.Modifiers.Any(k => k.Key == m.Key && k.Value == m.Value)) * 3;
@@ -60,7 +61,7 @@ namespace Coflnet.Sky.Sniper.Models
                 sum += (matching * 3 - valuableCount - valuableOtherCount) * 5;
             }
             else
-                sum-=this.Modifiers?.Count ?? 0 - key.Modifiers?.Count ?? 0;
+                sum -= this.Modifiers?.Count ?? 0 - key.Modifiers?.Count ?? 0;
             return sum;
         }
 
@@ -71,7 +72,7 @@ namespace Coflnet.Sky.Sniper.Models
 
         public override string ToString()
         {
-            return $"{(Enchants == null ? "nm" : string.Join(',',Enchants.Select(m=>$"{m.Type}={m.Lvl}")))} {Reforge} {(Modifiers == null ? "nm" : string.Join(',',Modifiers.Select(m=>m.ToString())))} {Tier} {Count}";
+            return $"{(Enchants == null ? "nm" : string.Join(',', Enchants.Select(m => $"{m.Type}={m.Lvl}")))} {Reforge} {(Modifiers == null ? "nm" : string.Join(',', Modifiers.Select(m => m.ToString())))} {Tier} {Count}";
         }
 
         public AuctionKey(List<Enchantment> enchants, ItemReferences.Reforge reforge, List<KeyValuePair<string, string>> modifiers, Tier tier, byte count)
