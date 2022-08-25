@@ -146,7 +146,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (Lookups.TryGetValue(auction.Tag, out PriceLookup lookup))
             {
                 var l = lookup.Lookup;
-                for (int i = 0; i < 4; i++)
+                for (int i = 0; i < 1; i++)
                 {
                     var bkey = KeyFromSaveAuction(auction, i);
                     if (l.TryGetValue(bkey, out ReferenceAuctions bucket))
