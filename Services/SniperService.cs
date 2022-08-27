@@ -60,7 +60,7 @@ namespace Coflnet.Sky.Sniper.Services
             "edition", // great spook stuff
             "hpc", // hot potato books
             "tuned_transmission", // aotv upgrade
-            "power_ability_scroll", // i have no clue
+            //"power_ability_scroll", // disabled as suggested by Coyu because comonly not worth 1m (up to 2m at most)
             "captured_player", // cake souls
             "MUSIC", //rune
             "DRAGON", //rune
@@ -349,7 +349,13 @@ ORDER BY l.`AuctionId`  DESC;
                     || Coflnet.Sky.Core.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
                     .Select(e => new Models.Enchantment() { Lvl = e.Level, Type = e.Type }).ToList();
 
-                key.Modifiers = auction.FlatenedNBT?.Where(n => IncludeKeys.Contains(n.Key) || n.Value == "PERFECT")
+                key.Modifiers = auction.FlatenedNBT?.Where(n => 
+                                       IncludeKeys.Contains(n.Key) 
+                                    || n.Value == "PERFECT" 
+                                    || n.Key.StartsWith("MASTER_CRYPT_TANK_ZOMBIE")
+                                    || n.Key.StartsWith("MINOS_CHAMPION_")
+                                    || n.Key == "MINOS_INQUISITOR_750"
+                                    || n.Key.StartsWith("MASTER_CRYPT_UNDEAD_") && n.Key.Length > 23) // admins
                                 .OrderByDescending(n => n.Key)
                                 .Select(i => NormalizeData(i, auction.Tag))
                                 .Where(i => i.Key != Ignore.Key).ToList();
