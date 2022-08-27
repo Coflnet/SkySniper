@@ -45,7 +45,7 @@ namespace Coflnet.Sky.Sniper.Models
             var key = new AuctionKey();
             var keyB = new AuctionKey() { Enchants = new List<Enchantment>() { new Enchantment() { Lvl = 1, Type = Core.Enchantment.EnchantmentType.angler } } };
             // by default reforge and tier match
-            Assert.Greater(key.Similarity(key), keyB.Similarity(key));
+            Assert.Greater(key.Similarity(key), keyB.Similarity(key), "extra enchants should decrease");
         }
         [Test]
         public void RecombCadyRelicLbinSimilarity()

@@ -36,18 +36,18 @@ namespace Coflnet.Sky.Sniper.Models
             if (key == null)
                 return -100000;
             var sum = 0;
-            if (this.Tier == key.Tier)
+            if (this.Reforge == key.Reforge)
                 sum++;
             else
                 sum--;
-            sum -= Math.Abs(this.Reforge - key.Reforge);
+            sum -= Math.Abs(this.Tier - key.Tier);
             if (this.Count == key.Count)
                 sum += this.Count;
             if (this.Enchants != null && key.Enchants != null)
             {
                 sum += this.Enchants.Count(e => key.Enchants.Any(k => k.Lvl == e.Lvl && k.Type == e.Type)) * 3;
             }
-            sum -= this.Enchants?.Count ?? 0 + key.Enchants?.Count ?? 0;
+            sum -= (this.Enchants?.Count ?? 0) + (key.Enchants?.Count ?? 0);
 
             if (this.Modifiers != null && key.Modifiers != null)
             {

@@ -9,5 +9,6 @@ namespace Coflnet.Sky.Sniper.Models
         public long FourthPercentile { get; set; }
         public string LbinKey { get; set; }
         public string MedianKey { get; set; }
+        public string ItemKey { get; set; }
     }
 }
