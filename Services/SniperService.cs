@@ -26,6 +26,7 @@ namespace Coflnet.Sky.Sniper.Services
 
             "dye_item",
             "backpack_color",
+            "color", // armour
             // potion "level", // not engough impact
             // "item_tier", // mostly found on armor, unsure what it does
             "talisman_enrichment", // talismans can be enriched with additional stats
