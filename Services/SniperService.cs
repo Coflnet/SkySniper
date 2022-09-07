@@ -150,6 +150,8 @@ ORDER BY l.`AuctionId`  DESC;
                 for (int i = 0; i < 1; i++)
                 {
                     var bkey = KeyFromSaveAuction(auction, i);
+                    if(i == 0)
+                        result.ItemKey = bkey.ToString();
                     if (l.TryGetValue(bkey, out ReferenceAuctions bucket))
                     {
                         if (result.Lbin.AuctionId == default && bucket.Lbin.AuctionId != default)

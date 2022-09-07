@@ -40,7 +40,7 @@ namespace Coflnet.Sky.Sniper.Models
                 sum++;
             else
                 sum--;
-            sum -= Math.Abs(this.Tier - key.Tier);
+            sum -= Math.Abs(this.Tier - key.Tier) * 4;
             if (this.Count == key.Count)
                 sum += this.Count;
             if (this.Enchants != null && key.Enchants != null)
