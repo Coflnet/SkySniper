@@ -51,7 +51,6 @@ namespace Coflnet.Sky.Sniper.Models
 
             if (this.Modifiers != null && key.Modifiers != null)
             {
-
                 sum += this.Modifiers.Count(m => key.Modifiers.Any(k => k.Key == m.Key && k.Value == m.Value)) * 3;
                 sum -= (this.Modifiers.Count() + key.Modifiers.Count());
 
