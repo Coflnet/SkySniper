@@ -116,6 +116,30 @@ namespace Coflnet.Sky.Sniper.Controllers
             {
                 try
                 {
+                    Console.WriteLine("a: " + Newtonsoft.Json.JsonConvert.SerializeObject(a));
+                    return service.GetPrice(a);
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "getting price for auction");
+                }
+                return new PriceEstimate();
+            });
+        }
+        /// <summary>
+        /// Auction array as base64 encoded LZ4MessagePack
+        /// </summary>
+        /// <param name="auctions"></param>
+        /// <returns></returns>
+        [Route("prices")]
+        [HttpPost]
+        public IEnumerable<PriceEstimate> GetPrices([FromBody] string data)
+        {
+            var auctions = MessagePack.LZ4MessagePackSerializer.Deserialize<IEnumerable<SaveAuction>>(Convert.FromBase64String(data));
+            return auctions.Select(a =>
+            {
+                try
+                {
                     return service.GetPrice(a);
                 }
                 catch (Exception e)
