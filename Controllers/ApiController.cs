@@ -126,6 +126,7 @@ namespace Coflnet.Sky.Sniper.Controllers
                 return new PriceEstimate();
             });
         }
+
         /// <summary>
         /// Auction array as base64 encoded LZ4MessagePack
         /// </summary>
