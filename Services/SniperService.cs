@@ -3,10 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using Coflnet.Sky.Sniper.Models;
-using Microsoft.Extensions.Hosting;
-using Minio.DataModel;
-using Newtonsoft.Json;
-using Coflnet.Sky;
 using Coflnet.Sky.Core;
 
 namespace Coflnet.Sky.Sniper.Services
@@ -22,7 +18,7 @@ namespace Coflnet.Sky.Sniper.Services
         public event Action<LowPricedAuction> FoundSnipe;
         private readonly HashSet<string> IncludeKeys = new HashSet<string>()
         {
-            "baseStatBoostPercentage",
+            //"baseStatBoostPercentage", no effect anymore
 
             "dye_item",
             "backpack_color",
