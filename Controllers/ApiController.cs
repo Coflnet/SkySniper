@@ -177,7 +177,7 @@ namespace Coflnet.Sky.Sniper.Controllers
             using (var context = new HypixelContext())
             {
                 var uids = toCheck.Keys.Select(k => k).ToList();
-                auctions = await context.Auctions.Where(a => uids.Contains(a.UId)).Include(a => a.NbtData).ToListAsync();
+                auctions = await context.Auctions.Where(a => uids.Contains(a.UId)).Include(a => a.NbtData).Include(a => a.Enchantments).ToListAsync();
             }
 
             var result = new List<Result>();
@@ -185,7 +185,7 @@ namespace Coflnet.Sky.Sniper.Controllers
             {
                 var key = service.KeyFromSaveAuction(item);
                 var actual = toCheck[item.UId];
-                if(key == actual.Key)
+                if (key == actual.Key)
                     continue;
                 // yikes
                 result.Add(new()
