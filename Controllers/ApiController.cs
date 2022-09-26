@@ -8,6 +8,7 @@ using Coflnet.Sky.Core.Prediction;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Coflnet.Sky.Core;
+using Microsoft.EntityFrameworkCore;
 
 namespace Coflnet.Sky.Sniper.Controllers
 {
@@ -151,6 +152,58 @@ namespace Coflnet.Sky.Sniper.Controllers
             });
         }
 
+        [Route("search/{tag}/{itemId}")]
+        [HttpGet]
+        public IEnumerable<AuctionKey> Search(string tag, string itemId)
+        {
+            if (!long.TryParse(itemId, out long uid))
+                uid = AuctionService.Instance.GetId(itemId);
+            foreach (var bucket in service.Lookups[tag].Lookup)
+            {
+                foreach (var item in bucket.Value.References)
+                {
+                    if (item.AuctionId == uid)
+                        yield return bucket.Key;
+                }
+            }
+        }
+        [Route("reassign")]
+        [HttpPost]
+        public async Task<List<Result>> Reassign(string tag, string value)
+        {
+            var toChange = Search(tag, value).ToList();
+            var toCheck = service.Lookups[tag].Lookup.Where(l => toChange.Contains(l.Key)).SelectMany(l => l.Value.References.Select(r => (l.Key, r))).ToDictionary(r => r.r.AuctionId, r => r);
+            List<SaveAuction> auctions = null;
+            using (var context = new HypixelContext())
+            {
+                var uids = toCheck.Keys.Select(k => k).ToList();
+                auctions = await context.Auctions.Where(a => uids.Contains(a.UId)).Include(a => a.NbtData).ToListAsync();
+            }
+
+            var result = new List<Result>();
+            foreach (var item in auctions)
+            {
+                var key = service.KeyFromSaveAuction(item);
+                var actual = toCheck[item.UId];
+                if(key == actual.Key)
+                    continue;
+                // yikes
+                result.Add(new()
+                {
+                    New = key,
+                    Old = actual.Key,
+                    Uid = item.UId,
+                });
+            }
+            return result;
+        }
+
+        public class Result
+        {
+            public AuctionKey Old { get; set; }
+            public AuctionKey New { get; set; }
+            public long Uid { get; set; }
+        }
 
         /// <summary>
         /// Retrieve lookup references
