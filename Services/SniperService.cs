@@ -194,7 +194,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (result.Lbin.Price == default && l.Count > 0)
                 {
-                    var closest = l.Where(l => l.Key != null && l.Value?.Lbin.Price > 0).OrderByDescending(m => key.Similarity(m.Key)).FirstOrDefault();
+                    var closest = l.Where(l => l.Key != null && l.Value?.Lbin.Price > 0).OrderByDescending(m => key.Similarity(m.Key) + m.Value.Volume).FirstOrDefault();
                     if (closest.Key != default)
                     {
                         result.Lbin = closest.Value.Lbin;
@@ -376,7 +376,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (dropLevel == 0)
             {
                 key.Enchants = auction.Enchantments
-                    ?.Where(e => e.Level >= MinEnchantMap[e.Type] )
+                    ?.Where(e => e.Level >= MinEnchantMap[e.Type])
                     .Select(e => new Models.Enchantment() { Lvl = e.Level, Type = e.Type }).ToList();
 
                 key.Modifiers = auction.FlatenedNBT?.Where(n =>
