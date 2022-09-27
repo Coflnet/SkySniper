@@ -147,7 +147,7 @@ ORDER BY l.`AuctionId`  DESC;
                 for (int i = 0; i < 1; i++)
                 {
                     var bkey = KeyFromSaveAuction(auction, i);
-                    if(i == 0)
+                    if (i == 0)
                         result.ItemKey = bkey.ToString();
                     if (l.TryGetValue(bkey, out ReferenceAuctions bucket))
                     {
@@ -191,6 +191,22 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
             return result;
+        }
+
+        internal void Move(string tag, long auctionId, AuctionKey from, AuctionKey to)
+        {
+            var oldBucket = Lookups[tag].Lookup[from];
+            var newBucket = Lookups[tag].Lookup[to];
+
+            var toChange = oldBucket.References.Where(e => e.AuctionId == auctionId).First();
+            var newList = oldBucket.References.Where(e => e.AuctionId != auctionId).ToList();
+            oldBucket.References = new ConcurrentQueue<ReferencePrice>(newList);
+
+            if(!newBucket.References.Contains(toChange))
+                newBucket.References.Enqueue(toChange);
+
+            UpdateMedian(oldBucket);
+            UpdateMedian(newBucket);
         }
 
         public IEnumerable<long> GetReferenceUids(SaveAuction auction)
@@ -246,7 +262,11 @@ ORDER BY l.`AuctionId`  DESC;
             // move reference to sold
             bucket.References.Enqueue(reference);
             bucket.Lbins.Remove(reference);
+            UpdateMedian(bucket);
+        }
 
+        private static void UpdateMedian(ReferenceAuctions bucket)
+        {
             var size = bucket.References.Count;
             if (size > 90)
                 bucket.References.TryDequeue(out ReferencePrice ra);
@@ -349,9 +369,9 @@ ORDER BY l.`AuctionId`  DESC;
                     || Coflnet.Sky.Core.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
                     .Select(e => new Models.Enchantment() { Lvl = e.Level, Type = e.Type }).ToList();
 
-                key.Modifiers = auction.FlatenedNBT?.Where(n => 
-                                       IncludeKeys.Contains(n.Key) 
-                                    || n.Value == "PERFECT" 
+                key.Modifiers = auction.FlatenedNBT?.Where(n =>
+                                       IncludeKeys.Contains(n.Key)
+                                    || n.Value == "PERFECT"
                                     || n.Key.StartsWith("MASTER_CRYPT_TANK_ZOMBIE")
                                     || n.Key.StartsWith("MINOS_CHAMPION_")
                                     || n.Key == "MINOS_INQUISITOR_750"
@@ -446,7 +466,7 @@ ORDER BY l.`AuctionId`  DESC;
 
                 return Ignore;
             }
-            if(s.Key == "baseStatBoostPercentage")
+            if (s.Key == "baseStatBoostPercentage")
             {
                 var val = int.Parse(s.Value);
                 if (val < 46)

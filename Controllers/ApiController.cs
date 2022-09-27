@@ -192,8 +192,10 @@ namespace Coflnet.Sky.Sniper.Controllers
                 {
                     New = key,
                     Old = actual.Key,
-                    Uid = item.UId,
+                    Reference = actual.r
                 });
+
+                service.Move(tag, actual.r.AuctionId, actual.Key, key);
             }
             return result;
         }
@@ -202,7 +204,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         {
             public AuctionKey Old { get; set; }
             public AuctionKey New { get; set; }
-            public long Uid { get; set; }
+            public ReferencePrice Reference { get; set; }
         }
 
         /// <summary>
