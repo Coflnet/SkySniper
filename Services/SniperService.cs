@@ -448,7 +448,8 @@ ORDER BY l.`AuctionId`  DESC;
             if (s.Key == "hpc")
                 return NormalizeNumberTo(s, 15);
             if (s.Key == "heldItem")
-                return new KeyValuePair<string, string>("petItem", s.Value switch
+            {
+                var heldItem = s.Value switch
                 {
                     "MINOS_RELIC" => "MINOS_RELIC",
                     "DWARF_TURTLE_SHELMET" => "DWARF_TURTLE_SHELMET",
@@ -456,7 +457,11 @@ ORDER BY l.`AuctionId`  DESC;
                     "PET_ITEM_QUICK_CLAW" => "QUICK_CLAW",
                     "PET_ITEM_TIER_BOOST" => "TB",
                     _ => null
-                });
+                };
+                if(heldItem == null)
+                    return Ignore;
+                return new KeyValuePair<string, string>("petItem", heldItem);
+            }
             if (s.Key == "upgrade_level")
                 return new KeyValuePair<string, string>("dungeon_item_level", s.Value);
             if (ShardAttributes.TryGetValue(s.Key, out var minLvl))
