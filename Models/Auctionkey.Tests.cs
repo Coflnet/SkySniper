@@ -60,6 +60,23 @@ namespace Coflnet.Sky.Sniper.Models
             var keyB = sniperService.KeyFromSaveAuction(b);
             Assert.Less(keyA.Similarity(keyB), keyA.Similarity(keyA));
         }
+        [Test]
+        public void IgnoresBadEnchants()
+        {
+            var key = new AuctionKey() { Reforge = ItemReferences.Reforge.Any, Enchants = new List<Enchantment>(), Modifiers = new() };
+            key.Enchants.Add(new() { Type = Core.Enchantment.EnchantmentType.execute, Lvl = 8 });
+            System.Console.WriteLine(key);
+            var auction = new SaveAuction()
+            {
+                Enchantments = new() {
+                new() { Level = 6, Type = Core.Enchantment.EnchantmentType.luck },
+                 new() { Level = 8, Type = Core.Enchantment.EnchantmentType.execute }
+             }
+            };
+            var service = new SniperService();
+            // by default reforge and tier match
+            Assert.AreEqual(key, service.KeyFromSaveAuction(auction));
+        }
     }
 
 }

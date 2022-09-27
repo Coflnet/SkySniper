@@ -70,7 +70,7 @@ namespace Coflnet.Sky.Sniper.Services
             {"mana_pool", 1},
             {"breeze", 1},
             {"speed", 2},
-            {"life_regeneration", 2},
+            {"life_regeneration", 1}, // especially valuable in combination with mana_pool
             {"fishing_experience", 2},
             {"ignition", 2},
             {"blazing_fortune", 2},
@@ -94,6 +94,8 @@ namespace Coflnet.Sky.Sniper.Services
                 }
             }
         }
+
+        private Dictionary<Core.Enchantment.EnchantmentType, byte> MinEnchantMap = new();
 
         /** NOTES
 yogsKilled - needs further be looked into
@@ -132,6 +134,16 @@ ORDER BY l.`AuctionId`  DESC;
             foreach (var item in ShardAttributes)
             {
                 IncludeKeys.Add(item.Key);
+            }
+
+            foreach (var enchant in Enum.GetValues<Core.Enchantment.EnchantmentType>())
+            {
+                MinEnchantMap[enchant] = 6;
+            }
+
+            foreach (var item in Coflnet.Sky.Core.Constants.RelevantEnchants)
+            {
+                MinEnchantMap[item.Type] = item.Level;
             }
         }
 
@@ -364,9 +376,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (dropLevel == 0)
             {
                 key.Enchants = auction.Enchantments
-                    ?.Where(e => e.Level >= 6 && e.Type != Core.Enchantment.EnchantmentType.feather_falling
-                         && e.Type != Core.Enchantment.EnchantmentType.infinite_quiver
-                    || Coflnet.Sky.Core.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
+                    ?.Where(e => e.Level >= MinEnchantMap[e.Type] )
                     .Select(e => new Models.Enchantment() { Lvl = e.Level, Type = e.Type }).ToList();
 
                 key.Modifiers = auction.FlatenedNBT?.Where(n =>
@@ -446,7 +456,12 @@ ORDER BY l.`AuctionId`  DESC;
                 return new KeyValuePair<string, string>(s.Key, "100k");
             }
             if (s.Key == "hpc")
-                return NormalizeNumberTo(s, 15);
+                return GetNumeric(s) switch
+                {
+                    15 => new(s.Key, "1"),
+                    > 10 => new(s.Key, "0"),
+                    _ => Ignore
+                };
             if (s.Key == "heldItem")
             {
                 var heldItem = s.Value switch
@@ -458,7 +473,7 @@ ORDER BY l.`AuctionId`  DESC;
                     "PET_ITEM_TIER_BOOST" => "TB",
                     _ => null
                 };
-                if(heldItem == null)
+                if (heldItem == null)
                     return Ignore;
                 return new KeyValuePair<string, string>("petItem", heldItem);
             }
@@ -489,11 +504,22 @@ ORDER BY l.`AuctionId`  DESC;
 
         public static KeyValuePair<string, string> NormalizeNumberTo(KeyValuePair<string, string> s, int groupingSize, int highestGroup = int.MaxValue)
         {
-            var group = ((long)double.Parse(s.Value)) / groupingSize;
+            var group = GetNumeric(s) / groupingSize;
             return new KeyValuePair<string, string>(s.Key, Math.Min(group, highestGroup).ToString());
         }
 
-
+        private static long GetNumeric(KeyValuePair<string, string> s)
+        {
+            try
+            {
+                return ((long)double.Parse(s.Value));
+            }
+            catch (Exception)
+            {
+                Console.WriteLine($"could not parse {s.Key} {s.Value}");
+                throw;
+            }
+        }
 
         public void TestNewAuction(SaveAuction auction, bool triggerEvents = true)
         {

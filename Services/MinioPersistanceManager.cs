@@ -79,8 +79,9 @@ namespace Coflnet.Sky.Sniper.Services
         private async Task<List<string>> GetIemIds(MinioClient client)
         {
             List<string> items = new List<string>();
-            if (!await client.BucketExistsAsync("sky-sniper"))
-                await client.MakeBucketAsync("sky-sniper");
+            
+            if (!await client.BucketExistsAsync(new BucketExistsArgs().WithBucket("sky-sniper")))
+                await client.MakeBucketAsync(new MakeBucketArgs().WithBucket("sky-sniper"));
 
             var response = new MemoryStream();
             await client.GetObjectAsync("sky-sniper", "itemList", stream =>
