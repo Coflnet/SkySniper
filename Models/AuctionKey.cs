@@ -61,6 +61,7 @@ namespace Coflnet.Sky.Sniper.Models
             }
             else
                 sum -= this.Modifiers?.Count ?? 0 - key.Modifiers?.Count ?? 0;
+            sum -= Math.Abs(key.Count - Count);
             return sum;
         }
 
