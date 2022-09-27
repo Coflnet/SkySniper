@@ -297,12 +297,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 Lookups[auction.Tag] = new PriceLookup();
             }
-            if (!TryGetReferenceAuctions(auction, out ReferenceAuctions bucket))
-            {
-                bucket = CreateAndAddBucket(auction);
-            }
-
-            return bucket;
+            return GetOrAdd(KeyFromSaveAuction(auction), Lookups[auction.Tag]);
         }
 
         private static long GetMedian(List<ReferencePrice> deduplicated)
