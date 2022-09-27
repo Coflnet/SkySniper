@@ -196,13 +196,13 @@ ORDER BY l.`AuctionId`  DESC;
         internal void Move(string tag, long auctionId, AuctionKey from, AuctionKey to)
         {
             var oldBucket = Lookups[tag].Lookup[from];
-            var newBucket = Lookups[tag].Lookup[to];
+            var newBucket = GetOrAdd(to, Lookups[tag]);
 
             var toChange = oldBucket.References.Where(e => e.AuctionId == auctionId).First();
             var newList = oldBucket.References.Where(e => e.AuctionId != auctionId).ToList();
             oldBucket.References = new ConcurrentQueue<ReferencePrice>(newList);
 
-            if(!newBucket.References.Contains(toChange))
+            if (!newBucket.References.Contains(toChange))
                 newBucket.References.Enqueue(toChange);
 
             UpdateMedian(oldBucket);
@@ -316,9 +316,14 @@ ORDER BY l.`AuctionId`  DESC;
 
         private ReferenceAuctions CreateAndAddBucket(SaveAuction auction, int dropLevel = 0)
         {
-            ReferenceAuctions bucket = new ReferenceAuctions();
-            Lookups[auction.Tag].Lookup.TryAdd(KeyFromSaveAuction(auction, dropLevel), bucket);
-            return bucket;
+            var key = KeyFromSaveAuction(auction, dropLevel);
+            var itemBucket = Lookups[auction.Tag];
+            return GetOrAdd(key, itemBucket);
+        }
+
+        private static ReferenceAuctions GetOrAdd(AuctionKey key, PriceLookup itemBucket)
+        {
+            return itemBucket.Lookup.GetOrAdd(key, (k) => new ReferenceAuctions());
         }
 
         private static ReferencePrice CreateReferenceFromAuction(SaveAuction auction)
