@@ -57,7 +57,7 @@ namespace Coflnet.Sky.Sniper.Services
             "ethermerge",
             "edition", // great spook stuff
             "hpc", // hot potato books
-            "tuned_transmission", // aotv upgrade
+            //"tuned_transmission", // aotv upgrade
             //"power_ability_scroll", // disabled as suggested by Coyu because comonly not worth 1m (up to 2m at most)
             "captured_player", // cake souls
             "MUSIC", //rune
@@ -70,12 +70,18 @@ namespace Coflnet.Sky.Sniper.Services
             {"mana_pool", 1},
             {"breeze", 1},
             {"speed", 2},
-            {"life_regeneration", 1}, // especially valuable in combination with mana_pool
+            {"life_regeneration", 2}, // especially valuable in combination with mana_pool
             {"fishing_experience", 2},
             {"ignition", 2},
             {"blazing_fortune", 2},
             {"double_hook", 3},
             //{"lifeline", 3} to low volume
+        };
+
+        // combos that are worth more starting at lvl 1 because they are together
+        private readonly Dictionary<string, string> EnrichmentCombos = new(){
+            {"blazing_fortune", "fishing_experience"},
+            {"life_regeneration", "mana_pool"}
         };
 
         public void FinishedUpdate()
@@ -131,6 +137,15 @@ ORDER BY l.`AuctionId`  DESC;
                 if (la.Finder == LowPricedAuction.FinderType.SNIPER && (float)la.Auction.StartingBid / la.TargetPrice < 0.8 && la.TargetPrice > 1_000_000)
                     Console.WriteLine($"A: {la.Auction.Uuid} {la.Auction.StartingBid} -> {la.TargetPrice}  {KeyFromSaveAuction(la.Auction)}");
             };
+            foreach (var item in EnrichmentCombos.ToList())
+            {
+                // add the reverse for lookup
+                EnrichmentCombos.Add(item.Value, item.Key);
+            }
+            foreach (var item in EnrichmentCombos)
+            {
+                IncludeKeys.Add(item.Key);
+            }
             foreach (var item in ShardAttributes)
             {
                 IncludeKeys.Add(item.Key);
@@ -387,7 +402,7 @@ ORDER BY l.`AuctionId`  DESC;
                                     || n.Key == "MINOS_INQUISITOR_750"
                                     || n.Key.StartsWith("MASTER_CRYPT_UNDEAD_") && n.Key.Length > 23) // admins
                                 .OrderByDescending(n => n.Key)
-                                .Select(i => NormalizeData(i, auction.Tag))
+                                .Select(i => NormalizeData(i, auction))
                                 .Where(i => i.Key != Ignore.Key).ToList();
             }
             else if (dropLevel == 1)
@@ -431,10 +446,10 @@ ORDER BY l.`AuctionId`  DESC;
             return key;
         }
 
-        private static KeyValuePair<string, string> NormalizeData(KeyValuePair<string, string> s, string tag)
+        private KeyValuePair<string, string> NormalizeData(KeyValuePair<string, string> s, SaveAuction auction)
         {
             if (s.Key == "exp")
-                if (tag == "PET_GOLDEN_DRAGON")
+                if (auction.Tag == "PET_GOLDEN_DRAGON")
                     return NormalizeNumberTo(s, 30_036_483, 7);
                 else
                     return NormalizeNumberTo(s, 4_225_538, 6);
@@ -471,6 +486,8 @@ ORDER BY l.`AuctionId`  DESC;
                     "QUICK_CLAW" => "QUICK_CLAW",
                     "PET_ITEM_QUICK_CLAW" => "QUICK_CLAW",
                     "PET_ITEM_TIER_BOOST" => "TB",
+                    "PET_ITEM_LUCKY_CLOVER" => "LUCKY",
+                    "PET_ITEM_LUCKY_CLOVER_DROP" => "LUCKY",
                     _ => null
                 };
                 if (heldItem == null)
@@ -483,7 +500,9 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 if (int.Parse(s.Value) >= minLvl)
                     return s;
-
+                // TODO add combos 
+                if (EnrichmentCombos.TryGetValue(s.Key, out var otherKey) && auction.FlatenedNBT.TryGetValue(otherKey, out _))
+                    return s;
                 return Ignore;
             }
             if (s.Key == "baseStatBoostPercentage")
