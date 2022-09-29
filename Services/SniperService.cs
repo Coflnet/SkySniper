@@ -79,7 +79,7 @@ namespace Coflnet.Sky.Sniper.Services
         };
 
         // combos that are worth more starting at lvl 1 because they are together
-        private readonly Dictionary<string, string> EnrichmentCombos = new(){
+        private readonly Dictionary<string, string> AttributeCombos = new(){
             {"blazing_fortune", "fishing_experience"},
             {"life_regeneration", "mana_pool"}
         };
@@ -137,12 +137,12 @@ ORDER BY l.`AuctionId`  DESC;
                 if (la.Finder == LowPricedAuction.FinderType.SNIPER && (float)la.Auction.StartingBid / la.TargetPrice < 0.8 && la.TargetPrice > 1_000_000)
                     Console.WriteLine($"A: {la.Auction.Uuid} {la.Auction.StartingBid} -> {la.TargetPrice}  {KeyFromSaveAuction(la.Auction)}");
             };
-            foreach (var item in EnrichmentCombos.ToList())
+            foreach (var item in AttributeCombos.ToList())
             {
                 // add the reverse for lookup
-                EnrichmentCombos.Add(item.Value, item.Key);
+                AttributeCombos.Add(item.Value, item.Key);
             }
-            foreach (var item in EnrichmentCombos)
+            foreach (var item in AttributeCombos)
             {
                 IncludeKeys.Add(item.Key);
             }
@@ -501,10 +501,12 @@ ORDER BY l.`AuctionId`  DESC;
                 if (int.Parse(s.Value) >= minLvl)
                     return s;
                 // TODO add combos 
-                if (EnrichmentCombos.TryGetValue(s.Key, out var otherKey) && auction.FlatenedNBT.TryGetValue(otherKey, out _))
+                if (AttributeCombos.TryGetValue(s.Key, out var otherKey) && auction.FlatenedNBT.TryGetValue(otherKey, out _))
                     return s;
                 return Ignore;
             }
+            if(s.Key == "talisman_enrichment")
+                return new KeyValuePair<string, string>("talisman_enrichment", "yes");
             if (s.Key == "baseStatBoostPercentage")
             {
                 var val = int.Parse(s.Value);
