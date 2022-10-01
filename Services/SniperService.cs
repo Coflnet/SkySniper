@@ -171,45 +171,37 @@ ORDER BY l.`AuctionId`  DESC;
             if (Lookups.TryGetValue(auction.Tag, out PriceLookup lookup))
             {
                 var l = lookup.Lookup;
-                for (int i = 0; i < 1; i++)
+                var itemKey = KeyFromSaveAuction(auction);
+                result.ItemKey = itemKey.ToString();
+                if (l.TryGetValue(itemKey, out ReferenceAuctions bucket))
                 {
-                    var bkey = KeyFromSaveAuction(auction, i);
-                    if (i == 0)
-                        result.ItemKey = bkey.ToString();
-                    if (l.TryGetValue(bkey, out ReferenceAuctions bucket))
+                    if (result.Lbin.AuctionId == default && bucket.Lbin.AuctionId != default)
                     {
-                        if (result.Lbin.AuctionId == default && bucket.Lbin.AuctionId != default)
-                        {
-                            result.Lbin = bucket.Lbin;
-                            result.LbinKey = KeyFromSaveAuction(auction, i).ToString();
-                        }
-                        if (result.Median == default && bucket.Price != default)
-                        {
-                            result.Median = bucket.Price;
-                            result.Volume = bucket.Volume;
-                            result.MedianKey = KeyFromSaveAuction(auction, i).ToString();
-                        }
+                        result.Lbin = bucket.Lbin;
+                        result.LbinKey = itemKey.ToString();
+                    }
+                    if (result.Median == default && bucket.Price != default)
+                    {
+                        AssignMedian(result, itemKey, bucket);
                     }
                 }
-                var key = KeyFromSaveAuction(auction);
+
                 if (result.Median == default)
                 {
-                    if (key.GetHashCode() % 3 == 0 && DateTime.Now.Millisecond % 30 == 0)
-                        Console.WriteLine("Finding closest median brute for " + auction.Tag + key);
+                    if (itemKey.GetHashCode() % 3 == 0 && DateTime.Now.Millisecond % 30 == 0)
+                        Console.WriteLine("Finding closest median brute for " + auction.Tag + itemKey);
                     var closest = l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0 && l.Value.References.Count > 3)
-                                    .OrderByDescending(m => key.Similarity(m.Key)).FirstOrDefault();
+                                    .OrderByDescending(m => itemKey.Similarity(m.Key)).FirstOrDefault();
 
                     if (closest.Key != default)
                     {
-                        result.Median = closest.Value.Price;
-                        result.Volume = closest.Value.Volume;
-                        result.MedianKey = closest.Key.ToString();
+                        AssignMedian(result, closest.Key, closest.Value);
                     }
 
                 }
                 if (result.Lbin.Price == default && l.Count > 0)
                 {
-                    var closest = l.Where(l => l.Key != null && l.Value?.Lbin.Price > 0).OrderByDescending(m => key.Similarity(m.Key) + m.Value.Volume).FirstOrDefault();
+                    var closest = l.Where(l => l.Key != null && l.Value?.Lbin.Price > 0).OrderByDescending(m => itemKey.Similarity(m.Key) + Math.Min(m.Value.Volume, 6)).FirstOrDefault();
                     if (closest.Key != default)
                     {
                         result.Lbin = closest.Value.Lbin;
@@ -218,6 +210,13 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
             return result;
+        }
+
+        private static void AssignMedian(PriceEstimate result, AuctionKey key, ReferenceAuctions bucket)
+        {
+            result.Median = bucket.Price;
+            result.Volume = bucket.Volume;
+            result.MedianKey = key.ToString();
         }
 
         internal void Move(string tag, long auctionId, AuctionKey from, AuctionKey to)
@@ -505,7 +504,7 @@ ORDER BY l.`AuctionId`  DESC;
                     return s;
                 return Ignore;
             }
-            if(s.Key == "talisman_enrichment")
+            if (s.Key == "talisman_enrichment")
                 return new KeyValuePair<string, string>("talisman_enrichment", "yes");
             if (s.Key == "baseStatBoostPercentage")
             {
