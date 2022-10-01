@@ -77,6 +77,34 @@ namespace Coflnet.Sky.Sniper.Models
             // by default reforge and tier match
             Assert.AreEqual(key, service.KeyFromSaveAuction(auction));
         }
+        [Test]
+        public void UnlockedSlotsVsLegianSimilarity()
+        {
+            var baseAuction = new SaveAuction()
+            {
+                Enchantments = new() { new(Core.Enchantment.EnchantmentType.ultimate_legion, 5) },
+                FlatenedNBT = new() { { "rarity_upgrades", "1" }, { "unlocked_slots", "UNIVERSAL_0" } },
+                Tier = Tier.MYTHIC
+            };
+            var targetAuction = new SaveAuction()
+            {
+                Enchantments = new() { new(Core.Enchantment.EnchantmentType.ultimate_legion, 5) },
+                FlatenedNBT = new() { { "rarity_upgrades", "1" } },
+                Tier = Tier.MYTHIC
+            };
+            var badAuction = new SaveAuction()
+            {
+                Enchantments = new() { new(Core.Enchantment.EnchantmentType.growth, 5) },
+                FlatenedNBT = new() { { "rarity_upgrades", "1" }, { "unlocked_slots", "UNIVERSAL_0" } },
+                Tier = Tier.MYTHIC
+            };
+            var service = new SniperService();
+            var originkey = service.KeyFromSaveAuction(baseAuction);
+            var targetKey = service.KeyFromSaveAuction(targetAuction);
+            var badKey = service.KeyFromSaveAuction(badAuction);
+            // by default reforge and tier match
+            Assert.Greater(originkey.Similarity(targetKey), originkey.Similarity(badKey));
+        }
     }
 
 }

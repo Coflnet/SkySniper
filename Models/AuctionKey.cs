@@ -46,6 +46,7 @@ namespace Coflnet.Sky.Sniper.Models
             if (this.Enchants != null && key.Enchants != null)
             {
                 sum += this.Enchants.Count(e => key.Enchants.Any(k => k.Lvl == e.Lvl && k.Type == e.Type)) * 3;
+                sum += this.Enchants.Where(e => Constants.VeryValuableEnchant.TryGetValue(e.Type, out var lvl) && key.Enchants.Contains(e)).Count() * 10;
             }
             sum -= (this.Enchants?.Count ?? 0) + (key.Enchants?.Count ?? 0);
 
