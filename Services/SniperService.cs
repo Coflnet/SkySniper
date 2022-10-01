@@ -183,7 +183,7 @@ ORDER BY l.`AuctionId`  DESC;
                             result.Lbin = bucket.Lbin;
                             result.LbinKey = KeyFromSaveAuction(auction, i).ToString();
                         }
-                        if (result.Median == default && (bucket.Price != default && bucket.Volume > 1))
+                        if (result.Median == default && bucket.Price != default)
                         {
                             result.Median = bucket.Price;
                             result.Volume = bucket.Volume;
