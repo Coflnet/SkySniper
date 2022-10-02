@@ -381,6 +381,8 @@ ORDER BY l.`AuctionId`  DESC;
         }
 
         private static List<KeyValuePair<string, string>> EmptyModifiers = new();
+        private static DateTime UnlockedIntroduction = new DateTime(2021, 9, 4);
+        private static List<string> GemPurities = new() { "PERFECT", "FLAWLESS", "FINE", "ROUGH" };
         public AuctionKey KeyFromSaveAuction(SaveAuction auction, int dropLevel = 0)
         {
             var key = new AuctionKey();
@@ -403,6 +405,8 @@ ORDER BY l.`AuctionId`  DESC;
                                 .OrderByDescending(n => n.Key)
                                 .Select(i => NormalizeData(i, auction))
                                 .Where(i => i.Key != Ignore.Key).ToList();
+                if (auction.ItemCreatedAt < UnlockedIntroduction && auction.FlatenedNBT.Any(v => GemPurities.Contains(v.Value)))
+                    key.Modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", "all"));
             }
             else if (dropLevel == 1)
             {
