@@ -30,7 +30,7 @@ namespace Coflnet.Sky.Sniper.Services
             "drill_part_engine",
             "drill_part_fuel_tank",
             // deemend to low difference "drill_part_upgrade_module",
-            // could not observe price change "ability_scroll", // applied to hyperions
+            "ability_scroll", // applied to hyperions worth ~50m https://discord.com/channels/267680588666896385/1031668335731019886/1031668607479975976
             // magma armor is to cheap "magmaCubesKilled"
             "captured_player", // cake soul 
             "event", // year+eventtype
