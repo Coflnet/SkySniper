@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Models;
 using Microsoft.VisualBasic;
+using Newtonsoft.Json;
 using NUnit.Framework;
 
 namespace Coflnet.Sky.Sniper.Services
@@ -89,7 +90,7 @@ namespace Coflnet.Sky.Sniper.Services
                 UId = new System.Random().Next(),
                 AuctioneerId = new System.Random().Next().ToString(),
                 FlatenedNBT = new Dictionary<string, string>(origin.FlatenedNBT)
-        };
+            };
         }
 
         [Test]
@@ -237,7 +238,45 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(1000, price.Lbin.Price);
         }
 
+        [Test]
+        public void HigherLvlPetLbinTest()
+        {
+            highestValAuction.FlatenedNBT["exp"] = "10000";
+            highestValAuction.StartingBid = 5;
+            var badActiveLbin = Dupplicate(highestValAuction);
 
+            badActiveLbin.HighestBidAmount = 1500;
+            var cheaperHigherLevel = Dupplicate(highestValAuction);
+            cheaperHigherLevel.FlatenedNBT["exp"] = "10000000";
+            cheaperHigherLevel.HighestBidAmount = 500;
+            var volumeHelp = Dupplicate(highestValAuction);
+            volumeHelp.HighestBidAmount = 1900;
+            service.AddSoldItem(Dupplicate(volumeHelp));
+            service.AddSoldItem(Dupplicate(volumeHelp));
+            service.AddSoldItem(Dupplicate(volumeHelp));
+            service.TestNewAuction(badActiveLbin);
+            service.TestNewAuction(cheaperHigherLevel);
+            service.FinishedUpdate();
+            LowPricedAuction found = null;
+            var lowAssert = (LowPricedAuction s) =>
+            {
+                if (s.Finder != LowPricedAuction.FinderType.SNIPER_MEDIAN)
+                    found = s;
+                System.Console.WriteLine(JsonConvert.SerializeObject(s));
+            };
+            service.FoundSnipe += lowAssert;
+            var testFlip = Dupplicate(highestValAuction);
+            testFlip.StartingBid = 700;
+            service.TestNewAuction(testFlip);
+            Assert.IsNull(found, "low priced should not be triggered because higer level lower price exists");
+
+
+            testFlip.StartingBid = 200;
+            service.TestNewAuction(testFlip);
+            Assert.IsNotNull(found, "flip should have been found as its lower than higher level");
+            Assert.AreEqual(500, found.TargetPrice, "lowest bin price should be used");
+
+        }
         //[Test]
         public void LoadTest()
         {

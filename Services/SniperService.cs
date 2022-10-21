@@ -526,6 +526,26 @@ ORDER BY l.`AuctionId`  DESC;
             return s;
         }
 
+        /// <summary>
+        /// Returns keys that are higher value and have to be checked before something is declared to be a snipe
+        /// </summary>
+        /// <param name="baseKey">The actual auction key</param>
+        /// <returns></returns>
+        private IEnumerable<AuctionKey> HigherValueKeys(AuctionKey baseKey)
+        {
+            var exp = baseKey.Modifiers.Where(m => m.Key == "exp").FirstOrDefault();
+            if (exp.Key != default && exp.Value != "6")
+            {
+                for (int i = int.Parse(exp.Value) + 1; i < 7; i++)
+                {
+                    yield return new AuctionKey(baseKey)
+                    {
+                        Modifiers = baseKey.Modifiers.Where(m => m.Key != "exp").Append(new("exp", i.ToString())).ToList()
+                    };
+                }
+            }
+        }
+
         public static KeyValuePair<string, string> NormalizeNumberTo(KeyValuePair<string, string> s, int groupingSize, int highestGroup = int.MaxValue)
         {
             var group = GetNumeric(s) / groupingSize;
@@ -573,23 +593,20 @@ ORDER BY l.`AuctionId`  DESC;
                     Console.WriteLine("is null");
                 }
                 if (triggerEvents)
-                    i = FindFlip(auction, lbinPrice, medPrice, i, bucket, key);
+                    i = FindFlip(auction, lbinPrice, medPrice, i, bucket, key, l);
 
                 UpdateLbin(auction, bucket);
             }
         }
 
-        private int FindFlip(SaveAuction auction, double lbinPrice, double medPrice, int i, ReferenceAuctions bucket, AuctionKey key)
+        private int FindFlip(SaveAuction auction, double lbinPrice, double medPrice, int i, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
         {
             // only trigger lbin if also below median or median is not set
             var volume = bucket.Volume;
-            if (bucket.Lbin.Price > lbinPrice && (bucket.Price > lbinPrice) && volume > 0.2f)// || bucket.Price == 0))
+            if (bucket.Lbin.Price > lbinPrice && (bucket.Price > lbinPrice) && volume > 0.2f
+               )// || bucket.Price == 0))
             {
-                var props = CreateReference(bucket.Lbin.AuctionId, key);
-                props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
-                props["mVal"] = bucket.Price.ToString();
-                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, Math.Min(bucket.Lbin.Price, bucket.Price), props);
-                i += 1;
+                PotentialSnipe(auction, lbinPrice, bucket, key, l);
             }
             else if (bucket.Price > medPrice)
             {
@@ -615,6 +632,29 @@ ORDER BY l.`AuctionId`  DESC;
             }
 
             return i;
+        }
+
+        private void PotentialSnipe(SaveAuction auction, double lbinPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
+        {
+            var higherValueLowerBin = bucket.Lbin.Price;
+            if (HigherValueKeys(key).Any(k =>
+            {
+                if (l.TryGetValue(k, out ReferenceAuctions altBucket))
+                {
+                    if (altBucket.Lbin.Price < lbinPrice)
+                    {
+                        return true;
+                    }
+                    if (altBucket.Lbin.Price != 0 && altBucket.Lbin.Price < higherValueLowerBin)
+                        higherValueLowerBin = altBucket.Lbin.Price;// cheaper lbin found
+                }
+                return false;
+            }))
+                return;
+            var props = CreateReference(bucket.Lbin.AuctionId, key);
+            props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
+            props["mVal"] = bucket.Price.ToString();
+            FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, Math.Min(higherValueLowerBin, bucket.Price), props);
         }
 
         public void PrintLogQueue()
