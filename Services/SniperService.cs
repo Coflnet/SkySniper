@@ -18,7 +18,7 @@ namespace Coflnet.Sky.Sniper.Services
         public event Action<LowPricedAuction> FoundSnipe;
         private readonly HashSet<string> IncludeKeys = new HashSet<string>()
         {
-            //"baseStatBoostPercentage", no effect anymore
+            "baseStatBoostPercentage", // has an effect on drops from dungeons, is filtered to only max level
 
             "dye_item",
             "backpack_color",
@@ -515,9 +515,9 @@ ORDER BY l.`AuctionId`  DESC;
                 var val = int.Parse(s.Value);
                 if (val < 46)
                     return Ignore;
-                if (val < 50)
-                    return new KeyValuePair<string, string>("baseStatBoost", "46-49");
-                if (val == 50)
+                //if (val < 50)
+                //    return new KeyValuePair<string, string>("baseStatBoost", "46-49");
+                if (val == 50) // max level found
                     return new KeyValuePair<string, string>("baseStatBoost", "50");
                 if (val > 50)
                     return new KeyValuePair<string, string>("baseStatBoost", ">50");
