@@ -36,6 +36,7 @@ namespace Coflnet.Sky.Sniper.Services
             "event", // year+eventtype
             "wood_singularity_count", // self explanatory
             "art_of_war_count", //       ^^
+            "artOfPeaceApplied",
             "new_years_cake", // year of the cake
             "heldItem", // pet held item
             "skin", // cosmetic skins
@@ -76,6 +77,7 @@ namespace Coflnet.Sky.Sniper.Services
             {"blazing_fortune", 2},
             {"double_hook", 3},
             //{"lifeline", 3} to low volume
+            // life recovery 3
         };
 
         // combos that are worth more starting at lvl 1 because they are together
