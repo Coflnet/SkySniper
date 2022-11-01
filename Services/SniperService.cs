@@ -126,7 +126,8 @@ ORDER BY l.`AuctionId`  DESC;
             "rarity_upgrades",
             "winning_bid",
             "skin",
-            "exp"
+            "exp",
+            "color"
         };
         private static KeyValuePair<string, string> Ignore = new KeyValuePair<string, string>(string.Empty, string.Empty);
 
