@@ -90,6 +90,7 @@ namespace Coflnet.Sky.Sniper.Services
             {"veteran", "mending"},
             {"mana_regeneration", "mana_pool"}
         };
+        private readonly ConcurrentDictionary<string, HashSet<string>> AttributeComboLookup = new();
 
         public void FinishedUpdate()
         {
@@ -147,8 +148,8 @@ ORDER BY l.`AuctionId`  DESC;
             };
             foreach (var item in AttributeCombos.ToList())
             {
-                // add the reverse for lookup
-                AttributeCombos.Add(item.Value, item.Key);
+                AttributeComboLookup.GetOrAdd(item.Key, a => new()).Add(item.Value);
+                AttributeComboLookup.GetOrAdd(item.Value, a => new()).Add(item.Key);
             }
             foreach (var item in AttributeCombos)
             {
@@ -511,8 +512,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 if (int.Parse(s.Value) >= minLvl)
                     return s;
-                // TODO add combos 
-                if (AttributeCombos.TryGetValue(s.Key, out var otherKey) && auction.FlatenedNBT.TryGetValue(otherKey, out _))
+                if (HasAttributeCombo(s, auction))
                     return s;
                 return Ignore;
             }
@@ -532,6 +532,17 @@ ORDER BY l.`AuctionId`  DESC;
             }
 
             return s;
+        }
+
+        /// <summary>
+        /// Matches valuable attribute combinations
+        /// </summary>
+        /// <param name="s"></param>
+        /// <param name="auction"></param>
+        /// <returns></returns>
+        private bool HasAttributeCombo(KeyValuePair<string, string> s, SaveAuction auction)
+        {
+            return AttributeComboLookup.TryGetValue(s.Key, out var otherKeys) && otherKeys.Any(otherKey => auction.FlatenedNBT.TryGetValue(otherKey, out _));
         }
 
         /// <summary>
