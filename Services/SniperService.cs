@@ -83,7 +83,9 @@ namespace Coflnet.Sky.Sniper.Services
         // combos that are worth more starting at lvl 1 because they are together
         private readonly Dictionary<string, string> AttributeCombos = new(){
             {"blazing_fortune", "fishing_experience"},
-            {"life_regeneration", "mana_pool"}
+            {"life_regeneration", "mana_pool"},
+            {"veteran", "mending"},
+            {"mana_regeneration", "mana_pool"}
         };
 
         public void FinishedUpdate()
