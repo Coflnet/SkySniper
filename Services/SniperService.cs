@@ -24,6 +24,7 @@ namespace Coflnet.Sky.Sniper.Services
             "backpack_color",
             "party_hat_color",
             "color", // armour
+            "model", // abicase
             // potion "level", // not engough impact
             // "item_tier", // mostly found on armor, unsure what it does
             "talisman_enrichment", // talismans can be enriched with additional stats
@@ -612,13 +613,13 @@ ORDER BY l.`AuctionId`  DESC;
                     Console.WriteLine("is null");
                 }
                 if (triggerEvents)
-                    i = FindFlip(auction, lbinPrice, medPrice, i, bucket, key, l);
+                    FindFlip(auction, lbinPrice, medPrice, bucket, key, l);
 
                 UpdateLbin(auction, bucket);
             }
         }
 
-        private int FindFlip(SaveAuction auction, double lbinPrice, double medPrice, int i, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
+        private void FindFlip(SaveAuction auction, double lbinPrice, double medPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
         {
             // only trigger lbin if also below median or median is not set
             var volume = bucket.Volume;
@@ -649,8 +650,6 @@ ORDER BY l.`AuctionId`  DESC;
                 if (Logs.Count > 2000)
                     PrintLogQueue();
             }
-
-            return i;
         }
 
         private void PotentialSnipe(SaveAuction auction, double lbinPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
