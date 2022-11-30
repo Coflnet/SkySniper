@@ -200,8 +200,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (itemKey.GetHashCode() % 3 == 0 && DateTime.Now.Millisecond % 30 == 0)
                         Console.WriteLine("Finding closest median brute for " + auction.Tag + itemKey);
-                    var closest = l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0 && l.Value.References.Count > 3)
-                                    .OrderByDescending(m => itemKey.Similarity(m.Key)).FirstOrDefault();
+                    var closest = FindClosestTo(l, itemKey);
 
                     if (closest.Key != default)
                     {
@@ -220,6 +219,12 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
             return result;
+        }
+
+        private static KeyValuePair<AuctionKey, ReferenceAuctions> FindClosestTo(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey)
+        {
+            return l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0 && l.Value.References.Count > 3)
+                            .OrderByDescending(m => itemKey.Similarity(m.Key)).FirstOrDefault();
         }
 
         private static void AssignMedian(PriceEstimate result, AuctionKey key, ReferenceAuctions bucket)
@@ -397,8 +402,8 @@ ORDER BY l.`AuctionId`  DESC;
         {
             var key = new AuctionKey();
 
-
-            key.Reforge = Coflnet.Sky.Core.Constants.RelevantReforges.Contains(auction.Reforge) ? auction.Reforge : ItemReferences.Reforge.Any;
+            var shouldIncludeReforge = Coflnet.Sky.Core.Constants.RelevantReforges.Contains(auction.Reforge) && dropLevel < 3;
+            key.Reforge = shouldIncludeReforge ? auction.Reforge : ItemReferences.Reforge.Any;
             if (dropLevel == 0)
             {
                 key.Enchants = auction.Enchantments
@@ -418,7 +423,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (auction.ItemCreatedAt < UnlockedIntroduction && auction.FlatenedNBT.Any(v => GemPurities.Contains(v.Value)))
                     key.Modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", "all"));
             }
-            else if (dropLevel == 1)
+            else if (dropLevel == 1 || dropLevel == 2)
             {
                 key.Modifiers = auction.FlatenedNBT?.Where(n => VeryValuable.Contains(n.Key) || n.Value == "PERFECT")
                             .OrderByDescending(n => n.Key)
@@ -432,7 +437,7 @@ ORDER BY l.`AuctionId`  DESC;
                     key.Enchants = new List<Models.Enchantment>() { new Models.Enchantment() { Lvl = enchant.Level, Type = enchant.Type } };
                 }
             }
-            else if (dropLevel == 2)
+            else if (dropLevel == 3)
             {
                 var enchant = Constants.SelectBest(auction.Enchantments);
                 if (enchant == default)
@@ -593,7 +598,8 @@ ORDER BY l.`AuctionId`  DESC;
             var lbinPrice = auction.StartingBid * 1.05;
             var medPrice = auction.StartingBid * 1.1;
             var lastKey = new AuctionKey();
-            for (int i = 0; i < 4; i++)
+            var foundAtLeastOneReferenceBucket = false;
+            for (int i = 0; i < 5; i++)
             {
                 var key = KeyFromSaveAuction(auction, i);
                 if (i > 0 && key == lastKey)
@@ -614,14 +620,32 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (triggerEvents)
                     FindFlip(auction, lbinPrice, medPrice, bucket, key, l);
-
+                if (i != 0)
+                    foundAtLeastOneReferenceBucket = true;
                 UpdateLbin(auction, bucket);
+            }
+            if (!foundAtLeastOneReferenceBucket)
+            {
+                // special case for items that have no reference bucket, search using most similar
+                var key = KeyFromSaveAuction(auction, 0);
+                var closest = FindClosestTo(l, key);
+                medPrice *= 1.05; // increase price a bit to account for the fact that we are not using the exact same item
+                if (closest.Value == null)
+                    Logs.Enqueue(new LogEntry()
+                    {
+                        Key = key,
+                        LBin = -1,
+                        Median = -1,
+                        Uuid = auction.Uuid,
+                        Volume = -1
+                    });
+                else
+                    FindFlip(auction, lbinPrice, medPrice, closest.Value, key, l);
             }
         }
 
         private void FindFlip(SaveAuction auction, double lbinPrice, double medPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
         {
-            // only trigger lbin if also below median or median is not set
             var volume = bucket.Volume;
             if (bucket.Lbin.Price > lbinPrice && (bucket.Price > lbinPrice) && volume > 0.2f
                )// || bucket.Price == 0))

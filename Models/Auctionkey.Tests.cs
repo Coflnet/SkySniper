@@ -105,6 +105,66 @@ namespace Coflnet.Sky.Sniper.Models
             // by default reforge and tier match
             Assert.Greater(originkey.Similarity(targetKey), originkey.Similarity(badKey));
         }
+
+        [Test]
+        public void HyperionMostSimilar()
+        {
+            var baseAuction = new SaveAuction()
+            {
+                Enchantments = new() {
+                    new(Core.Enchantment.EnchantmentType.impaling, 3),
+                    new(Core.Enchantment.EnchantmentType.luck, 6),
+                    new(Core.Enchantment.EnchantmentType.critical, 6),
+                    new(Core.Enchantment.EnchantmentType.cleave, 5),
+                    new(Core.Enchantment.EnchantmentType.looting, 4),
+                    new(Core.Enchantment.EnchantmentType.smite, 7),
+                    new(Core.Enchantment.EnchantmentType.ender_slayer, 6),
+                    new(Core.Enchantment.EnchantmentType.scavenger, 4),
+                    new(Core.Enchantment.EnchantmentType.experience, 4),
+                    new(Core.Enchantment.EnchantmentType.vampirism, 6),
+                    new(Core.Enchantment.EnchantmentType.fire_aspect, 2),
+                    new(Core.Enchantment.EnchantmentType.life_steal, 4),
+                    new(Core.Enchantment.EnchantmentType.giant_killer, 6),
+                    new(Core.Enchantment.EnchantmentType.first_strike, 4),
+                    new(Core.Enchantment.EnchantmentType.thunderlord, 6),
+                    new(Core.Enchantment.EnchantmentType.ultimate_wise, 5),
+                    new(Core.Enchantment.EnchantmentType.cubism, 5),
+                    new(Core.Enchantment.EnchantmentType.champion, 4),
+                    new(Core.Enchantment.EnchantmentType.lethality, 6),
+                    new(Core.Enchantment.EnchantmentType.PROSECUTE, 5),
+                },
+                FlatenedNBT = new() { { "rarity_upgrades", "1" },
+                { "hpc", "15" },
+                { "champion_combat_xp", "437497.3933520025" },
+                { "upgrade_level", "5" },
+                {"ability_scroll", "IMPLOSION_SCROLL SHADOW_WARP_SCROLL WITHER_SHIELD_SCROLL" } },
+                Tier = Tier.MYTHIC,
+                Reforge = ItemReferences.Reforge.withered,
+                Tag = "HYPERION"
+            };
+            var comparedTo = Services.SniperServiceTests.Dupplicate(baseAuction);
+            comparedTo.Enchantments = new List<Core.Enchantment>() { new(Core.Enchantment.EnchantmentType.ultimate_legion, 5) };
+            comparedTo.HighestBidAmount = 1_000_000;
+            var service = new SniperService();
+            service.AddSoldItem(Services.SniperServiceTests.Dupplicate(comparedTo));
+            service.AddSoldItem(Services.SniperServiceTests.Dupplicate(comparedTo));
+            service.AddSoldItem(Services.SniperServiceTests.Dupplicate(comparedTo));
+            service.AddSoldItem(Services.SniperServiceTests.Dupplicate(comparedTo));
+            service.FinishedUpdate();
+            LowPricedAuction flip = null;
+            service.FoundSnipe += (f) =>
+            {
+                flip = f;
+            };
+            var toExpensive = Services.SniperServiceTests.Dupplicate(baseAuction);
+            toExpensive.StartingBid = 890_000;
+            service.TestNewAuction(toExpensive);
+            // Non exact matches have to have higher profit
+            Assert.IsNull(flip);
+            service.TestNewAuction(baseAuction);
+            // uses median of the different most similar sells
+            Assert.AreEqual(1_000_000, flip.TargetPrice);
+        }
     }
 
 }
