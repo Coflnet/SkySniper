@@ -58,7 +58,7 @@ namespace Coflnet.Sky.Sniper.Models
                 var valuableCount = this.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).Count();
                 var valuableOtherCount = key.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).Count();
                 var matching = this.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).Count(m => key.Modifiers.Any(k => k.Key == m.Key && k.Value == m.Value));
-                sum += (matching * 3 - valuableCount - valuableOtherCount) * 5;
+                sum += (matching * 3 - valuableCount - valuableOtherCount) * 8;
             }
             else
                 sum -= this.Modifiers?.Count ?? 0 - key.Modifiers?.Count ?? 0;

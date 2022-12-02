@@ -569,6 +569,16 @@ ORDER BY l.`AuctionId`  DESC;
                     };
                 }
             }
+            foreach (var item in baseKey.Modifiers.Where(m => ShardAttributes.ContainsKey(m.Key)))
+            {
+                for (int i = int.Parse(item.Value) + 1; i < 10; i++)
+                {
+                    yield return new AuctionKey(baseKey)
+                    {
+                        Modifiers = baseKey.Modifiers.Where(m => m.Key != item.Key).Append(new(item.Key, i.ToString())).ToList()
+                    };
+                }
+            }
         }
 
         public static KeyValuePair<string, string> NormalizeNumberTo(KeyValuePair<string, string> s, int groupingSize, int highestGroup = int.MaxValue)
