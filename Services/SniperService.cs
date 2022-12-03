@@ -634,7 +634,7 @@ ORDER BY l.`AuctionId`  DESC;
                     foundAtLeastOneReferenceBucket = true;
                 UpdateLbin(auction, bucket);
             }
-            if (!foundAtLeastOneReferenceBucket)
+            if (!foundAtLeastOneReferenceBucket && triggerEvents)
             {
                 // special case for items that have no reference bucket, search using most similar
                 var key = KeyFromSaveAuction(auction, 0);

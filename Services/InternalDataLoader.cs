@@ -188,7 +188,7 @@ namespace Coflnet.Sky.Sniper.Services
             await Task.Delay(TimeSpan.FromMinutes(1), stoppinToken);
 
             var batchSize = 15_000;
-            for (var batchStart = maxId - 10_000_000; batchStart < maxId; batchStart += batchSize)
+            for (var batchStart = maxId - 20_000_000; batchStart < maxId; batchStart += batchSize)
             {
                 try
                 {

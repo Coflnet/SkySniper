@@ -60,19 +60,19 @@ namespace Coflnet.Sky.Sniper.Services
 
         public async Task SaveLookup(ConcurrentDictionary<string, PriceLookup> lookups)
         {
-            var client = new MinioClient(config["MINIO_HOST"], config["MINIO_KEY"], config["MINIO_SECRET"]);
+            var client = new MinioClient().WithCredentials(config["MINIO_KEY"], config["MINIO_SECRET"]).WithEndpoint(config["MINIO_HOST"]);
             using var stream = new MemoryStream();
             await MessagePackSerializer.SerializeAsync(stream, lookups.Keys.ToList());
             stream.Position = 0;
             logger.LogInformation("saving list");
-            await client.PutObjectAsync("sky-sniper", "itemList", stream, stream.Length);
+            await client.PutObjectAsync(new PutObjectArgs().WithBucket("sky-sniper").WithObject("itemList").WithStreamData(stream).WithObjectSize(stream.Length));
             logger.LogInformation("saved list " + stream.Length);
             foreach (var item in lookups)
             {
                 using var itemStream = new MemoryStream();
                 await MessagePackSerializer.SerializeAsync(itemStream, item.Value);
                 itemStream.Position = 0;
-                await client.PutObjectAsync("sky-sniper", item.Key, itemStream, itemStream.Length);
+                await client.PutObjectAsync(new PutObjectArgs().WithBucket("sky-sniper").WithObject(item.Key).WithStreamData(itemStream).WithObjectSize(itemStream.Length));
                 if (!string.IsNullOrEmpty(item.Key) && item.Key.StartsWith('S'))
                     Console.Write(" saved " + item.Key);
             }
