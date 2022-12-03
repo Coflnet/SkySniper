@@ -16,7 +16,7 @@ public class InternalDataLoaderTest
         var loader = new InternalDataLoader(null, config, null, null);
         var references = new ConcurrentQueue<ReferencePrice>();
         references.Enqueue(new ReferencePrice() { Day = SniperService.GetDay(DateTime.Now - TimeSpan.FromDays(5)), Price = 1000, Seller = 1, AuctionId = 1 });
-        Assert.IsFalse(loader.IsAuctionOlder(new SaveAuction() { End = System.DateTime.Now - TimeSpan.FromDays(10) }, references));
-        Assert.IsTrue(loader.IsAuctionOlder(new SaveAuction() { End = System.DateTime.Now - TimeSpan.FromDays(1) }, references));
+        Assert.IsFalse(loader.ShouldAuctionBeIncluded(new SaveAuction() { End = System.DateTime.Now - TimeSpan.FromDays(10) }, references));
+        Assert.IsTrue(loader.ShouldAuctionBeIncluded(new SaveAuction() { End = System.DateTime.Now - TimeSpan.FromDays(1) }, references));
     }
 }

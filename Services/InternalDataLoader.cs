@@ -216,7 +216,7 @@ namespace Coflnet.Sky.Sniper.Services
             foreach (var item in sold)
             {
                 var references = sniper.GetBucketForAuction(item).References;
-                if (IsAuctionOlder(item, references))
+                if (!ShouldAuctionBeIncluded(item, references))
                     continue;
                 sniper.AddSoldItem(item);
             }
@@ -231,9 +231,9 @@ namespace Coflnet.Sky.Sniper.Services
         /// <param name="item"></param>
         /// <param name="references"></param>
         /// <returns></returns>
-        public bool IsAuctionOlder(SaveAuction item, ConcurrentQueue<ReferencePrice> references)
+        public bool ShouldAuctionBeIncluded(SaveAuction item, ConcurrentQueue<ReferencePrice> references)
         {
-            return references.FirstOrDefault().Day < SniperService.GetDay(item.End) || references.Count > 60;
+            return references.FirstOrDefault().Day < SniperService.GetDay(item.End);
         }
 
         private async Task ActiveUpdater(CancellationToken stoppingToken)
