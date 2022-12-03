@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Coflnet.Sky.Core;
+using Coflnet.Sky.Sniper.Models;
 using Confluent.Kafka;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -188,7 +190,7 @@ namespace Coflnet.Sky.Sniper.Services
             await Task.Delay(TimeSpan.FromMinutes(1), stoppinToken);
 
             var batchSize = 15_000;
-            for (var batchStart = maxId - 20_000_000; batchStart < maxId; batchStart += batchSize)
+            for (var batchStart = maxId - 10_000_000; batchStart < maxId; batchStart += batchSize)
             {
                 try
                 {
@@ -213,13 +215,25 @@ namespace Coflnet.Sky.Sniper.Services
                                     .ToListAsync(stoppinToken);
             foreach (var item in sold)
             {
-                if (sniper.GetBucketForAuction(item).References.Count > 8)
+                var references = sniper.GetBucketForAuction(item).References;
+                if (IsAuctionOlder(item, references))
                     continue;
                 sniper.AddSoldItem(item);
             }
             await Task.Delay(500);
             if ((batchStart / batchSize) % 10 == 0)
                 Console.WriteLine($"Loaded batch {batchStart} - {end}");
+        }
+
+        /// <summary>
+        /// Older auctions are not relevant because they are outdated
+        /// </summary>
+        /// <param name="item"></param>
+        /// <param name="references"></param>
+        /// <returns></returns>
+        public bool IsAuctionOlder(SaveAuction item, ConcurrentQueue<ReferencePrice> references)
+        {
+            return references.FirstOrDefault().Day < SniperService.GetDay(item.End) || references.Count > 60;
         }
 
         private async Task ActiveUpdater(CancellationToken stoppingToken)

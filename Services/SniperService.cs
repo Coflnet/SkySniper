@@ -277,11 +277,6 @@ ORDER BY l.`AuctionId`  DESC;
                     existingBucket.Price = item.Value.Price;
                     if (item.Value.Lbins == null)
                         item.Value.Lbins = new();
-                    // migrate last lbin
-                    if (item.Value.LastLbin.Price != default)
-                    {
-                        existingBucket.Lbins.Add(item.Value.LastLbin);
-                    }
                     // load all non-empty lbins
                     foreach (var binAuction in item.Value.Lbins)
                     {
