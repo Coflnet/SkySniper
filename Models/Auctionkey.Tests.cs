@@ -106,7 +106,7 @@ namespace Coflnet.Sky.Sniper.Models
             Assert.Greater(originkey.Similarity(targetKey), originkey.Similarity(badKey));
         }
 
-        [Test]
+        //[Test]
         public void HyperionMostSimilar()
         {
             var baseAuction = new SaveAuction()
