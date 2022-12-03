@@ -82,18 +82,13 @@ namespace Coflnet.Sky.Sniper.Services
         private async Task<List<string>> GetIemIds(MinioClient client)
         {
             List<string> items = new List<string>();
-            
+
             if (!await client.BucketExistsAsync(new BucketExistsArgs().WithBucket("sky-sniper")))
                 await client.MakeBucketAsync(new MakeBucketArgs().WithBucket("sky-sniper"));
 
-            var response = new MemoryStream();
-            await client.GetObjectAsync("sky-sniper", "itemList", stream =>
-            {
-                stream.CopyTo(response);
-            });
+            var response = await GetStreamForObject(client, "itemList");
             try
             {
-                response.Position = 0;
                 items = await MessagePackSerializer.DeserializeAsync<List<string>>(response);
             }
             catch (Exception e)
@@ -103,17 +98,21 @@ namespace Coflnet.Sky.Sniper.Services
             return items;
         }
 
+        private static async Task<MemoryStream> GetStreamForObject(MinioClient client, string objectName)
+        {
+            var response = new MemoryStream();
+            await client.GetObjectAsync(new GetObjectArgs()
+                .WithBucket("sky-sniper")
+                .WithObject(objectName)
+                .WithCallbackStream((stream) => stream.CopyTo(response)));
+            response.Position = 0;
+            return response;
+        }
+
         private async Task<PriceLookup> LoadItem(MinioClient client, string itemName)
         {
-            var result = new MemoryStream();
-            await client.GetObjectAsync("sky-sniper", itemName, stream =>
-            {
-                stream.CopyTo(result);
-
-            });
-            result.Position = 0;
+            var result = await GetStreamForObject(client, itemName);
             return await MessagePackSerializer.DeserializeAsync<PriceLookup>(result);
-            //service.AddLookupData(itemName,loadedVal);
         }
     }
 }
