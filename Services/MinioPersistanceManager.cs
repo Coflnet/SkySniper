@@ -26,7 +26,10 @@ namespace Coflnet.Sky.Sniper.Services
 
         public async Task LoadLookups(SniperService service)
         {
-            var client = new MinioClient(config["MINIO_HOST"], config["MINIO_KEY"], config["MINIO_SECRET"]);
+            var client = new MinioClient()
+                        .WithEndpoint(config["MINIO_HOST"])
+                        .WithCredentials(config["MINIO_KEY"], config["MINIO_SECRET"])
+                        .Build();
             List<string> items = await GetIemIds(client);
             foreach (var itemTag in items)
             {
