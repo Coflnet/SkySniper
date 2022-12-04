@@ -726,7 +726,10 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (targetPrice < MIN_TARGET)
                 return; // to low
-            props["refAge"] = (GetDay() - bucket.OldestRef).ToString();
+            var refAge = (GetDay() - bucket.OldestRef);
+            if (refAge > 60)
+                return; // too old
+            props["refAge"] = refAge.ToString();
             FoundSnipe?.Invoke(new LowPricedAuction()
             {
                 Auction = auction,
