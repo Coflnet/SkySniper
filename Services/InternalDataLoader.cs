@@ -49,7 +49,7 @@ namespace Coflnet.Sky.Sniper.Services
 
 
 
-        protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             var loadActive = Task.Run(async () =>
             {
@@ -71,8 +71,8 @@ namespace Coflnet.Sky.Sniper.Services
 
             });
 
-
-            return Task.WhenAll(newAuctions, soldAuctions, ActiveUpdater(stoppingToken), StartProducer(stoppingToken), loadActive, sellLoad);
+            await Task.WhenAny(newAuctions, soldAuctions, Task.WhenAll(ActiveUpdater(stoppingToken), StartProducer(stoppingToken), loadActive, sellLoad));
+            throw new Exception("at least one task stopped");
         }
 
         private async Task StartProducer(CancellationToken stoppingToken)
@@ -315,6 +315,7 @@ namespace Coflnet.Sky.Sniper.Services
                 await SaveIfReached(a);
 
             }, stoppingToken, "sky-sniper");
+            logger.LogInformation("processing sells stopped");
         }
 
         private static bool saving = false;

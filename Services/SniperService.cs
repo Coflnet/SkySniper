@@ -647,7 +647,10 @@ ORDER BY l.`AuctionId`  DESC;
                     });
                 else
                 {
-                    Console.WriteLine($"Would estimate closest to {key} {closest.Key}");
+                    if (closest.Key == key)
+                        Console.WriteLine($"Found exact match for {key} {closest.Value.Volume}");
+                    else
+                        Console.WriteLine($"Would estimate closest to {key} {closest.Key}");
                 }
                 //    FindFlip(auction, lbinPrice, medPrice, closest.Value, key, l);
             }
