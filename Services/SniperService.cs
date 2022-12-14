@@ -313,7 +313,7 @@ ORDER BY l.`AuctionId`  DESC;
                 .Select(a => a.Last())  // only use one (the last) price from each seller
                 .ToList();
             size = deduplicated.Count();
-            if (size < 2)
+            if (size < 3)
             {
                 bucket.Price = 0; // to low vol
                 return;
