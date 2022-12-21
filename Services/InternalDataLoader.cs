@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using OpenTracing.Util;
+using System.Diagnostics;
 
 namespace Coflnet.Sky.Sniper.Services
 {
@@ -23,6 +23,7 @@ namespace Coflnet.Sky.Sniper.Services
         private Queue<AhStateSumary> RecentUpdates = new Queue<AhStateSumary>();
         private string LowPricedAuctionTopic;
         private static ProducerConfig producerConfig;
+        private ActivitySource activitySource;
 
         private ILogger<InternalDataLoader> logger;
 
@@ -33,7 +34,7 @@ namespace Coflnet.Sky.Sniper.Services
         Prometheus.Counter soldReceived = Prometheus.Metrics
                     .CreateCounter("sky_sniper_sold_received", "Number of sold auctions received");
 
-        public InternalDataLoader(SniperService sniper, IConfiguration config, IPersitanceManager persitance, ILogger<InternalDataLoader> logger)
+        public InternalDataLoader(SniperService sniper, IConfiguration config, IPersitanceManager persitance, ILogger<InternalDataLoader> logger, ActivitySource activitySource)
         {
             this.sniper = sniper;
             this.config = config;
@@ -45,6 +46,7 @@ namespace Coflnet.Sky.Sniper.Services
                 LingerMs = 5
             };
             this.logger = logger;
+            this.activitySource = activitySource;
         }
 
 
@@ -253,7 +255,7 @@ namespace Coflnet.Sky.Sniper.Services
         {
 
             Console.WriteLine("\n-->Consumed update sumary " + sum.Time);
-            using var spancontext = GlobalTracer.Instance.BuildSpan("AhSumaryUpdate").StartActive();
+            using var spancontext = activitySource.StartActivity("AhSumaryUpdate");
             if (sum.Time < DateTime.Now - TimeSpan.FromMinutes(5))
                 return;
             RecentUpdates.Enqueue(sum);
