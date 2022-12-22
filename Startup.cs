@@ -43,6 +43,7 @@ namespace Coflnet.Sky.Sniper
             services.AddHostedService<InternalDataLoader>();
             services.AddSingleton<IPersitanceManager, MinioPersistanceManager>();
             services.AddSingleton<ITokenService, TokenService>();
+            services.AddJaeger(Configuration);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
