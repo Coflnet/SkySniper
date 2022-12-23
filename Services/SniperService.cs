@@ -65,6 +65,7 @@ namespace Coflnet.Sky.Sniper.Services
             "MUSIC", //rune
             "DRAGON", //rune
             "TIDAL", //rune
+            "GRAND_SEARING", //rune
             "ENCHANT" // rune
         };
 
