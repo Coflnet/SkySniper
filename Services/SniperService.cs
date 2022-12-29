@@ -575,6 +575,10 @@ ORDER BY l.`AuctionId`  DESC;
                     };
                 }
             }
+            if(baseKey.Count > 1 && baseKey.Count < 64)
+                yield return new AuctionKey(baseKey) { Count = 64 };
+            if(baseKey.Count > 1 && baseKey.Count < 16)
+                yield return new AuctionKey(baseKey) { Count = 16 };
         }
 
         public static KeyValuePair<string, string> NormalizeNumberTo(KeyValuePair<string, string> s, int groupingSize, int highestGroup = int.MaxValue)
