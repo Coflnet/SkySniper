@@ -69,6 +69,16 @@ namespace Coflnet.Sky.Sniper.Services
             "ENCHANT" // rune
         };
 
+        /// <summary>
+        /// Keys containing itemTags that should be added separately
+        /// </summary>
+        private readonly HashSet<string> ItemKeys = new()
+        {
+            "drill_part_engine",
+            "drill_part_fuel_tank",
+            "drill_part_upgrade_module",
+        };
+
         private static readonly Dictionary<string, short> ShardAttributes = new(){
             {"mana_pool", 1},
             {"breeze", 1},
@@ -575,9 +585,9 @@ ORDER BY l.`AuctionId`  DESC;
                     };
                 }
             }
-            if(baseKey.Count > 1 && baseKey.Count < 64)
+            if (baseKey.Count > 1 && baseKey.Count < 64)
                 yield return new AuctionKey(baseKey) { Count = 64 };
-            if(baseKey.Count > 1 && baseKey.Count < 16)
+            if (baseKey.Count > 1 && baseKey.Count < 16)
                 yield return new AuctionKey(baseKey) { Count = 16 };
         }
 
@@ -629,7 +639,10 @@ ORDER BY l.`AuctionId`  DESC;
                     Console.WriteLine("is null");
                 }
                 if (triggerEvents)
-                    FindFlip(auction, lbinPrice, medPrice, bucket, key, l);
+                {
+                    long extraValue = GetExtraValue(auction, key);
+                    FindFlip(auction, lbinPrice, medPrice, bucket, key, l, extraValue);
+                }
                 if (i != 0)
                     foundAtLeastOneReferenceBucket = true;
                 UpdateLbin(auction, bucket);
@@ -661,9 +674,29 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private void FindFlip(SaveAuction auction, double lbinPrice, double medPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
+        private long GetExtraValue(SaveAuction auction, AuctionKey key)
+        {
+            long extraValue = 0;
+            foreach (var item in ItemKeys)
+            {
+                if (key.Modifiers.Any(m => m.Key == item))
+                    continue;
+                if (auction.FlatenedNBT.TryGetValue(item, out var value))
+                {
+                    if (!Lookups.TryGetValue(value, out var itemLookup))
+                        continue;
+                    var prices = itemLookup.Lookup.Values.First();
+                    extraValue += prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price);
+                }
+            }
+
+            return extraValue;
+        }
+
+        private void FindFlip(SaveAuction auction, double lbinPrice, double medPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue = 0)
         {
             var volume = bucket.Volume;
+            var medianPrice = bucket.Price + extraValue;
             if (bucket.Lbin.Price > lbinPrice && (bucket.Price > lbinPrice) && volume > 0.2f
                )// || bucket.Price == 0))
             {
