@@ -277,6 +277,37 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(500, found.TargetPrice, "lowest bin price should be used");
 
         }
+
+        [Test]
+        public void ComponetExtraValue()
+        {
+            var part = Dupplicate(highestValAuction);
+            part.Tag = "COMPONENT";
+            service.AddSoldItem(part);
+            service.AddSoldItem(Dupplicate(part));
+            service.AddSoldItem(Dupplicate(part));
+
+            var drill = Dupplicate(highestValAuction);
+            drill.Tag = "DRILL";
+            service.AddSoldItem(drill);
+            service.AddSoldItem(Dupplicate(drill));
+            service.AddSoldItem(Dupplicate(drill));
+            service.FinishedUpdate();
+
+            drill.FlatenedNBT["drill_part_engine"] = "COMPONENT";
+            LowPricedAuction found = null;
+            var lowAssert = (LowPricedAuction s) =>
+            {
+                found = s;
+                Assert.AreEqual(2000, s.TargetPrice, "extra value should be added to price");
+                System.Console.WriteLine(JsonConvert.SerializeObject(s));
+            };
+            service.FoundSnipe += lowAssert;
+            service.TestNewAuction(Dupplicate(drill));
+            service.FinishedUpdate();
+            service.PrintLogQueue();
+            Assert.IsNotNull(found, "flip with extra value should pop up");
+        }
         //[Test]
         public void LoadTest()
         {

@@ -693,20 +693,20 @@ ORDER BY l.`AuctionId`  DESC;
             return extraValue;
         }
 
-        private void FindFlip(SaveAuction auction, double lbinPrice, double medPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue = 0)
+        private void FindFlip(SaveAuction auction, double lbinPrice, double minMedPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue = 0)
         {
             var volume = bucket.Volume;
             var medianPrice = bucket.Price + extraValue;
             if (bucket.Lbin.Price > lbinPrice && (bucket.Price > lbinPrice) && volume > 0.2f
                )// || bucket.Price == 0))
             {
-                PotentialSnipe(auction, lbinPrice, bucket, key, l);
+                PotentialSnipe(auction, lbinPrice, bucket, key, l, extraValue);
             }
-            else if (bucket.Price > medPrice)
+            else if (medianPrice > minMedPrice)
             {
-                var props = CreateReference(bucket.References.Last().AuctionId, key);
+                var props = CreateReference(bucket.References.Last().AuctionId, key, extraValue);
                 props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
-                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, bucket.Price, props);
+                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, bucket.Price + extraValue, props);
             }
             else
             {
@@ -726,7 +726,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private void PotentialSnipe(SaveAuction auction, double lbinPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
+        private void PotentialSnipe(SaveAuction auction, double lbinPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue)
         {
             var higherValueLowerBin = bucket.Lbin.Price;
             if (HigherValueKeys(key).Any(k =>
@@ -743,10 +743,10 @@ ORDER BY l.`AuctionId`  DESC;
                 return false;
             }))
                 return;
-            var props = CreateReference(bucket.Lbin.AuctionId, key);
+            var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue);
             props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
             props["mVal"] = bucket.Price.ToString();
-            FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, Math.Min(higherValueLowerBin, bucket.Price), props);
+            FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, Math.Min(higherValueLowerBin, bucket.Price) + extraValue, props);
         }
 
         public void PrintLogQueue()
@@ -790,12 +790,15 @@ ORDER BY l.`AuctionId`  DESC;
             });
         }
 
-        private static Dictionary<string, string> CreateReference(long reference, AuctionKey key)
+        private static Dictionary<string, string> CreateReference(long reference, AuctionKey key, long extraValue = 0)
         {
-            return new Dictionary<string, string>() {
+            var dict = new Dictionary<string, string>() {
                 { "reference", AuctionService.Instance.GetUuid(reference) },
-                { "key", key.ToString() }
+                { "key", key.ToString() + (extraValue == 0 ? "" : $" +{extraValue}")}
             };
+            if (extraValue != 0)
+                dict["extraValue"] = extraValue.ToString();
+            return dict;
         }
     }
 }
