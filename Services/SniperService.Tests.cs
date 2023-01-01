@@ -73,8 +73,9 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(LowPricedAuction.FinderType.SNIPER_MEDIAN, found.First().Finder);
             service.FinishedUpdate();
             service.TestNewAuction(secondAuction);
-            Assert.AreEqual(900, found.Last().TargetPrice);
-            Assert.AreEqual(LowPricedAuction.FinderType.SNIPER, found.Last().Finder);
+            var flip = found.Skip(1).First();
+            Assert.AreEqual(900, flip.TargetPrice);
+            Assert.AreEqual(LowPricedAuction.FinderType.SNIPER, flip.Finder);
             // first is sold
             service.AddSoldItem(firstAuction);
             service.TestNewAuction(secondAuction);

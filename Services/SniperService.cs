@@ -702,7 +702,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 PotentialSnipe(auction, lbinPrice, bucket, key, l, extraValue);
             }
-            else if (medianPrice > minMedPrice)
+            if (medianPrice > minMedPrice)
             {
                 var props = CreateReference(bucket.References.Last().AuctionId, key, extraValue);
                 props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
