@@ -668,7 +668,9 @@ ORDER BY l.`AuctionId`  DESC;
                     if (closest.Key == key)
                         Console.WriteLine($"Found exact match for {key} {closest.Value.Volume}");
                     else
-                        Console.WriteLine($"Would estimate closest to {key} {closest.Key}");
+                        Console.WriteLine($"Would estimate closest to {key} {closest.Key} {auction.Uuid} for {closest.Value.Price}");
+                    if (closest.Value.Price > medPrice)
+                        FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, closest.Value.Price, new() { { "closest", closest.Key.ToString() } });
                 }
                 //    FindFlip(auction, lbinPrice, medPrice, closest.Value, key, l);
             }
