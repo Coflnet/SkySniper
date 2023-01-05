@@ -14,6 +14,7 @@ namespace Coflnet.Sky.Sniper.Services
 
         private ConcurrentQueue<LogEntry> Logs = new ConcurrentQueue<LogEntry>();
         private ConcurrentQueue<(SaveAuction, ReferenceAuctions)> LbinUpdates = new();
+        private AuctionKey defaultKey = new AuctionKey();
 
         public event Action<LowPricedAuction> FoundSnipe;
         private readonly HashSet<string> IncludeKeys = new HashSet<string>()
@@ -210,7 +211,7 @@ ORDER BY l.`AuctionId`  DESC;
 
                 if (result.Median == default)
                 {
-                    if (itemKey.GetHashCode() % 3 == 0 && DateTime.Now.Millisecond % 30 == 0)
+                    if (itemKey.GetHashCode() % 3 == 0 && DateTime.UtcNow.Millisecond % 30 == 0)
                         Console.WriteLine("Finding closest median brute for " + auction.Tag + itemKey);
                     var closest = FindClosestTo(l, itemKey);
 
@@ -383,7 +384,7 @@ ORDER BY l.`AuctionId`  DESC;
         public static short GetDay(DateTime date = default)
         {
             if (date == default)
-                date = DateTime.Now;
+                date = DateTime.UtcNow;
             return (short)(date - new DateTime(2021, 9, 25)).TotalDays;
         }
 
@@ -460,6 +461,8 @@ ORDER BY l.`AuctionId`  DESC;
                 key.Modifiers = EmptyModifiers;
             }
 
+            if(key.Enchants == null)
+                key.Enchants = new List<Models.Enchantment>();
             key.Tier = auction.Tier;
             if (auction.Tag == "ENCHANTED_BOOK")
             {
@@ -692,6 +695,11 @@ ORDER BY l.`AuctionId`  DESC;
                     extraValue += prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price);
                 }
             }
+            foreach (var item in auction.FlatenedNBT.Where(f => f.Value == "PERFECT"))
+            {
+                if (Lookups.TryGetValue($"PERFECT_{item.Key.Split('_').First()}_GEM", out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
+                    extraValue += gemLookup.Lookup.Values.First().Price - 500_000;
+            }
 
             return extraValue;
         }
@@ -718,15 +726,34 @@ ORDER BY l.`AuctionId`  DESC;
                 if (volume == 0 || bucket.Lbin.Price == 0 || bucket.Price == 0 || bucket.Price > MIN_TARGET)
                     Logs.Enqueue(new LogEntry()
                     {
-                        Key = key,
+                        Key = key.ToString() + $"+{extraValue}",
                         LBin = bucket.Lbin.Price,
-                        Median = bucket.Price,
+                        Median = medianPrice,
                         Uuid = auction.Uuid,
                         Volume = bucket.Volume
                     });
                 if (Logs.Count > 2000)
                     PrintLogQueue();
             }
+        }
+
+        public void UpdateBazaar(dev.BazaarPull bazaar)
+        {
+            foreach (var item in bazaar.Products)
+            {
+                if (item.SellSummary.FirstOrDefault()?.PricePerUnit < 1_000_000)
+                    continue;
+                if (!Lookups.TryGetValue(item.ProductId, out var lookup))
+                {
+                    lookup = new();
+                    Lookups[item.ProductId] = lookup;
+                    Console.WriteLine($"Added {item.ProductId} to lookup");
+                }
+                var refernces = lookup.Lookup.GetOrAdd(defaultKey, _ => new());
+                if (item.SellSummary.Any())
+                    refernces.Price = (long)item.SellSummary.First().PricePerUnit;
+            }
+            Console.WriteLine($"Updated bazaar {Lookups.Count} items");
         }
 
         private void PotentialSnipe(SaveAuction auction, double lbinPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue)

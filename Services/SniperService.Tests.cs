@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Models;
+using dev;
 using Microsoft.VisualBasic;
 using Newtonsoft.Json;
 using NUnit.Framework;
@@ -309,6 +310,59 @@ namespace Coflnet.Sky.Sniper.Services
             service.PrintLogQueue();
             Assert.IsNotNull(found, "flip with extra value should pop up");
         }
+
+
+        [Test]
+        public void GemExtraValue()
+        {
+            highestValAuction.FlatenedNBT = new();
+            service.AddSoldItem(Dupplicate(highestValAuction));
+            service.AddSoldItem(Dupplicate(highestValAuction));
+            service.AddSoldItem(Dupplicate(highestValAuction));
+            service.FinishedUpdate();
+            highestValAuction.FlatenedNBT = new Dictionary<string, string>()
+            {
+                {"rarity_upgrades","1"},
+                {"JADE_0","PERFECT"},
+                {"AMBER_0","PERFECT"},
+                {"SAPPHIRE_0","PERFECT"},
+                {"TOPAZ_0","PERFECT"},
+                {"AMETHYST_0","PERFECT"},
+                {"uid","7c2447a6ad9d"}
+            };
+
+            service.UpdateBazaar(new()
+            {
+                Timestamp = System.DateTime.UtcNow,
+                Products = new() { CreateGemPrice("JADE"), CreateGemPrice("AMBER"), CreateGemPrice("SAPPHIRE"), CreateGemPrice("TOPAZ"), CreateGemPrice("AMETHYST") }
+            });
+            service.TestNewAuction(highestValAuction);
+            Assert.AreEqual(7501000, found.First().TargetPrice);
+        }
+
+        private static ProductInfo CreateGemPrice(string gemName)
+        {
+            return new()
+            {
+                ProductId = $"PERFECT_{gemName}_GEM",
+                QuickStatus = new()
+                {
+                    BuyPrice = 1000,
+                    SellPrice = 1000,
+                    SellVolume = 1000,
+                    BuyVolume = 1000
+                },
+                SellSummary = new()
+                {
+                    new()
+                    {
+                        PricePerUnit = 2_000_000,
+                        Amount = 1000
+                    }
+                }
+            };
+        }
+
         //[Test]
         public void LoadTest()
         {

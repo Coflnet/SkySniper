@@ -73,7 +73,12 @@ namespace Coflnet.Sky.Sniper.Services
 
             });
 
-            await Task.WhenAny(newAuctions, soldAuctions, Task.WhenAll(ActiveUpdater(stoppingToken), StartProducer(stoppingToken), loadActive, sellLoad));
+            await Task.WhenAny(newAuctions, soldAuctions,
+                Task.WhenAll(ActiveUpdater(stoppingToken),
+                             StartProducer(stoppingToken),
+                             ConsumeBazaar(stoppingToken),
+                             loadActive,
+                             sellLoad));
             throw new Exception("at least one task stopped");
         }
 
@@ -84,7 +89,7 @@ namespace Coflnet.Sky.Sniper.Services
             sniper.FoundSnipe += flip =>
             {
                 if (flip.Auction.Context != null)
-                    flip.Auction.Context["fsend"] = (DateTime.Now - flip.Auction.FindTime).ToString();
+                    flip.Auction.Context["fsend"] = (DateTime.UtcNow - flip.Auction.FindTime).ToString();
                 lpp.Produce(LowPricedAuctionTopic, new Message<string, LowPricedAuction>()
                 {
                     Key = flip.Auction.Uuid,
@@ -105,7 +110,7 @@ namespace Coflnet.Sky.Sniper.Services
                 try
                 {
                     logger.LogInformation("consuming new ");
-                    await Kafka.KafkaConsumer.ConsumeBatch<SaveAuction>(config["KAFKA_HOST"], config["TOPICS:NEW_AUCTION"], auctions =>
+                    await Kafka.KafkaConsumer.ConsumeBatch<SaveAuction>(ConsumerConfig, new string[] { config["TOPICS:NEW_AUCTION"] }, auctions =>
                     {
                         foreach (var a in auctions)
                         {
@@ -113,7 +118,7 @@ namespace Coflnet.Sky.Sniper.Services
                             if (!a.Bin)
                                 continue;
                             if (a.Context != null)
-                                a.Context["frec"] = (DateTime.Now - a.FindTime).ToString();
+                                a.Context["frec"] = (DateTime.UtcNow - a.FindTime).ToString();
                             try
                             {
                                 sniper.TestNewAuction(a);
@@ -124,7 +129,7 @@ namespace Coflnet.Sky.Sniper.Services
                             }
                         }
                         return Task.CompletedTask;
-                    }, stoppingToken, "sky-sniper").ConfigureAwait(false);
+                    }, stoppingToken).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -145,7 +150,7 @@ namespace Coflnet.Sky.Sniper.Services
                 {
                     topId = (await context.Auctions.MaxAsync(a => a.Id)) - 5_000_000;
                     var active = context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
-                                        .Where(a => a.Id > topId && a.End > DateTime.Now && a.Bin == true)
+                                        .Where(a => a.Id > topId && a.End > DateTime.UtcNow && a.Bin == true)
                                         .AsNoTracking()
                                         .AsAsyncEnumerable();
 
@@ -164,7 +169,7 @@ namespace Coflnet.Sky.Sniper.Services
                 using (var context = new HypixelContext())
                 {
                     var sold = context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
-                                        .Where(a => a.Id > topId + 4_900_000 && a.End < DateTime.Now && a.Bin == true && a.HighestBidAmount > 0)
+                                        .Where(a => a.Id > topId + 4_900_000 && a.End < DateTime.UtcNow && a.Bin == true && a.HighestBidAmount > 0)
                                         .AsNoTracking()
                                         .AsAsyncEnumerable();
                     var count = 0;
@@ -240,27 +245,60 @@ namespace Coflnet.Sky.Sniper.Services
 
         private async Task ActiveUpdater(CancellationToken stoppingToken)
         {
+            await RunTilStopped(
+                Kafka.KafkaConsumer.Consume<AhStateSumary>(Program.KafkaHost, config["TOPICS:AH_SUMARY"], ProcessSumary, stoppingToken)
+            , stoppingToken);
+        }
+
+        private async Task ConsumeBazaar(CancellationToken stoppingToken)
+        {
+            Console.WriteLine("starting bazaar");
+            await RunTilStopped(
+                Coflnet.Kafka.KafkaConsumer.ConsumeBatch<dev.BazaarPull>(ConsumerConfig, new string[] { config["TOPICS:BAZAAR"] }, batch =>
+                {
+                    foreach (var item in batch)
+                    {
+                        if (item.Timestamp > DateTime.UtcNow - TimeSpan.FromMinutes(1))
+                            sniper.UpdateBazaar(item);
+                    }
+                    return Task.CompletedTask;
+                }, stoppingToken)
+            , stoppingToken);
+            throw new Exception("stopped processing bazaar");
+        }
+
+        private ConsumerConfig ConsumerConfig =>
+            new ConsumerConfig
+            {
+                BootstrapServers = config["KAFKA_HOST"],
+                SessionTimeoutMs = 9_000,
+                AutoOffsetReset = AutoOffsetReset.Latest,
+                GroupId = "sky-sniper"
+            };
+
+
+        private async Task RunTilStopped(Task todo, CancellationToken stoppingToken)
+        {
             while (!stoppingToken.IsCancellationRequested)
                 try
                 {
-                    await Kafka.KafkaConsumer.Consume<AhStateSumary>(Program.KafkaHost, config["TOPICS:AH_SUMARY"], ProcessSumary, stoppingToken);
+                    await todo;
                 }
                 catch (Exception e)
                 {
-                    logger.LogError(e, "processing inactive auctions");
+                    logger.LogError(e, "processing bazaar");
                 }
         }
 
         private async Task ProcessSumary(AhStateSumary sum)
         {
-
             Console.WriteLine("\n-->Consumed update sumary " + sum.Time);
             using var spancontext = activitySource.StartActivity("AhSumaryUpdate");
-            if (sum.Time < DateTime.Now - TimeSpan.FromMinutes(5))
+            if (sum.Time < DateTime.UtcNow - TimeSpan.FromMinutes(5))
                 return;
             RecentUpdates.Enqueue(sum);
 
-            if (RecentUpdates.Min(r => r.Time) > DateTime.Now - TimeSpan.FromMinutes(4))
+            if (RecentUpdates.Min(r => r.Time) > DateTime.UtcNow - TimeSpan.FromMinutes(4))
                 return;
             var completeLookup = new Dictionary<long, long>();
             foreach (var sumary in RecentUpdates)
@@ -289,7 +327,7 @@ namespace Coflnet.Sky.Sniper.Services
                 }
             }
 
-            if (RecentUpdates.Peek().Time < DateTime.Now - TimeSpan.FromMinutes(5))
+            if (RecentUpdates.Peek().Time < DateTime.UtcNow - TimeSpan.FromMinutes(5))
                 RecentUpdates.Dequeue();
 
             sniper.PrintLogQueue();
@@ -308,15 +346,18 @@ namespace Coflnet.Sky.Sniper.Services
                 Console.WriteLine(e.StackTrace);
             }
             Console.WriteLine("loaded lookup");
-            await Kafka.KafkaConsumer.Consume<SaveAuction>(config["KAFKA_HOST"], config["TOPICS:SOLD_AUCTION"], async a =>
+            await Kafka.KafkaConsumer.ConsumeBatch<SaveAuction>(ConsumerConfig, new string[] { config["TOPICS:SOLD_AUCTION"] }, async batch =>
             {
-                soldReceived.Inc();
-                sniper.AddSoldItem(a);
-                if (a.UId % 10 == 0)
-                    Console.Write("s");
-                await SaveIfReached(a);
+                foreach (var a in batch)
+                {
+                    soldReceived.Inc();
+                    sniper.AddSoldItem(a);
+                    if (a.UId % 10 == 0)
+                        Console.Write("s");
+                    await SaveIfReached(a);
+                }
 
-            }, stoppingToken, "sky-sniper");
+            }, stoppingToken, 4);
             logger.LogInformation("processing sells stopped");
         }
 

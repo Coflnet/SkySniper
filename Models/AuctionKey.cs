@@ -11,11 +11,11 @@ namespace Coflnet.Sky.Sniper.Models
     public class AuctionKey
     {
         [Key(0)]
-        public List<Enchantment> Enchants;
+        public List<Enchantment> Enchants = new();
         [Key(1)]
         public ItemReferences.Reforge Reforge;
         [Key(2)]
-        public List<KeyValuePair<string, string>> Modifiers;
+        public List<KeyValuePair<string, string>> Modifiers = new();
         [Key(3)]
         public Tier Tier;
         [Key(4)]
