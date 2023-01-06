@@ -41,7 +41,7 @@ namespace Coflnet.Sky.Sniper.Models
             else
                 sum--;
             sum -= Math.Abs(this.Tier - key.Tier) * 9;
-            if(this.Tier - key.Tier < 0)
+            if (this.Tier - key.Tier < 0)
                 sum -= 10; // higher tier is very bad
             if (this.Count == key.Count)
                 sum += this.Count;
@@ -90,7 +90,10 @@ namespace Coflnet.Sky.Sniper.Models
             {
                 var match = key.Modifiers.Where(k => k.Key == m.Key).FirstOrDefault();
                 if (match.Key == null)
-                    return 4;
+                    if (int.TryParse(m.Value, out var parsed))
+                        return parsed;
+                    else
+                        return 4;
                 if (int.TryParse(match.Value, out var matchValue) && int.TryParse(m.Value, out var value))
                     return Math.Abs(matchValue - value);
                 if (match.Value == m.Value)

@@ -122,6 +122,22 @@ namespace Coflnet.Sky.Sniper.Models
             }
         }
 
+        [Test]
+        public void RunesAppart()
+        {
+            var clean = CreateFromLevel("0");
+            clean.Modifiers.Clear();
+
+            var lvl1 = CreateFromLevel("1");
+            var lvl2 = CreateFromLevel("2");
+
+            Assert.Greater(clean.Similarity(lvl1), clean.Similarity(lvl2));
+            static AuctionKey CreateFromLevel(string amount)
+            {
+                return new AuctionKey(null, ItemReferences.Reforge.Any, new() { new("DRAGON", amount) }, Tier.EPIC, 1);
+            }
+        }
+
         //[Test]
         public void HyperionMostSimilar()
         {
