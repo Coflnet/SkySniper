@@ -91,13 +91,16 @@ namespace Coflnet.Sky.Sniper.Models
                 var match = key.Modifiers.Where(k => k.Key == m.Key).FirstOrDefault();
                 if (match.Key == null)
                     if (int.TryParse(m.Value, out var parsed))
-                        return parsed;
+                        return Math.Abs(parsed);
                     else
                         return 4;
                 if (int.TryParse(match.Value, out var matchValue) && int.TryParse(m.Value, out var value))
                     return Math.Abs(matchValue - value);
                 if (match.Value == m.Value)
-                    return -2;
+                    if (m.Key == "petItem" && m.Value == "TB")
+                        return -28; // tier boost is very valuable
+                    else
+                        return -2;
                 return 1;
             });
         }

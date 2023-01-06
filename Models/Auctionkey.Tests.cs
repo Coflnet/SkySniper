@@ -137,6 +137,29 @@ namespace Coflnet.Sky.Sniper.Models
                 return new AuctionKey(null, ItemReferences.Reforge.Any, new() { new("DRAGON", amount) }, Tier.EPIC, 1);
             }
         }
+        [Test]
+        public void EnderDragonAppart()
+        {
+            var clean = CreateFromExp("0", true);
+            //clean.Modifiers.Clear();
+
+            var lvl1 = CreateFromExp("1", true);
+            var lvl2 = CreateFromExp("0", false);
+
+            var simValue = clean.Similarity(lvl1);
+            System.Console.WriteLine(simValue);
+
+            Assert.Greater(simValue, clean.Similarity(lvl2));
+            static AuctionKey CreateFromExp(string amount, bool boost)
+            {
+                var key = new AuctionKey(null, ItemReferences.Reforge.Any, new() { new("exp", amount) }, Tier.EPIC, 1);
+                if (boost)
+                {
+                    key.Modifiers.Add(new("petItem", "TB"));
+                }
+                return key;
+            }
+        }
 
         //[Test]
         public void HyperionMostSimilar()
