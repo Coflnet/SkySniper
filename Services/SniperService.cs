@@ -147,7 +147,8 @@ ORDER BY l.`AuctionId`  DESC;
             "winning_bid",
             "skin",
             "exp",
-            "color"
+            "color",
+            "new_years_cake" // not that valuable but the only attribute
         };
         private static KeyValuePair<string, string> Ignore = new KeyValuePair<string, string>(string.Empty, string.Empty);
 
@@ -236,8 +237,12 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static KeyValuePair<AuctionKey, ReferenceAuctions> FindClosestTo(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey)
         {
+            return FindClosest(l, itemKey).FirstOrDefault();
+        }
+        private static IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> FindClosest(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey)
+        {
             return l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0 && l.Value.References.Count > 3)
-                            .OrderByDescending(m => itemKey.Similarity(m.Key)).FirstOrDefault();
+                            .OrderByDescending(m => itemKey.Similarity(m.Key));
         }
 
         private static void AssignMedian(PriceEstimate result, AuctionKey key, ReferenceAuctions bucket)
@@ -404,6 +409,7 @@ ORDER BY l.`AuctionId`  DESC;
         }
 
         private static List<KeyValuePair<string, string>> EmptyModifiers = new();
+        private static List<KeyValuePair<string, string>> EmptyPetModifiers = new() { new("exp", "0"), new("candyUsed", "0") };
         private static DateTime UnlockedIntroduction = new DateTime(2021, 9, 4);
         private static List<string> GemPurities = new() { "PERFECT", "FLAWLESS", "FINE", "ROUGH" };
         public AuctionKey KeyFromSaveAuction(SaveAuction auction, int dropLevel = 0)
@@ -452,16 +458,16 @@ ORDER BY l.`AuctionId`  DESC;
                     key.Enchants = new List<Models.Enchantment>();
                 else
                     key.Enchants = new List<Models.Enchantment>() { new Models.Enchantment() { Lvl = enchant.Level, Type = enchant.Type } };
-                key.Modifiers = EmptyModifiers;
+                AssignEmptyModifiers(auction, key);
             }
             else
             {
                 //key.Modifiers = new List<KeyValuePair<string, string>>();
                 key.Enchants = new List<Models.Enchantment>();
-                key.Modifiers = EmptyModifiers;
+                AssignEmptyModifiers(auction, key);
             }
 
-            if(key.Enchants == null)
+            if (key.Enchants == null)
                 key.Enchants = new List<Models.Enchantment>();
             key.Tier = auction.Tier;
             if (auction.Tag == "ENCHANTED_BOOK")
@@ -472,6 +478,13 @@ ORDER BY l.`AuctionId`  DESC;
             key.Count = (byte)auction.Count;
 
             return key;
+        }
+
+        private static void AssignEmptyModifiers(SaveAuction auction, AuctionKey key)
+        {
+            key.Modifiers = EmptyModifiers;
+            if (auction.Tag.StartsWith("PET_") && !auction.Tag.Contains("ITEM"))
+                key.Modifiers = EmptyPetModifiers;
         }
 
         private KeyValuePair<string, string> NormalizeData(KeyValuePair<string, string> s, SaveAuction auction)
@@ -634,9 +647,22 @@ ORDER BY l.`AuctionId`  DESC;
 
                 if (!l.TryGetValue(key, out ReferenceAuctions bucket))
                 {
-                    if (i != 0)
+                    if (triggerEvents && i == 4 && Random.Shared.NextDouble() < 0.5)
+                    {
+                        Console.WriteLine($"could not find bucket {key} for {auction.Tag} {l.Count} {auction.Uuid}");
+                        var closests = FindClosest(l, key).Take(5).ToList();
+                        foreach (var item in closests)
+                        {
+                            Console.WriteLine($"Closest bucket clean: {item.Key}");
+                        }
+                        if (!closests.Any())
+                            return;
+                        bucket = closests.FirstOrDefault().Value;
+                    }
+                    else if (i != 0)
                         continue;
-                    bucket = CreateAndAddBucket(auction);
+                    else
+                        bucket = CreateAndAddBucket(auction);
                 }
                 if (bucket == null)
                 {

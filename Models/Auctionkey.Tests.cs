@@ -106,6 +106,22 @@ namespace Coflnet.Sky.Sniper.Models
             Assert.Greater(originkey.Similarity(targetKey), originkey.Similarity(badKey));
         }
 
+        [Test]
+        public void HigherExpIsFurther()
+        {
+            AuctionKey originkey = CreateFromExp("1");
+            var closerKey = CreateFromExp("0");
+            var furtherKey = CreateFromExp("3");
+            var closerValue = originkey.Similarity(closerKey);
+            System.Console.WriteLine("computing");
+            Assert.Greater(closerValue, originkey.Similarity(furtherKey));
+
+            static AuctionKey CreateFromExp(string amount)
+            {
+                return new AuctionKey(null, ItemReferences.Reforge.Any, new() { new("exp", amount) }, Tier.UNKNOWN, 1);
+            }
+        }
+
         //[Test]
         public void HyperionMostSimilar()
         {

@@ -40,30 +40,63 @@ namespace Coflnet.Sky.Sniper.Models
                 sum++;
             else
                 sum--;
-            sum -= Math.Abs(this.Tier - key.Tier) * 4;
+            sum -= Math.Abs(this.Tier - key.Tier) * 9;
+            if(this.Tier - key.Tier < 0)
+                sum -= 10; // higher tier is very bad
             if (this.Count == key.Count)
                 sum += this.Count;
             if (this.Enchants != null && key.Enchants != null)
             {
                 sum += this.Enchants.Count(e => key.Enchants.Any(k => k.Lvl == e.Lvl && k.Type == e.Type)) * 3;
                 sum += this.Enchants.Where(e => Constants.VeryValuableEnchant.TryGetValue(e.Type, out var lvl) && key.Enchants.Contains(e)).Count() * 10;
+                // its important that the other key doesn't have more valuable enchants
+                sum -= key.Enchants.Where(e => Constants.VeryValuableEnchant.TryGetValue(e.Type, out var lvl) && !this.Enchants.Contains(e)).Count() * 10;
             }
             sum -= (this.Enchants?.Count ?? 0) + (key.Enchants?.Count ?? 0);
 
             if (this.Modifiers != null && key.Modifiers != null)
             {
-                sum += this.Modifiers.Count(m => key.Modifiers.Any(k => k.Key == m.Key && k.Value == m.Value)) * 3;
-                sum -= (this.Modifiers.Count() + key.Modifiers.Count());
+                //sum += this.Modifiers.Count(m => key.Modifiers.Any(k => k.Key == m.Key && k.Value == m.Value)) * 3;
+                sum -= ModifierDifference(key, this.Modifiers);
+                sum -= ModifierDifference(this, key.Modifiers);
 
-                var valuableCount = this.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).Count();
+                var veryValuable = this.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).ToList();
+                var valuableCount = veryValuable.Count();
                 var valuableOtherCount = key.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).Count();
-                var matching = this.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).Count(m => key.Modifiers.Any(k => k.Key == m.Key && k.Value == m.Value));
-                sum += (matching * 3 - valuableCount - valuableOtherCount) * 8;
+                var exactMatching = veryValuable.Count(m => key.Modifiers.Any(k => k.Key == m.Key && k.Value == m.Value));
+                var difference = veryValuable.Sum(m =>
+                {
+                    var match = key.Modifiers.Where(k => k.Key == m.Key).FirstOrDefault();
+                    if (match.Key == null)
+                        return 5;
+                    if (int.TryParse(match.Value, out var matchValue) && int.TryParse(m.Value, out var value))
+                        return Math.Abs(matchValue - value);
+                    return 0;
+                });
+
+                // its important that the other key doesn't have more valuable modifiers
+                sum += (exactMatching * 4 - valuableCount * 2 - valuableOtherCount) * 8;
+                sum -= difference * 2;
             }
             else
                 sum -= this.Modifiers?.Count ?? 0 - key.Modifiers?.Count ?? 0;
             sum -= Math.Abs(key.Count - Count);
             return sum;
+        }
+
+        private static int ModifierDifference(AuctionKey key, List<KeyValuePair<string, string>> leftMods)
+        {
+            return leftMods.Sum(m =>
+            {
+                var match = key.Modifiers.Where(k => k.Key == m.Key).FirstOrDefault();
+                if (match.Key == null)
+                    return 4;
+                if (int.TryParse(match.Value, out var matchValue) && int.TryParse(m.Value, out var value))
+                    return Math.Abs(matchValue - value);
+                if (match.Value == m.Value)
+                    return -2;
+                return 1;
+            });
         }
 
         public override int GetHashCode()
