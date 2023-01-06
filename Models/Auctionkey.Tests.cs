@@ -155,7 +155,7 @@ namespace Coflnet.Sky.Sniper.Models
                 var key = new AuctionKey(null, ItemReferences.Reforge.Any, new() { new("exp", amount) }, Tier.EPIC, 1);
                 if (boost)
                 {
-                    key.Modifiers.Add(new("petItem", "TB"));
+                    key.Modifiers.Add(new(SniperService.PetItemKey, "TB"));
                 }
                 return key;
             }

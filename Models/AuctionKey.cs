@@ -97,7 +97,7 @@ namespace Coflnet.Sky.Sniper.Models
                 if (int.TryParse(match.Value, out var matchValue) && int.TryParse(m.Value, out var value))
                     return Math.Abs(matchValue - value);
                 if (match.Value == m.Value)
-                    if (m.Key == "petItem" && m.Value == "TB")
+                    if (m.Key == SniperService.PetItemKey && m.Value == "TB")
                         return -28; // tier boost is very valuable
                     else
                         return -2;

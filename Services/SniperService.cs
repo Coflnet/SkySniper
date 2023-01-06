@@ -9,6 +9,7 @@ namespace Coflnet.Sky.Sniper.Services
 {
     public class SniperService
     {
+        public const string PetItemKey = "petItem";
         public static int MIN_TARGET = 200_000;
         public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>();
 
@@ -494,7 +495,7 @@ ORDER BY l.`AuctionId`  DESC;
                 key.Modifiers = EmptyModifiers;
             if (auction.Tag.StartsWith("PET_") && !auction.Tag.StartsWith("PET_ITEM") && !auction.Tag.StartsWith("PET_SKIN"))
                 if (auction.FlatenedNBT.TryGetValue("heldItem", out var val) && val == "PET_ITEM_TIER_BOOST")
-                    key.Modifiers = new(EmptyPetModifiers) { new("petItem", "TB") };
+                    key.Modifiers = new(EmptyPetModifiers) { new(PetItemKey, "TB") };
                 else
                     key.Modifiers = EmptyPetModifiers;
         }
@@ -545,7 +546,7 @@ ORDER BY l.`AuctionId`  DESC;
                 };
                 if (heldItem == null)
                     return Ignore;
-                return new KeyValuePair<string, string>("petItem", heldItem);
+                return new KeyValuePair<string, string>(PetItemKey, heldItem);
             }
             if (s.Key == "upgrade_level")
                 return new KeyValuePair<string, string>("dungeon_item_level", s.Value);
