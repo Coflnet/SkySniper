@@ -647,7 +647,7 @@ ORDER BY l.`AuctionId`  DESC;
 
                 if (!l.TryGetValue(key, out ReferenceAuctions bucket))
                 {
-                    if (triggerEvents && i == 4 && Random.Shared.NextDouble() < 0.5)
+                    if (triggerEvents && i == 4 && Random.Shared.NextDouble() < 0.5 && !auction.Tag.Contains("DRAGON"))
                     {
                         Console.WriteLine($"could not find bucket {key} for {auction.Tag} {l.Count} {auction.Uuid}");
                         var closests = FindClosest(l, key).Take(5).ToList();
