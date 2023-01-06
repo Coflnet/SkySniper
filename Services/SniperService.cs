@@ -483,8 +483,11 @@ ORDER BY l.`AuctionId`  DESC;
         private static void AssignEmptyModifiers(SaveAuction auction, AuctionKey key)
         {
             key.Modifiers = EmptyModifiers;
-            if (auction.Tag.StartsWith("PET_") && !auction.Tag.Contains("ITEM"))
-                key.Modifiers = EmptyPetModifiers;
+            if (auction.Tag.StartsWith("PET_") && !auction.Tag.StartsWith("PET_ITEM") && !auction.Tag.StartsWith("PET_SKIN"))
+                if (auction.FlatenedNBT.TryGetValue("heldItem", out var val) && val == "PET_ITEM_TIER_BOOST")
+                    key.Modifiers = new(EmptyPetModifiers) { new("heldItem", "TB") };
+                else
+                    key.Modifiers = EmptyPetModifiers;
         }
 
         private KeyValuePair<string, string> NormalizeData(KeyValuePair<string, string> s, SaveAuction auction)
@@ -647,7 +650,7 @@ ORDER BY l.`AuctionId`  DESC;
 
                 if (!l.TryGetValue(key, out ReferenceAuctions bucket))
                 {
-                    if (triggerEvents && i == 4 && Random.Shared.NextDouble() < 0.5 && !auction.Tag.Contains("DRAGON"))
+                    if (triggerEvents && i == 4 && Random.Shared.NextDouble() < 0.5)
                     {
                         Console.WriteLine($"could not find bucket {key} for {auction.Tag} {l.Count} {auction.Uuid}");
                         var closests = FindClosest(l, key).Take(5).ToList();
