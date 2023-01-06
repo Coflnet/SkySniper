@@ -150,6 +150,12 @@ ORDER BY l.`AuctionId`  DESC;
             "color",
             "new_years_cake" // not that valuable but the only attribute
         };
+
+        public static HashSet<string> NeverDrop = new()
+        {
+            "new_years_cake" // not that valuable but the only attribute
+        };
+
         private static KeyValuePair<string, string> Ignore = new KeyValuePair<string, string>(string.Empty, string.Empty);
 
 
@@ -482,7 +488,10 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static void AssignEmptyModifiers(SaveAuction auction, AuctionKey key)
         {
-            key.Modifiers = EmptyModifiers;
+            if (auction.FlatenedNBT.Any(n => NeverDrop.Contains(n.Key)))
+                key.Modifiers = auction.FlatenedNBT.Where(n => NeverDrop.Contains(n.Key)).ToList();
+            else
+                key.Modifiers = EmptyModifiers;
             if (auction.Tag.StartsWith("PET_") && !auction.Tag.StartsWith("PET_ITEM") && !auction.Tag.StartsWith("PET_SKIN"))
                 if (auction.FlatenedNBT.TryGetValue("heldItem", out var val) && val == "PET_ITEM_TIER_BOOST")
                     key.Modifiers = new(EmptyPetModifiers) { new("heldItem", "TB") };

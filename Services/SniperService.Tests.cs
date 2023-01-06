@@ -156,9 +156,26 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
-        public void FallbackToSecondLbin()
+        public void TakesClosestCake()
         {
+            AuctionKey key = CreateKey(252, 4);
 
+            Assert.Greater(key.Similarity(CreateKey(250, 0)), key.Similarity(CreateKey(2, 0)));
+
+            AuctionKey CreateKey(int year, int drop)
+            {
+                var auction = new SaveAuction()
+                {
+                    Tag = "1",
+                    FlatenedNBT = new() { { "new_years_cake", year.ToString() } },
+                    StartingBid = 900,
+                    HighestBidAmount = 900,
+                    UId = System.Random.Shared.NextInt64(),
+                    AuctioneerId = "12aaa"
+                };
+                var key = service.KeyFromSaveAuction(auction, drop);
+                return key;
+            }
         }
 
 
