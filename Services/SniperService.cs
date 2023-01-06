@@ -494,7 +494,7 @@ ORDER BY l.`AuctionId`  DESC;
                 key.Modifiers = EmptyModifiers;
             if (auction.Tag.StartsWith("PET_") && !auction.Tag.StartsWith("PET_ITEM") && !auction.Tag.StartsWith("PET_SKIN"))
                 if (auction.FlatenedNBT.TryGetValue("heldItem", out var val) && val == "PET_ITEM_TIER_BOOST")
-                    key.Modifiers = new(EmptyPetModifiers) { new("heldItem", "TB") };
+                    key.Modifiers = new(EmptyPetModifiers) { new("petItem", "TB") };
                 else
                     key.Modifiers = EmptyPetModifiers;
         }
