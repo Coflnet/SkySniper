@@ -313,7 +313,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.AddSoldItem(Dupplicate(drill));
             service.FinishedUpdate();
 
-            drill.FlatenedNBT["drill_part_engine"] = "COMPONENT";
+            drill.FlatenedNBT["drill_part_engine"] = "component";
             LowPricedAuction found = null;
             var lowAssert = (LowPricedAuction s) =>
             {

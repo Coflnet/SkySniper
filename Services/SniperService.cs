@@ -645,8 +645,8 @@ ORDER BY l.`AuctionId`  DESC;
             var lookup = Lookups.GetOrAdd(auction.Tag, key => new PriceLookup());
             var l = lookup.Lookup;
             var cost = auction.StartingBid;
-            var lbinPrice = auction.StartingBid * 1.05;
-            var medPrice = auction.StartingBid * 1.1;
+            var lbinPrice = auction.StartingBid * 1.03;
+            var medPrice = auction.StartingBid * 1.05;
             var lastKey = new AuctionKey();
             var foundAtLeastOneReferenceBucket = false;
             for (int i = 0; i < 5; i++)
@@ -728,7 +728,7 @@ ORDER BY l.`AuctionId`  DESC;
                     continue;
                 if (auction.FlatenedNBT.TryGetValue(item, out var value))
                 {
-                    if (!Lookups.TryGetValue(value, out var itemLookup))
+                    if (!Lookups.TryGetValue(value.ToUpper(), out var itemLookup))
                         continue;
                     var prices = itemLookup.Lookup.Values.First();
                     extraValue += prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price);
