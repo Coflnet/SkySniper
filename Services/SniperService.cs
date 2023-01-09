@@ -734,10 +734,14 @@ ORDER BY l.`AuctionId`  DESC;
                     extraValue += prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price);
                 }
             }
-            foreach (var item in auction.FlatenedNBT.Where(f => f.Value == "PERFECT"))
+            foreach (var item in auction.FlatenedNBT)
             {
-                if (Lookups.TryGetValue($"PERFECT_{item.Key.Split('_').First()}_GEM", out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
-                    extraValue += gemLookup.Lookup.Values.First().Price - 500_000;
+                if (item.Value == "PERFECT")
+                    if (Lookups.TryGetValue($"PERFECT_{item.Key.Split('_').First()}_GEM", out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
+                        extraValue += gemLookup.Lookup.Values.First().Price - 500_000;
+                if (item.Value == "FLAWLESS")
+                    if (Lookups.TryGetValue($"FLAWLESS_{item.Key.Split('_').First()}_GEM", out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
+                        extraValue += gemLookup.Lookup.Values.First().Price - 100_000;
             }
 
             return extraValue;
