@@ -196,6 +196,15 @@ namespace Coflnet.Sky.Sniper.Services
             }
             await Task.Delay(TimeSpan.FromMinutes(1), stoppinToken);
 
+            foreach (var lookup in sniper.Lookups)
+            {
+                foreach (var item in lookup.Value.Lookup)
+                {
+                    SniperService.UpdateMedian(item.Value);
+                }
+                await Task.Delay(60);
+            }
+
             var batchSize = 15_000;
             for (var batchStart = maxId - 10_000_000; batchStart < maxId; batchStart += batchSize)
             {

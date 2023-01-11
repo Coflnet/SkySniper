@@ -327,7 +327,7 @@ ORDER BY l.`AuctionId`  DESC;
             UpdateMedian(bucket);
         }
 
-        private static void UpdateMedian(ReferenceAuctions bucket)
+        public static void UpdateMedian(ReferenceAuctions bucket)
         {
             var size = bucket.References.Count;
             if (size > 90)
