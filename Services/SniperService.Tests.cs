@@ -64,8 +64,7 @@ namespace Coflnet.Sky.Sniper.Services
             var found = new List<LowPricedAuction>();
             service.FoundSnipe += found.Add;
 
-            service.AddSoldItem(highestValAuction);
-            service.AddSoldItem(Dupplicate(highestValAuction));
+            AddVolume(highestValAuction);
             service.AddSoldItem(Dupplicate(firstAuction));
 
 
@@ -74,14 +73,14 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(LowPricedAuction.FinderType.SNIPER_MEDIAN, found.First().Finder);
             service.FinishedUpdate();
             service.TestNewAuction(secondAuction);
-            var flip = found.Skip(1).First();
+            var flip = found.Skip(2).First();
             Assert.AreEqual(900, flip.TargetPrice);
             Assert.AreEqual(LowPricedAuction.FinderType.SNIPER, flip.Finder);
             // first is sold
             service.AddSoldItem(firstAuction);
             service.TestNewAuction(secondAuction);
-            Assert.AreEqual(900, found.Last().TargetPrice);
             Assert.AreEqual(LowPricedAuction.FinderType.SNIPER_MEDIAN, found.Last().Finder);
+            Assert.AreEqual(900, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
         }
 
         public static SaveAuction Dupplicate(SaveAuction origin)
@@ -113,9 +112,7 @@ namespace Coflnet.Sky.Sniper.Services
         {
             highestValAuction.FlatenedNBT = new Dictionary<string, string>();
             highestValAuction.Enchantments = new List<Core.Enchantment>();
-            service.AddSoldItem(highestValAuction);
-            service.AddSoldItem(Dupplicate(highestValAuction));
-            service.AddSoldItem(Dupplicate(highestValAuction));
+            AddVolume(highestValAuction);
             service.TestNewAuction(highestValAuction);
             var anotherAuction = new SaveAuction(highestValAuction)
             { UId = 563, StartingBid = 500, AuctioneerId = "00000", FlatenedNBT = highestValAuction.FlatenedNBT };
@@ -130,9 +127,7 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void FallbackOnNomatchLevel2()
         {
-            service.AddSoldItem(highestValAuction);
-            service.AddSoldItem(Dupplicate(highestValAuction));
-            service.AddSoldItem(Dupplicate(highestValAuction));
+            AddVolume(highestValAuction);
             service.TestNewAuction(highestValAuction);
             var anotherAuction = new SaveAuction(highestValAuction)
             { UId = 563, StartingBid = 500, AuctioneerId = "00000", FlatenedNBT = highestValAuction.FlatenedNBT };
@@ -141,6 +136,13 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(1000, found.Last().TargetPrice);
         }
 
+        private void AddVolume(SaveAuction toAdd)
+        {
+            service.AddSoldItem(Dupplicate(toAdd));
+            service.AddSoldItem(Dupplicate(toAdd));
+            service.AddSoldItem(Dupplicate(toAdd));
+            service.AddSoldItem(Dupplicate(toAdd));
+        }
 
         [Test]
         public void UsesMedianCorrectly()
@@ -150,7 +152,8 @@ namespace Coflnet.Sky.Sniper.Services
             { UId = 563, HighestBidAmount = 5000, AuctioneerId = "00000", FlatenedNBT = highestValAuction.FlatenedNBT };
             service.AddSoldItem(anotherAuction);
             service.AddSoldItem(secondAuction);
-            // prices: 5000,1000,700
+            service.AddSoldItem(Dupplicate(highestValAuction));
+            // prices: 5000,5000,1000,700
             service.TestNewAuction(firstAuction);
             Assert.AreEqual(1000, found.Last().TargetPrice);
         }
@@ -187,6 +190,7 @@ namespace Coflnet.Sky.Sniper.Services
             a.Enchantments = new List<Core.Enchantment>(){
                 targetEnchant
             };
+            service.AddSoldItem(Dupplicate(a));
             service.AddSoldItem(Dupplicate(a));
             service.AddSoldItem(Dupplicate(a));
             service.AddSoldItem(Dupplicate(a));
@@ -273,6 +277,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.AddSoldItem(Dupplicate(volumeHelp));
             service.AddSoldItem(Dupplicate(volumeHelp));
             service.AddSoldItem(Dupplicate(volumeHelp));
+            service.AddSoldItem(Dupplicate(volumeHelp));
             service.TestNewAuction(badActiveLbin);
             service.TestNewAuction(cheaperHigherLevel);
             service.FinishedUpdate();
@@ -302,15 +307,11 @@ namespace Coflnet.Sky.Sniper.Services
         {
             var part = Dupplicate(highestValAuction);
             part.Tag = "COMPONENT";
-            service.AddSoldItem(part);
-            service.AddSoldItem(Dupplicate(part));
-            service.AddSoldItem(Dupplicate(part));
+            AddVolume(part);
 
             var drill = Dupplicate(highestValAuction);
             drill.Tag = "DRILL";
-            service.AddSoldItem(drill);
-            service.AddSoldItem(Dupplicate(drill));
-            service.AddSoldItem(Dupplicate(drill));
+            AddVolume(drill);
             service.FinishedUpdate();
 
             drill.FlatenedNBT["drill_part_engine"] = "component";
@@ -333,6 +334,7 @@ namespace Coflnet.Sky.Sniper.Services
         public void GemExtraValue()
         {
             highestValAuction.FlatenedNBT = new();
+            service.AddSoldItem(Dupplicate(highestValAuction));
             service.AddSoldItem(Dupplicate(highestValAuction));
             service.AddSoldItem(Dupplicate(highestValAuction));
             service.AddSoldItem(Dupplicate(highestValAuction));

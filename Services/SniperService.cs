@@ -141,7 +141,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         */
 
-        // stuff changing value by 5+M
+        // stuff changing value by 10+M
         public static HashSet<string> VeryValuable = new HashSet<string>()
         {
             "rarity_upgrades",
@@ -149,6 +149,7 @@ ORDER BY l.`AuctionId`  DESC;
             "skin",
             "exp",
             "color",
+            "ability_scroll",
             "new_years_cake" // not that valuable but the only attribute
         };
 
@@ -338,13 +339,13 @@ ORDER BY l.`AuctionId`  DESC;
                 .Select(a => a.Last())  // only use one (the last) price from each seller
                 .ToList();
             size = deduplicated.Count();
-            if (size < 3)
+            if (size <= 3)
             {
                 bucket.Price = 0; // to low vol
                 return;
             }
             // short term protects against price drops after updates
-            var shortTermList = deduplicated.OrderByDescending(b => b.Day).Take(3).ToList();
+            var shortTermList = deduplicated.OrderByDescending(b => b.Day).ThenBy(b=>b.Price).Take(3).ToList();
             var shortTermPrice = GetMedian(shortTermList);
             bucket.OldestRef = shortTermList.Min(s => s.Day);
             // long term protects against market manipulation
@@ -756,7 +757,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 PotentialSnipe(auction, lbinPrice, bucket, key, l, extraValue);
             }
-            if (medianPrice > minMedPrice)
+            if (medianPrice > minMedPrice && BucketHasEnoughReferencesForPrice(bucket))
             {
                 var props = CreateReference(bucket.References.Last().AuctionId, key, extraValue);
                 props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
@@ -778,6 +779,12 @@ ORDER BY l.`AuctionId`  DESC;
                 if (Logs.Count > 2000)
                     PrintLogQueue();
             }
+        }
+
+        private static bool BucketHasEnoughReferencesForPrice(ReferenceAuctions bucket)
+        {
+            // high value items need more volume to pop up
+            return bucket.Price < 200_000_000 || bucket.References.Count > 5;
         }
 
         public void UpdateBazaar(dev.BazaarPull bazaar)
