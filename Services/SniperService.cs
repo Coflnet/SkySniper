@@ -150,6 +150,7 @@ ORDER BY l.`AuctionId`  DESC;
             "exp",
             "color",
             "ability_scroll",
+            "unlocked_slots",
             "new_years_cake" // not that valuable but the only attribute
         };
 
@@ -345,7 +346,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return;
             }
             // short term protects against price drops after updates
-            var shortTermList = deduplicated.OrderByDescending(b => b.Day).ThenBy(b=>b.Price).Take(3).ToList();
+            var shortTermList = deduplicated.OrderByDescending(b => b.Day).ThenBy(b => b.Price).Take(3).ToList();
             var shortTermPrice = GetMedian(shortTermList);
             bucket.OldestRef = shortTermList.Min(s => s.Day);
             // long term protects against market manipulation
@@ -649,7 +650,7 @@ ORDER BY l.`AuctionId`  DESC;
             var lbinPrice = auction.StartingBid * 1.03;
             var medPrice = auction.StartingBid * 1.05;
             var lastKey = new AuctionKey();
-            var foundAtLeastOneReferenceBucket = false;
+            var foundAtLeastOneReferenceBucket = true;
             for (int i = 0; i < 5; i++)
             {
                 var key = KeyFromSaveAuction(auction, i);
@@ -672,6 +673,7 @@ ORDER BY l.`AuctionId`  DESC;
                         if (!closests.Any())
                             return;
                         bucket = closests.FirstOrDefault().Value;
+                        foundAtLeastOneReferenceBucket = false;
                     }
                     else if (i != 0)
                         continue;
@@ -687,8 +689,6 @@ ORDER BY l.`AuctionId`  DESC;
                     long extraValue = GetExtraValue(auction, key);
                     FindFlip(auction, lbinPrice, medPrice, bucket, key, l, extraValue);
                 }
-                if (i != 0)
-                    foundAtLeastOneReferenceBucket = true;
                 UpdateLbin(auction, bucket);
             }
             if (!foundAtLeastOneReferenceBucket && triggerEvents)
