@@ -47,6 +47,8 @@ namespace Coflnet.Sky.Sniper.Services
                         // retry
                         lookup = await LoadItem(client, itemTag);
                     }
+                    if (lookup.Lookup.Sum(l => l.Value.References.Count) > 100)
+                        logger.LogInformation("loaded lookup for " + itemTag);
                     service.AddLookupData(itemTag, lookup);
                 }
                 catch (Exception e)
@@ -97,6 +99,7 @@ namespace Coflnet.Sky.Sniper.Services
             try
             {
                 items = await MessagePackSerializer.DeserializeAsync<List<string>>(response);
+                logger.LogInformation("loaded ids " + response.Length);
             }
             catch (Exception e)
             {
