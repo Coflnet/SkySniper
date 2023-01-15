@@ -83,8 +83,15 @@ namespace Coflnet.Sky.Sniper.Services
         {
             List<string> items = new List<string>();
 
-            if (!await client.BucketExistsAsync(new BucketExistsArgs().WithBucket("sky-sniper")))
+            try
+            {
                 await client.MakeBucketAsync(new MakeBucketArgs().WithBucket("sky-sniper"));
+            }
+            catch (System.Exception)
+            {
+                // bucket already exists
+                logger.LogInformation("bucket already exists or other error while creating");
+            }
 
             var response = await GetStreamForObject(client, "itemList");
             try

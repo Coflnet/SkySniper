@@ -351,6 +351,7 @@ namespace Coflnet.Sky.Sniper.Services
             }
             catch (Exception e)
             {
+                Console.WriteLine("lookup load failed");
                 Console.WriteLine(e.Message);
                 Console.WriteLine(e.StackTrace);
             }
