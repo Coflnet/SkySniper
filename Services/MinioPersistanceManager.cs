@@ -31,7 +31,9 @@ namespace Coflnet.Sky.Sniper.Services
                         .WithCredentials(config["MINIO_KEY"], config["MINIO_SECRET"])
                         .Build();
             List<string> items = await GetIemIds(client);
-            foreach (var itemTag in items)
+            await Parallel.ForEachAsync(items, new ParallelOptions(){
+                MaxDegreeOfParallelism = 2
+            }, async (itemTag, cancleToken) =>
             {
                 try
                 {
@@ -42,7 +44,7 @@ namespace Coflnet.Sky.Sniper.Services
                     }
                     catch (Exception ex)
                     {
-                        await Task.Delay(300);
+                        await Task.Delay(500);
                         logger.LogError(ex, "Could not load item once " + itemTag);
                         // retry
                         lookup = await LoadItem(client, itemTag);
@@ -56,7 +58,7 @@ namespace Coflnet.Sky.Sniper.Services
                     await Task.Delay(200);
                     logger.LogError(e, "Could not load item twice " + itemTag);
                 }
-            }
+            });
         }
 
 

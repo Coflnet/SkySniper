@@ -63,6 +63,7 @@ namespace Coflnet.Sky.Sniper.Services
         {
             var found = new List<LowPricedAuction>();
             service.FoundSnipe += found.Add;
+            service.State = SniperState.Ready;
 
             AddVolume(highestValAuction);
             service.AddSoldItem(Dupplicate(firstAuction));
