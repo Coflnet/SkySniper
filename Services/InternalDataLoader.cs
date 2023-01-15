@@ -356,6 +356,7 @@ namespace Coflnet.Sky.Sniper.Services
                 Console.WriteLine(e.StackTrace);
             }
             Console.WriteLine("loaded lookup");
+            sniper.State = SniperState.Ready;
             await Kafka.KafkaConsumer.ConsumeBatch<SaveAuction>(ConsumerConfig, new string[] { config["TOPICS:SOLD_AUCTION"] }, async batch =>
             {
                 foreach (var a in batch)

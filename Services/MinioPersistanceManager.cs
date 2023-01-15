@@ -32,7 +32,7 @@ namespace Coflnet.Sky.Sniper.Services
                         .Build();
             List<string> items = await GetIemIds(client);
             await Parallel.ForEachAsync(items, new ParallelOptions(){
-                MaxDegreeOfParallelism = 2
+                MaxDegreeOfParallelism = 5
             }, async (itemTag, cancleToken) =>
             {
                 try
@@ -71,7 +71,10 @@ namespace Coflnet.Sky.Sniper.Services
             logger.LogInformation("saving list");
             await client.PutObjectAsync(new PutObjectArgs().WithBucket("sky-sniper").WithObject("itemList").WithStreamData(stream).WithObjectSize(stream.Length));
             logger.LogInformation("saved list " + stream.Length);
-            foreach (var item in lookups)
+            await Parallel.ForEachAsync(lookups, new ParallelOptions()
+            {
+                MaxDegreeOfParallelism = 10
+            }, async (item, cancleToken) =>
             {
                 using var itemStream = new MemoryStream();
                 await MessagePackSerializer.SerializeAsync(itemStream, item.Value);
@@ -79,7 +82,7 @@ namespace Coflnet.Sky.Sniper.Services
                 await client.PutObjectAsync(new PutObjectArgs().WithBucket("sky-sniper").WithObject(item.Key).WithStreamData(itemStream).WithObjectSize(itemStream.Length));
                 if (!string.IsNullOrEmpty(item.Key) && item.Key.StartsWith('S'))
                     Console.Write(" saved " + item.Key);
-            }
+            });
             Console.WriteLine();
         }
 
