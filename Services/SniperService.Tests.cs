@@ -284,7 +284,7 @@ namespace Coflnet.Sky.Sniper.Services
             LowPricedAuction found = null;
             var lowAssert = (LowPricedAuction s) =>
             {
-                if (s.Finder != LowPricedAuction.FinderType.SNIPER_MEDIAN)
+                if (s.Finder == LowPricedAuction.FinderType.SNIPER)
                     found = s;
                 System.Console.WriteLine(JsonConvert.SerializeObject(s));
             };

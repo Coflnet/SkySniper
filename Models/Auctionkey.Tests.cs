@@ -95,7 +95,7 @@ namespace Coflnet.Sky.Sniper.Models
             var badAuction = new SaveAuction()
             {
                 Enchantments = new() { new(Core.Enchantment.EnchantmentType.growth, 5) },
-                FlatenedNBT = new() { { "rarity_upgrades", "1" }, { "unlocked_slots", "UNIVERSAL_0" } },
+                FlatenedNBT = new() { { "rarity_upgrades", "1" } },
                 Tier = Tier.MYTHIC
             };
             var service = new SniperService();
