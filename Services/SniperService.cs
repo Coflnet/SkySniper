@@ -673,6 +673,7 @@ ORDER BY l.`AuctionId`  DESC;
                         if (!closests.Any())
                             return;
                         bucket = closests.FirstOrDefault().Value;
+                        key = closests.FirstOrDefault().Key;
                         foundAtLeastOneReferenceBucket = false;
                     }
                     else if (i != 0)
