@@ -16,6 +16,7 @@ namespace Coflnet.Sky.Sniper.Services
         private ConcurrentQueue<LogEntry> Logs = new ConcurrentQueue<LogEntry>();
         private ConcurrentQueue<(SaveAuction, ReferenceAuctions)> LbinUpdates = new();
         private AuctionKey defaultKey = new AuctionKey();
+        public SniperState State { get; set; } = SniperState.LadingLbin;
 
         public event Action<LowPricedAuction> FoundSnipe;
         private readonly HashSet<string> IncludeKeys = new HashSet<string>()
@@ -665,6 +666,11 @@ ORDER BY l.`AuctionId`  DESC;
                     if (triggerEvents && i == 4)
                     {
                         Console.WriteLine($"could not find bucket {key} for {auction.Tag} {l.Count} {auction.Uuid}");
+                        if(this.State < SniperState.Ready)
+                        {
+                            Console.WriteLine($"closest is not available yet, state is {this.State}");
+                            return;
+                        }
                         var closests = FindClosest(l, key).Take(5).ToList();
                         foreach (var item in closests)
                         {

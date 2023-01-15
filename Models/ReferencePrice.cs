@@ -35,5 +35,4 @@ namespace Coflnet.Sky.Sniper.Models
             return HashCode.Combine(AuctionId, Seller);
         }
     }
-
 }
