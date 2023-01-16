@@ -157,6 +157,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         public static HashSet<string> NeverDrop = new()
         {
+            "exp", // this helps with closest match 
             "new_years_cake" // not that valuable but the only attribute
         };
 
