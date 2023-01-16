@@ -682,7 +682,7 @@ ORDER BY l.`AuctionId`  DESC;
                             return;
                         bucket = closests.FirstOrDefault().Value;
                         key = closests.FirstOrDefault().Key;
-                        if(bucket.HitsSinceCalculating > 4)
+                        if(bucket.HitsSinceCalculating > 2)
                         {
                             Console.WriteLine($"Bucket {key} for {auction.Uuid} has been hit {bucket.HitsSinceCalculating} times, skipping");
                             return;
