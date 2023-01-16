@@ -40,7 +40,7 @@ namespace Coflnet.Sky.Sniper.Models
                 sum++;
             else
                 sum--;
-            sum -= Math.Abs(this.Tier - key.Tier) * 9;
+            sum -= Math.Abs(this.Tier - key.Tier) * 10;
             if (this.Tier - key.Tier < 0)
                 sum -= 10; // higher tier is very bad
             if (this.Count == key.Count)

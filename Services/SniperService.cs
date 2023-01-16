@@ -327,6 +327,7 @@ ORDER BY l.`AuctionId`  DESC;
             // move reference to sold
             bucket.References.Enqueue(reference);
             bucket.Lbins.Remove(reference);
+            bucket.HitsSinceCalculating = 0;
             UpdateMedian(bucket);
         }
 
@@ -681,6 +682,12 @@ ORDER BY l.`AuctionId`  DESC;
                             return;
                         bucket = closests.FirstOrDefault().Value;
                         key = closests.FirstOrDefault().Key;
+                        if(bucket.HitsSinceCalculating > 4)
+                        {
+                            Console.WriteLine($"Bucket {key} for {auction.Uuid} has been hit {bucket.HitsSinceCalculating} times, skipping");
+                            return;
+                        }
+                        bucket.HitsSinceCalculating++;
                         foundAtLeastOneReferenceBucket = false;
                     }
                     else if (i != 0)

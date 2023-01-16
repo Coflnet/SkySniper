@@ -32,7 +32,9 @@ namespace Coflnet.Sky.Sniper.Models
         [Key(4)]
         public short OldestRef;
         [Key(5)]
-        public List<ReferencePrice> Lbins = new ();
+        public List<ReferencePrice> Lbins = new();
+        [Key(6)]
+        public short HitsSinceCalculating = 0;
         [IgnoreMember]
         [JsonIgnore]
         public ReferencePrice Lbin => Lbins?.FirstOrDefault() ?? default;
