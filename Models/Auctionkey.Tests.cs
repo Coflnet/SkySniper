@@ -161,6 +161,71 @@ namespace Coflnet.Sky.Sniper.Models
             }
         }
 
+
+        static AuctionKey CreateWithEnchant(Core.Enchantment.EnchantmentType type, byte level)
+        {
+            var key = new AuctionKey(new(){new Enchantment(){
+                    Type = type,
+                    Lvl = level
+                }}, ItemReferences.Reforge.Any, null, Tier.EPIC, 1);
+            return key;
+        }
+
+        [Test]
+        public void SameEnchantIsCloser()
+        {
+            var baseKey = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 5);
+
+            var closer = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 4);
+            var lvl2 = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_duplex, 4);
+
+            var simValue = baseKey.Similarity(closer);
+            System.Console.WriteLine(simValue);
+
+            Assert.Greater(simValue, baseKey.Similarity(lvl2));
+        }
+        [Test]
+        public void LowerEnchantIsCloser()
+        {
+            var baseKey = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 5);
+
+            var closer = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 4);
+            var lvl2 = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 6);
+
+            var simValue = baseKey.Similarity(closer);
+            System.Console.WriteLine(simValue);
+
+            Assert.Greater(simValue, baseKey.Similarity(lvl2));
+        }
+
+        [Test]
+        public void SameValuableEnchantIsCloser()
+        {
+            var differentEnchants = new List<Enchantment>(){
+                new Enchantment(){
+                    Type = Core.Enchantment.EnchantmentType.luck,
+                    Lvl = 6
+                },
+                new Enchantment(){
+                    Type = Core.Enchantment.EnchantmentType.critical,
+                    Lvl = 6
+                }
+            };
+            
+            var baseKey = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 5);
+            baseKey.Enchants.AddRange(differentEnchants);
+
+            var closer = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 5);
+            
+            var lvl2 = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_duplex, 5);
+            lvl2.Enchants.AddRange(differentEnchants);
+
+            var simValue = baseKey.Similarity(closer);
+            System.Console.WriteLine(simValue);
+
+            Assert.Greater(simValue, baseKey.Similarity(lvl2));
+        }
+
         //[Test]
         public void HyperionMostSimilar()
         {

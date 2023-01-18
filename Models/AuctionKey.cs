@@ -47,10 +47,9 @@ namespace Coflnet.Sky.Sniper.Models
                 sum += this.Count;
             if (this.Enchants != null && key.Enchants != null)
             {
-                sum += this.Enchants.Count(e => key.Enchants.Any(k => k.Lvl == e.Lvl && k.Type == e.Type)) * 3;
-                sum += this.Enchants.Where(e => Constants.VeryValuableEnchant.TryGetValue(e.Type, out var lvl) && key.Enchants.Contains(e)).Count() * 10;
-                // its important that the other key doesn't have more valuable enchants
-                sum -= key.Enchants.Where(e => Constants.VeryValuableEnchant.TryGetValue(e.Type, out var lvl) && !this.Enchants.Contains(e)).Count() * 10;
+                //sum += this.Enchants.Count(e => key.Enchants.Any(k => k.Lvl == e.Lvl && k.Type == e.Type)) * 3;
+                sum -= EnchantSimilarity(this.Enchants, key);
+                sum -= EnchantSimilarity(this.Enchants.Where(e => Constants.VeryValuableEnchant.TryGetValue(e.Type, out var lvl) && e.Lvl >= lvl).ToList(), key) * 10;
             }
             sum -= (this.Enchants?.Count ?? 0) + (key.Enchants?.Count ?? 0);
 
@@ -82,6 +81,22 @@ namespace Coflnet.Sky.Sniper.Models
                 sum -= this.Modifiers?.Count ?? 0 - key.Modifiers?.Count ?? 0;
             sum -= Math.Abs(key.Count - Count);
             return sum;
+        }
+
+        private int EnchantSimilarity(List<Enchantment> enchantsToCompare, AuctionKey key)
+        {
+            return enchantsToCompare.Sum(ench =>
+            {
+                var match = key.Enchants.FirstOrDefault(k => k.Type == ench.Type);
+                if (match == null)
+                    return 6;
+                if (match.Lvl == ench.Lvl)
+                    return -2;
+                var multiplier = 1;
+                if(match.Lvl > ench.Lvl)
+                    multiplier = 2;
+                return Math.Abs(match.Lvl - ench.Lvl) * multiplier;
+            });
         }
 
         private static int ModifierDifference(AuctionKey key, List<KeyValuePair<string, string>> leftMods)
@@ -124,7 +139,6 @@ namespace Coflnet.Sky.Sniper.Models
             Count = count;
         }
 
-
         public AuctionKey(AuctionKey key)
         {
             Enchants = key.Enchants?.Select(e => new Enchantment() { Lvl = e.Lvl, Type = e.Type }).ToList();
@@ -147,5 +161,4 @@ namespace Coflnet.Sky.Sniper.Models
             return !(a?.Equals(b) ?? true);
         }
     }
-
 }
