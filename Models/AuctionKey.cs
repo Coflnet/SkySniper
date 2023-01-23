@@ -49,7 +49,9 @@ namespace Coflnet.Sky.Sniper.Models
             {
                 //sum += this.Enchants.Count(e => key.Enchants.Any(k => k.Lvl == e.Lvl && k.Type == e.Type)) * 3;
                 sum -= EnchantSimilarity(this.Enchants, key);
+                sum -= EnchantSimilarity(key.Enchants, this);
                 sum -= EnchantSimilarity(this.Enchants.Where(e => Constants.VeryValuableEnchant.TryGetValue(e.Type, out var lvl) && e.Lvl >= lvl).ToList(), key) * 10;
+                sum -= EnchantSimilarity(key.Enchants.Where(e => Constants.VeryValuableEnchant.TryGetValue(e.Type, out var lvl) && e.Lvl >= lvl).ToList(), this) * 10;
             }
             sum -= (this.Enchants?.Count ?? 0) + (key.Enchants?.Count ?? 0);
 

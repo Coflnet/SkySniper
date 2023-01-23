@@ -161,6 +161,25 @@ namespace Coflnet.Sky.Sniper.Models
             }
         }
 
+        [Test]
+        public void PickaxeEfficiency()
+        {
+            var clean = Create();
+
+            var close = Create();
+            close.Tier = Tier.SPECIAL;
+            var far = Create();
+            far.Enchants.Add(new Enchantment() { Type = Core.Enchantment.EnchantmentType.efficiency, Lvl = 10 });
+
+            var simValue = clean.Similarity(close);
+            System.Console.WriteLine(simValue);
+
+            Assert.Greater(simValue, clean.Similarity(far));
+            static AuctionKey Create()
+            {
+                return new AuctionKey(new(), ItemReferences.Reforge.Any, new(), Tier.VERY_SPECIAL, 1);
+            }
+        }
 
         static AuctionKey CreateWithEnchant(Core.Enchantment.EnchantmentType type, byte level)
         {
