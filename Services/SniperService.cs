@@ -653,7 +653,7 @@ ORDER BY l.`AuctionId`  DESC;
             var lbinPrice = auction.StartingBid * 1.03;
             var medPrice = auction.StartingBid * 1.05;
             var lastKey = new AuctionKey();
-            var foundAtLeastOneReferenceBucket = true;
+            var shouldTryToFindClosest = false;
             for (int i = 0; i < 5; i++)
             {
                 var key = KeyFromSaveAuction(auction, i);
@@ -668,7 +668,7 @@ ORDER BY l.`AuctionId`  DESC;
                     if (triggerEvents && i == 4)
                     {
                         Console.WriteLine($"could not find bucket {key} for {auction.Tag} {l.Count} {auction.Uuid}");
-                        if(this.State < SniperState.Ready)
+                        if (this.State < SniperState.Ready)
                         {
                             Console.WriteLine($"closest is not available yet, state is {this.State}");
                             return;
@@ -682,13 +682,14 @@ ORDER BY l.`AuctionId`  DESC;
                             return;
                         bucket = closests.FirstOrDefault().Value;
                         key = closests.FirstOrDefault().Key;
-                        if(bucket.HitsSinceCalculating > 2)
+                        if (bucket.HitsSinceCalculating > 2)
                         {
                             Console.WriteLine($"Bucket {key} for {auction.Uuid} has been hit {bucket.HitsSinceCalculating} times, skipping");
+                            TryFindClosestRisky(auction, l, ref lbinPrice, ref medPrice);
                             return;
                         }
                         bucket.HitsSinceCalculating++;
-                        foundAtLeastOneReferenceBucket = false;
+                        shouldTryToFindClosest = true;
                     }
                     else if (i != 0)
                         continue;
@@ -706,32 +707,36 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 UpdateLbin(auction, bucket);
             }
-            if (!foundAtLeastOneReferenceBucket && triggerEvents)
+            if (shouldTryToFindClosest && triggerEvents)
             {
-                // special case for items that have no reference bucket, search using most similar
-                var key = KeyFromSaveAuction(auction, 0);
-                var closest = FindClosestTo(l, key);
-                medPrice *= 1.25; // increase price a bit to account for the fact that we are not using the exact same item
-                lbinPrice *= 1.15;
-                if (closest.Value == null)
-                    Logs.Enqueue(new LogEntry()
-                    {
-                        Key = key,
-                        LBin = -1,
-                        Median = -1,
-                        Uuid = auction.Uuid,
-                        Volume = -1
-                    });
-                else
+                TryFindClosestRisky(auction, l, ref lbinPrice, ref medPrice);
+            }
+        }
+
+        private void TryFindClosestRisky(SaveAuction auction, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, ref double lbinPrice, ref double medPrice)
+        {
+            // special case for items that have no reference bucket, search using most similar
+            var key = KeyFromSaveAuction(auction, 0);
+            var closest = FindClosestTo(l, key);
+            medPrice *= 1.25; // increase price a bit to account for the fact that we are not using the exact same item
+            lbinPrice *= 1.15;
+            if (closest.Value == null)
+                Logs.Enqueue(new LogEntry()
                 {
-                    if (closest.Key == key)
-                        Console.WriteLine($"Found exact match for {key} {closest.Value.Volume}");
-                    else
-                        Console.WriteLine($"Would estimate closest to {key} {closest.Key} {auction.Uuid} for {closest.Value.Price}");
-                    if (closest.Value.Price > medPrice)
-                        FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, closest.Value.Price, new() { { "closest", closest.Key.ToString() } });
-                }
-                //    FindFlip(auction, lbinPrice, medPrice, closest.Value, key, l);
+                    Key = key,
+                    LBin = -1,
+                    Median = -1,
+                    Uuid = auction.Uuid,
+                    Volume = -1
+                });
+            else
+            {
+                if (closest.Key == key)
+                    Console.WriteLine($"Found exact match for {key} {closest.Value.Volume} {auction.Uuid}");
+                else
+                    Console.WriteLine($"Would estimate closest to {key} {closest.Key} {auction.Uuid} for {closest.Value.Price}");
+                if (closest.Value.Price > medPrice)
+                    FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, closest.Value.Price, new() { { "closest", closest.Key.ToString() } });
             }
         }
 
