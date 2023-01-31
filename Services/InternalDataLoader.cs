@@ -20,10 +20,10 @@ namespace Coflnet.Sky.Sniper.Services
         SniperService sniper;
         private IConfiguration config;
         private IPersitanceManager persitance;
-        private Queue<AhStateSumary> RecentUpdates = new Queue<AhStateSumary>();
         private string LowPricedAuctionTopic;
         private static ProducerConfig producerConfig;
         private ActivitySource activitySource;
+        private ActiveUpdater activeUpdater;
 
         private ILogger<InternalDataLoader> logger;
 
@@ -34,7 +34,13 @@ namespace Coflnet.Sky.Sniper.Services
         Prometheus.Counter soldReceived = Prometheus.Metrics
                     .CreateCounter("sky_sniper_sold_received", "Number of sold auctions received");
 
-        public InternalDataLoader(SniperService sniper, IConfiguration config, IPersitanceManager persitance, ILogger<InternalDataLoader> logger, ActivitySource activitySource)
+        public InternalDataLoader(
+            SniperService sniper,
+            IConfiguration config,
+            IPersitanceManager persitance,
+            ILogger<InternalDataLoader> logger,
+            ActivitySource activitySource,
+            ActiveUpdater activeUpdater)
         {
             this.sniper = sniper;
             this.config = config;
@@ -47,6 +53,7 @@ namespace Coflnet.Sky.Sniper.Services
             };
             this.logger = logger;
             this.activitySource = activitySource;
+            this.activeUpdater = activeUpdater;
         }
 
 
@@ -255,7 +262,7 @@ namespace Coflnet.Sky.Sniper.Services
         private async Task ActiveUpdater(CancellationToken stoppingToken)
         {
             await RunTilStopped(
-                Kafka.KafkaConsumer.Consume<AhStateSumary>(Program.KafkaHost, config["TOPICS:AH_SUMARY"], ProcessSumary, stoppingToken)
+                Kafka.KafkaConsumer.Consume<AhStateSumary>(Program.KafkaHost, config["TOPICS:AH_SUMARY"], activeUpdater.ProcessSumary, stoppingToken)
             , stoppingToken);
         }
 
@@ -297,50 +304,6 @@ namespace Coflnet.Sky.Sniper.Services
                 {
                     logger.LogError(e, "processing bazaar");
                 }
-        }
-
-        private async Task ProcessSumary(AhStateSumary sum)
-        {
-            Console.WriteLine("\n-->Consumed update sumary " + sum.Time);
-            using var spancontext = activitySource.StartActivity("AhSumaryUpdate");
-            if (sum.Time < DateTime.UtcNow - TimeSpan.FromMinutes(5))
-                return;
-            RecentUpdates.Enqueue(sum);
-
-            if (RecentUpdates.Min(r => r.Time) > DateTime.UtcNow - TimeSpan.FromMinutes(4))
-                return;
-            var completeLookup = new Dictionary<long, long>();
-            foreach (var sumary in RecentUpdates)
-            {
-                foreach (var item in sumary.ActiveAuctions)
-                {
-                    completeLookup[item.Key] = item.Value;
-                }
-            }
-            await Task.Yield();
-
-            foreach (var item in sniper.Lookups)
-            {
-                foreach (var lookup in item.Value.Lookup)
-                {
-                    if (lookup.Value.Lbins == null)
-                        lookup.Value.Lbins = new();
-                    foreach (var binAuction in lookup.Value.Lbins.ToList())
-                    {
-                        if (!completeLookup.ContainsKey(binAuction.AuctionId))
-                        {
-                            lookup.Value.Lbins.Remove(binAuction);
-                        }
-                    }
-                    lookup.Value.Lbins.Sort(Models.ReferencePrice.Compare);
-                }
-            }
-
-            if (RecentUpdates.Peek().Time < DateTime.UtcNow - TimeSpan.FromMinutes(5))
-                RecentUpdates.Dequeue();
-
-            sniper.PrintLogQueue();
-            sniper.FinishedUpdate();
         }
 
         private async Task LoadLookupsAndProcessSells(CancellationToken stoppingToken)

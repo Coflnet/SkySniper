@@ -43,6 +43,7 @@ namespace Coflnet.Sky.Sniper
             services.AddHostedService<InternalDataLoader>();
             services.AddSingleton<IPersitanceManager, MinioPersistanceManager>();
             services.AddSingleton<ITokenService, TokenService>();
+            services.AddSingleton<ActiveUpdater>();
             services.AddJaeger(Configuration);
         }
 
