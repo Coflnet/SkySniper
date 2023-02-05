@@ -61,23 +61,9 @@ namespace Coflnet.Sky.Sniper.Models
                 sum -= ModifierDifference(key, this.Modifiers);
                 sum -= ModifierDifference(this, key.Modifiers);
 
-                var veryValuable = this.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).ToList();
-                var valuableCount = veryValuable.Count();
-                var valuableOtherCount = key.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).Count();
-                var exactMatching = veryValuable.Count(m => key.Modifiers.Any(k => k.Key == m.Key && k.Value == m.Value));
-                var difference = veryValuable.Sum(m =>
-                {
-                    var match = key.Modifiers.Where(k => k.Key == m.Key).FirstOrDefault();
-                    if (match.Key == null)
-                        return 5;
-                    if (int.TryParse(match.Value, out var matchValue) && int.TryParse(m.Value, out var value))
-                        return Math.Abs(matchValue - value);
-                    return 0;
-                });
+                sum -= ModifierDifference(this, key.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).ToList()) * 10;
+                sum -= ModifierDifference(key, this.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).ToList()) * 10;
 
-                // its important that the other key doesn't have more valuable modifiers
-                sum += (exactMatching * 4 - valuableCount * 2 - valuableOtherCount) * 8;
-                sum -= difference * 2;
             }
             else
                 sum -= this.Modifiers?.Count ?? 0 - key.Modifiers?.Count ?? 0;
@@ -95,7 +81,7 @@ namespace Coflnet.Sky.Sniper.Models
                 if (match.Lvl == ench.Lvl)
                     return -2;
                 var multiplier = 1;
-                if(match.Lvl > ench.Lvl)
+                if (match.Lvl > ench.Lvl)
                     multiplier = 2;
                 return Math.Abs(match.Lvl - ench.Lvl) * multiplier;
             });
