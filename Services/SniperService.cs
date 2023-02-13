@@ -155,6 +155,11 @@ ORDER BY l.`AuctionId`  DESC;
             "new_years_cake" // not that valuable but the only attribute
         };
 
+        public static HashSet<string> Increadable = new HashSet<string>()
+        {
+            "ability_scroll"
+        };
+
         public static HashSet<string> NeverDrop = new()
         {
             "exp", // this helps with closest match 

@@ -39,6 +39,7 @@ namespace Coflnet.Sky.Sniper.Models
             // by default reforge and tier match
             Assert.AreEqual(key.Similarity(key), keyB.Similarity(key));
         }
+
         [Test]
         public void DifferentEnchantsDecrease()
         {
