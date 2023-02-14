@@ -147,17 +147,16 @@ ORDER BY l.`AuctionId`  DESC;
         {
             "rarity_upgrades",
             "winning_bid",
-            "skin",
             "exp",
             "color",
-            "ability_scroll",
             "unlocked_slots",
             "new_years_cake" // not that valuable but the only attribute
         };
 
         public static HashSet<string> Increadable = new HashSet<string>()
         {
-            "ability_scroll"
+            "ability_scroll",
+            "skin"
         };
 
         public static HashSet<string> NeverDrop = new()
@@ -255,7 +254,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             return FindClosest(l, itemKey).FirstOrDefault();
         }
-        private static IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> FindClosest(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey)
+        public static IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> FindClosest(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey)
         {
             return l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0 && l.Value.References.Count > 3)
                             .OrderByDescending(m => itemKey.Similarity(m.Key));
@@ -456,7 +455,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             else if (dropLevel == 1 || dropLevel == 2)
             {
-                key.Modifiers = auction.FlatenedNBT?.Where(n => VeryValuable.Contains(n.Key) || n.Value == "PERFECT")
+                key.Modifiers = auction.FlatenedNBT?.Where(n => VeryValuable.Contains(n.Key) || Increadable.Contains(n.Key) || n.Value == "PERFECT")
                             .OrderByDescending(n => n.Key)
                             .ToList();
                 key.Enchants = auction.Enchantments

@@ -152,6 +152,14 @@ namespace Coflnet.Sky.Sniper.Controllers
             });
         }
 
+        [Route("search/{tag}/{auctionId}")]
+        [HttpGet]
+        public IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> SimilarKeys(string tag, string auctionId)
+        {
+            var firstKey = Search(tag, auctionId).FirstOrDefault();
+            return SniperService.FindClosest(service.Lookups[tag].Lookup, firstKey);
+        }
+
         [Route("search/{tag}/{itemId}")]
         [HttpGet]
         public IEnumerable<AuctionKey> Search(string tag, string itemId)
