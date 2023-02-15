@@ -157,7 +157,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         public IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> SimilarKeys(string tag, string auctionId)
         {
             var firstKey = Search(tag, auctionId).FirstOrDefault();
-            return SniperService.FindClosest(service.Lookups[tag].Lookup, firstKey);
+            return SniperService.FindClosest(service.Lookups[tag].Lookup, firstKey).Take(10).ToList();
         }
 
         [Route("search/{tag}/{itemId}")]

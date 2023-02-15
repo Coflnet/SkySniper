@@ -278,7 +278,7 @@ namespace Coflnet.Sky.Sniper.Services
                             sniper.UpdateBazaar(item);
                     }
                     return Task.CompletedTask;
-                }, stoppingToken)
+                }, stoppingToken, 5)
             , stoppingToken);
             throw new Exception("stopped processing bazaar");
         }
