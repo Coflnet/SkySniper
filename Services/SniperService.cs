@@ -153,10 +153,12 @@ ORDER BY l.`AuctionId`  DESC;
             "new_years_cake" // not that valuable but the only attribute
         };
 
+        // 200m+
         public static HashSet<string> Increadable = new HashSet<string>()
         {
             "ability_scroll",
-            "skin"
+            "skin",
+            "color"
         };
 
         public static HashSet<string> NeverDrop = new()
@@ -492,6 +494,13 @@ ORDER BY l.`AuctionId`  DESC;
                 key.Tier = Tier.UNCOMMON;
             }
             key.Count = (byte)auction.Count;
+
+            // order attributes
+            if (key.Modifiers != null)
+                key.Modifiers = key.Modifiers.OrderBy(m => m.Key).ToList();
+            // order enchants
+            if (key.Enchants != null)
+                key.Enchants = key.Enchants.OrderBy(e => e.Type).ToList();
 
             return key;
         }
