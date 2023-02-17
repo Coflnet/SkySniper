@@ -133,7 +133,7 @@ namespace Coflnet.Sky.Sniper.Models
         {
             Enchants = key.Enchants?.Select(e => new Enchantment() { Lvl = e.Lvl, Type = e.Type }).ToList();
             Reforge = key.Reforge;
-            Modifiers = key.Modifiers.Select(m => new KeyValuePair<string, string>(m.Key, m.Value)).ToList();
+            Modifiers = key.Modifiers?.Select(m => new KeyValuePair<string, string>(m.Key, m.Value)).ToList();
             Tier = key.Tier;
             Count = key.Count;
         }

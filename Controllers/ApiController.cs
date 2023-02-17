@@ -154,10 +154,51 @@ namespace Coflnet.Sky.Sniper.Controllers
 
         [Route("similar/{tag}/{auctionId}")]
         [HttpGet]
-        public IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> SimilarKeys(string tag, string auctionId)
+        public IEnumerable<object> SimilarKeys(string tag, string auctionId)
         {
             var firstKey = Search(tag, auctionId).FirstOrDefault();
-            return SniperService.FindClosest(service.Lookups[tag].Lookup, firstKey).Take(10).ToList();
+            return SniperService.FindClosest(service.Lookups[tag].Lookup, firstKey).Take(10).Select(v => new { Key = v.Key.ToString(), Price = v.Value.Price }).ToList();
+        }
+
+        [Route("migrate")]
+        [HttpPost]
+        public async Task Migrate()
+        {
+            foreach (var item in service.Lookups)
+            {
+                var startCount = item.Value.Lookup.Count;
+                foreach (var lookup in item.Value.Lookup)
+                {
+                    var key = new AuctionKey(lookup.Key);
+                    if (key.Modifiers == null)
+                        continue;
+                    if (key.Enchants == null)
+                        continue;
+                    key.Modifiers = key.Modifiers.OrderBy(m => m.Key).ToList();
+                    key.Enchants = key.Enchants.OrderBy(e => e.Type).ToList();
+                    if (key == lookup.Key)
+                        continue;
+                    // move reference to other key
+                    var newBucket = item.Value.Lookup.GetOrAdd(key, k => new());
+                    foreach (var reference in lookup.Value.References)
+                    {
+                        if (!newBucket.References.Contains(reference) && newBucket.References.Select(r => r.Day).DefaultIfEmpty((short)0).Min() < reference.Day)
+                        {
+                            newBucket.References.Enqueue(reference);
+                        }
+                    }
+                    _logger.LogInformation("migrated reference from {oldKey} to {newKey}", lookup.Key, key);
+                    await Task.Delay(10);
+                    // remove old bucket
+                    item.Value.Lookup.TryRemove(lookup.Key, out _);
+                    SniperService.UpdateMedian(newBucket);
+                }
+                _logger.LogInformation("migrated {count} buckets for {tag}", startCount - item.Value.Lookup.Count, item.Key);
+                if (startCount != item.Value.Lookup.Count)
+                {
+                    await Task.Delay(3000);
+                }
+            }
         }
 
         [Route("search/{tag}/{itemId}")]
