@@ -619,7 +619,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     yield return new AuctionKey(baseKey)
                     {
-                        Modifiers = baseKey.Modifiers.Where(m => m.Key != "exp").Append(new("exp", i.ToString())).ToList()
+                        Modifiers = baseKey.Modifiers.Where(m => m.Key != "exp").Append(new("exp", i.ToString())).OrderBy(m=>m.Key).ToList()
                     };
                 }
             }
@@ -629,7 +629,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     yield return new AuctionKey(baseKey)
                     {
-                        Modifiers = baseKey.Modifiers.Where(m => m.Key != item.Key).Append(new(item.Key, i.ToString())).ToList()
+                        Modifiers = baseKey.Modifiers.Where(m => m.Key != item.Key).Append(new(item.Key, i.ToString())).OrderBy(m=>m.Key).ToList()
                     };
                 }
             }

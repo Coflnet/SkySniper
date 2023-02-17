@@ -287,7 +287,7 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 if (s.Finder == LowPricedAuction.FinderType.SNIPER)
                     found = s;
-                System.Console.WriteLine(JsonConvert.SerializeObject(s));
+                System.Console.WriteLine(JsonConvert.SerializeObject(s, Formatting.Indented));
             };
             service.FoundSnipe += lowAssert;
             var testFlip = Dupplicate(highestValAuction);
