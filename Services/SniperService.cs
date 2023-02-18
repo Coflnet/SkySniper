@@ -145,7 +145,7 @@ ORDER BY l.`AuctionId`  DESC;
         // stuff changing value by 10+M
         public static HashSet<string> VeryValuable = new HashSet<string>()
         {
-            "dungeon_item_level",
+            "dungeon_item_level", // lvl 8+ are over 10m
             "rarity_upgrades",
             "winning_bid",
             "exp",
@@ -569,6 +569,8 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (s.Key == "upgrade_level")
                 return new KeyValuePair<string, string>("dungeon_item_level", s.Value);
+            if (s.Key == "dungeon_item_level" && auction.FlatenedNBT.TryGetValue("upgrade_level", out _))
+                return Ignore; // upgrade level is always higher (newer)
             if (ShardAttributes.TryGetValue(s.Key, out var minLvl))
             {
                 if (int.Parse(s.Value) >= minLvl)
@@ -620,7 +622,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     yield return new AuctionKey(baseKey)
                     {
-                        Modifiers = baseKey.Modifiers.Where(m => m.Key != "exp").Append(new("exp", i.ToString())).OrderBy(m=>m.Key).ToList()
+                        Modifiers = baseKey.Modifiers.Where(m => m.Key != "exp").Append(new("exp", i.ToString())).OrderBy(m => m.Key).ToList()
                     };
                 }
             }
@@ -630,7 +632,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     yield return new AuctionKey(baseKey)
                     {
-                        Modifiers = baseKey.Modifiers.Where(m => m.Key != item.Key).Append(new(item.Key, i.ToString())).OrderBy(m=>m.Key).ToList()
+                        Modifiers = baseKey.Modifiers.Where(m => m.Key != item.Key).Append(new(item.Key, i.ToString())).OrderBy(m => m.Key).ToList()
                     };
                 }
             }
