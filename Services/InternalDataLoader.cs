@@ -262,7 +262,7 @@ namespace Coflnet.Sky.Sniper.Services
         private async Task ActiveUpdater(CancellationToken stoppingToken)
         {
             await RunTilStopped(
-                Kafka.KafkaConsumer.Consume<AhStateSumary>(Program.KafkaHost, config["TOPICS:AH_SUMARY"], activeUpdater.ProcessSumary, stoppingToken)
+                Kafka.KafkaConsumer.Consume<AhStateSumary>(Program.KafkaHost, config["TOPICS:AH_SUMARY"], activeUpdater.ProcessSumary, stoppingToken, ConsumerConfig.GroupId, AutoOffsetReset.Latest)
             , stoppingToken);
         }
 
