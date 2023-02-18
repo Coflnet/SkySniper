@@ -145,6 +145,7 @@ ORDER BY l.`AuctionId`  DESC;
         // stuff changing value by 10+M
         public static HashSet<string> VeryValuable = new HashSet<string>()
         {
+            "dungeon_item_level",
             "rarity_upgrades",
             "winning_bid",
             "exp",
