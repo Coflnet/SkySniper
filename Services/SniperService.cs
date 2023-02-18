@@ -613,7 +613,7 @@ ORDER BY l.`AuctionId`  DESC;
         /// </summary>
         /// <param name="baseKey">The actual auction key</param>
         /// <returns></returns>
-        private IEnumerable<AuctionKey> HigherValueKeys(AuctionKey baseKey, double lbinPrice)
+        private IEnumerable<AuctionKey> HigherValueKeys(AuctionKey baseKey, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, double lbinPrice)
         {
             var exp = baseKey.Modifiers.Where(m => m.Key == "exp").FirstOrDefault();
             if (exp.Key != default && exp.Value != "6")
@@ -636,7 +636,7 @@ ORDER BY l.`AuctionId`  DESC;
                     };
                 }
             }
-            if (baseKey.Count <= 1 && lbinPrice > 10_000_000)
+            if (baseKey.Count <= 1 && lbinPrice > MIN_TARGET * 20)
             {
                 for (int i = (int)baseKey.Tier; i < (int)Tier.VERY_SPECIAL + 1; i++)
                 {
@@ -649,6 +649,14 @@ ORDER BY l.`AuctionId`  DESC;
                     {
                         Tier = (Tier)(i + 1)
                     };
+                }
+                foreach (var item in l.Keys.Where(k => k != baseKey && baseKey.Modifiers
+                    .All(m => k.Modifiers.Any(km => km.Key == m.Key && km.Value == m.Value))
+                            && baseKey.Enchants
+                    .All(e => k.Enchants.Any(ek => e.Type == ek.Type && ek.Lvl == e.Lvl)) && k.Tier == baseKey.Tier))
+                {
+                    Console.WriteLine($"Found higher tier {item} for {baseKey} with {l[item].Lbin.Price} lbin price {l[item].Price}");
+                    yield return item;
                 }
             }
 
@@ -854,11 +862,12 @@ ORDER BY l.`AuctionId`  DESC;
         /// <returns></returns>
         private long CheckHigherValueKeyForLowerPrice(ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long medianPrice)
         {
-            var higherValueLowerPrice = HigherValueKeys(key, medianPrice).Select(k =>
+            var higherValueLowerPrice = HigherValueKeys(key, l, medianPrice).Select(k =>
             {
                 if (l.TryGetValue(k, out ReferenceAuctions altBucket))
                 {
-                    return altBucket.Price;
+                    if (altBucket.Price != 0)
+                        return altBucket.Price;
                 }
                 return long.MaxValue;
             }).DefaultIfEmpty(long.MaxValue).Min();
@@ -894,7 +903,7 @@ ORDER BY l.`AuctionId`  DESC;
         private void PotentialSnipe(SaveAuction auction, double lbinPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue)
         {
             var higherValueLowerBin = bucket.Lbin.Price;
-            if (HigherValueKeys(key, lbinPrice).Any(k =>
+            if (HigherValueKeys(key, l, lbinPrice).Any(k =>
             {
                 if (l.TryGetValue(k, out ReferenceAuctions altBucket))
                 {

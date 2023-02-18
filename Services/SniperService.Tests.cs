@@ -91,7 +91,8 @@ namespace Coflnet.Sky.Sniper.Services
                 Uuid = new System.Random().Next().ToString(),
                 UId = new System.Random().Next(),
                 AuctioneerId = new System.Random().Next().ToString(),
-                FlatenedNBT = new Dictionary<string, string>(origin.FlatenedNBT)
+                FlatenedNBT = new Dictionary<string, string>(origin.FlatenedNBT),
+                Enchantments = origin.Enchantments == null ? null : new(origin.Enchantments)
             };
         }
 
@@ -148,6 +149,26 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.HighestBidAmount = 5000;
             service.TestNewAuction(highestValAuction);
             Assert.AreEqual(1000000, found.Last().TargetPrice);
+        }
+        /// <summary>
+        /// Checks if references with more valuable things are cheaper
+        /// </summary>
+        [Test]
+        public void CheckBelowMoreEnchants()
+        {
+            highestValAuction.Enchantments = new List<Core.Enchantment>() {
+                new Core.Enchantment(Core.Enchantment.EnchantmentType.sharpness,7),
+                new Core.Enchantment(Core.Enchantment.EnchantmentType.ultimate_legion,5),
+                new Core.Enchantment(Core.Enchantment.EnchantmentType.critical,7),
+            };
+            highestValAuction.HighestBidAmount = 1000000;
+            AddVolume(highestValAuction);
+            highestValAuction.Enchantments.RemoveAt(1);
+            highestValAuction.HighestBidAmount = 50000000;
+            AddVolume(highestValAuction);
+            highestValAuction.HighestBidAmount = 5000;
+            service.TestNewAuction(highestValAuction);
+            Assert.AreEqual(1000000, found.First().TargetPrice);
         }
 
         private void AddVolume(SaveAuction toAdd)
