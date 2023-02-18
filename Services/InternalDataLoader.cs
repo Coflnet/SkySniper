@@ -213,7 +213,7 @@ namespace Coflnet.Sky.Sniper.Services
             }
 
             var batchSize = 15_000;
-            for (var batchStart = maxId - 10_000_000; batchStart < maxId; batchStart += batchSize)
+            for (var batchStart = maxId - 15_000_000; batchStart < maxId; batchStart += batchSize)
             {
                 try
                 {

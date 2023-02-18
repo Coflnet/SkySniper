@@ -136,6 +136,19 @@ namespace Coflnet.Sky.Sniper.Services
             service.TestNewAuction(anotherAuction);
             Assert.AreEqual(1000, found.Last().TargetPrice);
         }
+        [Test]
+        public void CheckBelowHigherTier()
+        {
+            highestValAuction.Tier = Tier.MYTHIC;
+            highestValAuction.HighestBidAmount = 1000000;
+            AddVolume(highestValAuction);
+            highestValAuction.Tier = Tier.LEGENDARY;
+            highestValAuction.HighestBidAmount = 50000000;
+            AddVolume(highestValAuction);
+            highestValAuction.HighestBidAmount = 5000;
+            service.TestNewAuction(highestValAuction);
+            Assert.AreEqual(1000000, found.Last().TargetPrice);
+        }
 
         private void AddVolume(SaveAuction toAdd)
         {

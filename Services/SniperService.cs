@@ -613,7 +613,7 @@ ORDER BY l.`AuctionId`  DESC;
         /// </summary>
         /// <param name="baseKey">The actual auction key</param>
         /// <returns></returns>
-        private IEnumerable<AuctionKey> HigherValueKeys(AuctionKey baseKey)
+        private IEnumerable<AuctionKey> HigherValueKeys(AuctionKey baseKey, double lbinPrice)
         {
             var exp = baseKey.Modifiers.Where(m => m.Key == "exp").FirstOrDefault();
             if (exp.Key != default && exp.Value != "6")
@@ -636,6 +636,22 @@ ORDER BY l.`AuctionId`  DESC;
                     };
                 }
             }
+            if (baseKey.Count <= 1 && lbinPrice > 10_000_000)
+            {
+                for (int i = (int)baseKey.Tier; i < (int)Tier.VERY_SPECIAL + 1; i++)
+                {
+                    yield return new AuctionKey(baseKey)
+                    {
+                        Modifiers = baseKey.Modifiers.Append(new("rarity_upgrades", "1")).OrderBy(m => m.Key).ToList(),
+                        Tier = (Tier)(i + 1)
+                    };
+                    yield return new AuctionKey(baseKey)
+                    {
+                        Tier = (Tier)(i + 1)
+                    };
+                }
+            }
+
             if (baseKey.Count > 1 && baseKey.Count < 64)
                 yield return new AuctionKey(baseKey) { Count = 64 };
             if (baseKey.Count > 1 && baseKey.Count < 16)
@@ -795,11 +811,22 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (medianPrice > minMedPrice && BucketHasEnoughReferencesForPrice(bucket))
             {
+                long adjustedMedianPrice = CheckHigherValueKeyForLowerPrice(bucket, key, l, medianPrice);
+                if (adjustedMedianPrice + extraValue < minMedPrice)
+                {
+                    LogNonFlip(auction, bucket, key, extraValue, volume, medianPrice);
+                    return;
+                }
                 var props = CreateReference(bucket.References.Last().AuctionId, key, extraValue);
                 props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
-                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, bucket.Price + extraValue, props);
+                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, adjustedMedianPrice + extraValue, props);
             }
             else
+            {
+                LogNonFlip(auction, bucket, key, extraValue, volume, medianPrice);
+            }
+
+            void LogNonFlip(SaveAuction auction, ReferenceAuctions bucket, AuctionKey key, long extraValue, float volume, long medianPrice)
             {
                 if (auction.UId % 10 == 0)
                     Console.Write("p");
@@ -815,6 +842,28 @@ ORDER BY l.`AuctionId`  DESC;
                 if (Logs.Count > 2000)
                     PrintLogQueue();
             }
+        }
+
+        /// <summary>
+        /// Checks higher value keys for a lower median price
+        /// </summary>
+        /// <param name="bucket"></param>
+        /// <param name="key"></param>
+        /// <param name="l"></param>
+        /// <param name="medianPrice"></param>
+        /// <returns></returns>
+        private long CheckHigherValueKeyForLowerPrice(ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long medianPrice)
+        {
+            var higherValueLowerPrice = HigherValueKeys(key, medianPrice).Select(k =>
+            {
+                if (l.TryGetValue(k, out ReferenceAuctions altBucket))
+                {
+                    return altBucket.Price;
+                }
+                return long.MaxValue;
+            }).DefaultIfEmpty(long.MaxValue).Min();
+            var adjustedMedianPrice = Math.Min(bucket.Price, higherValueLowerPrice);
+            return adjustedMedianPrice;
         }
 
         private static bool BucketHasEnoughReferencesForPrice(ReferenceAuctions bucket)
@@ -845,7 +894,7 @@ ORDER BY l.`AuctionId`  DESC;
         private void PotentialSnipe(SaveAuction auction, double lbinPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue)
         {
             var higherValueLowerBin = bucket.Lbin.Price;
-            if (HigherValueKeys(key).Any(k =>
+            if (HigherValueKeys(key, lbinPrice).Any(k =>
             {
                 if (l.TryGetValue(k, out ReferenceAuctions altBucket))
                 {
