@@ -289,7 +289,7 @@ namespace Coflnet.Sky.Sniper.Services
                 BootstrapServers = config["KAFKA_HOST"],
                 SessionTimeoutMs = 9_000,
                 AutoOffsetReset = AutoOffsetReset.Latest,
-                GroupId = "sky-sniper"
+                GroupId = System.Net.Dns.GetHostName()
             };
 
 

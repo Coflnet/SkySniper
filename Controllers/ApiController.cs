@@ -27,6 +27,17 @@ namespace Coflnet.Sky.Sniper.Controllers
             this.tokenService = tokenService;
         }
 
+
+        [HttpGet]
+        [Route("/ready")]
+        public ActionResult IsReady()
+        {
+            if (service.State != SniperState.LadingLbin)
+                return Ok();
+            else
+                return StatusCode(503);
+        }
+
         [HttpGet]
         [Route("lookup")]
         [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Any, NoStore = false)]
