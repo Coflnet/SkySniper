@@ -213,7 +213,8 @@ namespace Coflnet.Sky.Sniper.Services
             }
 
             var batchSize = 15_000;
-            for (var batchStart = maxId - 15_000_000; batchStart < maxId; batchStart += batchSize)
+            var totalSize = 15_000_000;
+            for (var batchStart = maxId - totalSize; batchStart < maxId; batchStart += batchSize)
             {
                 try
                 {
@@ -225,7 +226,12 @@ namespace Coflnet.Sky.Sniper.Services
                     logger.LogError(e, "failed to load sells batch " + batchStart);
                     await Task.Delay(2000);
                 }
-                await Task.Delay(500);
+                // ready if more than 10% loaded
+                if (batchStart > maxId - totalSize * 0.9)
+                {
+                    sniper.State = SniperState.Ready;
+                    await Task.Delay(200);
+                }
             }
         }
 
@@ -243,7 +249,6 @@ namespace Coflnet.Sky.Sniper.Services
                     continue;
                 sniper.AddSoldItem(item);
             }
-            await Task.Delay(500);
             if ((batchStart / batchSize) % 10 == 0)
                 Console.WriteLine($"Loaded batch {batchStart} - {end}");
         }
@@ -319,7 +324,8 @@ namespace Coflnet.Sky.Sniper.Services
                 Console.WriteLine(e.StackTrace);
             }
             Console.WriteLine("loaded lookup");
-            sniper.State = SniperState.Ready;
+            if (sniper.Lookups.First().Value.Lookup.Select(l => l.Value.References.Count()).FirstOrDefault() > 0)
+                sniper.State = SniperState.Ready;
             await Kafka.KafkaConsumer.ConsumeBatch<SaveAuction>(ConsumerConfig, new string[] { config["TOPICS:SOLD_AUCTION"] }, async batch =>
             {
                 foreach (var a in batch)
