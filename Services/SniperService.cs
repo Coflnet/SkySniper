@@ -907,7 +907,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 if (l.TryGetValue(k, out ReferenceAuctions altBucket))
                 {
-                    if (altBucket.Lbin.Price < lbinPrice)
+                    if (altBucket.Lbin.Price != 0 && altBucket.Lbin.Price < lbinPrice)
                     {
                         return true;
                     }
