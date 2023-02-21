@@ -758,7 +758,7 @@ ORDER BY l.`AuctionId`  DESC;
             // special case for items that have no reference bucket, search using most similar
             var key = KeyFromSaveAuction(auction, 0);
             var closest = FindClosestTo(l, key);
-            medPrice *= 1.25; // increase price a bit to account for the fact that we are not using the exact same item
+            medPrice *= 1.10; // increase price a bit to account for the fact that we are not using the exact same item
             lbinPrice *= 1.15;
             if (closest.Value == null)
                 Logs.Enqueue(new LogEntry()
