@@ -259,8 +259,9 @@ ORDER BY l.`AuctionId`  DESC;
         }
         public static IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> FindClosest(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey)
         {
-            return l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0 && l.Value.References.Count > 3)
-                            .OrderByDescending(m => itemKey.Similarity(m.Key));
+            var minDay = GetDay() - 8;
+            return l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0)
+                            .OrderByDescending(m => itemKey.Similarity(m.Key) + (m.Value.OldestRef > minDay ? 0 : -10));
         }
 
         private static void AssignMedian(PriceEstimate result, AuctionKey key, ReferenceAuctions bucket)
@@ -747,7 +748,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 UpdateLbin(auction, bucket);
             }
-            if (shouldTryToFindClosest && triggerEvents)
+            if (shouldTryToFindClosest && triggerEvents && this.State == SniperState.Ready)
             {
                 TryFindClosestRisky(auction, l, ref lbinPrice, ref medPrice);
             }
@@ -759,7 +760,6 @@ ORDER BY l.`AuctionId`  DESC;
             var key = KeyFromSaveAuction(auction, 0);
             var closest = FindClosestTo(l, key);
             medPrice *= 1.10; // increase price a bit to account for the fact that we are not using the exact same item
-            lbinPrice *= 1.15;
             if (closest.Value == null)
                 Logs.Enqueue(new LogEntry()
                 {
@@ -776,7 +776,7 @@ ORDER BY l.`AuctionId`  DESC;
                 else
                     Console.WriteLine($"Would estimate closest to {key} {closest.Key} {auction.Uuid} for {closest.Value.Price}");
                 if (closest.Value.Price > medPrice)
-                    FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, closest.Value.Price, new() { { "closest", closest.Key.ToString() } });
+                    FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, closest.Value.Price * 9 / 10, new() { { "closest", closest.Key.ToString() } });
             }
         }
 
