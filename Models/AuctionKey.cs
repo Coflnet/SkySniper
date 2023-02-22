@@ -64,8 +64,8 @@ namespace Coflnet.Sky.Sniper.Models
                 sum -= ModifierDifference(this, key.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).ToList()) * 10;
                 sum -= ModifierDifference(key, this.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).ToList()) * 10;
 
-                sum -= ModifierDifference(this, key.Modifiers.Where(m => SniperService.Increadable.Contains(m.Key)).ToList()) * 50;
-                sum -= ModifierDifference(key, this.Modifiers.Where(m => SniperService.Increadable.Contains(m.Key)).ToList()) * 50;
+                sum -= ModifierDifference(this, key.Modifiers.Where(m => SniperService.Increadable.Contains(m.Key)).ToList()) * 100;
+                sum -= ModifierDifference(key, this.Modifiers.Where(m => SniperService.Increadable.Contains(m.Key)).ToList()) * 100;
             }
             else
                 sum -= this.Modifiers?.Count ?? 0 - key.Modifiers?.Count ?? 0;
@@ -106,7 +106,7 @@ namespace Coflnet.Sky.Sniper.Models
                         return -28; // tier boost is very valuable
                     else
                         return -2;
-                return 1;
+                return 3;
             });
         }
 
