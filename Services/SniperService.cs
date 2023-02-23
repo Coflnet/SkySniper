@@ -711,7 +711,8 @@ ORDER BY l.`AuctionId`  DESC;
                         Console.WriteLine($"could not find bucket {key} for {auction.Tag} {l.Count} {auction.Uuid}");
                         if (this.State < SniperState.Ready)
                         {
-                            Console.WriteLine($"closest is not available yet, state is {this.State}");
+                            if (auction.UId % 10 == 2)
+                                Console.WriteLine($"closest is not available yet, state is {this.State}");
                             return;
                         }
                         var closests = FindClosest(l, key).Take(5).ToList();
@@ -812,7 +813,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             var volume = bucket.Volume;
             var medianPrice = bucket.Price + extraValue;
-            if (bucket.Lbin.Price > lbinPrice && (bucket.Price > lbinPrice) && volume > 0.2f
+            if (bucket.Lbin.Price > lbinPrice && (bucket.Price * 1.15 > lbinPrice) && volume > 0.2f
                )// || bucket.Price == 0))
             {
                 PotentialSnipe(auction, lbinPrice, bucket, key, l, extraValue);
