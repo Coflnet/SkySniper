@@ -150,6 +150,7 @@ ORDER BY l.`AuctionId`  DESC;
             "winning_bid",
             "exp",
             "color",
+            "ethermerge",
             "unlocked_slots",
             "new_years_cake" // not that valuable but the only attribute
         };
