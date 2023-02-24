@@ -813,7 +813,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             var volume = bucket.Volume;
             var medianPrice = bucket.Price + extraValue;
-            if (bucket.Lbin.Price > lbinPrice && (bucket.Price * 1.15 > lbinPrice) && volume > 0.2f
+            if (bucket.Lbin.Price > lbinPrice && (MaxMedianPriceForSnipe(bucket) > lbinPrice) && volume > 0.2f
                )// || bucket.Price == 0))
             {
                 PotentialSnipe(auction, lbinPrice, bucket, key, l, extraValue);
@@ -921,7 +921,12 @@ ORDER BY l.`AuctionId`  DESC;
             var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue);
             props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
             props["mVal"] = bucket.Price.ToString();
-            FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, Math.Min(higherValueLowerBin, bucket.Price) + extraValue, props);
+            FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, Math.Min(higherValueLowerBin, MaxMedianPriceForSnipe(bucket)) + extraValue, props);
+        }
+
+        private static long MaxMedianPriceForSnipe(ReferenceAuctions bucket)
+        {
+            return bucket.Price * 11 / 10;
         }
 
         public void PrintLogQueue()
