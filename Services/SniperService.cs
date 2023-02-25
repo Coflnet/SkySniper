@@ -125,6 +125,14 @@ namespace Coflnet.Sky.Sniper.Services
             }
         }
 
+        private readonly Dictionary<string, string> ModifierItemPrefixes = new()
+        {
+            {"drill_part_engine", String.Empty},
+            {"drill_part_fuel_tank", String.Empty},
+            {"drill_part_upgrade_module", String.Empty},
+            {"petItem", "PET_ITEM_"}
+        };
+
         private Dictionary<Core.Enchantment.EnchantmentType, byte> MinEnchantMap = new();
 
         /** NOTES
@@ -238,6 +246,7 @@ ORDER BY l.`AuctionId`  DESC;
                     if (closest.Key != default)
                     {
                         AssignMedian(result, closest.Key, closest.Value);
+                        AdjustMedianForModifiers(result, itemKey, closest);
                     }
 
                 }
@@ -252,6 +261,26 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
             return result;
+        }
+
+        private void AdjustMedianForModifiers(PriceEstimate result, AuctionKey itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> closest)
+        {
+            var missingModifiers = closest.Key.Modifiers.Where(m => !itemKey.Modifiers.Contains(m)).ToList();
+            if (missingModifiers.Count > 0)
+            {
+                var values = missingModifiers.Select(m =>
+                {
+                    if (ModifierItemPrefixes.TryGetValue(m.Key, out var prefix))
+                        return Lookups.TryGetValue(prefix + m.Value.ToUpper(), out var lookup) ? lookup.Lookup : null;
+                    return null;
+                }).Where(m => m != null).ToList();
+                if (values.Count > 0)
+                {
+                    var median = values.SelectMany(m => m.Values).Select(m => m.Price).Sum();
+                    result.Median -= median;
+                    result.MedianKey += $"- {string.Join(",", missingModifiers.Select(m => m.Value))}";
+                }
+            }
         }
 
         private static KeyValuePair<AuctionKey, ReferenceAuctions> FindClosestTo(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey)

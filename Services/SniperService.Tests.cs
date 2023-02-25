@@ -267,6 +267,26 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(900, price.Lbin.Price);
         }
         [Test]
+        public void AdjustsMedian()
+        {
+            highestValAuction.FlatenedNBT = new();
+            var part = Dupplicate(highestValAuction);
+            part.Tag = "COMPONENT";
+            part.HighestBidAmount = 100;
+            AddVolume(part);
+
+            var drill = Dupplicate(highestValAuction);
+            drill.Tag = "DRILL";
+            drill.FlatenedNBT["drill_part_engine"] = "component";
+            AddVolume(drill);
+            service.FinishedUpdate();
+            drill.FlatenedNBT = new();
+            var estimate = service.GetPrice(drill);
+            Assert.AreEqual(900, estimate.Median, "1000 base - 100 component");
+            Assert.AreEqual(" Any [drill_part_engine, component] UNKNOWN 0- component", estimate.MedianKey);
+
+        }
+        [Test]
         public void LbinSimilarity()
         {
             highestValAuction.StartingBid = 5;
@@ -341,16 +361,7 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void ComponetExtraValue()
         {
-            var part = Dupplicate(highestValAuction);
-            part.Tag = "COMPONENT";
-            AddVolume(part);
-
-            var drill = Dupplicate(highestValAuction);
-            drill.Tag = "DRILL";
-            AddVolume(drill);
-            service.FinishedUpdate();
-
-            drill.FlatenedNBT["drill_part_engine"] = "component";
+            SaveAuction drill = SetupDrill();
             LowPricedAuction found = null;
             var lowAssert = (LowPricedAuction s) =>
             {
@@ -365,6 +376,20 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.IsNotNull(found, "flip with extra value should pop up");
         }
 
+        private SaveAuction SetupDrill()
+        {
+            var part = Dupplicate(highestValAuction);
+            part.Tag = "COMPONENT";
+            AddVolume(part);
+
+            var drill = Dupplicate(highestValAuction);
+            drill.Tag = "DRILL";
+            AddVolume(drill);
+            service.FinishedUpdate();
+
+            drill.FlatenedNBT["drill_part_engine"] = "component";
+            return drill;
+        }
 
         [Test]
         public void GemExtraValue()
