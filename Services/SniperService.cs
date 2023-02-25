@@ -951,7 +951,10 @@ ORDER BY l.`AuctionId`  DESC;
             var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue);
             props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
             props["mVal"] = bucket.Price.ToString();
-            FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, Math.Min(higherValueLowerBin, MaxMedianPriceForSnipe(bucket)) + extraValue, props);
+            var targetPrice = Math.Min(higherValueLowerBin, MaxMedianPriceForSnipe(bucket)) + extraValue;
+            if(targetPrice < auction.StartingBid*1.03)
+                return;
+            FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
         }
 
         private static long MaxMedianPriceForSnipe(ReferenceAuctions bucket)
