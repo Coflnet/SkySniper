@@ -269,19 +269,31 @@ ORDER BY l.`AuctionId`  DESC;
             var missingModifiers = closest.Key.Modifiers.Where(m => !itemKey.Modifiers.Contains(m)).ToList();
             if (missingModifiers.Count > 0)
             {
-                var values = missingModifiers.Select(m =>
+                long median = GetPriceSumForModifiers(missingModifiers);
+                if (median > 0)
                 {
-                    if (ModifierItemPrefixes.TryGetValue(m.Key, out var prefix))
-                        return Lookups.TryGetValue(prefix + m.Value.ToUpper(), out var lookup) ? lookup.Lookup : null;
-                    return null;
-                }).Where(m => m != null).ToList();
-                if (values.Count > 0)
-                {
-                    var median = values.SelectMany(m => m.Values).Select(m => m.Price).Sum();
                     result.Median -= median;
                     result.MedianKey += $"- {string.Join(",", missingModifiers.Select(m => m.Value))}";
                 }
             }
+        }
+
+        private long GetPriceSumForModifiers(List<KeyValuePair<string, string>> missingModifiers)
+        {
+            var values = missingModifiers.Select(m =>
+            {
+                if (ModifierItemPrefixes.TryGetValue(m.Key, out var prefix))
+                    return Lookups.TryGetValue(prefix + m.Value.ToUpper(), out var lookup) ? lookup.Lookup : null;
+                if (m.Value == "PERFECT")
+                    if (Lookups.TryGetValue($"PERFECT_{m.Key.Split('_').First()}_GEM", out var gemLookup))
+                        return gemLookup.Lookup;
+                if (m.Value == "FLAWLESS")
+                    if (Lookups.TryGetValue($"FLAWLESS_{m.Key.Split('_').First()}_GEM", out var gemLookup))
+                        return gemLookup.Lookup;
+                return null;
+            }).Where(m => m != null).ToList();
+            var median = values.SelectMany(m => m.Values).Select(m => m.Price).DefaultIfEmpty(0).Sum();
+            return median;
         }
 
         private static KeyValuePair<AuctionKey, ReferenceAuctions> FindClosestTo(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey)
@@ -808,7 +820,16 @@ ORDER BY l.`AuctionId`  DESC;
                 else
                     Console.WriteLine($"Would estimate closest to {key} {closest.Key} {auction.Uuid} for {closest.Value.Price}");
                 if (closest.Value.Price > medPrice)
-                    FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, closest.Value.Price * 9 / 10, new() { { "closest", closest.Key.ToString() } });
+                {
+                    var missingModifiers = closest.Key.Modifiers.Where(m => !key.Modifiers.Contains(m)).ToList();
+                    long toSubstract = 0;
+                    if (missingModifiers.Count > 0)
+                    {
+                        toSubstract = GetPriceSumForModifiers(missingModifiers);
+                    }
+                    var targetPrice = (long)((closest.Value.Price - toSubstract) * 0.9);
+                    FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, new() { { "closest", closest.Key.ToString() } });
+                }
             }
         }
 
@@ -827,15 +848,17 @@ ORDER BY l.`AuctionId`  DESC;
                     extraValue += prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price);
                 }
             }
+            var gemValue = 0L;
             foreach (var item in auction.FlatenedNBT)
             {
                 if (item.Value == "PERFECT")
                     if (Lookups.TryGetValue($"PERFECT_{item.Key.Split('_').First()}_GEM", out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
-                        extraValue += gemLookup.Lookup.Values.First().Price - 500_000;
+                        gemValue += gemLookup.Lookup.Values.First().Price - 500_000;
                 if (item.Value == "FLAWLESS")
                     if (Lookups.TryGetValue($"FLAWLESS_{item.Key.Split('_').First()}_GEM", out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
-                        extraValue += gemLookup.Lookup.Values.First().Price - 100_000;
+                        gemValue += gemLookup.Lookup.Values.First().Price - 100_000;
             }
+            extraValue += gemValue;
 
             return extraValue;
         }
@@ -953,7 +976,7 @@ ORDER BY l.`AuctionId`  DESC;
             props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
             props["mVal"] = bucket.Price.ToString();
             var targetPrice = Math.Min(higherValueLowerBin, MaxMedianPriceForSnipe(bucket)) + extraValue;
-            if(targetPrice < auction.StartingBid*1.03)
+            if (targetPrice < auction.StartingBid * 1.03)
                 return;
             FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
         }
