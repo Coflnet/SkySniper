@@ -59,6 +59,7 @@ namespace Coflnet.Sky.Sniper.Services
             "bow_kills", // huricane bow
             "raider_kills", // raiders axe
             "sword_kills",
+            "yogsKilled", // yog armor
             "ethermerge",
             "edition", // great spook stuff
             "hpc", // hot potato books
@@ -130,6 +131,7 @@ namespace Coflnet.Sky.Sniper.Services
             {"drill_part_engine", String.Empty},
             {"drill_part_fuel_tank", String.Empty},
             {"drill_part_upgrade_module", String.Empty},
+            {"skin", String.Empty},
             {"petItem", "PET_ITEM_"}
         };
 
@@ -574,6 +576,8 @@ ORDER BY l.`AuctionId`  DESC;
                 return NormalizeNumberTo(s, 10_000_000);
             if (s.Key.EndsWith("_kills"))
                 return NormalizeNumberTo(s, 10_000);
+            if(s.Key == "yogsKilled")
+                return NormalizeNumberTo(s, 5_000, 2);
             if (s.Key == "candyUsed") // all candied are the same
                 return new KeyValuePair<string, string>(s.Key, (double.Parse(s.Value) > 0 ? 1 : 0).ToString());
             if (s.Key == "edition")
