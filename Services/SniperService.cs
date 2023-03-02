@@ -703,6 +703,8 @@ ORDER BY l.`AuctionId`  DESC;
                             && baseKey.Enchants
                     .All(e => k.Enchants.Any(ek => e.Type == ek.Type && ek.Lvl == e.Lvl)) && k.Tier == baseKey.Tier))
                 {
+                    if(l[item].Price == 0)
+                        continue;
                     Console.WriteLine($"Found higher tier {item} for {baseKey} with {l[item].Lbin.Price} lbin price {l[item].Price}");
                     yield return item;
                 }
