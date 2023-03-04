@@ -286,6 +286,43 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(" Any [drill_part_engine, component] UNKNOWN 0- component", estimate.MedianKey);
 
         }
+
+        [Test]
+        public void SubstractsEnchants()
+        {
+            highestValAuction.FlatenedNBT = new();
+            var moreEnchants = Dupplicate(highestValAuction);
+            moreEnchants.HighestBidAmount = 100_000_000;
+            moreEnchants.Enchantments = new List<Core.Enchantment>(){
+                new Core.Enchantment(Core.Enchantment.EnchantmentType.sharpness,7)
+            };
+            AddVolume(moreEnchants);
+            service.UpdateBazaar(new()
+            {
+                Products = new(){
+                new (){
+                    ProductId = "ENCHANTMENT_SHARPNESS_7",
+                    SellSummary = new(){
+                        new (){
+                            PricePerUnit = 49_000_000
+                        }
+                    }
+                }
+            }
+            });
+
+            var toTest = Dupplicate(highestValAuction);
+            service.FinishedUpdate();
+            service.State = SniperState.Ready;
+            service.TestNewAuction(toTest);
+            service.FinishedUpdate();
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            Assert.AreEqual(45900000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.AreEqual("sharpness_7 (49000000)", estimate.AdditionalProps["missingEnchants"]);
+
+        }
+
         [Test]
         public void LbinSimilarity()
         {

@@ -160,6 +160,7 @@ ORDER BY l.`AuctionId`  DESC;
             "winning_bid",
             "exp",
             "color",
+            "dye_item",
             "ethermerge",
             "unlocked_slots",
             "new_years_cake" // not that valuable but the only attribute
@@ -749,6 +750,8 @@ ORDER BY l.`AuctionId`  DESC;
                 var key = KeyFromSaveAuction(auction, i);
                 if (i > 0 && key == lastKey)
                 {
+                    if(i < 4)
+                        shouldTryToFindClosest = true;
                     continue; // already checked that
                 }
                 lastKey = key;
@@ -827,16 +830,38 @@ ORDER BY l.`AuctionId`  DESC;
                     Console.WriteLine($"Would estimate closest to {key} {closest.Key} {auction.Uuid} for {closest.Value.Price}");
                 if (closest.Value.Price > medPrice)
                 {
+                    var props = new Dictionary<string, string>() { { "closest", closest.Key.ToString() } };
                     var missingModifiers = closest.Key.Modifiers.Where(m => !key.Modifiers.Contains(m)).ToList();
                     long toSubstract = 0;
                     if (missingModifiers.Count > 0)
                     {
                         toSubstract = GetPriceSumForModifiers(missingModifiers);
+                        props.Add("missingModifiers", string.Join(",", missingModifiers.Select(m => $"{m.Key}:{m.Value}")) + $" ({toSubstract})");
+                    }
+                    var missingEnchants = closest.Key.Enchants.Where(m => !key.Enchants.Contains(m)).ToList();
+                    if (missingEnchants.Count > 0)
+                    {
+                        toSubstract += GetPriceSumForEnchants(missingEnchants);
+                        props.Add("missingEnchants", string.Join(",", missingEnchants.Select(e => $"{e.Type}_{e.Lvl}")) + $" ({toSubstract})");
                     }
                     var targetPrice = (long)((closest.Value.Price - toSubstract) * 0.9);
-                    FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, new() { { "closest", closest.Key.ToString() } });
+                    FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, props);
                 }
             }
+        }
+
+        private long GetPriceSumForEnchants(List<Models.Enchantment> missingEnchants)
+        {
+            long toSubstract = 0;
+            foreach (var item in missingEnchants)
+            {
+                if (Lookups.TryGetValue($"ENCHANTMENT_{item.Type}_{item.Lvl}".ToUpper(), out var enchantLookup))
+                {
+                    var prices = enchantLookup.Lookup.Values.First();
+                    toSubstract += prices.Price;
+                }
+            }
+            return toSubstract;
         }
 
         private long GetExtraValue(SaveAuction auction, AuctionKey key)
