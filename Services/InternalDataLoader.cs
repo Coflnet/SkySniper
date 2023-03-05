@@ -80,13 +80,13 @@ namespace Coflnet.Sky.Sniper.Services
 
             });
 
-            await Task.WhenAny(newAuctions, soldAuctions,
+            var result = await Task.WhenAny(newAuctions, soldAuctions,
                 Task.WhenAll(ActiveUpdater(stoppingToken),
                              StartProducer(stoppingToken),
                              ConsumeBazaar(stoppingToken),
                              loadActive,
                              sellLoad));
-            throw new Exception("at least one task stopped");
+            throw new Exception("at least one task stopped " + result.Status + " " + result.Exception);
         }
 
         private async Task StartProducer(CancellationToken stoppingToken)
@@ -212,7 +212,7 @@ namespace Coflnet.Sky.Sniper.Services
                 await Task.Delay(60);
             }
 
-            var batchSize = 15_000;
+            var batchSize = 20_000;
             var totalSize = 15_000_000;
             for (var batchStart = maxId - totalSize; batchStart < maxId; batchStart += batchSize)
             {
@@ -226,11 +226,11 @@ namespace Coflnet.Sky.Sniper.Services
                     logger.LogError(e, "failed to load sells batch " + batchStart);
                     await Task.Delay(2000);
                 }
-                // ready if more than 10% loaded
-                if (batchStart > maxId - totalSize * 0.9)
+                // ready if more than 20% loaded
+                if (batchStart > maxId - totalSize * 0.8)
                 {
                     sniper.State = SniperState.Ready;
-                    await Task.Delay(200);
+                    await Task.Delay(100);
                 }
             }
         }
@@ -324,7 +324,7 @@ namespace Coflnet.Sky.Sniper.Services
                 Console.WriteLine(e.StackTrace);
             }
             Console.WriteLine("loaded lookup");
-            if (sniper.Lookups.First().Value.Lookup.Select(l => l.Value.References.Count()).FirstOrDefault() > 0)
+            if (sniper.Lookups.FirstOrDefault().Value?.Lookup.Select(l => l.Value.References.Count()).FirstOrDefault() > 0)
                 sniper.State = SniperState.Ready;
             await Kafka.KafkaConsumer.ConsumeBatch<SaveAuction>(ConsumerConfig, new string[] { config["TOPICS:SOLD_AUCTION"] }, async batch =>
             {

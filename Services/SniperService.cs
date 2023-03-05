@@ -285,6 +285,8 @@ ORDER BY l.`AuctionId`  DESC;
 
         private long GetPriceSumForModifiers(List<KeyValuePair<string, string>> missingModifiers, List<KeyValuePair<string, string>> modifiers)
         {
+            if(missingModifiers == null)
+                return 0;
             var values = missingModifiers.SelectMany<KeyValuePair<string, string>, string>(m =>
             {
                 if (ModifierItemPrefixes.TryGetValue(m.Key, out var prefix))
@@ -293,7 +295,7 @@ ORDER BY l.`AuctionId`  DESC;
                     return new string[] { $"PERFECT_{m.Key.Split('_').First()}_GEM" };
                 if (m.Value == "FLAWLESS")
                     return new string[] { $"FLAWLESS_{m.Key.Split('_').First()}_GEM" };
-                if (mapper.TryGetIngredients(m.Key, m.Value, modifiers.Where(mi => mi.Key == m.Key).Select(mi => mi.Value).FirstOrDefault(), out var ingredients))
+                if (mapper.TryGetIngredients(m.Key, m.Value, modifiers?.Where(mi => mi.Key == m.Key).Select(mi => mi.Value).FirstOrDefault(), out var ingredients))
                 {
                     return ingredients;
                 }
