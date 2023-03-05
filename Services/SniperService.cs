@@ -177,6 +177,7 @@ ORDER BY l.`AuctionId`  DESC;
         public static HashSet<string> NeverDrop = new()
         {
             "exp", // this helps with closest match 
+            "party_hat_color", // closest to clean would mix them up
             "ability_scroll", // most expensive attribues in the game
             "new_years_cake" // not that valuable but the only attribute
         };

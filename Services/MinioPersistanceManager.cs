@@ -31,7 +31,8 @@ namespace Coflnet.Sky.Sniper.Services
                         .WithCredentials(config["MINIO_KEY"], config["MINIO_SECRET"])
                         .Build();
             List<string> items = await GetIemIds(client);
-            await Parallel.ForEachAsync(items, new ParallelOptions(){
+            await Parallel.ForEachAsync(items, new ParallelOptions()
+            {
                 MaxDegreeOfParallelism = 5
             }, async (itemTag, cancleToken) =>
             {
@@ -79,9 +80,16 @@ namespace Coflnet.Sky.Sniper.Services
                 using var itemStream = new MemoryStream();
                 await MessagePackSerializer.SerializeAsync(itemStream, item.Value);
                 itemStream.Position = 0;
-                await client.PutObjectAsync(new PutObjectArgs().WithBucket("sky-sniper").WithObject(item.Key).WithStreamData(itemStream).WithObjectSize(itemStream.Length));
-                if (!string.IsNullOrEmpty(item.Key) && item.Key.StartsWith('S'))
-                    Console.Write(" saved " + item.Key);
+                try
+                {
+                    await client.PutObjectAsync(new PutObjectArgs().WithBucket("sky-sniper").WithObject(item.Key).WithStreamData(itemStream).WithObjectSize(itemStream.Length));
+                    if (!string.IsNullOrEmpty(item.Key) && item.Key.StartsWith('S'))
+                        Console.Write(" saved " + item.Key);
+                }
+                catch (System.Exception e)
+                {
+                    logger.LogError(e, "failed to save " + item.Key);
+                }
             });
             Console.WriteLine();
         }
