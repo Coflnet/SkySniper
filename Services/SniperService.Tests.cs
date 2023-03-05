@@ -320,7 +320,47 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             Assert.AreEqual(45900000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
             Assert.AreEqual("sharpness_7 (49000000)", estimate.AdditionalProps["missingEnchants"]);
+        }
 
+        [Test]
+        public void SubstractsStarCost()
+        {
+            highestValAuction.FlatenedNBT = new();
+            var upgradeLvl9 = Dupplicate(highestValAuction);
+            upgradeLvl9.HighestBidAmount = 100_000_000;
+            upgradeLvl9.FlatenedNBT["upgrade_level"] = "9";
+            AddVolume(upgradeLvl9);
+            service.UpdateBazaar(new()
+            {
+                Products = new(){
+                new (){
+                    ProductId = "FOURTH_MASTER_STAR",
+                    SellSummary = new(){
+                        new (){
+                            PricePerUnit = 49_000_000
+                        }
+                    }
+                },
+                new (){
+                    ProductId = "THIRD_MASTER_STAR",
+                    SellSummary = new(){
+                        new (){
+                            PricePerUnit = 19_000_000
+                        }
+                    }
+                }
+            }
+            });
+            var toTest = Dupplicate(highestValAuction);
+            service.FinishedUpdate();
+            service.State = SniperState.Ready;
+            toTest.FlatenedNBT["upgrade_level"] = "7";
+            service.TestNewAuction(toTest);
+            service.FinishedUpdate();
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            Assert.AreEqual(28800000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.AreEqual("upgrade_level:9 (68000000)", estimate.AdditionalProps["missingModifiers"], "Third and fourth master star combned cost 68000000");
         }
 
         [Test]

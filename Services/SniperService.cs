@@ -17,6 +17,7 @@ namespace Coflnet.Sky.Sniper.Services
         private ConcurrentQueue<(SaveAuction, ReferenceAuctions)> LbinUpdates = new();
         private AuctionKey defaultKey = new AuctionKey();
         public SniperState State { get; set; } = SniperState.LadingLbin;
+        private PropertyMapper mapper = new();
 
         public event Action<LowPricedAuction> FoundSnipe;
         private readonly HashSet<string> IncludeKeys = new HashSet<string>()
@@ -155,7 +156,7 @@ ORDER BY l.`AuctionId`  DESC;
         // stuff changing value by 10+M
         public static HashSet<string> VeryValuable = new HashSet<string>()
         {
-            "dungeon_item_level", // lvl 8+ are over 10m
+            "upgrade_level", // lvl 8+ are over 10m
             "rarity_upgrades",
             "winning_bid",
             "exp",
@@ -273,7 +274,7 @@ ORDER BY l.`AuctionId`  DESC;
             var missingModifiers = closest.Key.Modifiers.Where(m => !itemKey.Modifiers.Contains(m)).ToList();
             if (missingModifiers.Count > 0)
             {
-                long median = GetPriceSumForModifiers(missingModifiers);
+                long median = GetPriceSumForModifiers(missingModifiers, itemKey.Modifiers);
                 if (median > 0)
                 {
                     result.Median -= median;
@@ -282,18 +283,27 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private long GetPriceSumForModifiers(List<KeyValuePair<string, string>> missingModifiers)
+        private long GetPriceSumForModifiers(List<KeyValuePair<string, string>> missingModifiers, List<KeyValuePair<string, string>> modifiers)
         {
-            var values = missingModifiers.Select(m =>
+            var values = missingModifiers.SelectMany<KeyValuePair<string, string>, string>(m =>
             {
                 if (ModifierItemPrefixes.TryGetValue(m.Key, out var prefix))
-                    return Lookups.TryGetValue(prefix + m.Value.ToUpper(), out var lookup) ? lookup.Lookup : null;
+                    return new string[] { prefix + m.Value.ToUpper() };
                 if (m.Value == "PERFECT")
-                    if (Lookups.TryGetValue($"PERFECT_{m.Key.Split('_').First()}_GEM", out var gemLookup))
-                        return gemLookup.Lookup;
+                    return new string[] { $"PERFECT_{m.Key.Split('_').First()}_GEM" };
                 if (m.Value == "FLAWLESS")
-                    if (Lookups.TryGetValue($"FLAWLESS_{m.Key.Split('_').First()}_GEM", out var gemLookup))
-                        return gemLookup.Lookup;
+                    return new string[] { $"FLAWLESS_{m.Key.Split('_').First()}_GEM" };
+                if (mapper.TryGetIngredients(m.Key, m.Value, modifiers.Where(mi => mi.Key == m.Key).Select(mi => mi.Value).FirstOrDefault(), out var ingredients))
+                {
+                    return ingredients;
+                }
+                return null;
+            }).Where(m => m != null).Select(k =>
+            {
+                if (Lookups.TryGetValue(k, out var lookup))
+                {
+                    return lookup.Lookup;
+                }
                 return null;
             }).Where(m => m != null).ToList();
             var median = values.SelectMany(m => m.Values).Select(m => m.Price).DefaultIfEmpty(0).Sum();
@@ -578,7 +588,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return NormalizeNumberTo(s, 10_000_000);
             if (s.Key.EndsWith("_kills"))
                 return NormalizeNumberTo(s, 10_000);
-            if(s.Key == "yogsKilled")
+            if (s.Key == "yogsKilled")
                 return NormalizeNumberTo(s, 5_000, 2);
             if (s.Key == "candyUsed") // all candied are the same
                 return new KeyValuePair<string, string>(s.Key, (double.Parse(s.Value) > 0 ? 1 : 0).ToString());
@@ -617,8 +627,8 @@ ORDER BY l.`AuctionId`  DESC;
                     return Ignore;
                 return new KeyValuePair<string, string>(PetItemKey, heldItem);
             }
-            if (s.Key == "upgrade_level")
-                return new KeyValuePair<string, string>("dungeon_item_level", s.Value);
+            if (s.Key == "dungeon_item_level")
+                return new KeyValuePair<string, string>("upgrade_level", s.Value);
             if (s.Key == "dungeon_item_level" && auction.FlatenedNBT.TryGetValue("upgrade_level", out _))
                 return Ignore; // upgrade level is always higher (newer)
             if (ShardAttributes.TryGetValue(s.Key, out var minLvl))
@@ -705,7 +715,7 @@ ORDER BY l.`AuctionId`  DESC;
                             && baseKey.Enchants
                     .All(e => k.Enchants.Any(ek => e.Type == ek.Type && ek.Lvl == e.Lvl)) && k.Tier == baseKey.Tier))
                 {
-                    if(l[item].Price == 0)
+                    if (l[item].Price == 0)
                         continue;
                     Console.WriteLine($"Found higher tier {item} for {baseKey} with {l[item].Lbin.Price} lbin price {l[item].Price}");
                     yield return item;
@@ -751,7 +761,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var key = KeyFromSaveAuction(auction, i);
                 if (i > 0 && key == lastKey)
                 {
-                    if(i < 4)
+                    if (i < 4)
                         shouldTryToFindClosest = true;
                     continue; // already checked that
                 }
@@ -836,7 +846,7 @@ ORDER BY l.`AuctionId`  DESC;
                     long toSubstract = 0;
                     if (missingModifiers.Count > 0)
                     {
-                        toSubstract = GetPriceSumForModifiers(missingModifiers);
+                        toSubstract = GetPriceSumForModifiers(missingModifiers, key.Modifiers);
                         props.Add("missingModifiers", string.Join(",", missingModifiers.Select(m => $"{m.Key}:{m.Value}")) + $" ({toSubstract})");
                     }
                     var missingEnchants = closest.Key.Enchants.Where(m => !key.Enchants.Contains(m)).ToList();
