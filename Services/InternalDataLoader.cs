@@ -199,9 +199,8 @@ namespace Coflnet.Sky.Sniper.Services
             var maxId = 0;
             using (var context = new HypixelContext())
             {
-                maxId = context.Auctions.Max(a => a.Id);
+                maxId = await context.Auctions.MaxAsync(a => a.Id);
             }
-            await Task.Delay(TimeSpan.FromMinutes(1), stoppinToken);
 
             foreach (var lookup in sniper.Lookups)
             {
@@ -209,29 +208,34 @@ namespace Coflnet.Sky.Sniper.Services
                 {
                     SniperService.UpdateMedian(item.Value);
                 }
-                await Task.Delay(60);
             }
 
             var batchSize = 20_000;
             var totalSize = 15_000_000;
-            for (var batchStart = maxId - totalSize; batchStart < maxId; batchStart += batchSize)
+            var allStart = maxId - totalSize;
+            logger.LogInformation("loading sell history " + allStart + " " + maxId + " " + batchSize);
+            for (var i = 0; i < totalSize / batchSize / 5; i++)
             {
-                try
+                for (var batchStart = allStart + batchSize * i; batchStart < maxId; batchStart += batchSize * 5)
                 {
-                    using var context = new HypixelContext();
-                    await LoadSellsBatch(context, batchSize, batchStart, stoppinToken);
+                    try
+                    {
+                        using var context = new HypixelContext();
+                        await LoadSellsBatch(context, batchSize, batchStart, stoppinToken);
+                    }
+                    catch (System.Exception e)
+                    {
+                        logger.LogError(e, "failed to load sells batch " + batchStart);
+                        await Task.Delay(2000);
+                    }
+                    // ready if more than 20% loaded
+                    if (i >= 1)
+                    {
+                        sniper.State = SniperState.Ready;
+                        await Task.Delay(100);
+                    }
                 }
-                catch (System.Exception e)
-                {
-                    logger.LogError(e, "failed to load sells batch " + batchStart);
-                    await Task.Delay(2000);
-                }
-                // ready if more than 20% loaded
-                if (batchStart > maxId - totalSize * 0.8)
-                {
-                    sniper.State = SniperState.Ready;
-                    await Task.Delay(100);
-                }
+                logger.LogInformation("Loaded 1/5th of sell history");
             }
         }
 
@@ -249,7 +253,7 @@ namespace Coflnet.Sky.Sniper.Services
                     continue;
                 sniper.AddSoldItem(item);
             }
-            if ((batchStart / batchSize) % 10 == 0)
+            if ((batchStart / 5 / batchSize) % 5 == 0)
                 Console.WriteLine($"Loaded batch {batchStart} - {end}");
         }
 
@@ -294,7 +298,8 @@ namespace Coflnet.Sky.Sniper.Services
                 BootstrapServers = config["KAFKA_HOST"],
                 SessionTimeoutMs = 9_000,
                 AutoOffsetReset = AutoOffsetReset.Latest,
-                GroupId = System.Net.Dns.GetHostName()
+                GroupId = System.Net.Dns.GetHostName(),
+                PartitionAssignmentStrategy = PartitionAssignmentStrategy.CooperativeSticky
             };
 
 
