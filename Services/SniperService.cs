@@ -18,6 +18,7 @@ namespace Coflnet.Sky.Sniper.Services
         private AuctionKey defaultKey = new AuctionKey();
         public SniperState State { get; set; } = SniperState.LadingLbin;
         private PropertyMapper mapper = new();
+        private string[] EmptyArray = new string[0];
 
         public event Action<LowPricedAuction> FoundSnipe;
         private readonly HashSet<string> IncludeKeys = new HashSet<string>()
@@ -299,7 +300,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     return ingredients;
                 }
-                return null;
+                return EmptyArray;
             }).Where(m => m != null).Select(k =>
             {
                 if (Lookups.TryGetValue(k, out var lookup))
