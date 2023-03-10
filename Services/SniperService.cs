@@ -165,6 +165,7 @@ ORDER BY l.`AuctionId`  DESC;
             "dye_item",
             "ethermerge",
             "unlocked_slots",
+            "skin",
             "new_years_cake" // not that valuable but the only attribute
         };
 
@@ -172,7 +173,6 @@ ORDER BY l.`AuctionId`  DESC;
         public static HashSet<string> Increadable = new HashSet<string>()
         {
             "ability_scroll",
-            "skin",
             "color"
         };
 
