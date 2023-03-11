@@ -859,6 +859,15 @@ ORDER BY l.`AuctionId`  DESC;
                         props.Add("missingEnchants", string.Join(",", missingEnchants.Select(e => $"{e.Type}_{e.Lvl}")) + $" ({toSubstract})");
                     }
                     var targetPrice = (long)((closest.Value.Price - toSubstract) * 0.9);
+                    // adjust due to count
+                    if(closest.Key.Count != auction.Count)
+                    {
+                        var countDiff = closest.Key.Count - auction.Count;
+                        var countDiffPrice = (long)(countDiff * targetPrice / closest.Key.Count);
+                        targetPrice -= countDiffPrice;
+                        props.Add("countDiff", $"{countDiff} ({countDiffPrice})");
+                        Console.WriteLine($"Adjusting target price due to count diff {countDiff} {countDiffPrice} {targetPrice}");
+                    }
                     FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, props);
                 }
             }
