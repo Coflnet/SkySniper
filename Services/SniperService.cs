@@ -286,7 +286,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private long GetPriceSumForModifiers(List<KeyValuePair<string, string>> missingModifiers, List<KeyValuePair<string, string>> modifiers)
         {
-            if(missingModifiers == null)
+            if (missingModifiers == null)
                 return 0;
             var values = missingModifiers.SelectMany<KeyValuePair<string, string>, string>(m =>
             {
@@ -860,7 +860,7 @@ ORDER BY l.`AuctionId`  DESC;
                     }
                     var targetPrice = (long)((closest.Value.Price - toSubstract) * 0.9);
                     // adjust due to count
-                    if(closest.Key.Count != auction.Count)
+                    if (closest.Key.Count != auction.Count)
                     {
                         var countDiff = closest.Key.Count - auction.Count;
                         var countDiffPrice = (long)(countDiff * targetPrice / closest.Key.Count);
@@ -868,6 +868,7 @@ ORDER BY l.`AuctionId`  DESC;
                         props.Add("countDiff", $"{countDiff} ({countDiffPrice})");
                         Console.WriteLine($"Adjusting target price due to count diff {countDiff} {countDiffPrice} {targetPrice}");
                     }
+                    AddMedianSample(closest.Value, props);
                     FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, props);
                 }
             }
@@ -935,7 +936,7 @@ ORDER BY l.`AuctionId`  DESC;
                     return;
                 }
                 var props = CreateReference(bucket.References.Last().AuctionId, key, extraValue);
-                props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
+                AddMedianSample(bucket, props);
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, adjustedMedianPrice + extraValue, props);
             }
             else
@@ -1027,12 +1028,17 @@ ORDER BY l.`AuctionId`  DESC;
             }))
                 return;
             var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue);
-            props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
+            AddMedianSample(bucket, props);
             props["mVal"] = bucket.Price.ToString();
             var targetPrice = Math.Min(higherValueLowerBin, MaxMedianPriceForSnipe(bucket)) + extraValue;
             if (targetPrice < auction.StartingBid * 1.03)
                 return;
             FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
+        }
+
+        private static void AddMedianSample(ReferenceAuctions bucket, Dictionary<string, string> props)
+        {
+            props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
         }
 
         private static long MaxMedianPriceForSnipe(ReferenceAuctions bucket)
