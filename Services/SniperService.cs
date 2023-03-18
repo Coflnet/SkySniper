@@ -724,6 +724,21 @@ ORDER BY l.`AuctionId`  DESC;
                     yield return item;
                 }
             }
+            var compactEnch = baseKey.Enchants.FirstOrDefault(e => e.Type == Core.Enchantment.EnchantmentType.compact && e.Lvl >= 5);
+            if (compactEnch != null)
+            {
+                for (int i = compactEnch.Lvl + 1; i < 10; i++)
+                {
+                    yield return new AuctionKey(baseKey)
+                    {
+                        Enchants = baseKey.Enchants.Where(e => e.Type != Core.Enchantment.EnchantmentType.compact).Append(new()
+                        {
+                            Type = Core.Enchantment.EnchantmentType.compact,
+                            Lvl = (byte)i
+                        }).OrderBy(e => e.Type).ToList()
+                    };
+                }
+            }
 
             if (baseKey.Count > 1 && baseKey.Count < 64)
                 yield return new AuctionKey(baseKey) { Count = 64 };
