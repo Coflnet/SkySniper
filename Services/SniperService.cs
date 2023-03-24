@@ -107,7 +107,8 @@ namespace Coflnet.Sky.Sniper.Services
             {"blazing_fortune", "fishing_experience"},
             {"life_regeneration", "mana_pool"},
             {"veteran", "mending"},
-            {"mana_regeneration", "mana_pool"}
+            {"mana_regeneration", "mana_pool"},
+            {"dominance", "speed"}
         };
         private readonly ConcurrentDictionary<string, HashSet<string>> AttributeComboLookup = new();
 
