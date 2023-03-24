@@ -98,6 +98,8 @@ namespace Coflnet.Sky.Sniper.Models
                 if (match.Key == null)
                     if (int.TryParse(m.Value, out var parsed))
                         return Math.Abs(parsed);
+                    else if(m.Value == "TB")
+                        return 58; // tier boost is very valuable
                     else
                         return 4;
                 if (int.TryParse(match.Value, out var matchValue) && int.TryParse(m.Value, out var value))
