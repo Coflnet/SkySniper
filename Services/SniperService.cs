@@ -844,6 +844,7 @@ ORDER BY l.`AuctionId`  DESC;
             var closest = FindClosestTo(l, key);
             medPrice *= 1.10; // increase price a bit to account for the fact that we are not using the exact same item
             if (closest.Value == null)
+            {
                 Logs.Enqueue(new LogEntry()
                 {
                     Key = key,
@@ -852,42 +853,60 @@ ORDER BY l.`AuctionId`  DESC;
                     Uuid = auction.Uuid,
                     Volume = -1
                 });
-            else
-            {
-                if (closest.Key == key)
-                    Console.WriteLine($"Found exact match for {key} {closest.Value.Volume} {auction.Uuid}");
-                else
-                    Console.WriteLine($"Would estimate closest to {key} {closest.Key} {auction.Uuid} for {closest.Value.Price}");
-                if (closest.Value.Price > medPrice)
-                {
-                    var props = new Dictionary<string, string>() { { "closest", closest.Key.ToString() } };
-                    var missingModifiers = closest.Key.Modifiers.Where(m => !key.Modifiers.Contains(m)).ToList();
-                    long toSubstract = 0;
-                    if (missingModifiers.Count > 0)
-                    {
-                        toSubstract = GetPriceSumForModifiers(missingModifiers, key.Modifiers);
-                        props.Add("missingModifiers", string.Join(",", missingModifiers.Select(m => $"{m.Key}:{m.Value}")) + $" ({toSubstract})");
-                    }
-                    var missingEnchants = closest.Key.Enchants.Where(m => !key.Enchants.Contains(m)).ToList();
-                    if (missingEnchants.Count > 0)
-                    {
-                        toSubstract += GetPriceSumForEnchants(missingEnchants);
-                        props.Add("missingEnchants", string.Join(",", missingEnchants.Select(e => $"{e.Type}_{e.Lvl}")) + $" ({toSubstract})");
-                    }
-                    var targetPrice = (long)((closest.Value.Price - toSubstract) * 0.9);
-                    // adjust due to count
-                    if (closest.Key.Count != auction.Count)
-                    {
-                        var countDiff = closest.Key.Count - auction.Count;
-                        var countDiffPrice = (long)(countDiff * targetPrice / closest.Key.Count);
-                        targetPrice -= countDiffPrice;
-                        props.Add("countDiff", $"{countDiff} ({countDiffPrice})");
-                        Console.WriteLine($"Adjusting target price due to count diff {countDiff} {countDiffPrice} {targetPrice}");
-                    }
-                    AddMedianSample(closest.Value, props);
-                    FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, props);
-                }
+                return;
             }
+            if (closest.Key == key)
+                Console.WriteLine($"Found exact match for {key} {closest.Value.Volume} {auction.Uuid}");
+            else
+                Console.WriteLine($"Would estimate closest to {key} {closest.Key} {auction.Uuid} for {closest.Value.Price}");
+            if (closest.Value.Price <= medPrice)
+                return;
+            var props = new Dictionary<string, string>() { { "closest", closest.Key.ToString() } };
+            var missingModifiers = closest.Key.Modifiers.Where(m => !key.Modifiers.Contains(m)).ToList();
+            long toSubstract = 0;
+            if (missingModifiers.Count > 0)
+            {
+                toSubstract = GetPriceSumForModifiers(missingModifiers, key.Modifiers);
+                props.Add("missingModifiers", string.Join(",", missingModifiers.Select(m => $"{m.Key}:{m.Value}")) + $" ({toSubstract})");
+            }
+            var missingEnchants = closest.Key.Enchants.Where(m => !key.Enchants.Contains(m)).ToList();
+            if (missingEnchants.Count > 0)
+            {
+                toSubstract += GetPriceSumForEnchants(missingEnchants);
+                props.Add("missingEnchants", string.Join(",", missingEnchants.Select(e => $"{e.Type}_{e.Lvl}")) + $" ({toSubstract})");
+            }
+            var targetPrice = (long)((closest.Value.Price - toSubstract) * 0.9);
+            // adjust due to count
+            if (closest.Key.Count != auction.Count)
+            {
+                var countDiff = closest.Key.Count - auction.Count;
+                var countDiffPrice = (long)(countDiff * targetPrice / closest.Key.Count);
+                targetPrice -= countDiffPrice;
+                props.Add("countDiff", $"{countDiff} ({countDiffPrice})");
+                Console.WriteLine($"Adjusting target price due to count diff {countDiff} {countDiffPrice} {targetPrice}");
+            }
+            // adjust price of reforge 
+            if (closest.Key.Reforge != auction.Reforge)
+            {
+                var closestDetails = mapper.GetReforgeCost(closest.Key.Reforge, auction.Tier);
+                var auctionDetails = mapper.GetReforgeCost(auction.Reforge, auction.Tier);
+                var reforgeDifference = GetCostForItem(closestDetails.Item1) + closestDetails.Item2 - (GetCostForItem(auctionDetails.Item1) - auctionDetails.Item2) / 2;
+                Console.WriteLine($"Adjusting target price due to reforge {closestDetails.Item1} {closestDetails.Item2} {auctionDetails.Item1} {auctionDetails.Item2} {reforgeDifference}");
+                targetPrice -= reforgeDifference;
+                props.Add("reforge", $"{closest.Key.Reforge} -> {auction.Reforge} ({reforgeDifference})");
+            }
+            AddMedianSample(closest.Value, props);
+            FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, props);
+        }
+
+        private long GetCostForItem(string tag)
+        {
+            if (Lookups.TryGetValue(tag.ToUpper(), out var itemLookup))
+            {
+                var prices = itemLookup.Lookup.Values.First();
+                return prices.Price;
+            }
+            return 0;
         }
 
         private long GetPriceSumForEnchants(List<Models.Enchantment> missingEnchants)

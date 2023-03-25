@@ -323,6 +323,39 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void StonksReforgeDifference()
+        {
+            highestValAuction.FlatenedNBT = new();
+            var reforge = Dupplicate(highestValAuction);
+            reforge.HighestBidAmount = 10_000_000;
+            reforge.Reforge = ItemReferences.Reforge.aote_stone;
+            AddVolume(reforge);
+            service.UpdateBazaar(new()
+            {
+                Products = new(){
+                new (){
+                    ProductId = "AOTE_STONE",
+                    SellSummary = new(){
+                        new (){
+                            PricePerUnit = 4_000_000
+                        }
+                    }
+                }
+            }
+            });
+
+            var toTest = Dupplicate(highestValAuction);
+            service.FinishedUpdate();
+            service.State = SniperState.Ready;
+            service.TestNewAuction(toTest);
+            service.FinishedUpdate();
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            Assert.AreEqual(2500000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.AreEqual("aote_stone -> None (6500000)", estimate.AdditionalProps["reforge"]);
+        }
+
+        [Test]
         public void SubstractsStarCost()
         {
             highestValAuction.FlatenedNBT = new();
