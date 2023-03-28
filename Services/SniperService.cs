@@ -502,7 +502,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (dropLevel == 0)
             {
                 key.Enchants = auction.Enchantments
-                    ?.Where(e => e.Level >= MinEnchantMap[e.Type])
+                    ?.Where(e => MinEnchantMap.TryGetValue(e.Type, out byte value) && e.Level >= value)
                     .Select(e => new Models.Enchantment() { Lvl = e.Level, Type = e.Type }).ToList();
 
                 key.Modifiers = auction.FlatenedNBT?.Where(n =>
