@@ -352,7 +352,7 @@ namespace Coflnet.Sky.Sniper.Services
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             Assert.AreEqual(2500000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
-            Assert.AreEqual("aote_stone -> None (6500000)", estimate.AdditionalProps["reforge"]);
+            Assert.AreEqual("warped_on_aote -> None (6500000)", estimate.AdditionalProps["reforge"]);
         }
 
         [Test]
