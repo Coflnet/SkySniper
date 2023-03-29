@@ -328,13 +328,13 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.FlatenedNBT = new();
             var reforge = Dupplicate(highestValAuction);
             reforge.HighestBidAmount = 10_000_000;
-            reforge.Reforge = ItemReferences.Reforge.aote_stone;
+            reforge.Reforge = ItemReferences.Reforge.Gilded;
             AddVolume(reforge);
             service.UpdateBazaar(new()
             {
                 Products = new(){
                 new (){
-                    ProductId = "AOTE_STONE",
+                    ProductId = "MIDAS_JEWEL",
                     SellSummary = new(){
                         new (){
                             PricePerUnit = 4_000_000
@@ -352,7 +352,7 @@ namespace Coflnet.Sky.Sniper.Services
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             Assert.AreEqual(2500000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
-            Assert.AreEqual("warped_on_aote -> None (6500000)", estimate.AdditionalProps["reforge"]);
+            Assert.AreEqual("Gilded -> None (6500000)", estimate.AdditionalProps["reforge"]);
         }
 
         [Test]

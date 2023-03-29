@@ -1078,7 +1078,9 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static long MaxMedianPriceForSnipe(ReferenceAuctions bucket)
         {
-            return bucket.Price * 11 / 10;
+            if (bucket.Price < 100_000_000)
+                return bucket.Price * 11 / 10;
+            return bucket.Price * 21 / 20;
         }
 
         public void PrintLogQueue()
