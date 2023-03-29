@@ -588,8 +588,8 @@ ORDER BY l.`AuctionId`  DESC;
                     return NormalizeNumberTo(s, 30_036_483, 7);
                 else
                     return NormalizeNumberTo(s, 4_225_538, 6);
-            if (s.Key == "winning_bid")
-                return NormalizeNumberTo(s, 10_000_000);
+            if (s.Key == "winning_bid" && auction.Tag.StartsWith("MIDAS"))
+                return NormalizeNumberTo(s, 10_000_000, 10);
             if (s.Key.EndsWith("_kills"))
                 return NormalizeNumberTo(s, 10_000);
             if (s.Key == "yogsKilled")
