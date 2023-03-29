@@ -201,6 +201,7 @@ ORDER BY l.`AuctionId`  DESC;
                 AttributeComboLookup.GetOrAdd(item.Key, a => new()).Add(item.Value);
                 AttributeComboLookup.GetOrAdd(item.Value, a => new()).Add(item.Key);
                 VeryValuable.Add(item.Key);
+                VeryValuable.Add(item.Value);
             }
             foreach (var item in AttributeCombos)
             {
@@ -311,8 +312,8 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 return null;
             }).Where(m => m != null).ToList();
-            var median = values.SelectMany(m => m.Values).Select(m => m.Price).DefaultIfEmpty(0).Sum();
-            return median;
+            var medianSumIngredients = values.SelectMany(m => m.Values).Select(m => m.Price).DefaultIfEmpty(0).Sum();
+            return medianSumIngredients;
         }
 
         private static KeyValuePair<AuctionKey, ReferenceAuctions> FindClosestTo(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey)
@@ -868,6 +869,8 @@ ORDER BY l.`AuctionId`  DESC;
             if (missingModifiers.Count > 0)
             {
                 toSubstract = GetPriceSumForModifiers(missingModifiers, key.Modifiers);
+                toSubstract = AdjustForAttributes(closest.Value.Price, key, missingModifiers, toSubstract);
+
                 props.Add("missingModifiers", string.Join(",", missingModifiers.Select(m => $"{m.Key}:{m.Value}")) + $" ({toSubstract})");
             }
             var missingEnchants = closest.Key.Enchants.Where(m => !key.Enchants.Contains(m)).ToList();
@@ -898,6 +901,18 @@ ORDER BY l.`AuctionId`  DESC;
             }
             AddMedianSample(closest.Value, props);
             FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, props);
+        }
+
+        private long AdjustForAttributes(double medPrice, AuctionKey key, List<KeyValuePair<string, string>> missingModifiers, long toSubstract)
+        {
+            var missingAttributes = missingModifiers.Where(m => AttributeComboLookup.ContainsKey(m.Key) || ShardAttributes.ContainsKey(m.Key)).ToList();
+            if (missingAttributes.Count > 0)
+            {
+                var biggestDifference = missingAttributes.Select(m => Math.Abs(int.Parse(m.Value) - int.Parse(key.Modifiers.Where(km => km.Key == m.Key)?.FirstOrDefault().Value ?? "0"))).Max();
+                toSubstract += (long)(Math.Pow(0.6, biggestDifference) * medPrice);
+            }
+
+            return toSubstract;
         }
 
         private long GetCostForItem(string tag)

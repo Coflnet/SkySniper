@@ -356,6 +356,27 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void StonksAttributeDifference()
+        {
+            highestValAuction.FlatenedNBT = new() { { "mana_pool", "1" } };
+            var withRegen = Dupplicate(highestValAuction);
+            withRegen.HighestBidAmount = 10_000_000;
+            withRegen.FlatenedNBT.Add("mana_regeneration", "1");
+            AddVolume(withRegen);
+
+            var toTest = Dupplicate(highestValAuction);
+            service.FinishedUpdate();
+            service.State = SniperState.Ready;
+            service.TestNewAuction(toTest);
+            service.FinishedUpdate();
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            // 3600000 6m for mana_regeneration, 10% for stonks
+            Assert.AreEqual(3600000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.AreEqual("mana_regeneration:1 (6000000)", estimate.AdditionalProps["missingModifiers"]);
+        }
+
+        [Test]
         public void SubstractsStarCost()
         {
             highestValAuction.FlatenedNBT = new();
@@ -404,7 +425,7 @@ namespace Coflnet.Sky.Sniper.Services
             biggerStack.Count = 3;
             biggerStack.HighestBidAmount = 100_000_000;
             AddVolume(biggerStack);
-            
+
             var toTest = Dupplicate(highestValAuction);
             toTest.Count = 1;
             service.FinishedUpdate();
