@@ -110,7 +110,7 @@ namespace Coflnet.Sky.Sniper.Services
             {"mana_regeneration", "mana_pool"},
             {"dominance", "speed"}
         };
-        private readonly ConcurrentDictionary<string, HashSet<string>> AttributeComboLookup = new();
+        public readonly ConcurrentDictionary<string, HashSet<string>> AttributeComboLookup = new();
 
         public void FinishedUpdate()
         {
@@ -200,6 +200,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 AttributeComboLookup.GetOrAdd(item.Key, a => new()).Add(item.Value);
                 AttributeComboLookup.GetOrAdd(item.Value, a => new()).Add(item.Key);
+                VeryValuable.Add(item.Key);
             }
             foreach (var item in AttributeCombos)
             {
