@@ -909,7 +909,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (missingAttributes.Count > 0)
             {
                 var biggestDifference = missingAttributes.Select(m => Math.Abs(int.Parse(m.Value) - int.Parse(key.Modifiers.Where(km => km.Key == m.Key)?.FirstOrDefault().Value ?? "0"))).Max();
-                toSubstract += (long)(Math.Pow(0.6, biggestDifference) * medPrice);
+                toSubstract += (long)(medPrice - Math.Pow(0.4, biggestDifference) * medPrice);
             }
 
             return toSubstract;
