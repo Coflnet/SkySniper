@@ -394,6 +394,25 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(92160, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
             Assert.AreEqual("mana_regeneration:5 (9897600)", estimate.AdditionalProps["missingModifiers"]);
         }
+        [Test]
+        public void StonksPetCandyReduction()
+        {
+            highestValAuction.FlatenedNBT = new() { { "candyUsed", "1" } };
+            var withoutCandy = Dupplicate(highestValAuction);
+            withoutCandy.HighestBidAmount = 10_000_000;
+            withoutCandy.FlatenedNBT["candyUsed"] = "0";
+            AddVolume(withoutCandy);
+
+            var toTest = Dupplicate(highestValAuction);
+            service.FinishedUpdate();
+            service.State = SniperState.Ready;
+            service.TestNewAuction(toTest);
+            service.FinishedUpdate();
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            Assert.AreEqual(8100000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.AreEqual("candyUsed:0 (1000000)", estimate.AdditionalProps["missingModifiers"]);
+        }
 
         [Test]
         public void SubstractsStarCost()

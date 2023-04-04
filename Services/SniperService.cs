@@ -167,6 +167,7 @@ ORDER BY l.`AuctionId`  DESC;
             "ethermerge",
             "unlocked_slots",
             "skin",
+            "candyUsed",
             "new_years_cake" // not that valuable but the only attribute
         };
 
@@ -869,7 +870,9 @@ ORDER BY l.`AuctionId`  DESC;
             if (missingModifiers.Count > 0)
             {
                 toSubstract = GetPriceSumForModifiers(missingModifiers, key.Modifiers);
-                toSubstract = AdjustForAttributes(closest.Value.Price, key, missingModifiers, toSubstract);
+                toSubstract += AdjustForAttributes(closest.Value.Price, key, missingModifiers);
+                if(missingModifiers.Any(m => m.Key == "candyUsed" && m.Value == "0"))
+                    toSubstract += (long)(closest.Value.Price * 0.1); // 10% for pet candy
 
                 props.Add("missingModifiers", string.Join(",", missingModifiers.Select(m => $"{m.Key}:{m.Value}")) + $" ({toSubstract})");
             }
@@ -903,16 +906,16 @@ ORDER BY l.`AuctionId`  DESC;
             FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, props);
         }
 
-        private long AdjustForAttributes(double medPrice, AuctionKey key, List<KeyValuePair<string, string>> missingModifiers, long toSubstract)
+        private long AdjustForAttributes(double medPrice, AuctionKey key, List<KeyValuePair<string, string>> missingModifiers)
         {
             var missingAttributes = missingModifiers.Where(m => AttributeComboLookup.ContainsKey(m.Key) || ShardAttributes.ContainsKey(m.Key)).ToList();
             if (missingAttributes.Count > 0)
             {
                 var biggestDifference = missingAttributes.Select(m => Math.Abs(int.Parse(m.Value) - int.Parse(key.Modifiers.Where(km => km.Key == m.Key)?.FirstOrDefault().Value ?? "0"))).Max();
-                toSubstract += (long)(medPrice - Math.Pow(0.4, biggestDifference) * medPrice);
+                return (long)(medPrice - Math.Pow(0.4, biggestDifference) * medPrice);
             }
 
-            return toSubstract;
+            return 0;
         }
 
         private long GetCostForItem(string tag)
