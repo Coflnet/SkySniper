@@ -871,8 +871,17 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 toSubstract = GetPriceSumForModifiers(missingModifiers, key.Modifiers);
                 toSubstract += AdjustForAttributes(closest.Value.Price, key, missingModifiers);
-                if(missingModifiers.Any(m => m.Key == "candyUsed" && m.Value == "0"))
+                if (missingModifiers.Any(m => m.Key == "candyUsed" && m.Value == "0"))
                     toSubstract += (long)(closest.Value.Price * 0.1); // 10% for pet candy
+                var killModifier = missingModifiers.FirstOrDefault(m => m.Key.EndsWith("kills"));
+                if (killModifier.Key != default)
+                {
+                    var killCount = int.Parse(killModifier.Value);
+                    var present = auction.FlatenedNBT.FirstOrDefault(n => n.Key == killModifier.Key);
+                    var difference = killCount - int.Parse(present.Value);
+                    var killPrice = difference * 1_000_000;
+                    toSubstract += killPrice;
+                }
 
                 props.Add("missingModifiers", string.Join(",", missingModifiers.Select(m => $"{m.Key}:{m.Value}")) + $" ({toSubstract})");
             }
