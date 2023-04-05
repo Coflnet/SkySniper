@@ -413,6 +413,44 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(8100000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
             Assert.AreEqual("candyUsed:0 (1000000)", estimate.AdditionalProps["missingModifiers"]);
         }
+        [Test]
+        public void StonksIncreaseForKills()
+        {
+            highestValAuction.FlatenedNBT = new() { { "zombie_kills", "15000" } };
+            var withoutKills = Dupplicate(highestValAuction);
+            withoutKills.HighestBidAmount = 10_000_000;
+            withoutKills.FlatenedNBT["zombie_kills"] = "0";
+            AddVolume(withoutKills);
+
+            var toTest = Dupplicate(highestValAuction);
+            service.FinishedUpdate();
+            service.State = SniperState.Ready;
+            service.TestNewAuction(toTest);
+            service.FinishedUpdate();
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            Assert.AreEqual(9450000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.AreEqual("zombie_kills:0 (-500000)", estimate.AdditionalProps["missingModifiers"]);
+        }
+        [Test]
+        public void StonksDecreaseForKills()
+        {
+            highestValAuction.FlatenedNBT = new() { { "zombie_kills", "0" } };
+            var withoutKills = Dupplicate(highestValAuction);
+            withoutKills.HighestBidAmount = 10_000_000;
+            withoutKills.FlatenedNBT["zombie_kills"] = "25000";
+            AddVolume(withoutKills);
+
+            var toTest = Dupplicate(highestValAuction);
+            service.FinishedUpdate();
+            service.State = SniperState.Ready;
+            service.TestNewAuction(toTest);
+            service.FinishedUpdate();
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            Assert.AreEqual(7200000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.AreEqual("zombie_kills:2 (2000000)", estimate.AdditionalProps["missingModifiers"]);
+        }
 
         [Test]
         public void SubstractsStarCost()
