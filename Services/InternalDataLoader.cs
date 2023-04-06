@@ -213,10 +213,11 @@ namespace Coflnet.Sky.Sniper.Services
             var batchSize = 20_000;
             var totalSize = 15_000_000;
             var allStart = maxId - totalSize;
+            var differential = 10;
             logger.LogInformation("loading sell history " + allStart + " " + maxId + " " + batchSize);
-            for (var i = 0; i < totalSize / batchSize / 5; i++)
+            for (var i = 0; i < totalSize / batchSize / differential; i++)
             {
-                for (var batchStart = allStart + batchSize * i; batchStart < maxId; batchStart += batchSize * 5)
+                for (var batchStart = allStart + batchSize * i; batchStart < maxId; batchStart += batchSize * differential)
                 {
                     try
                     {
@@ -229,13 +230,13 @@ namespace Coflnet.Sky.Sniper.Services
                         await Task.Delay(2000);
                     }
                     // ready if more than 20% loaded
-                    if (i >= 1)
+                    if (i >= differential / 5)
                     {
                         sniper.State = SniperState.Ready;
                         await Task.Delay(100);
                     }
                 }
-                logger.LogInformation("Loaded 1/5th of sell history");
+                logger.LogInformation($"Loaded 1/{differential}th of sell history");
             }
         }
 
