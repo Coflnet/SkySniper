@@ -295,7 +295,11 @@ ORDER BY l.`AuctionId`  DESC;
             var values = missingModifiers.SelectMany<KeyValuePair<string, string>, string>(m =>
             {
                 if (ModifierItemPrefixes.TryGetValue(m.Key, out var prefix))
-                    return new string[] { prefix + m.Value.ToUpper() };
+                    if(prefix == string.Empty)
+                        return new string[] { prefix + m.Value.ToUpper() };
+                    else 
+                        // some of the items actually don't have the prefix
+                        return new string[] { prefix + m.Value.ToUpper(), m.Value.ToUpper() };
                 if (m.Value == "PERFECT")
                     return new string[] { $"PERFECT_{m.Key.Split('_').First()}_GEM" };
                 if (m.Value == "FLAWLESS")

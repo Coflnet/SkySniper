@@ -451,6 +451,38 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(7200000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
             Assert.AreEqual("zombie_kills:2 (2000000)", estimate.AdditionalProps["missingModifiers"]);
         }
+        [Test]
+        public void StonksDecreaseForMiniosReliqPetItem()
+        {
+            highestValAuction.FlatenedNBT = new() { { "heldItem", "YELLOW_BANDANA" } };
+            var withoutKills = Dupplicate(highestValAuction);
+            withoutKills.HighestBidAmount = 10_000_000;
+            withoutKills.FlatenedNBT["heldItem"] = "MINOS_RELIC";
+            AddVolume(withoutKills);
+            service.UpdateBazaar(new()
+            {
+                Products = new(){
+                new (){
+                    ProductId = "MINOS_RELIC",
+                    SellSummary = new(){
+                        new (){
+                            PricePerUnit = 4_000_000
+                        }
+                    }
+                }
+            }
+            });
+
+            var toTest = Dupplicate(highestValAuction);
+            service.FinishedUpdate();
+            service.State = SniperState.Ready;
+            service.TestNewAuction(toTest);
+            service.FinishedUpdate();
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            Assert.AreEqual(5400000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.AreEqual("petItem:MINOS_RELIC (4000000)", estimate.AdditionalProps["missingModifiers"]);
+        }
 
         [Test]
         public void SubstractsStarCost()
