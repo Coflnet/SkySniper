@@ -65,6 +65,7 @@ namespace Coflnet.Sky.Sniper.Services
             "ethermerge",
             "edition", // great spook stuff
             "hpc", // hot potato books
+            "thunder_charge", // Pulse ring modifer
             //"tuned_transmission", // aotv upgrade
             //"power_ability_scroll", // disabled as suggested by Coyu because comonly not worth 1m (up to 2m at most)
             "captured_player", // cake souls
@@ -601,6 +602,8 @@ ORDER BY l.`AuctionId`  DESC;
                 return NormalizeNumberTo(s, 10_000);
             if (s.Key == "yogsKilled")
                 return NormalizeNumberTo(s, 5_000, 2);
+            if (s.Key == "thunder_charge")
+                return NormalizeNumberTo(s, 1_000_000, 5);
             if (s.Key == "candyUsed") // all candied are the same
                 return new KeyValuePair<string, string>(s.Key, (double.Parse(s.Value) > 0 ? 1 : 0).ToString());
             if (s.Key == "edition")
