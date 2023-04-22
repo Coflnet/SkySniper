@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using Coflnet.Kafka;
 
 namespace Coflnet.Sky.Sniper.Services
 {
@@ -21,9 +22,9 @@ namespace Coflnet.Sky.Sniper.Services
         private IConfiguration config;
         private IPersitanceManager persitance;
         private string LowPricedAuctionTopic;
-        private static ProducerConfig producerConfig;
         private ActivitySource activitySource;
         private ActiveUpdater activeUpdater;
+        private Kafka.KafkaCreator kafkaCreator;
 
         private ILogger<InternalDataLoader> logger;
 
@@ -40,20 +41,17 @@ namespace Coflnet.Sky.Sniper.Services
             IPersitanceManager persitance,
             ILogger<InternalDataLoader> logger,
             ActivitySource activitySource,
-            ActiveUpdater activeUpdater)
+            ActiveUpdater activeUpdater,
+            KafkaCreator kafkaCreator)
         {
             this.sniper = sniper;
             this.config = config;
             this.persitance = persitance;
             LowPricedAuctionTopic = config["TOPICS:LOW_PRICED"];
-            producerConfig = new ProducerConfig
-            {
-                BootstrapServers = config["KAFKA_HOST"],
-                LingerMs = 5
-            };
             this.logger = logger;
             this.activitySource = activitySource;
             this.activeUpdater = activeUpdater;
+            this.kafkaCreator = kafkaCreator;
         }
 
 
@@ -91,8 +89,8 @@ namespace Coflnet.Sky.Sniper.Services
 
         private async Task StartProducer(CancellationToken stoppingToken)
         {
-
-            using var lpp = new ProducerBuilder<string, LowPricedAuction>(producerConfig).SetValueSerializer(SerializerFactory.GetSerializer<LowPricedAuction>()).Build();
+            await kafkaCreator.CreateTopicIfNotExist(LowPricedAuctionTopic);
+            using var lpp = kafkaCreator.BuildProducer<string, LowPricedAuction>();
             sniper.FoundSnipe += flip =>
             {
                 if (flip.Auction.Context != null)
@@ -272,7 +270,7 @@ namespace Coflnet.Sky.Sniper.Services
         private async Task ActiveUpdater(CancellationToken stoppingToken)
         {
             await RunTilStopped(
-                Kafka.KafkaConsumer.Consume<AhStateSumary>(Program.KafkaHost, config["TOPICS:AH_SUMARY"], activeUpdater.ProcessSumary, stoppingToken, ConsumerConfig.GroupId, AutoOffsetReset.Latest)
+                Kafka.KafkaConsumer.Consume<AhStateSumary>(config, config["TOPICS:AH_SUMARY"], activeUpdater.ProcessSumary, stoppingToken, ConsumerConfig.GroupId, AutoOffsetReset.Latest)
             , stoppingToken);
         }
 
@@ -294,9 +292,8 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         private ConsumerConfig ConsumerConfig =>
-            new ConsumerConfig
+            new ConsumerConfig(KafkaCreator.GetClientConfig(config))
             {
-                BootstrapServers = config["KAFKA_HOST"],
                 SessionTimeoutMs = 9_000,
                 AutoOffsetReset = AutoOffsetReset.Latest,
                 GroupId = System.Net.Dns.GetHostName(),

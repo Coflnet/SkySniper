@@ -44,6 +44,7 @@ namespace Coflnet.Sky.Sniper
             services.AddSingleton<IPersitanceManager, MinioPersistanceManager>();
             services.AddSingleton<ITokenService, TokenService>();
             services.AddSingleton<ActiveUpdater>();
+            services.AddSingleton<Kafka.KafkaCreator>();
             services.AddJaeger(Configuration);
         }
 
