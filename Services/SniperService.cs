@@ -296,9 +296,9 @@ ORDER BY l.`AuctionId`  DESC;
             var values = missingModifiers.SelectMany<KeyValuePair<string, string>, string>(m =>
             {
                 if (ModifierItemPrefixes.TryGetValue(m.Key, out var prefix))
-                    if(prefix == string.Empty)
+                    if (prefix == string.Empty)
                         return new string[] { prefix + m.Value.ToUpper() };
-                    else 
+                    else
                         // some of the items actually don't have the prefix
                         return new string[] { prefix + m.Value.ToUpper(), m.Value.ToUpper() };
                 if (m.Value == "PERFECT")
@@ -563,6 +563,11 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 // rarities don't matter for enchanted books and often used for scamming
                 key.Tier = Tier.UNCOMMON;
+            }
+            if (auction.Tag.StartsWith("STARRED_"))
+            {
+                // Jasper0 slot can't be accessed on starred (Fragged) items
+                key.Modifiers.RemoveAll(m => m.Key == "JASPER_0");
             }
             key.Count = (byte)auction.Count;
 
@@ -887,7 +892,7 @@ ORDER BY l.`AuctionId`  DESC;
                     var present = key.Modifiers.FirstOrDefault(n => n.Key == killModifier.Key);
                     var difference = killCount - int.Parse(present.Value);
                     var killPrice = difference * 1_000_000;
-                    if(difference < 0)
+                    if (difference < 0)
                         killPrice /= 2; // only half for adding kills
                     toSubstract += killPrice;
                 }
