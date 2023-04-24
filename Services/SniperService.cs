@@ -564,10 +564,10 @@ ORDER BY l.`AuctionId`  DESC;
                 // rarities don't matter for enchanted books and often used for scamming
                 key.Tier = Tier.UNCOMMON;
             }
-            if (auction.Tag.StartsWith("STARRED_"))
+            if (auction.Tag?.StartsWith("STARRED_") ?? false)
             {
                 // Jasper0 slot can't be accessed on starred (Fragged) items
-                key.Modifiers.RemoveAll(m => m.Key == "JASPER_0");
+                key.Modifiers?.RemoveAll(m => m.Key == "JASPER_0");
             }
             key.Count = (byte)auction.Count;
 
