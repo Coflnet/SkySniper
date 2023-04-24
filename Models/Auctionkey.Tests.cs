@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Services;
 using NUnit.Framework;
@@ -123,6 +124,23 @@ namespace Coflnet.Sky.Sniper.Models
             }
         }
 
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        [TestCase(4)]
+        [TestCase(5)]
+        public void CheckTierBoostNotDropped(int level)
+        {
+            var service = new SniperService();
+            var auction = new SaveAuction()
+            {
+                Tag = "PET_SCATHA",
+                FlatenedNBT = new() { { "heldItem", "PET_ITEM_TIER_BOOST" } },
+            };
+            Assert.IsTrue(service.KeyFromSaveAuction(auction, level).Modifiers.Any(x => x.Value == "TB"));
+        }
+
         [Test]
         public void RunesAppart()
         {
@@ -231,12 +249,12 @@ namespace Coflnet.Sky.Sniper.Models
                     Lvl = 6
                 }
             };
-            
+
             var baseKey = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 5);
             baseKey.Enchants.AddRange(differentEnchants);
 
             var closer = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 5);
-            
+
             var lvl2 = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_duplex, 5);
             lvl2.Enchants.AddRange(differentEnchants);
 

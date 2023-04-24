@@ -528,8 +528,9 @@ ORDER BY l.`AuctionId`  DESC;
             }
             else if (dropLevel == 1 || dropLevel == 2)
             {
-                key.Modifiers = auction.FlatenedNBT?.Where(n => VeryValuable.Contains(n.Key) || Increadable.Contains(n.Key) || n.Value == "PERFECT")
+                key.Modifiers = auction.FlatenedNBT?.Where(n => VeryValuable.Contains(n.Key) || Increadable.Contains(n.Key) || n.Value == "PERFECT" || n.Value == "PET_ITEM_TIER_BOOST")
                             .OrderByDescending(n => n.Key)
+                                .Select(i => NormalizeData(i, auction))
                             .ToList();
                 key.Enchants = auction.Enchantments
                     ?.Where(e => Coflnet.Sky.Core.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
