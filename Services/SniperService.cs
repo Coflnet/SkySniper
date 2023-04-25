@@ -10,6 +10,7 @@ namespace Coflnet.Sky.Sniper.Services
     public class SniperService
     {
         public const string PetItemKey = "petItem";
+        public const string TierBoostShorthand = "TIER_BOOST";
         public static int MIN_TARGET = 200_000;
         public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>();
 
@@ -590,7 +591,7 @@ ORDER BY l.`AuctionId`  DESC;
                 key.Modifiers = EmptyModifiers;
             if (auction.Tag.StartsWith("PET_") && !auction.Tag.StartsWith("PET_ITEM") && !auction.Tag.StartsWith("PET_SKIN"))
                 if (auction.FlatenedNBT.TryGetValue("heldItem", out var val) && val == "PET_ITEM_TIER_BOOST")
-                    key.Modifiers = new(EmptyPetModifiers) { new(PetItemKey, "TB") };
+                    key.Modifiers = new(EmptyPetModifiers) { new(PetItemKey, TierBoostShorthand) };
                 else
                     key.Modifiers = EmptyPetModifiers;
         }
@@ -638,7 +639,7 @@ ORDER BY l.`AuctionId`  DESC;
                     "DWARF_TURTLE_SHELMET" => "DWARF_TURTLE_SHELMET",
                     "QUICK_CLAW" => "QUICK_CLAW",
                     "PET_ITEM_QUICK_CLAW" => "QUICK_CLAW",
-                    "PET_ITEM_TIER_BOOST" => "TB",
+                    "PET_ITEM_TIER_BOOST" => TierBoostShorthand,
                     "PET_ITEM_LUCKY_CLOVER" => "LUCKY",
                     "PET_ITEM_LUCKY_CLOVER_DROP" => "LUCKY",
                     _ => null
@@ -1148,7 +1149,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (refAge > 60)
                 return; // too old
             props["refAge"] = refAge.ToString();
-            if(auction.Tag.StartsWith("PET_") && auction.FlatenedNBT.Any(f=>f.Value == "PET_ITEM_TIER_BOOST") && !props["key"].Contains(", TB"))
+            if(auction.Tag.StartsWith("PET_") && auction.FlatenedNBT.Any(f=>f.Value == "PET_ITEM_TIER_BOOST") && !props["key"].Contains(TierBoostShorthand))
                 throw new Exception("Tier boost missing " + props["key"] + " " + JSON.Stringify(auction));
             FoundSnipe?.Invoke(new LowPricedAuction()
             {

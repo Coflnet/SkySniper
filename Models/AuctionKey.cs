@@ -98,14 +98,14 @@ namespace Coflnet.Sky.Sniper.Models
                 if (match.Key == null)
                     if (int.TryParse(m.Value, out var parsed))
                         return Math.Abs(parsed);
-                    else if(m.Value == "TB")
+                    else if(m.Value == SniperService.TierBoostShorthand)
                         return 58; // tier boost is very valuable
                     else
                         return 4;
                 if (int.TryParse(match.Value, out var matchValue) && int.TryParse(m.Value, out var value))
                     return Math.Abs(matchValue - value);
                 if (match.Value == m.Value)
-                    if (m.Key == SniperService.PetItemKey && m.Value == "TB")
+                    if (m.Key == SniperService.PetItemKey && m.Value == SniperService.TierBoostShorthand)
                         return -28; // tier boost is very valuable
                     else
                         return -2;
