@@ -566,7 +566,7 @@ ORDER BY l.`AuctionId`  DESC;
                 // rarities don't matter for enchanted books and often used for scamming
                 key.Tier = Tier.UNCOMMON;
             }
-            if (auction.Tag?.StartsWith("STARRED_") ?? false)
+            if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false)
             {
                 // Jasper0 slot can't be accessed on starred (Fragged) items
                 key.Modifiers?.RemoveAll(m => m.Key == "JASPER_0");
@@ -823,12 +823,14 @@ ORDER BY l.`AuctionId`  DESC;
                             return;
                         bucket = closests.FirstOrDefault().Value;
                         key = closests.FirstOrDefault().Key;
-                        if (bucket.HitsSinceCalculating > 2)
+                        if (bucket.HitsSinceCalculating > 8)
                         {
                             Console.WriteLine($"Bucket {key} for {auction.Uuid} has been hit {bucket.HitsSinceCalculating} times, skipping");
                             TryFindClosestRisky(auction, l, ref lbinPrice, ref medPrice);
                             return;
                         }
+                        lbinPrice *= Math.Pow(1.15, bucket.HitsSinceCalculating);
+                        medPrice *= Math.Pow(1.25, bucket.HitsSinceCalculating);
                         bucket.HitsSinceCalculating++;
                         shouldTryToFindClosest = true;
                     }
@@ -873,7 +875,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return;
             }
             if (closest.Key == key)
-                Console.WriteLine($"Found exact match for {key} {closest.Value.Volume} {auction.Uuid}");
+                Console.WriteLine($"Found exact match for {key} {closest.Value.Volume} {auction.Uuid} for {closest.Value.Price}");
             else
                 Console.WriteLine($"Would estimate closest to {key} {closest.Key} {auction.Uuid} for {closest.Value.Price}");
             if (closest.Value.Price <= medPrice)
@@ -1122,6 +1124,8 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static long MaxMedianPriceForSnipe(ReferenceAuctions bucket)
         {
+            if (bucket.Price < 15_000_000)
+                return bucket.Price * 12 / 10;
             if (bucket.Price < 100_000_000)
                 return bucket.Price * 11 / 10;
             return bucket.Price * 21 / 20;
