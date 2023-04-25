@@ -136,9 +136,12 @@ namespace Coflnet.Sky.Sniper.Models
             var auction = new SaveAuction()
             {
                 Tag = "PET_SCATHA",
-                FlatenedNBT = new() { { "heldItem", "PET_ITEM_TIER_BOOST" } },
+                FlatenedNBT = new() { { "heldItem", "PET_ITEM_TIER_BOOST" },
+                                {"candyUsed", "0"} },
             };
-            Assert.IsTrue(service.KeyFromSaveAuction(auction, level).Modifiers.Any(x => x.Value == "TB"));
+            var modifierList = service.KeyFromSaveAuction(auction, level).Modifiers;
+            Assert.IsTrue(modifierList.Any(x => x.Value == "TB"));
+            Assert.IsTrue(modifierList.Any(x => x.Value == "0" && x.Key == "candyUsed"));
         }
 
         [Test]

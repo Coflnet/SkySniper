@@ -530,7 +530,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 key.Modifiers = auction.FlatenedNBT?.Where(n => VeryValuable.Contains(n.Key) || Increadable.Contains(n.Key) || n.Value == "PERFECT" || n.Value == "PET_ITEM_TIER_BOOST")
                             .OrderByDescending(n => n.Key)
-                                .Select(i => NormalizeData(i, auction))
+                            .Select(i => NormalizeData(i, auction))
                             .ToList();
                 key.Enchants = auction.Enchantments
                     ?.Where(e => Coflnet.Sky.Core.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
@@ -1148,6 +1148,8 @@ ORDER BY l.`AuctionId`  DESC;
             if (refAge > 60)
                 return; // too old
             props["refAge"] = refAge.ToString();
+            if(auction.Tag.StartsWith("PET_") && auction.FlatenedNBT.Any(f=>f.Value == "PET_ITEM_TIER_BOOST") && !props["key"].Contains(", TB"))
+                throw new Exception("Tier boost missing " + props["key"] + " " + JSON.Stringify(auction));
             FoundSnipe?.Invoke(new LowPricedAuction()
             {
                 Auction = auction,
