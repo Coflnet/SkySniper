@@ -602,7 +602,15 @@ ORDER BY l.`AuctionId`  DESC;
                 if (auction.Tag == "PET_GOLDEN_DRAGON")
                     return NormalizeNumberTo(s, 30_036_483, 7);
                 else
-                    return NormalizeNumberTo(s, 4_225_538, 6);
+                {
+                    var exp = GetNumeric(s);
+                    if (exp > 1_000_000 && exp <= 2_500_000)
+                        return new KeyValuePair<string, string>(s.Key, "0.3");
+                    else if (exp > 2_500_000 && exp < 4_225_538)
+                        return new KeyValuePair<string, string>(s.Key, "0.6");
+                    else
+                        return NormalizeNumberTo(s, 4_225_538, 6);
+                }
             if (s.Key == "winning_bid" && auction.Tag.StartsWith("MIDAS"))
                 return NormalizeNumberTo(s, 10_000_000, 10);
             if (s.Key.EndsWith("_kills"))
@@ -1153,7 +1161,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (refAge > 60)
                 return; // too old
             props["refAge"] = refAge.ToString();
-            if(auction.Tag.StartsWith("PET_") && auction.FlatenedNBT.Any(f=>f.Value == "PET_ITEM_TIER_BOOST") && !props["key"].Contains(TierBoostShorthand))
+            if (auction.Tag.StartsWith("PET_") && auction.FlatenedNBT.Any(f => f.Value == "PET_ITEM_TIER_BOOST") && !props["key"].Contains(TierBoostShorthand))
                 throw new Exception("Tier boost missing " + props["key"] + " " + JSON.Stringify(auction));
             FoundSnipe?.Invoke(new LowPricedAuction()
             {

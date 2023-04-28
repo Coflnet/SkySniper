@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Services;
@@ -96,14 +97,14 @@ namespace Coflnet.Sky.Sniper.Models
             {
                 var match = key.Modifiers.Where(k => k.Key == m.Key).FirstOrDefault();
                 if (match.Key == null)
-                    if (int.TryParse(m.Value, out var parsed))
-                        return Math.Abs(parsed);
+                    if (float.TryParse(m.Value, CultureInfo.InvariantCulture, out var parsed))
+                        return Math.Abs((int)parsed);
                     else if(m.Value == SniperService.TierBoostShorthand)
                         return 58; // tier boost is very valuable
                     else
                         return 4;
-                if (int.TryParse(match.Value, out var matchValue) && int.TryParse(m.Value, out var value))
-                    return Math.Abs(matchValue - value);
+                if (float.TryParse(match.Value, CultureInfo.InvariantCulture, out var matchValue) && float.TryParse(m.Value, CultureInfo.InvariantCulture, out var value))
+                    return (int)Math.Abs(matchValue - value);
                 if (match.Value == m.Value)
                     if (m.Key == SniperService.PetItemKey && m.Value == SniperService.TierBoostShorthand)
                         return -28; // tier boost is very valuable
