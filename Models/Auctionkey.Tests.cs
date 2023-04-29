@@ -162,7 +162,7 @@ namespace Coflnet.Sky.Sniper.Models
             };
             var keyHigh = service.KeyFromSaveAuction(auctionHigh);
             var key = service.KeyFromSaveAuction(auction);
-            Assert.Greater(1, keyHigh.Similarity(key), $"{keyHigh}\n{key}");
+            Assert.Greater(-3, keyHigh.Similarity(key), $"{keyHigh}\n{key}");
         }
 
         [Test]

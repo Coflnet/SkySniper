@@ -111,6 +111,8 @@ namespace Coflnet.Sky.Sniper.Services
 
         private async Task ConsumeNewAuctions(CancellationToken stoppingToken)
         {
+            while(sniper.State != SniperState.Ready)
+                await Task.Delay(1000);
             while (!stoppingToken.IsCancellationRequested)
                 try
                 {
