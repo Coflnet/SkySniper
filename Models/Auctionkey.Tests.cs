@@ -145,6 +145,27 @@ namespace Coflnet.Sky.Sniper.Models
         }
 
         [Test]
+        public void LowLevelPetDifference()
+        {
+            var service = new SniperService();
+            var auctionHigh = new SaveAuction()
+            {
+                Tag = "PET_SCATHA",
+                FlatenedNBT = new() { { "exp", "1500000" },
+                                {"candyUsed", "0"} },
+            };
+            var auction = new SaveAuction()
+            {
+                Tag = "PET_SCATHA",
+                FlatenedNBT = new() { { "exp", "100000" },
+                                {"candyUsed", "0"} },
+            };
+            var keyHigh = service.KeyFromSaveAuction(auctionHigh);
+            var key = service.KeyFromSaveAuction(auction);
+            Assert.Greater(1, keyHigh.Similarity(key), $"{keyHigh}\n{key}");
+        }
+
+        [Test]
         public void RunesAppart()
         {
             var clean = CreateFromLevel("0");

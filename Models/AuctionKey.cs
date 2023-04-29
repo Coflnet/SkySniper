@@ -60,14 +60,14 @@ namespace Coflnet.Sky.Sniper.Models
             if (this.Modifiers != null && key.Modifiers != null)
             {
                 //sum += this.Modifiers.Count(m => key.Modifiers.Any(k => k.Key == m.Key && k.Value == m.Value)) * 3;
-                sum -= ModifierDifference(key, this.Modifiers);
-                sum -= ModifierDifference(this, key.Modifiers);
+                sum -= (int)ModifierDifference(key, this.Modifiers);
+                sum -= (int)ModifierDifference(this, key.Modifiers);
 
-                sum -= ModifierDifference(this, key.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).ToList()) * 10;
-                sum -= ModifierDifference(key, this.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).ToList()) * 10;
+                sum -= (int)(ModifierDifference(this, key.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).ToList()) * 10);
+                sum -= (int)(ModifierDifference(key, this.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).ToList()) * 10);
 
-                sum -= ModifierDifference(this, key.Modifiers.Where(m => SniperService.Increadable.Contains(m.Key)).ToList()) * 100;
-                sum -= ModifierDifference(key, this.Modifiers.Where(m => SniperService.Increadable.Contains(m.Key)).ToList()) * 100;
+                sum -= (int)ModifierDifference(this, key.Modifiers.Where(m => SniperService.Increadable.Contains(m.Key)).ToList()) * 100;
+                sum -= (int)ModifierDifference(key, this.Modifiers.Where(m => SniperService.Increadable.Contains(m.Key)).ToList()) * 100;
             }
             else
                 sum -= this.Modifiers?.Count ?? 0 - key.Modifiers?.Count ?? 0;
@@ -91,20 +91,20 @@ namespace Coflnet.Sky.Sniper.Models
             });
         }
 
-        private static int ModifierDifference(AuctionKey key, List<KeyValuePair<string, string>> leftMods)
+        private static float ModifierDifference(AuctionKey key, List<KeyValuePair<string, string>> leftMods)
         {
             return leftMods.Sum(m =>
             {
                 var match = key.Modifiers.Where(k => k.Key == m.Key).FirstOrDefault();
                 if (match.Key == null)
                     if (float.TryParse(m.Value, CultureInfo.InvariantCulture, out var parsed))
-                        return Math.Abs((int)parsed);
+                        return Math.Abs(parsed);
                     else if(m.Value == SniperService.TierBoostShorthand)
                         return 58; // tier boost is very valuable
                     else
                         return 4;
                 if (float.TryParse(match.Value, CultureInfo.InvariantCulture, out var matchValue) && float.TryParse(m.Value, CultureInfo.InvariantCulture, out var value))
-                    return (int)Math.Abs(matchValue - value);
+                    return Math.Abs(matchValue - value);
                 if (match.Value == m.Value)
                     if (m.Key == SniperService.PetItemKey && m.Value == SniperService.TierBoostShorthand)
                         return -28; // tier boost is very valuable
