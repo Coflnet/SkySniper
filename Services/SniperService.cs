@@ -259,7 +259,7 @@ ORDER BY l.`AuctionId`  DESC;
                     if (closest.Key != default)
                     {
                         AssignMedian(result, closest.Key, closest.Value);
-                        AdjustMedianForModifiers(result, itemKey, closest);
+                        AdjustMedianForModifiers(result, itemKey, closest, auction);
                     }
 
                 }
@@ -276,12 +276,12 @@ ORDER BY l.`AuctionId`  DESC;
             return result;
         }
 
-        private void AdjustMedianForModifiers(PriceEstimate result, AuctionKey itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> closest)
+        private void AdjustMedianForModifiers(PriceEstimate result, AuctionKey itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> closest, SaveAuction auction)
         {
             var missingModifiers = closest.Key.Modifiers.Where(m => !itemKey.Modifiers.Contains(m)).ToList();
             if (missingModifiers.Count > 0)
             {
-                long median = GetPriceSumForModifiers(missingModifiers, itemKey.Modifiers);
+                long median = GetPriceSumForModifiers(missingModifiers, itemKey.Modifiers, auction);
                 if (median > 0)
                 {
                     result.Median -= median;
@@ -290,7 +290,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private long GetPriceSumForModifiers(List<KeyValuePair<string, string>> missingModifiers, List<KeyValuePair<string, string>> modifiers)
+        private long GetPriceSumForModifiers(List<KeyValuePair<string, string>> missingModifiers, List<KeyValuePair<string, string>> modifiers, SaveAuction auction)
         {
             if (missingModifiers == null)
                 return 0;
@@ -302,6 +302,11 @@ ORDER BY l.`AuctionId`  DESC;
                     else
                         // some of the items actually don't have the prefix
                         return new string[] { prefix + m.Value.ToUpper(), m.Value.ToUpper() };
+                if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false && m.Key.StartsWith("JASPER_0"))
+                {
+                    // Jasper0 slot can't be accessed on starred (Fragged) items
+                    return EmptyArray;
+                }
                 if (m.Value == "PERFECT")
                     return new string[] { $"PERFECT_{m.Key.Split('_').First()}_GEM" };
                 if (m.Value == "FLAWLESS")
@@ -893,7 +898,7 @@ ORDER BY l.`AuctionId`  DESC;
             long toSubstract = 0;
             if (missingModifiers.Count > 0)
             {
-                toSubstract = GetPriceSumForModifiers(missingModifiers, key.Modifiers);
+                toSubstract = GetPriceSumForModifiers(missingModifiers, key.Modifiers, auction);
                 toSubstract += AdjustForAttributes(closest.Value.Price, key, missingModifiers);
                 if (missingModifiers.Any(m => m.Key == "candyUsed" && m.Value == "0"))
                     toSubstract += (long)(closest.Value.Price * 0.1); // 10% for pet candy
@@ -995,6 +1000,11 @@ ORDER BY l.`AuctionId`  DESC;
             var gemValue = 0L;
             foreach (var item in auction.FlatenedNBT)
             {
+                if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false && item.Key.StartsWith("JASPER_0"))
+                {
+                    // Jasper0 slot can't be accessed on starred (Fragged) items
+                    continue;
+                }
                 if (item.Value == "PERFECT")
                     if (Lookups.TryGetValue($"PERFECT_{item.Key.Split('_').First()}_GEM", out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
                         gemValue += gemLookup.Lookup.Values.First().Price - 500_000;
