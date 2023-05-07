@@ -90,7 +90,7 @@ namespace Coflnet.Sky.Sniper.Services
         private async Task StartProducer(CancellationToken stoppingToken)
         {
             await kafkaCreator.CreateTopicIfNotExist(LowPricedAuctionTopic);
-            using var lpp = kafkaCreator.BuildProducer<string, LowPricedAuction>();
+            using var lpp = kafkaCreator.BuildProducer<string, LowPricedAuction>(true, pb=>pb);
             sniper.FoundSnipe += flip =>
             {
                 if (flip.Auction.Context != null)

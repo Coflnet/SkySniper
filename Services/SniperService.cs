@@ -856,12 +856,14 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     Console.WriteLine("is null");
                 }
+                if (i == 0)
+                    UpdateLbin(auction, bucket);
                 if (triggerEvents)
                 {
                     long extraValue = GetExtraValue(auction, key);
-                    FindFlip(auction, lbinPrice, medPrice, bucket, key, l, extraValue);
+                    if (FindFlip(auction, lbinPrice, medPrice, bucket, key, l, extraValue))
+                        break; // found a snipe, no need to check other lower value buckets
                 }
-                UpdateLbin(auction, bucket);
             }
             if (shouldTryToFindClosest && triggerEvents && this.State == SniperState.Ready)
             {
@@ -1017,14 +1019,15 @@ ORDER BY l.`AuctionId`  DESC;
             return extraValue;
         }
 
-        private void FindFlip(SaveAuction auction, double lbinPrice, double minMedPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue = 0)
+        private bool FindFlip(SaveAuction auction, double lbinPrice, double minMedPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue = 0)
         {
             var volume = bucket.Volume;
             var medianPrice = bucket.Price + extraValue;
+            var foundSnipe = false;
             if (bucket.Lbin.Price > lbinPrice && (MaxMedianPriceForSnipe(bucket) > lbinPrice) && volume > 0.2f
                )// || bucket.Price == 0))
             {
-                PotentialSnipe(auction, lbinPrice, bucket, key, l, extraValue);
+                foundSnipe = PotentialSnipe(auction, lbinPrice, bucket, key, l, extraValue);
             }
             if (medianPrice > minMedPrice && BucketHasEnoughReferencesForPrice(bucket))
             {
@@ -1032,7 +1035,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (adjustedMedianPrice + extraValue < minMedPrice)
                 {
                     LogNonFlip(auction, bucket, key, extraValue, volume, medianPrice);
-                    return;
+                    return false;
                 }
                 var props = CreateReference(bucket.References.Last().AuctionId, key, extraValue);
                 AddMedianSample(bucket, props);
@@ -1042,6 +1045,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 LogNonFlip(auction, bucket, key, extraValue, volume, medianPrice);
             }
+            return foundSnipe;
 
             void LogNonFlip(SaveAuction auction, ReferenceAuctions bucket, AuctionKey key, long extraValue, float volume, long medianPrice)
             {
@@ -1109,7 +1113,7 @@ ORDER BY l.`AuctionId`  DESC;
             Console.WriteLine($"Updated bazaar {Lookups.Count} items");
         }
 
-        private void PotentialSnipe(SaveAuction auction, double lbinPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue)
+        private bool PotentialSnipe(SaveAuction auction, double lbinPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue)
         {
             var higherValueLowerBin = bucket.Lbin.Price;
             if (HigherValueKeys(key, l, lbinPrice).Any(k =>
@@ -1125,14 +1129,14 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 return false;
             }))
-                return;
+                return false;
             var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue);
             AddMedianSample(bucket, props);
             props["mVal"] = bucket.Price.ToString();
             var targetPrice = Math.Min(higherValueLowerBin, MaxMedianPriceForSnipe(bucket)) + extraValue;
             if (targetPrice < auction.StartingBid * 1.03)
-                return;
-            FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
+                return false;
+            return FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
         }
 
         private static void AddMedianSample(ReferenceAuctions bucket, Dictionary<string, string> props)
@@ -1163,13 +1167,13 @@ ORDER BY l.`AuctionId`  DESC;
             LbinUpdates.Enqueue((auction, bucket));
         }
 
-        private void FoundAFlip(SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, long targetPrice, Dictionary<string, string> props)
+        private bool FoundAFlip(SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, long targetPrice, Dictionary<string, string> props)
         {
             if (targetPrice < MIN_TARGET)
-                return; // to low
+                return false; // to low
             var refAge = (GetDay() - bucket.OldestRef);
             if (refAge > 60)
-                return; // too old
+                return false; // too old
             props["refAge"] = refAge.ToString();
             if (auction.Tag.StartsWith("PET_") && auction.FlatenedNBT.Any(f => f.Value == "PET_ITEM_TIER_BOOST") && !props["key"].Contains(TierBoostShorthand))
                 throw new Exception("Tier boost missing " + props["key"] + " " + JSON.Stringify(auction));
@@ -1190,6 +1194,7 @@ ORDER BY l.`AuctionId`  DESC;
                 Volume = bucket.Volume,
                 Finder = type
             });
+            return true;
         }
 
         private static Dictionary<string, string> CreateReference(long reference, AuctionKey key, long extraValue = 0)
