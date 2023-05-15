@@ -110,7 +110,8 @@ namespace Coflnet.Sky.Sniper.Services
             {"life_regeneration", "mana_pool"},
             {"veteran", "mending"},
             {"mana_regeneration", "mana_pool"},
-            {"dominance", "speed"}
+            {"dominance", "speed"},
+            {"vitality", "dominance"}
         };
         public readonly ConcurrentDictionary<string, HashSet<string>> AttributeComboLookup = new();
 
