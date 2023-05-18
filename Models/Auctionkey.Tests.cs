@@ -288,6 +288,21 @@ namespace Coflnet.Sky.Sniper.Models
             Assert.Greater(simValue, baseKey.Similarity(lvl2));
         }
 
+        [Test]
+        public void IngoreUltWiseOnGauntlet()
+        {
+            var auction = new SaveAuction()
+            {
+                Enchantments = new() { new(Core.Enchantment.EnchantmentType.ultimate_wise, 5) },
+                FlatenedNBT = new() { { "rarity_upgrades", "1" } },
+                Tier = Tier.MYTHIC,
+                Tag = "DEMONLORD_GAUNTLET"
+            };
+            var service = new SniperService();
+            var key = service.KeyFromSaveAuction(auction);
+            Assert.AreEqual(0, key.Enchants.Count);
+        } 
+
         //[Test]
         public void HyperionMostSimilar()
         {

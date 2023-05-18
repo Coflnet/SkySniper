@@ -435,7 +435,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             // short term protects against price drops after updates
             var shortTermList = deduplicated.OrderByDescending(b => b.Day).ThenBy(b => b.Price).Take(3).ToList();
-            if(deduplicated.Where(d => d.Day == shortTermList.First().Day).Count() > sizeToKeep / 2)
+            if (deduplicated.Where(d => d.Day == shortTermList.First().Day).Count() > sizeToKeep / 2)
                 shortTermList = deduplicated.OrderByDescending(b => b.Day).ThenBy(b => b.Price).Take(7).ToList();
             var shortTermPrice = GetMedian(shortTermList);
             bucket.OldestRef = shortTermList.Min(s => s.Day);
@@ -580,6 +580,8 @@ ORDER BY l.`AuctionId`  DESC;
                 // Jasper0 slot can't be accessed on starred (Fragged) items
                 key.Modifiers?.RemoveAll(m => m.Key == "JASPER_0");
             }
+            RemoveNoEffectEnchants(auction, key);
+
             key.Count = (byte)auction.Count;
 
             // order attributes
@@ -590,6 +592,20 @@ ORDER BY l.`AuctionId`  DESC;
                 key.Enchants = key.Enchants.OrderBy(e => e.Type).ToList();
 
             return key;
+        }
+
+        private static void RemoveNoEffectEnchants(SaveAuction auction, AuctionKey key)
+        {
+            if (auction.Tag != null && (auction.Tag.Contains("GAUNTLET") || auction.Tag.Contains("DRILL")))
+                RemoveEnchantFromKey(key, Core.Enchantment.EnchantmentType.ultimate_wise);
+            if (auction.Tag != null && auction.Tag.StartsWith("DIVAN_"))
+                RemoveEnchantFromKey(key, Core.Enchantment.EnchantmentType.ultimate_legion);
+        }
+
+        private static void RemoveEnchantFromKey(AuctionKey key, Core.Enchantment.EnchantmentType ench)
+        {
+            if (key.Enchants.Any(e => e.Type == ench))
+                key.Enchants = key.Enchants.Where(e => e.Type != ench).ToList();
         }
 
         private static void AssignEmptyModifiers(SaveAuction auction, AuctionKey key)
