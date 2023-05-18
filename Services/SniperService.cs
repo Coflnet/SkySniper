@@ -418,7 +418,8 @@ ORDER BY l.`AuctionId`  DESC;
         public static void UpdateMedian(ReferenceAuctions bucket)
         {
             var size = bucket.References.Count;
-            if (size > 90)
+            var sizeToKeep = 80;
+            if (size > sizeToKeep)
                 bucket.References.TryDequeue(out ReferencePrice ra);
             var deduplicated = bucket.References
                 .OrderByDescending(b => b.Day)
@@ -434,10 +435,12 @@ ORDER BY l.`AuctionId`  DESC;
             }
             // short term protects against price drops after updates
             var shortTermList = deduplicated.OrderByDescending(b => b.Day).ThenBy(b => b.Price).Take(3).ToList();
+            if(deduplicated.Where(d => d.Day == shortTermList.First().Day).Count() > sizeToKeep / 2)
+                shortTermList = deduplicated.OrderByDescending(b => b.Day).ThenBy(b => b.Price).Take(7).ToList();
             var shortTermPrice = GetMedian(shortTermList);
             bucket.OldestRef = shortTermList.Min(s => s.Day);
             // long term protects against market manipulation
-            var longSpanPrice = GetMedian(deduplicated.Take(45).ToList());
+            var longSpanPrice = GetMedian(deduplicated.Take(20).ToList());
             bucket.Price = Math.Min(shortTermPrice, longSpanPrice);
         }
 
