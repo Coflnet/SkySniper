@@ -440,7 +440,7 @@ ORDER BY l.`AuctionId`  DESC;
             var shortTermPrice = GetMedian(shortTermList);
             bucket.OldestRef = shortTermList.Min(s => s.Day);
             // long term protects against market manipulation
-            var longSpanPrice = GetMedian(deduplicated.Take(20).ToList());
+            var longSpanPrice = GetMedian(deduplicated.Take(29).ToList());
             bucket.Price = Math.Min(shortTermPrice, longSpanPrice);
         }
 
