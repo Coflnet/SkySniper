@@ -113,6 +113,7 @@ namespace Coflnet.Sky.Sniper.Services
             {"dominance", "speed"},
             {"vitality", "dominance"}
         };
+        private readonly HashSet<string> AllShardAttributesKeys = new(Constants.AttributeKeys);
         public readonly ConcurrentDictionary<string, HashSet<string>> AttributeComboLookup = new();
 
         public void FinishedUpdate()
@@ -525,6 +526,7 @@ ORDER BY l.`AuctionId`  DESC;
 
                 key.Modifiers = auction.FlatenedNBT?.Where(n =>
                                        IncludeKeys.Contains(n.Key)
+                                       || AllShardAttributesKeys.Contains(n.Key) && (n.Value == "8" || n.Value == "9" || n.Value == "10")
                                     || n.Value == "PERFECT"
                                     || n.Key.StartsWith("MASTER_CRYPT_TANK_ZOMBIE")
                                     || n.Key.StartsWith("MINOS_CHAMPION_")

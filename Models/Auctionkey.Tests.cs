@@ -145,6 +145,19 @@ namespace Coflnet.Sky.Sniper.Models
         }
 
         [Test]
+        public void CheckFishingSpeedAttributeInclude()
+        {
+            var service = new SniperService();
+            var auction = new SaveAuction()
+            {
+                Tag = "FISHING_ROD",
+                FlatenedNBT = new() { { "fishing_speed", "9" } },
+            };
+            var key = service.KeyFromSaveAuction(auction);
+            Assert.IsTrue(key.Modifiers.Any(x => x.Value == "9" && x.Key == "fishing_speed"));
+        }
+
+        [Test]
         public void LowLevelPetDifference()
         {
             var service = new SniperService();
