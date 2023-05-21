@@ -85,6 +85,21 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(810, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
         }
 
+        /// <summary>
+        /// Same uuid with very high profit percent is probably a bait, so we ignore it after the first listing
+        /// </summary>
+        [Test]
+        public void PreventRefindShort()
+        {
+            highestValAuction.HighestBidAmount = 1_000_000;
+            AddVolume(highestValAuction);
+            service.State = SniperState.Ready;
+            firstAuction.FlatenedNBT.Add("uid", "123456789");
+            service.TestNewAuction(firstAuction);
+            service.TestNewAuction(firstAuction);
+            Assert.AreEqual(1, found.Count);
+        }
+
         public static SaveAuction Dupplicate(SaveAuction origin)
         {
             return new SaveAuction(origin)

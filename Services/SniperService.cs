@@ -16,6 +16,7 @@ namespace Coflnet.Sky.Sniper.Services
 
         private ConcurrentQueue<LogEntry> Logs = new ConcurrentQueue<LogEntry>();
         private ConcurrentQueue<(SaveAuction, ReferenceAuctions)> LbinUpdates = new();
+        private ConcurrentQueue<string> RecentSnipeUids = new();
         private AuctionKey defaultKey = new AuctionKey();
         public SniperState State { get; set; } = SniperState.LadingLbin;
         private PropertyMapper mapper = new();
@@ -1198,6 +1199,18 @@ ORDER BY l.`AuctionId`  DESC;
             props["refAge"] = refAge.ToString();
             if (auction.Tag.StartsWith("PET_") && auction.FlatenedNBT.Any(f => f.Value == "PET_ITEM_TIER_BOOST") && !props["key"].Contains(TierBoostShorthand))
                 throw new Exception("Tier boost missing " + props["key"] + " " + JSON.Stringify(auction));
+            var uid = auction.FlatenedNBT.Where(n => n.Key == "uid").FirstOrDefault().Value;
+            var profitPercent = (targetPrice - auction.StartingBid) / (double) auction.StartingBid;
+            if (RecentSnipeUids.Contains(uid) && profitPercent > 0.5)
+            {
+                Console.WriteLine($"Already found {uid} recently");
+                return true;
+            }
+            else if(uid != null)
+                RecentSnipeUids.Enqueue(uid);
+            if (RecentSnipeUids.Count > 50)
+                RecentSnipeUids.TryDequeue(out _);
+
             FoundSnipe?.Invoke(new LowPricedAuction()
             {
                 Auction = auction,
