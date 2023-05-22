@@ -202,7 +202,7 @@ namespace Coflnet.Sky.Sniper.Controllers
                     await Task.Delay(10);
                     // remove old bucket
                     item.Value.Lookup.TryRemove(lookup.Key, out _);
-                    SniperService.UpdateMedian(newBucket);
+                    service.UpdateMedian(newBucket);
                 }
                 _logger.LogInformation("migrated {count} buckets for {tag}", startCount - item.Value.Lookup.Count, item.Key);
                 if (startCount != item.Value.Lookup.Count)

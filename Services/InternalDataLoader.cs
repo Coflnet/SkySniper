@@ -90,7 +90,7 @@ namespace Coflnet.Sky.Sniper.Services
         private async Task StartProducer(CancellationToken stoppingToken)
         {
             await kafkaCreator.CreateTopicIfNotExist(LowPricedAuctionTopic);
-            using var lpp = kafkaCreator.BuildProducer<string, LowPricedAuction>(true, pb=>pb);
+            using var lpp = kafkaCreator.BuildProducer<string, LowPricedAuction>(true, pb => pb);
             sniper.FoundSnipe += flip =>
             {
                 if (flip.Auction.Context != null)
@@ -111,7 +111,7 @@ namespace Coflnet.Sky.Sniper.Services
 
         private async Task ConsumeNewAuctions(CancellationToken stoppingToken)
         {
-            while(sniper.State != SniperState.Ready)
+            while (sniper.State != SniperState.Ready)
                 await Task.Delay(1000);
             while (!stoppingToken.IsCancellationRequested)
                 try
@@ -182,7 +182,7 @@ namespace Coflnet.Sky.Sniper.Services
                     var count = 0;
                     await foreach (var item in sold)
                     {
-                        sniper.AddSoldItem(item);
+                        sniper.AddSoldItem(item, true);
                         count++;
                     }
                     logger.LogInformation("finished loading sold auctions " + count);
@@ -202,13 +202,6 @@ namespace Coflnet.Sky.Sniper.Services
                 maxId = await context.Auctions.MaxAsync(a => a.Id);
             }
 
-            foreach (var lookup in sniper.Lookups)
-            {
-                foreach (var item in lookup.Value.Lookup)
-                {
-                    SniperService.UpdateMedian(item.Value);
-                }
-            }
 
             var batchSize = 20_000;
             var totalSize = 15_000_000;
@@ -237,6 +230,14 @@ namespace Coflnet.Sky.Sniper.Services
                     }
                 }
                 logger.LogInformation($"Loaded 1/{differential}th of sell history");
+
+                foreach (var lookup in sniper.Lookups)
+                {
+                    foreach (var item in lookup.Value.Lookup)
+                    {
+                        sniper.UpdateMedian(item.Value);
+                    }
+                }
             }
         }
 
@@ -252,7 +253,7 @@ namespace Coflnet.Sky.Sniper.Services
                 var references = sniper.GetBucketForAuction(item).References;
                 if (!ShouldAuctionBeIncluded(item, references))
                     continue;
-                sniper.AddSoldItem(item);
+                sniper.AddSoldItem(item, true);
             }
             if ((batchStart / 5 / batchSize) % 5 == 0)
                 Console.WriteLine($"Loaded batch {batchStart} - {end}");

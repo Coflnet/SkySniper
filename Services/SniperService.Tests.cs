@@ -695,6 +695,38 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(7501000, found.First().TargetPrice);
         }
 
+        [Test]
+        public void CleanAndEnchantLower()
+        {
+            highestValAuction.Enchantments = new List<Core.Enchantment>(){
+                new Core.Enchantment(Core.Enchantment.EnchantmentType.sharpness,7)
+            };
+            
+            var clean = Dupplicate(highestValAuction);
+            clean.Enchantments = new List<Core.Enchantment>();
+            clean.HighestBidAmount = 500_000;
+            AddVolume(clean);
+            highestValAuction.HighestBidAmount = 10_000_000;
+            service.UpdateBazaar(new()
+            {
+                Products = new(){
+                new (){
+                    ProductId = "ENCHANTMENT_SHARPNESS_7",
+                    SellSummary = new(){
+                        new (){
+                            PricePerUnit = 3_000_000
+                        }
+                    }
+                }
+            }
+            });
+            AddVolume(highestValAuction);
+            service.FinishedUpdate();
+            highestValAuction.StartingBid = 5;
+            service.TestNewAuction(Dupplicate(highestValAuction));
+            Assert.AreEqual(3500000, found.Last().TargetPrice);
+        }
+
         private static ProductInfo CreateGemPrice(string gemName)
         {
             return new()

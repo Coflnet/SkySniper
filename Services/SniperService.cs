@@ -404,7 +404,7 @@ ORDER BY l.`AuctionId`  DESC;
             });
         }
 
-        public void AddSoldItem(SaveAuction auction)
+        public void AddSoldItem(SaveAuction auction, bool preventMedianUpdate = false)
         {
             ReferenceAuctions bucket = GetBucketForAuction(auction);
             if (bucket.References.Where(r => r.AuctionId == auction.UId).Any())
@@ -413,11 +413,11 @@ ORDER BY l.`AuctionId`  DESC;
             // move reference to sold
             bucket.References.Enqueue(reference);
             bucket.Lbins.Remove(reference);
-            bucket.HitsSinceCalculating = 0;
-            UpdateMedian(bucket);
+            if (!preventMedianUpdate)
+                UpdateMedian(bucket, auction);
         }
 
-        public static void UpdateMedian(ReferenceAuctions bucket)
+        public void UpdateMedian(ReferenceAuctions bucket, SaveAuction auction = null)
         {
             var size = bucket.References.Count;
             var sizeToKeep = 80;
@@ -443,7 +443,27 @@ ORDER BY l.`AuctionId`  DESC;
             bucket.OldestRef = shortTermList.Min(s => s.Day);
             // long term protects against market manipulation
             var longSpanPrice = GetMedian(deduplicated.Take(29).ToList());
-            bucket.Price = Math.Min(shortTermPrice, longSpanPrice);
+            var medianPrice = Math.Min(shortTermPrice, longSpanPrice);
+            bucket.HitsSinceCalculating = 0;
+            // get price of item without enchants and add enchant value 
+            if (auction != null)
+            {
+                var key = KeyFromSaveAuction(auction);
+                var enchantPrice = GetPriceSumForEnchants(key.Enchants);
+                key.Enchants = new();
+                var closest = FindClosest(Lookups[auction.Tag].Lookup, key).Take(5).ToList();
+                if (enchantPrice != 0 && closest.Count > 0)
+                {
+                    var noEnchantMin = closest.DefaultIfEmpty(new()).MinBy(m => m.Value.Price);
+                    if (noEnchantMin.Value.Price > 10_000 && noEnchantMin.Value.Volume > 1)
+                    {
+                        bucket.Price = Math.Min(medianPrice, noEnchantMin.Value.Price + enchantPrice);
+                        Console.WriteLine($"Adjusted for enchat cost {auction.Tag} {auction.Uuid} {auction.StartingBid} -> {medianPrice}  {key} - {enchantPrice} {noEnchantMin.Value.Price} {noEnchantMin.Value.Volume}");
+                        return;
+                    }
+                }
+            }
+            bucket.Price = medianPrice;
         }
 
         public ReferenceAuctions GetBucketForAuction(SaveAuction auction)
@@ -1200,13 +1220,13 @@ ORDER BY l.`AuctionId`  DESC;
             if (auction.Tag.StartsWith("PET_") && auction.FlatenedNBT.Any(f => f.Value == "PET_ITEM_TIER_BOOST") && !props["key"].Contains(TierBoostShorthand))
                 throw new Exception("Tier boost missing " + props["key"] + " " + JSON.Stringify(auction));
             var uid = auction.FlatenedNBT.Where(n => n.Key == "uid").FirstOrDefault().Value;
-            var profitPercent = (targetPrice - auction.StartingBid) / (double) auction.StartingBid;
+            var profitPercent = (targetPrice - auction.StartingBid) / (double)auction.StartingBid;
             if (RecentSnipeUids.Contains(uid) && profitPercent > 0.5)
             {
                 Console.WriteLine($"Already found {uid} recently");
                 return true;
             }
-            else if(uid != null)
+            else if (uid != null)
                 RecentSnipeUids.Enqueue(uid);
             if (RecentSnipeUids.Count > 50)
                 RecentSnipeUids.TryDequeue(out _);
