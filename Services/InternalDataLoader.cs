@@ -221,16 +221,15 @@ namespace Coflnet.Sky.Sniper.Services
                         logger.LogError(e, "failed to load sells batch " + batchStart);
                         await Task.Delay(2000);
                     }
-                    // ready if more than 20% loaded
-                    if (i >= differential / 5)
-                    {
-                        sniper.State = SniperState.Ready;
-                        await Task.Delay(100);
-                        UpdateAllMedian();
-                    }
                 }
-                logger.LogInformation($"Loaded 1/{differential}th of sell history");
-
+                logger.LogInformation($"Loaded 1/{differential}th of sell history {i}/{totalSize / batchSize / differential}");
+                // ready if more than 20% loaded
+                if (i >= differential / 5)
+                {
+                    sniper.State = SniperState.Ready;
+                    UpdateAllMedian();
+                    await Task.Delay(100);
+                }
             }
         }
 
