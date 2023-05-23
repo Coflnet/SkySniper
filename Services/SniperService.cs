@@ -12,7 +12,7 @@ namespace Coflnet.Sky.Sniper.Services
         public const string PetItemKey = "petItem";
         public const string TierBoostShorthand = "TIER_BOOST";
         public static int MIN_TARGET = 200_000;
-        public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>();
+        public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>(3, 2000);
 
         private ConcurrentQueue<LogEntry> Logs = new ConcurrentQueue<LogEntry>();
         private ConcurrentQueue<(SaveAuction, ReferenceAuctions)> LbinUpdates = new();
@@ -90,7 +90,7 @@ namespace Coflnet.Sky.Sniper.Services
 
         private static readonly Dictionary<string, short> ShardAttributes = new(){
             {"mana_pool", 1},
-            {"breeze", 1},
+            {"breeze", 2},
             {"speed", 2},
             {"life_regeneration", 2}, // especially valuable in combination with mana_pool
             {"fishing_experience", 2},
@@ -564,6 +564,7 @@ ORDER BY l.`AuctionId`  DESC;
                 key.Modifiers = auction.FlatenedNBT?.Where(n => VeryValuable.Contains(n.Key) || Increadable.Contains(n.Key) || n.Value == "PERFECT" || n.Value == "PET_ITEM_TIER_BOOST")
                             .OrderByDescending(n => n.Key)
                             .Select(i => NormalizeData(i, auction))
+                                .Where(i => i.Key != Ignore.Key)
                             .ToList();
                 key.Enchants = auction.Enchantments
                     ?.Where(e => Coflnet.Sky.Core.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
@@ -703,10 +704,10 @@ ORDER BY l.`AuctionId`  DESC;
                     return Ignore;
                 return new KeyValuePair<string, string>(PetItemKey, heldItem);
             }
-            if (s.Key == "dungeon_item_level")
-                return new KeyValuePair<string, string>("upgrade_level", s.Value);
             if (s.Key == "dungeon_item_level" && auction.FlatenedNBT.TryGetValue("upgrade_level", out _))
                 return Ignore; // upgrade level is always higher (newer)
+            if (s.Key == "dungeon_item_level")
+                return new KeyValuePair<string, string>("upgrade_level", s.Value);
             if (ShardAttributes.TryGetValue(s.Key, out var minLvl))
             {
                 if (int.Parse(s.Value) >= minLvl)

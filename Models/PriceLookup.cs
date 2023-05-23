@@ -7,7 +7,7 @@ namespace Coflnet.Sky.Sniper.Models
     public class PriceLookup
     {
         [Key(0)]
-        public ConcurrentDictionary<AuctionKey, ReferenceAuctions> Lookup = new ConcurrentDictionary<AuctionKey, ReferenceAuctions>();
+        public ConcurrentDictionary<AuctionKey, ReferenceAuctions> Lookup = new ConcurrentDictionary<AuctionKey, ReferenceAuctions>(2, 3);
     }
 
 }
