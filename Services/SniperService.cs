@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Coflnet.Sky.Sniper.Models;
 using Coflnet.Sky.Core;
+using Prometheus;
 
 namespace Coflnet.Sky.Sniper.Services
 {
@@ -21,6 +22,9 @@ namespace Coflnet.Sky.Sniper.Services
         public SniperState State { get; set; } = SniperState.LadingLbin;
         private PropertyMapper mapper = new();
         private string[] EmptyArray = new string[0];
+
+        private Counter sellClosestSearch = Metrics.CreateCounter("sky_sniper_sell_closest_search", "Number of searches for closest sell");
+        private Counter closestMedianBruteCounter = Metrics.CreateCounter("sky_sniper_closest_median_brute", "Number of brute force searches for closest median");
 
         public event Action<LowPricedAuction> FoundSnipe;
         private readonly HashSet<string> IncludeKeys = new HashSet<string>()
@@ -213,6 +217,11 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 IncludeKeys.Add(item.Key);
             }
+            foreach (var item in Constants.AttributeKeys)
+            {
+                if(!ShardAttributes.ContainsKey(item))
+                    ShardAttributes.Add(item, 9);
+            }
             foreach (var item in ShardAttributes)
             {
                 IncludeKeys.Add(item.Key);
@@ -255,8 +264,7 @@ ORDER BY l.`AuctionId`  DESC;
 
                 if (result.Median == default)
                 {
-                    if (itemKey.GetHashCode() % 3 == 0 && DateTime.UtcNow.Millisecond % 30 == 0)
-                        Console.WriteLine("Finding closest median brute for " + auction.Tag + itemKey);
+                    closestMedianBruteCounter.Inc();
                     var closest = FindClosestTo(l, itemKey);
 
                     if (closest.Key != default)
@@ -453,6 +461,7 @@ ORDER BY l.`AuctionId`  DESC;
                 key.Enchants = new();
                 if (!Lookups[auction.Tag].Lookup.TryGetValue(key, out var clean))
                 {
+                    sellClosestSearch.Inc();
                     var closest = FindClosest(Lookups[auction.Tag].Lookup, key).Take(5).ToList();
                     if (closest.Count > 0)
                         clean = closest.MinBy(m => m.Value.Price).Value;
@@ -548,7 +557,6 @@ ORDER BY l.`AuctionId`  DESC;
 
                 key.Modifiers = auction.FlatenedNBT?.Where(n =>
                                        IncludeKeys.Contains(n.Key)
-                                       || AllShardAttributesKeys.Contains(n.Key) && (n.Value == "8" || n.Value == "9" || n.Value == "10")
                                     || n.Value == "PERFECT"
                                     || n.Key.StartsWith("MASTER_CRYPT_TANK_ZOMBIE")
                                     || n.Key.StartsWith("MINOS_CHAMPION_")

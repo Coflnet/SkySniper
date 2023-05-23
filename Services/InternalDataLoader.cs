@@ -214,8 +214,7 @@ namespace Coflnet.Sky.Sniper.Services
                 {
                     try
                     {
-                        using var context = new HypixelContext();
-                        await LoadSellsBatch(context, batchSize, batchStart, stoppinToken);
+                        await LoadSellsBatch(batchSize, batchStart, stoppinToken);
                     }
                     catch (System.Exception e)
                     {
@@ -253,13 +252,16 @@ namespace Coflnet.Sky.Sniper.Services
             }
         }
 
-        private async Task LoadSellsBatch(HypixelContext context, int batchSize, int batchStart, CancellationToken stoppinToken)
+        private async Task LoadSellsBatch(int batchSize, int batchStart, CancellationToken stoppinToken)
         {
             var end = batchStart + batchSize;
+            using var context = new HypixelContext();
+            Console.WriteLine($"Start Loading batch {batchStart} - {end}");
             var sold = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
                                     .Where(a => a.Id > batchStart && a.Id < end && a.Bin && a.HighestBidAmount > 0)
                                     .AsNoTracking()
                                     .ToListAsync(stoppinToken);
+            Console.WriteLine($"Loaded batch {batchStart} - {end}");
             foreach (var item in sold)
             {
                 var references = sniper.GetBucketForAuction(item).References;
@@ -267,8 +269,7 @@ namespace Coflnet.Sky.Sniper.Services
                     continue;
                 sniper.AddSoldItem(item, true);
             }
-            if ((batchStart / 5 / batchSize) % 5 == 0)
-                Console.WriteLine($"Loaded batch {batchStart} - {end}");
+            Console.WriteLine($"Applied batch {batchStart} - {end}");
         }
 
         /// <summary>
