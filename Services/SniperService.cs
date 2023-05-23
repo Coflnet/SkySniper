@@ -451,16 +451,17 @@ ORDER BY l.`AuctionId`  DESC;
                 var key = KeyFromSaveAuction(auction);
                 var enchantPrice = GetPriceSumForEnchants(key.Enchants);
                 key.Enchants = new();
-                var closest = FindClosest(Lookups[auction.Tag].Lookup, key).Take(5).ToList();
-                if (enchantPrice != 0 && closest.Count > 0)
+                if (!Lookups[auction.Tag].Lookup.TryGetValue(key, out var clean))
                 {
-                    var noEnchantMin = closest.DefaultIfEmpty(new()).MinBy(m => m.Value.Price);
-                    if (noEnchantMin.Value.Price > 10_000 && noEnchantMin.Value.Volume > 1)
-                    {
-                        bucket.Price = Math.Min(medianPrice, noEnchantMin.Value.Price + enchantPrice);
-                        Console.WriteLine($"Adjusted for enchat cost {auction.Tag} {auction.Uuid} {auction.StartingBid} -> {medianPrice}  {key} - {enchantPrice} {noEnchantMin.Value.Price} {noEnchantMin.Value.Volume}");
-                        return;
-                    }
+                    var closest = FindClosest(Lookups[auction.Tag].Lookup, key).Take(5).ToList();
+                    if (closest.Count > 0)
+                        clean = closest.MinBy(m => m.Value.Price).Value;
+                }
+                if (enchantPrice != 0 && clean != default && clean.Price > 10_000 && clean.Volume > 1)
+                {
+                    bucket.Price = Math.Min(medianPrice, clean.Price + enchantPrice);
+                    Console.WriteLine($"Adjusted for enchat cost {auction.Tag} {auction.Uuid} {auction.StartingBid} -> {medianPrice}  {key} - {enchantPrice} {clean.Price} {clean.Volume}");
+                    return;
                 }
             }
             bucket.Price = medianPrice;
