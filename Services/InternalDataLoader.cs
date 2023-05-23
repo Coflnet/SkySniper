@@ -264,10 +264,10 @@ namespace Coflnet.Sky.Sniper.Services
             Console.WriteLine($"Loaded batch {batchStart} - {end}");
             foreach (var item in sold)
             {
-                var references = sniper.GetBucketForAuction(item).References;
-                if (!ShouldAuctionBeIncluded(item, references))
+                var references = sniper.GetBucketForAuction(item);
+                if (!ShouldAuctionBeIncluded(item, references.References))
                     continue;
-                sniper.AddSoldItem(item, true);
+                sniper.AddAuctionToBucket(item, true, references);
             }
             Console.WriteLine($"Applied batch {batchStart} - {end}");
         }

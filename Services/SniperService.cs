@@ -12,6 +12,7 @@ namespace Coflnet.Sky.Sniper.Services
     {
         public const string PetItemKey = "petItem";
         public const string TierBoostShorthand = "TIER_BOOST";
+        private const int SizeToKeep = 80;
         public static int MIN_TARGET = 200_000;
         public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>(3, 2000);
 
@@ -219,7 +220,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             foreach (var item in Constants.AttributeKeys)
             {
-                if(!ShardAttributes.ContainsKey(item))
+                if (!ShardAttributes.ContainsKey(item))
                     ShardAttributes.Add(item, 9);
             }
             foreach (var item in ShardAttributes)
@@ -415,12 +416,19 @@ ORDER BY l.`AuctionId`  DESC;
         public void AddSoldItem(SaveAuction auction, bool preventMedianUpdate = false)
         {
             ReferenceAuctions bucket = GetBucketForAuction(auction);
+            AddAuctionToBucket(auction, preventMedianUpdate, bucket);
+        }
+
+        public void AddAuctionToBucket(SaveAuction auction, bool preventMedianUpdate, ReferenceAuctions bucket)
+        {
             if (bucket.References.Where(r => r.AuctionId == auction.UId).Any())
                 return; // duplicate
             var reference = CreateReferenceFromAuction(auction);
             // move reference to sold
             bucket.References.Enqueue(reference);
             bucket.Lbins.Remove(reference);
+            if (bucket.References.Count > SizeToKeep)
+                bucket.References.TryDequeue(out ReferencePrice ra);
             if (!preventMedianUpdate)
                 UpdateMedian(bucket, auction);
         }
@@ -428,9 +436,6 @@ ORDER BY l.`AuctionId`  DESC;
         public void UpdateMedian(ReferenceAuctions bucket, SaveAuction auction = null)
         {
             var size = bucket.References.Count;
-            var sizeToKeep = 80;
-            if (size > sizeToKeep)
-                bucket.References.TryDequeue(out ReferencePrice ra);
             var deduplicated = bucket.References
                 .OrderByDescending(b => b.Day)
                 .Take(60)
@@ -445,7 +450,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             // short term protects against price drops after updates
             var shortTermList = deduplicated.OrderByDescending(b => b.Day).ThenBy(b => b.Price).Take(3).ToList();
-            if (deduplicated.Where(d => d.Day == shortTermList.First().Day).Count() > sizeToKeep / 2)
+            if (deduplicated.Where(d => d.Day == shortTermList.First().Day).Count() > SizeToKeep / 2)
                 shortTermList = deduplicated.OrderByDescending(b => b.Day).ThenBy(b => b.Price).Take(7).ToList();
             var shortTermPrice = GetMedian(shortTermList);
             bucket.OldestRef = shortTermList.Min(s => s.Day);
