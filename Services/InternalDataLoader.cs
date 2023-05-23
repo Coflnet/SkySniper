@@ -227,15 +227,27 @@ namespace Coflnet.Sky.Sniper.Services
                     {
                         sniper.State = SniperState.Ready;
                         await Task.Delay(100);
+                        UpdateAllMedian();
                     }
                 }
                 logger.LogInformation($"Loaded 1/{differential}th of sell history");
 
-                foreach (var lookup in sniper.Lookups)
+            }
+        }
+
+        private void UpdateAllMedian()
+        {
+            foreach (var lookup in sniper.Lookups)
+            {
+                foreach (var item in lookup.Value.Lookup)
                 {
-                    foreach (var item in lookup.Value.Lookup)
+                    try
                     {
                         sniper.UpdateMedian(item.Value);
+                    }
+                    catch (System.Exception e)
+                    {
+                        logger.LogError(e, "updating median");
                     }
                 }
             }
