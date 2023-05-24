@@ -208,7 +208,8 @@ namespace Coflnet.Sky.Sniper.Services
             var allStart = maxId - totalSize;
             var differential = 10;
             logger.LogInformation("loading sell history " + allStart + " " + maxId + " " + batchSize);
-            for (var i = 0; i < totalSize / batchSize / differential; i++)
+            // split batches into 10 distributed groups
+            for (var i = 0; i < differential; i++)
             {
                 for (var batchStart = allStart + batchSize * i; batchStart < maxId; batchStart += batchSize * differential)
                 {
@@ -222,7 +223,7 @@ namespace Coflnet.Sky.Sniper.Services
                         await Task.Delay(2000);
                     }
                 }
-                logger.LogInformation($"Loaded 1/{differential}th of sell history {i}/{totalSize / batchSize / differential}");
+                logger.LogInformation($"Loaded {i}/{differential}th of sell history");
                 // ready if more than 20% loaded
                 if (i >= differential / 5)
                 {
