@@ -709,12 +709,15 @@ ORDER BY l.`AuctionId`  DESC;
                 var heldItem = s.Value switch
                 {
                     "MINOS_RELIC" => "MINOS_RELIC",
-                    "DWARF_TURTLE_SHELMET" => "DWARF_TURTLE_SHELMET",
                     "QUICK_CLAW" => "QUICK_CLAW",
                     "PET_ITEM_QUICK_CLAW" => "QUICK_CLAW",
                     "PET_ITEM_TIER_BOOST" => TierBoostShorthand,
                     "PET_ITEM_LUCKY_CLOVER" => "LUCKY",
                     "PET_ITEM_LUCKY_CLOVER_DROP" => "LUCKY",
+                    "GREEN_BANDANA" => "GREEN_BANDANA",
+                    "PET_ITEM_COMBAT_SKILL_BOOST_EPIC" => "COMBAT_SKILL_BOOST_EPIC",
+                    "PET_ITEM_FISHING_SKILL_BOOST_EPIC" => "FISHING_SKILL_BOOST_EPIC",
+                    "PET_ITEM_EXP_SHARE" => "EXP_SHARE",
                     _ => null
                 };
                 if (heldItem == null)
