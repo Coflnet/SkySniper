@@ -1070,11 +1070,17 @@ ORDER BY l.`AuctionId`  DESC;
                     // Jasper0 slot can't be accessed on starred (Fragged) items
                     continue;
                 }
+                /* */
+                if (item.Value != "PERFECT" && item.Value != "FLAWLESS")
+                {
+                    continue;
+                }
+                var gemkey = mapper.GetItemKeyForGem(item, auction.FlatenedNBT);
                 if (item.Value == "PERFECT")
-                    if (Lookups.TryGetValue($"PERFECT_{item.Key.Split('_').First()}_GEM", out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
+                    if (Lookups.TryGetValue(gemkey, out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
                         gemValue += gemLookup.Lookup.Values.First().Price - 500_000;
                 if (item.Value == "FLAWLESS")
-                    if (Lookups.TryGetValue($"FLAWLESS_{item.Key.Split('_').First()}_GEM", out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
+                    if (Lookups.TryGetValue(gemkey, out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
                         gemValue += gemLookup.Lookup.Values.First().Price - 100_000;
             }
             extraValue += gemValue;
