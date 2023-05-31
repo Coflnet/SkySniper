@@ -13,6 +13,7 @@ namespace Coflnet.Sky.Sniper.Services
         public const string PetItemKey = "petItem";
         public const string TierBoostShorthand = "TIER_BOOST";
         private const int SizeToKeep = 80;
+        private const int PetExpMaxlevel = 4_225_538 * 6;
         public static int MIN_TARGET = 200_000;
         public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>(3, 2000);
 
@@ -667,12 +668,12 @@ ORDER BY l.`AuctionId`  DESC;
                 var exp = GetNumeric(s);
                 if (exp > 1_000_000 && exp <= 2_500_000)
                     return new KeyValuePair<string, string>(s.Key, "0.3");
-                else if (exp > 2_500_000 && exp < 4_225_538)
+                else if (exp > 2_500_000 && exp < PetExpMaxlevel / 6)
                     return new KeyValuePair<string, string>(s.Key, "0.6");
                 if (auction.Tag == "PET_GOLDEN_DRAGON")
                     return NormalizeNumberTo(s, 30_036_483, 7);
                 else
-                    return NormalizeNumberTo(s, 4_225_538, 6);
+                    return NormalizeNumberTo(s, PetExpMaxlevel / 6, 6);
             }
             if (s.Key == "winning_bid")
                 if (auction.Tag.StartsWith("MIDAS"))
@@ -685,8 +686,12 @@ ORDER BY l.`AuctionId`  DESC;
                 return NormalizeNumberTo(s, 5_000, 2);
             if (s.Key == "thunder_charge")
                 return NormalizeNumberTo(s, 1_000_000, 5);
-            if (s.Key == "candyUsed") // all candied are the same
-                return new KeyValuePair<string, string>(s.Key, (double.Parse(s.Value) > 0 ? 1 : 0).ToString());
+            if (s.Key == "candyUsed")
+                if (GetNumeric(auction.FlatenedNBT.FirstOrDefault(f => f.Key == "exp")) >= PetExpMaxlevel)
+                    return Ignore; // not displayed on max exp items
+                else
+                    // all candied are the same
+                    return new KeyValuePair<string, string>(s.Key, (double.Parse(s.Value) > 0 ? 1 : 0).ToString());
             if (s.Key == "edition")
             {
                 var val = int.Parse(s.Value);
