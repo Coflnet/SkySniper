@@ -667,6 +667,23 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void AttributeCombination()
+        {
+            highestValAuction.FlatenedNBT = new() { { "mana_pool", "7" } };
+            var onlyAttrib = Dupplicate(highestValAuction);
+            onlyAttrib.HighestBidAmount = 1_000_000;
+            AddVolume(onlyAttrib);
+            AddVolume(onlyAttrib);
+
+            var highAttrib = Dupplicate(highestValAuction);
+            highAttrib.FlatenedNBT["mana_pool"] = "6";
+            service.State = SniperState.Ready;
+            service.FinishedUpdate();
+            var price = service.GetPrice(highAttrib);
+            Assert.AreEqual(400000, price.Median, price.MedianKey);
+        }
+
+        [Test]
         public void GemExtraValue()
         {
             highestValAuction.FlatenedNBT = new();
@@ -701,7 +718,7 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.Enchantments = new List<Core.Enchantment>(){
                 new Core.Enchantment(Core.Enchantment.EnchantmentType.sharpness,7)
             };
-            
+
             var clean = Dupplicate(highestValAuction);
             clean.Enchantments = new List<Core.Enchantment>();
             clean.HighestBidAmount = 500_000;

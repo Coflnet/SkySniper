@@ -294,6 +294,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (missingModifiers.Count > 0)
             {
                 long median = GetPriceSumForModifiers(missingModifiers, itemKey.Modifiers, auction);
+                median += AdjustForAttributes(result.Median, itemKey, missingModifiers);
                 if (median > 0)
                 {
                     result.Median -= median;
@@ -332,11 +333,11 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 if (Lookups.TryGetValue(k, out var lookup))
                 {
-                    return lookup.Lookup;
+                    return lookup.Lookup.Values.FirstOrDefault();
                 }
                 return null;
             }).Where(m => m != null).ToList();
-            var medianSumIngredients = values.SelectMany(m => m.Values).Select(m => m.Price).DefaultIfEmpty(0).Sum();
+            var medianSumIngredients = values.Select(m => m.Price).DefaultIfEmpty(0).Sum();
             return medianSumIngredients;
         }
 
@@ -848,6 +849,8 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static long GetNumeric(KeyValuePair<string, string> s)
         {
+            if (s.Value == null)
+                return 0;
             try
             {
                 return ((long)double.Parse(s.Value));
@@ -1013,7 +1016,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private long AdjustForAttributes(double medPrice, AuctionKey key, List<KeyValuePair<string, string>> missingModifiers)
         {
-            var missingAttributes = missingModifiers.Where(m => AttributeComboLookup.ContainsKey(m.Key) || ShardAttributes.ContainsKey(m.Key)).ToList();
+            var missingAttributes = missingModifiers.Where(m => Constants.AttributeKeys.Contains(m.Key)).ToList();
             if (missingAttributes.Count > 0)
             {
                 var biggestDifference = missingAttributes.Select(m => Math.Abs(int.Parse(m.Value) - int.Parse(key.Modifiers.Where(km => km.Key == m.Key)?.FirstOrDefault().Value ?? "0"))).Max();
