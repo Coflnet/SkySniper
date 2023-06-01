@@ -273,6 +273,7 @@ ORDER BY l.`AuctionId`  DESC;
                     {
                         AssignMedian(result, closest.Key, closest.Value);
                         AdjustMedianForModifiers(result, itemKey, closest, auction);
+                        AdjustForMissingEnchants(result, itemKey, closest);
                     }
 
                 }
@@ -287,6 +288,20 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
             return result;
+        }
+
+        private void AdjustForMissingEnchants(PriceEstimate result, AuctionKey itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> closest)
+        {
+            var missingEnchants = closest.Key.Enchants.Where(m => !itemKey.Enchants.Contains(m)).ToList();
+            if (missingEnchants.Count > 0)
+            {
+                var median = GetPriceSumForEnchants(missingEnchants);
+                if (median > 0)
+                {
+                    result.Median -= median;
+                    result.MedianKey += $"-{string.Join(",", missingEnchants.Select(m => $"{m.Type}{m.Lvl}"))}";
+                }
+            }
         }
 
         private void AdjustMedianForModifiers(PriceEstimate result, AuctionKey itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> closest, SaveAuction auction)

@@ -591,6 +591,33 @@ namespace Coflnet.Sky.Sniper.Services
 
             Assert.AreEqual(1000, price.Lbin.Price);
         }
+        [Test]
+        public void AdjustsForMissingEnchant()
+        {
+            highestValAuction.FlatenedNBT = new();
+            var moreEnchants = Dupplicate(highestValAuction);
+            moreEnchants.HighestBidAmount = 100_000_000;
+            moreEnchants.Enchantments = new List<Core.Enchantment>(){
+                new Core.Enchantment(Core.Enchantment.EnchantmentType.sharpness,7)
+            };
+            AddVolume(moreEnchants);
+            service.UpdateBazaar(new()
+            {
+                Products = new(){
+                new (){
+                    ProductId = "ENCHANTMENT_SHARPNESS_7",
+                    SellSummary = new(){
+                        new (){
+                            PricePerUnit = 49_000_000
+                        }
+                    }
+                }
+            }
+            });
+            var price = service.GetPrice(highestValAuction);
+            Assert.AreEqual(51000000, price.Median);
+            Assert.AreEqual("sharpness=7 Any  UNKNOWN 0-sharpness7", price.MedianKey);
+        }
 
         [Test]
         public void HigherLvlPetLbinTest()
