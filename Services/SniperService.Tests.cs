@@ -54,6 +54,7 @@ namespace Coflnet.Sky.Sniper.Services
             };
             SniperService.MIN_TARGET = 0;
             service = new SniperService();
+            SetBazaarPrice("ENCHANTMENT_SHARPNESS_7", 49_000_000);
 
             found = new List<LowPricedAuction>();
             service.FoundSnipe += found.Add;
@@ -601,52 +602,51 @@ namespace Coflnet.Sky.Sniper.Services
                 new Core.Enchantment(Core.Enchantment.EnchantmentType.sharpness,7)
             };
             AddVolume(moreEnchants);
-            service.UpdateBazaar(new()
-            {
-                Products = new(){
-                new (){
-                    ProductId = "ENCHANTMENT_SHARPNESS_7",
-                    SellSummary = new(){
-                        new (){
-                            PricePerUnit = 49_000_000
-                        }
-                    }
-                }
-            }
-            });
+            SetBazaarPrice("ENCHANTMENT_SHARPNESS_7", 49_000_000);
             var price = service.GetPrice(highestValAuction);
             Assert.AreEqual(51000000, price.Median);
             Assert.AreEqual("sharpness=7 Any  UNKNOWN 0-sharpness7", price.MedianKey);
         }
-        [Test]
-        public void NotAdjustsForMissingEnchantWhenHigher()
+
+        private void SetBazaarPrice(string tag, int value)
         {
-            highestValAuction.FlatenedNBT = new();
-            var higherEnchant = Dupplicate(highestValAuction);
-            higherEnchant.HighestBidAmount = 100_000_000;
-            higherEnchant.Enchantments = new List<Core.Enchantment>(){
-                new Core.Enchantment(Core.Enchantment.EnchantmentType.sharpness,6)
-            };
-            AddVolume(higherEnchant);
             service.UpdateBazaar(new()
             {
                 Products = new(){
                 new (){
-                    ProductId = "ENCHANTMENT_SHARPNESS_7",
+                    ProductId =  tag,
                     SellSummary = new(){
                         new (){
-                            PricePerUnit = 49_000_000
+                            PricePerUnit = value
                         }
                     }
                 }
             }
             });
-            highestValAuction.Enchantments = new List<Core.Enchantment>(){
-                new Core.Enchantment(Core.Enchantment.EnchantmentType.sharpness,7)
+        }
+
+        [Test]
+        public void NotAdjustsForNonMissingEnchant()
+        {
+            highestValAuction.FlatenedNBT = new();
+            var medianRef = Dupplicate(highestValAuction);
+            medianRef.HighestBidAmount = 100_000_000;
+            medianRef.Enchantments = new List<Core.Enchantment>(){
+                new (Core.Enchantment.EnchantmentType.growth,6),
+                new (Core.Enchantment.EnchantmentType.ultimate_legion,5),
             };
+            AddVolume(medianRef);
+            highestValAuction.Enchantments = new List<Core.Enchantment>(){
+                new (Core.Enchantment.EnchantmentType.growth,7),
+                new (Core.Enchantment.EnchantmentType.ultimate_legion,5),
+            };
+            SetBazaarPrice("ENCHANTMENT_GROWTH_6", 8_000_000);
+            SetBazaarPrice("ENCHANTMENT_GROWTH_7", 22_000_000);
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_LEGION_5", 80_000_000);
+            highestValAuction.Tier = Tier.VERY_SPECIAL;
             var price = service.GetPrice(highestValAuction);
             Assert.AreEqual(100_000_000, price.Median);
-            Assert.AreEqual("sharpness=6 Any  UNKNOWN 0", price.MedianKey);
+            Assert.AreEqual("growth=6,ultimate_legion=5 Any  UNKNOWN 0", price.MedianKey);
         }
 
         [Test]

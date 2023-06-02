@@ -293,7 +293,7 @@ ORDER BY l.`AuctionId`  DESC;
         private void AdjustForMissingEnchants(PriceEstimate result, AuctionKey itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> closest)
         {
             // closest should be bigger 
-            var missingEnchants = closest.Key.Enchants.Where(m => !itemKey.Enchants.Any(e => e.Type == m.Type && e.Lvl > m.Lvl)).ToList();
+            var missingEnchants = closest.Key.Enchants.Where(m => !itemKey.Enchants.Any(e => e.Type == m.Type && e.Lvl >= m.Lvl)).ToList();
             if (missingEnchants.Count > 0)
             {
                 var median = GetPriceSumForEnchants(missingEnchants);
