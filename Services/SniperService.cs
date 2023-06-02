@@ -293,7 +293,7 @@ ORDER BY l.`AuctionId`  DESC;
         private void AdjustForMissingEnchants(PriceEstimate result, AuctionKey itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> closest)
         {
             // closest should be bigger 
-            var missingEnchants = closest.Key.Enchants.Where(m => !itemKey.Enchants.Any(e=>e.Type == m.Type && e.Lvl > m.Lvl)).ToList();
+            var missingEnchants = closest.Key.Enchants.Where(m => !itemKey.Enchants.Any(e => e.Type == m.Type && e.Lvl > m.Lvl)).ToList();
             if (missingEnchants.Count > 0)
             {
                 var median = GetPriceSumForEnchants(missingEnchants);
@@ -312,7 +312,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 long median = GetPriceSumForModifiers(missingModifiers, itemKey.Modifiers, auction);
                 median += AdjustForAttributes(result.Median, itemKey, missingModifiers);
-                if (median > 0)
+                if (median != 0)
                 {
                     result.Median -= median;
                     result.MedianKey += $"- {string.Join(",", missingModifiers.Select(m => m.Value))}";
@@ -1040,8 +1040,17 @@ ORDER BY l.`AuctionId`  DESC;
             var missingAttributes = missingModifiers.Where(m => Constants.AttributeKeys.Contains(m.Key)).ToList();
             if (missingAttributes.Count > 0)
             {
-                var biggestDifference = missingAttributes.Select(m => Math.Abs(int.Parse(m.Value) - int.Parse(key.Modifiers.Where(km => km.Key == m.Key)?.FirstOrDefault().Value ?? "0"))).Max();
-                return (long)(medPrice - Math.Pow(0.4, biggestDifference) * medPrice);
+                var biggestDifference = missingAttributes.Select(m => int.Parse(m.Value) - int.Parse(key.Modifiers.Where(km => km.Key == m.Key)?.FirstOrDefault().Value ?? "0")).Max();
+                if (biggestDifference < 0)
+                // conservatively adjust upwards
+                {
+                    Console.WriteLine($"Adjusting target price due to attribute diff {biggestDifference} {medPrice} {Math.Pow(1.1, -biggestDifference)}");
+                    return -(long)(medPrice * (Math.Pow(1.5, Math.Abs(biggestDifference))-1));
+                }
+                //if (biggestDifference > 0)
+                    return (long)(medPrice - Math.Pow(0.4, biggestDifference) * medPrice);
+                return (long)medPrice;
+
             }
 
             return 0;

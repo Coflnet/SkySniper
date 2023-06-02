@@ -618,6 +618,36 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(51000000, price.Median);
             Assert.AreEqual("sharpness=7 Any  UNKNOWN 0-sharpness7", price.MedianKey);
         }
+        [Test]
+        public void NotAdjustsForMissingEnchantWhenHigher()
+        {
+            highestValAuction.FlatenedNBT = new();
+            var higherEnchant = Dupplicate(highestValAuction);
+            higherEnchant.HighestBidAmount = 100_000_000;
+            higherEnchant.Enchantments = new List<Core.Enchantment>(){
+                new Core.Enchantment(Core.Enchantment.EnchantmentType.sharpness,6)
+            };
+            AddVolume(higherEnchant);
+            service.UpdateBazaar(new()
+            {
+                Products = new(){
+                new (){
+                    ProductId = "ENCHANTMENT_SHARPNESS_7",
+                    SellSummary = new(){
+                        new (){
+                            PricePerUnit = 49_000_000
+                        }
+                    }
+                }
+            }
+            });
+            highestValAuction.Enchantments = new List<Core.Enchantment>(){
+                new Core.Enchantment(Core.Enchantment.EnchantmentType.sharpness,7)
+            };
+            var price = service.GetPrice(highestValAuction);
+            Assert.AreEqual(100_000_000, price.Median);
+            Assert.AreEqual("sharpness=6 Any  UNKNOWN 0", price.MedianKey);
+        }
 
         [Test]
         public void HigherLvlPetLbinTest()
@@ -708,6 +738,22 @@ namespace Coflnet.Sky.Sniper.Services
             service.FinishedUpdate();
             var price = service.GetPrice(highAttrib);
             Assert.AreEqual(400000, price.Median, price.MedianKey);
+        }
+        [Test]
+        public void AttributeHigherThanRef()
+        {
+            highestValAuction.FlatenedNBT = new() { { "mana_pool", "8" } };
+            var onlyAttrib = Dupplicate(highestValAuction);
+            onlyAttrib.HighestBidAmount = 1_000_000;
+            AddVolume(onlyAttrib);
+            AddVolume(onlyAttrib);
+
+            var highAttrib = Dupplicate(highestValAuction);
+            highAttrib.FlatenedNBT["mana_pool"] = "10";
+            service.State = SniperState.Ready;
+            service.FinishedUpdate();
+            var price = service.GetPrice(highAttrib);
+            Assert.AreEqual(2250000, price.Median, price.MedianKey);
         }
 
         [Test]
