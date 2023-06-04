@@ -21,7 +21,7 @@ namespace Coflnet.Sky.Sniper.Services
         private ConcurrentQueue<(SaveAuction, ReferenceAuctions)> LbinUpdates = new();
         private ConcurrentQueue<string> RecentSnipeUids = new();
         private AuctionKey defaultKey = new AuctionKey();
-        public SniperState State { get; set; } = SniperState.LadingLbin;
+        public SniperState State { get; set; } = SniperState.LoadingLbin;
         private PropertyMapper mapper = new();
         private string[] EmptyArray = new string[0];
 
@@ -362,9 +362,9 @@ ORDER BY l.`AuctionId`  DESC;
         {
             return FindClosest(l, itemKey).FirstOrDefault();
         }
-        public static IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> FindClosest(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey)
+        public static IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> FindClosest(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey, int maxAge = 8)
         {
-            var minDay = GetDay() - 8;
+            var minDay = GetDay() - maxAge;
             return l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0)
                             .OrderByDescending(m => itemKey.Similarity(m.Key) + (m.Value.OldestRef > minDay ? 0 : -10));
         }
@@ -1045,10 +1045,10 @@ ORDER BY l.`AuctionId`  DESC;
                 // conservatively adjust upwards
                 {
                     Console.WriteLine($"Adjusting target price due to attribute diff {biggestDifference} {medPrice} {Math.Pow(1.1, -biggestDifference)}");
-                    return -(long)(medPrice * (Math.Pow(1.5, Math.Abs(biggestDifference))-1));
+                    return -(long)(medPrice * (Math.Pow(1.5, Math.Abs(biggestDifference)) - 1));
                 }
                 //if (biggestDifference > 0)
-                    return (long)(medPrice - Math.Pow(0.4, biggestDifference) * medPrice);
+                return (long)(medPrice - Math.Pow(0.4, biggestDifference) * medPrice);
                 return (long)medPrice;
 
             }

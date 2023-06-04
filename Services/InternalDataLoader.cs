@@ -84,7 +84,8 @@ namespace Coflnet.Sky.Sniper.Services
                              ConsumeBazaar(stoppingToken),
                              loadActive,
                              sellLoad));
-            throw new Exception("at least one task stopped " + result.Status + " " + result.Exception);
+            if (!stoppingToken.IsCancellationRequested)
+                throw new Exception("at least one task stopped " + result.Status + " " + result.Exception);
         }
 
         private async Task StartProducer(CancellationToken stoppingToken)
@@ -194,6 +195,7 @@ namespace Coflnet.Sky.Sniper.Services
             }
         }
 
+        private PartialCalcService partialCalcService;
         private async Task LoadSellHistory(CancellationToken stoppinToken)
         {
             var maxId = 0;
@@ -207,6 +209,11 @@ namespace Coflnet.Sky.Sniper.Services
             var totalSize = 15_000_000;
             var allStart = maxId - totalSize;
             var differential = 10;
+            // ++++++++++++++++++++++++++++++++
+            await NewMethod(allStart, stoppinToken);
+            throw new Exception("stopped loading sell history");
+            // ++++++++++++++++++++++++++++++
+
             logger.LogInformation("loading sell history " + allStart + " " + maxId + " " + batchSize);
             // split batches into 10 distributed groups
             for (var i = 0; i < differential; i++)
@@ -232,6 +239,79 @@ namespace Coflnet.Sky.Sniper.Services
                     await Task.Delay(100);
                 }
             }
+        }
+
+        private async Task NewMethod(int allStart, CancellationToken stoppinToken)
+        {
+            while(!HasBazaar)
+            {
+                await Task.Delay(1000);
+                logger.LogInformation("waiting for bazaar");
+            }
+            allStart -= 5_000_000;
+            var context = new HypixelContext();
+            partialCalcService = new PartialCalcService(sniper.Lookups);
+            Console.WriteLine("loading aote from db");
+            var targetTag = "PET_BLUE_WHALE";
+            var sold = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
+                        .Where(a => a.Id > allStart && a.Bin && a.HighestBidAmount > 0 && context.Items.Where(i=>i.Tag ==targetTag).Select(i=>i.Id).First() == a.ItemId)
+                        .AsNoTracking()
+                        .ToListAsync(stoppinToken);
+            Console.WriteLine("applying aote");
+            var testAuction = sold.Last(a=>a.FlatenedNBT.Count > 3);
+            sold = sold.Where(s => s != testAuction).ToList();
+            ApplyData(sold, 1);
+            ApplyData(sold, 0.6);
+            ApplyData(sold, 0.4);
+            ApplyData(sold, 0.2);
+            ApplyData(sold, 0.1);
+            ApplyData(sold, 0.05);
+            ApplyData(sold, 0.03);
+            ApplyData(sold, 0.02);
+            ApplyData(sold, 0.01);
+            ApplyData(sold, 0.005);
+            Console.WriteLine("done aote");
+            Console.WriteLine(Newtonsoft.Json.JsonConvert.SerializeObject(partialCalcService.GetAttributeCosts(targetTag), Newtonsoft.Json.Formatting.Indented));
+            
+            var asItem = new Item()
+            {
+                Enchantments = testAuction.Enchantments.Select(e => new KeyValuePair<string, byte>(e.Type.ToString(), e.Level)).ToDictionary(e => e.Key, e => e.Value),
+                ExtraAttributes = testAuction.NbtData.Data,
+                Tag = testAuction.Tag,
+            };
+            if(!asItem.ExtraAttributes.ContainsKey("tier"))
+                asItem.ExtraAttributes.Add("tier", testAuction.Tier.ToString());
+            var estimate = partialCalcService.GetPrice(asItem, true);
+            Console.WriteLine(Newtonsoft.Json.JsonConvert.SerializeObject(testAuction, Newtonsoft.Json.Formatting.Indented));
+            Console.WriteLine(Newtonsoft.Json.JsonConvert.SerializeObject(estimate, Newtonsoft.Json.Formatting.Indented));
+            await Task.Delay(20000);
+        }
+
+        private void ApplyData(List<SaveAuction> sold, double v)
+        {
+            if (v == 1)
+                foreach (var item in sold)
+                {
+
+                    var references = sniper.GetBucketForAuction(item);
+                    if (!ShouldAuctionBeIncluded(item, references.References))
+                        continue;
+                    sniper.AddAuctionToBucket(item, true, references);
+                }
+            partialCalcService.SetLearningRate(v);
+            foreach (var item in sold)
+            {
+                try
+                {
+                    partialCalcService.AddSell(item);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    Console.WriteLine(e.StackTrace);
+                }
+            }
+            partialCalcService.CapAtCraftCost();
         }
 
         private void UpdateAllMedian()
@@ -268,6 +348,7 @@ namespace Coflnet.Sky.Sniper.Services
                 if (!ShouldAuctionBeIncluded(item, references.References))
                     continue;
                 sniper.AddAuctionToBucket(item, true, references);
+                partialCalcService.AddSell(item);
             }
             Console.WriteLine($"Applied batch {batchStart} - {end}");
         }
@@ -290,6 +371,8 @@ namespace Coflnet.Sky.Sniper.Services
             , stoppingToken);
         }
 
+        private bool HasBazaar = false;
+
         private async Task ConsumeBazaar(CancellationToken stoppingToken)
         {
             Console.WriteLine("starting bazaar");
@@ -300,6 +383,7 @@ namespace Coflnet.Sky.Sniper.Services
                     {
                         if (item.Timestamp > DateTime.UtcNow - TimeSpan.FromMinutes(1))
                             sniper.UpdateBazaar(item);
+                        HasBazaar = true;
                     }
                     return Task.CompletedTask;
                 }, stoppingToken, 5)
