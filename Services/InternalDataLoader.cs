@@ -243,48 +243,56 @@ namespace Coflnet.Sky.Sniper.Services
 
         private async Task NewMethod(int allStart, CancellationToken stoppinToken)
         {
-            while(!HasBazaar)
+            /*while(!HasBazaar)
             {
                 await Task.Delay(1000);
                 logger.LogInformation("waiting for bazaar");
-            }
+            }*/
             allStart -= 5_000_000;
             var context = new HypixelContext();
             partialCalcService = new PartialCalcService(sniper.Lookups);
             Console.WriteLine("loading aote from db");
             var targetTag = "PET_BLUE_WHALE";
             var sold = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
-                        .Where(a => a.Id > allStart && a.Bin && a.HighestBidAmount > 0 && context.Items.Where(i=>i.Tag ==targetTag).Select(i=>i.Id).First() == a.ItemId)
+                        .Where(a => a.Id > allStart && a.Bin && a.HighestBidAmount > 0 && context.Items.Where(i => i.Tag == targetTag).Select(i => i.Id).First() == a.ItemId)
                         .AsNoTracking()
                         .ToListAsync(stoppinToken);
             Console.WriteLine("applying aote");
-            var testAuction = sold.Last(a=>a.FlatenedNBT.Count > 3);
+            var testAuction = sold.Last(a => a.FlatenedNBT.Count > 3);
             sold = sold.Where(s => s != testAuction).ToList();
-            ApplyData(sold, 1);
-            ApplyData(sold, 0.6);
-            ApplyData(sold, 0.4);
-            ApplyData(sold, 0.2);
+            //ApplyData(sold, 0.2);
             ApplyData(sold, 0.1);
+            ApplyData(sold, 0.1);
+            sold = sold.Where(s=> s.End > DateTime.UtcNow - TimeSpan.FromDays(30)).ToList();
             ApplyData(sold, 0.05);
-            ApplyData(sold, 0.03);
             ApplyData(sold, 0.02);
-            ApplyData(sold, 0.01);
-            ApplyData(sold, 0.005);
             Console.WriteLine("done aote");
             Console.WriteLine(Newtonsoft.Json.JsonConvert.SerializeObject(partialCalcService.GetAttributeCosts(targetTag), Newtonsoft.Json.Formatting.Indented));
-            
+            try
+            {
+                PrintTestAuctionData(sold, testAuction);
+            }
+            catch (System.Exception e)
+            {
+                logger.LogError(e, "printing test auction");
+            }
+            await Task.Delay(20000);
+        }
+
+        private void PrintTestAuctionData(List<SaveAuction> sold, SaveAuction testAuction)
+        {
             var asItem = new Item()
             {
                 Enchantments = testAuction.Enchantments.Select(e => new KeyValuePair<string, byte>(e.Type.ToString(), e.Level)).ToDictionary(e => e.Key, e => e.Value),
                 ExtraAttributes = testAuction.NbtData.Data,
                 Tag = testAuction.Tag,
             };
-            if(!asItem.ExtraAttributes.ContainsKey("tier"))
+            if (!asItem.ExtraAttributes.ContainsKey("tier"))
                 asItem.ExtraAttributes.Add("tier", testAuction.Tier.ToString());
             var estimate = partialCalcService.GetPrice(asItem, true);
             Console.WriteLine(Newtonsoft.Json.JsonConvert.SerializeObject(testAuction, Newtonsoft.Json.Formatting.Indented));
             Console.WriteLine(Newtonsoft.Json.JsonConvert.SerializeObject(estimate, Newtonsoft.Json.Formatting.Indented));
-            await Task.Delay(20000);
+            Console.WriteLine($"Applied {sold.Count} auctions");
         }
 
         private void ApplyData(List<SaveAuction> sold, double v)

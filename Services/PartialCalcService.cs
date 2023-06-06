@@ -65,9 +65,8 @@ public class PartialCalcService
     {
         var item = new ItemBreakDown(auction);
         var attribs = AttributeLookups.GetOrAdd(auction.Tag, tag => new());
-        var cleanPrice = GetCleanItemPrice(item, Lookups.GetOrAdd(auction.Tag, tag => new()));
         var modifiers = item.Flatten;
-        if (Random.Shared.NextDouble() < 0.2 && modifiers.Count > 2)
+        if (adjustRate > 0.01 && Random.Shared.NextDouble() < 0.05 && modifiers.Count > 2)
             modifiers.Remove(modifiers.OrderBy(x => Random.Shared.Next()).First().Key);
         double estimation = GetValueOf(auction.Tag, attribs, modifiers);
         var difference = auction.HighestBidAmount - estimation;
@@ -83,7 +82,10 @@ public class PartialCalcService
             {
                 if (def.Behaviour == PropertyMapper.Behaviour.Exp)
                 {
-                    var exp = Math.Max(Math.Min(def.Max, GetNumeric(mod)), 0.001);
+                    continue;
+                    var exp = Math.Min(def.Max, GetNumeric(mod));
+                    if (exp == 0)
+                        continue;
                     var current = attribs.Values.GetOrAdd(mod.Key, _ => new())
                         .GetOrAdd(String.Empty, 0.1);
                     var toalValueOfExp = exp * current;
@@ -100,30 +102,46 @@ public class PartialCalcService
                 }
             }
             var cost = attribs.Values.GetOrAdd(mod.Key, _ => new())
-                .GetOrAdd(mod.Value, 10000);
+                .GetOrAdd(mod.Value, (k) =>
+                {
+                    if (mod.Key == "candyUsed")
+                        return -10000;
+                    return 10000;
+                });
             var percentOfdifference = cost / estimation;
             cost += perItemChange * percentOfdifference;
-            if (cost > 0 && mod.Key == "candyUsed")
+            if (cost < 0)
             {
-                cost *= -1;
-
-                attribs.Values[mod.Key][mod.Value] = Math.Min(cost, -100);
+                attribs.Values[mod.Key][mod.Value] = Math.Clamp(cost, -250_000_000, -10);
             }
             else
-                attribs.Values[mod.Key][mod.Value] = Math.Max(cost, 100);
+                attribs.Values[mod.Key][mod.Value] = Math.Clamp(cost, 10, 10_000_000_000);
         }
     }
 
     private double GetValueOf(string tag, AttributeLookup attribs, Dictionary<string, object> modifiers, List<string>? breakDown = null)
     {
         double costSum = 0d;
-        foreach (var mod in modifiers)
+        foreach (var mod in modifiers.ToList())
         {
             if (Mapper.TryGetDefinition(tag, mod.Key, out var def))
             {
                 if (def.Behaviour == PropertyMapper.Behaviour.Exp)
                 {
-                    var exp = Math.Max(0.001, Math.Min(def.Max, GetNumeric(mod)));
+                    var exp = Math.Min(def.Max, GetNumeric(mod));
+                    if (exp == def.Max)
+                    {
+                        modifiers.Add(mod.Key + "_max", true);
+                        costSum += GetPriceFor(mod.Key + "_max", true);
+                        continue;
+                    } else {
+                        var expGroup = Math.Floor(exp / def.Max * 6);
+                        modifiers.Add(mod.Key + "_expGroup", expGroup);
+                        costSum += GetPriceFor(mod.Key + "_expGroup", expGroup);
+                        continue;
+                    }
+                    if (exp == 0)
+                        continue;
                     if (exp == double.NaN)
                         Console.WriteLine($"NaN {mod.Key} {mod.Value}");
                     var perExpCost = attribs.Values.GetOrAdd(mod.Key, _ => new())
@@ -140,23 +158,30 @@ public class PartialCalcService
                     continue;
                 }
             }
-            var cost = attribs.Values.GetOrAdd(mod.Key, _ => new())
-                .GetOrAdd(mod.Value, (k) =>
+            double cost = GetPriceFor(mod.Key, mod.Value);
+            costSum += cost;
+        }
+
+        return costSum;
+
+        double GetPriceFor(string key, object value)
+        {
+            var cost = attribs.Values.GetOrAdd(key, _ => new())
+                .GetOrAdd(value, (k) =>
                 {
-                    if (TryGetItemCost(mod.Key, mod.Value, out var price) && price > 0)
+                    if (TryGetItemCost(key, value, out var price) && price > 0)
                         return price / 2;
                     return 10000;
                 });
             if (cost == double.NaN || cost < -1000000000 || cost > 1000000000)
             {
-                Console.WriteLine($"NaN o {mod.Key} {mod.Value} {JsonConvert.SerializeObject(modifiers, Formatting.Indented)}");
+                Console.WriteLine($"NaN o {key} {value} {cost} {JsonConvert.SerializeObject(modifiers, Formatting.Indented)}");
+                Console.WriteLine(JsonConvert.SerializeObject(attribs.Values.GetOrAdd(key, _ => new()), Formatting.Indented));
                 Task.Delay(10000).Wait();
             }
-            breakDown?.Add($"{mod.Key} {mod.Value}: {cost}");
-            costSum += cost;
+            breakDown?.Add($"{key} {value}: {cost}");
+            return cost;
         }
-
-        return costSum;
     }
 
     private static double GetNumeric(KeyValuePair<string, object> mod)
@@ -287,7 +312,8 @@ public class ItemBreakDown
     public ItemBreakDown(Item item)
     {
         this.OriginalItem = item;
-        this.Flatten = NBT.FlattenNbtData(item.ExtraAttributes).ToDictionary(x => x.Key, x => x.Value);
+        this.Flatten = NBT.FlattenNbtData(item.ExtraAttributes).GroupBy(x=>x.Key).Select(x=>x.First())
+            .ToDictionary(x => x.Key, x => x.Value);
         foreach (var ench in item.Enchantments ?? new())
         {
             this.Flatten[$"ench.{ench.Key.ToLower()}"] = ench.Value;
