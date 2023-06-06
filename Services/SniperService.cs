@@ -118,7 +118,8 @@ namespace Coflnet.Sky.Sniper.Services
             {"veteran", "mending"},
             {"mana_regeneration", "mana_pool"},
             {"dominance", "speed"},
-            {"vitality", "dominance"}
+            {"vitality", "dominance"},
+            {"double_hook", "fishing_speed"}
         };
         private readonly HashSet<string> AllShardAttributesKeys = new(Constants.AttributeKeys);
         public readonly ConcurrentDictionary<string, HashSet<string>> AttributeComboLookup = new();
