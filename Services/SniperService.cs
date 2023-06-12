@@ -36,6 +36,7 @@ namespace Coflnet.Sky.Sniper.Services
             "dye_item",
             "backpack_color",
             "party_hat_color",
+            "party_hat_emoji",
             "color", // armour
             "model", // abicase
             // potion "level", // not engough impact
