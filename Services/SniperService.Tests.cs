@@ -430,6 +430,24 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual("candyUsed:0 (1000000)", estimate.AdditionalProps["missingModifiers"]);
         }
         [Test]
+        public void TalismanEnrichmentCorrection()
+        {
+            highestValAuction.FlatenedNBT = new() { { "talisman_enrichment", "attack_speed" } };
+            highestValAuction.HighestBidAmount = 2_000_000;
+            AddVolume(Dupplicate(highestValAuction));
+            var withoutEnrichment = Dupplicate(highestValAuction);
+            withoutEnrichment.HighestBidAmount = 10_000_000;
+            withoutEnrichment.FlatenedNBT = new();
+            AddVolume(withoutEnrichment);
+            var toTest = Dupplicate(withoutEnrichment);
+            service.FinishedUpdate();
+            service.State = SniperState.Ready;
+            service.TestNewAuction(toTest);
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            Assert.AreEqual(2_000_000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+        }
+        [Test]
         public void StonksIncreaseForKills()
         {
             highestValAuction.FlatenedNBT = new() { { "zombie_kills", "15000" } };
