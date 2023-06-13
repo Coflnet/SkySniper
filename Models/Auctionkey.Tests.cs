@@ -179,6 +179,33 @@ namespace Coflnet.Sky.Sniper.Models
         }
 
         [Test]
+        public void HigherEditionIsCloser()
+        {
+            var service = new SniperService();
+            var auction = new SaveAuction()
+            {
+                Tag = "PET_SCATHA",
+                FlatenedNBT = new() { { "edition", "1" } },
+            };
+            var key = service.KeyFromSaveAuction(auction);
+            var auction2 = new SaveAuction()
+            {
+                Tag = "PET_SCATHA",
+                FlatenedNBT = new() { { "edition", "2000" } },
+            };
+            var key2 = service.KeyFromSaveAuction(auction2);
+            var noEdition = new SaveAuction()
+            {
+                Tag = "PET_SCATHA",
+                FlatenedNBT = new(),
+            };
+            var key3 = service.KeyFromSaveAuction(noEdition);
+            var similarity = key3.Similarity(key2);
+            var lessSimilar = key3.Similarity(key);
+            Assert.Greater(similarity, lessSimilar);
+        }
+
+        [Test]
         public void RunesAppart()
         {
             var clean = CreateFromLevel("0");
@@ -193,6 +220,7 @@ namespace Coflnet.Sky.Sniper.Models
                 return new AuctionKey(null, ItemReferences.Reforge.Any, new() { new("DRAGON", amount) }, Tier.EPIC, 1);
             }
         }
+
         [Test]
         public void EnderDragonAppart()
         {

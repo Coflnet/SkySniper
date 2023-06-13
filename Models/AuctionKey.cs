@@ -102,7 +102,7 @@ namespace Coflnet.Sky.Sniper.Models
                     else if(m.Value == SniperService.TierBoostShorthand)
                         return 58; // tier boost is very valuable
                     else
-                        return 4;
+                        return 4 + m.Value.Length;
                 if (float.TryParse(match.Value, CultureInfo.InvariantCulture, out var matchValue) && float.TryParse(m.Value, CultureInfo.InvariantCulture, out var value))
                     return Math.Abs(matchValue - value);
                 if (match.Value == m.Value)
@@ -110,7 +110,7 @@ namespace Coflnet.Sky.Sniper.Models
                         return -28; // tier boost is very valuable
                     else
                         return -2;
-                return 3;
+                return 3 + Math.Abs(match.Value.Length - m.Value.Length);
             });
         }
 

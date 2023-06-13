@@ -714,9 +714,9 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var val = int.Parse(s.Value);
                 if (val < 100)
-                    return new KeyValuePair<string, string>(s.Key, "0");
+                    return new KeyValuePair<string, string>(s.Key, "verylow");
                 if (val < 1000)
-                    return new KeyValuePair<string, string>(s.Key, "1000");
+                    return new KeyValuePair<string, string>(s.Key, "low");
                 if (val < 10000)
                     return new KeyValuePair<string, string>(s.Key, "10k");
                 return new KeyValuePair<string, string>(s.Key, "100k");
