@@ -75,6 +75,8 @@ public class PartialCalcService
             reduction = 5;
         else if (modifiers.Count < 5)
             reduction = 20;
+        // if(!auction.Tag.StartsWith("PET"))
+        //     reduction *= 3;
         var perItemChange = difference / reduction * adjustRate;
         foreach (var mod in modifiers)
         {
@@ -106,16 +108,21 @@ public class PartialCalcService
                 {
                     if (mod.Key == "candyUsed")
                         return -10000;
+                    throw new Exception("should not reach");
                     return 10000;
                 });
             var percentOfdifference = cost / estimation;
+            if (mod.Key == "exp_expGroup" && (double)mod.Value == 4)
+            {
+                Console.WriteLine($"changing by {perItemChange * percentOfdifference} {percentOfdifference} {cost} {estimation} {perItemChange} on {auction.Uuid}");
+            }
             cost += perItemChange * percentOfdifference;
             if (cost < 0)
             {
                 attribs.Values[mod.Key][mod.Value] = Math.Clamp(cost, -250_000_000, -10);
             }
             else
-                attribs.Values[mod.Key][mod.Value] = Math.Clamp(cost, 10, 10_000_000_000);
+                attribs.Values[mod.Key][mod.Value] = Math.Clamp(cost, 10, 800_000_000);
         }
     }
 
@@ -134,8 +141,10 @@ public class PartialCalcService
                         modifiers.Add(mod.Key + "_max", true);
                         costSum += GetPriceFor(mod.Key + "_max", true);
                         continue;
-                    } else {
-                        var expGroup = Math.Floor(exp / def.Max * 6);
+                    }
+                    else
+                    {
+                        var expGroup = Math.Floor(exp / def.Max * 5);
                         modifiers.Add(mod.Key + "_expGroup", expGroup);
                         costSum += GetPriceFor(mod.Key + "_expGroup", expGroup);
                         continue;
@@ -171,7 +180,26 @@ public class PartialCalcService
                 {
                     if (TryGetItemCost(key, value, out var price) && price > 0)
                         return price / 2;
-                    return 10000;
+                    if (key == "skin")
+                    {
+                        Console.WriteLine($"Skin {value}");
+                        return 50_000_000;
+                    }
+                    if (key == "heldItem")
+                    {
+                        var client = new RestSharp.RestClient("https://sky.coflnet.com/api");
+                        var request = new RestSharp.RestRequest($"item/price/{value}");
+                        var response = client.Execute(request);
+                        // use median from {"min":0,"median":0,"mean":0.0,"mode":0,"volume":0.0,"max":0}
+                        var apiPrice = JsonConvert.DeserializeObject<Dictionary<string, double>>(response.Content)!["median"];
+                        if (apiPrice > 0)
+                        {
+                            Lookups[key] = new PriceLookup() { Lookup = new(new Dictionary<AuctionKey, ReferenceAuctions>() { { new(), new() { Price = (long)apiPrice } } }) };
+                            return apiPrice * 0.8;
+                        }
+
+                    }
+                    return 100000;
                 });
             if (cost == double.NaN || cost < -1000000000 || cost > 1000000000)
             {
@@ -258,17 +286,24 @@ public class PartialCalcService
             }
             if (key.StartsWith("ench."))
                 s = $"ENCHANTMENT_{key.Substring(5).ToUpper()}_{s}";
+
             if (TryGetItemCost(s, out var lookup))
             {
 
-                Console.WriteLine($"Found Val {key} {s} {lookup.Lookup.First().Value.Price}");
+                // Console.WriteLine($"Found Val {key} {s} {lookup.Lookup.First().Value.Price}");
                 price = lookup.Lookup.FirstOrDefault().Value.Price;
                 return true;
             }
             else
             {
-                Console.WriteLine($"Not Found Val {key} {s}");
+                //Console.WriteLine($"Not Found Val {key} {s}");
             }
+        }
+
+        if (key == "rarity_upgrades")
+        {
+            price = 10_000_000;
+            return true;
         }
         price = 0;
         return false;
@@ -312,16 +347,16 @@ public class ItemBreakDown
     public ItemBreakDown(Item item)
     {
         this.OriginalItem = item;
-        this.Flatten = NBT.FlattenNbtData(item.ExtraAttributes).GroupBy(x=>x.Key).Select(x=>x.First())
+        this.Flatten = NBT.FlattenNbtData(item.ExtraAttributes).GroupBy(x => x.Key).Select(x => x.First())
             .ToDictionary(x => x.Key, x => x.Value);
         foreach (var ench in item.Enchantments ?? new())
         {
             this.Flatten[$"ench.{ench.Key.ToLower()}"] = ench.Value;
         }
-        RemoveUnecessaryProps();
+        Preprocess();
     }
 
-    private void RemoveUnecessaryProps()
+    private void Preprocess()
     {
         Flatten.Remove("uid");
         Flatten.Remove("uuid");
@@ -332,11 +367,20 @@ public class ItemBreakDown
         Flatten.Remove("active");
         Flatten.Remove("hideInfo");
         Flatten.Remove("stats_book");
+        Flatten.Remove("candyUsed");
 
         Flatten.Remove("champion_combat_xp");
-        foreach (var item in Flatten.Where(f => f.Key.EndsWith(".uuid")).ToList())
+        foreach (var item in Flatten.Where(f => f.Key.EndsWith(".uuid") || f.Key.EndsWith("_gem")).ToList())
         {
             Flatten.Remove(item.Key);
+        }
+        if (Flatten.TryGetValue("ability_scroll", out var f) && f is string flatten)
+        {
+            foreach (var item in flatten.Split(' '))
+            {
+                Flatten[$"ability_scroll.{item}"] = 1;
+            }
+            Flatten.Remove("ability_scroll");
         }
     }
 
@@ -356,6 +400,8 @@ public class ItemBreakDown
                 this.Flatten["tier"] = auction.Tier.ToString();
             if (!this.Flatten.ContainsKey("modifier") && auction.Reforge != ItemReferences.Reforge.None)
                 this.Flatten["modifier"] = auction.Reforge.ToString().ToLower();
+            if (this.Flatten.TryGetValue("candyUsed", out var candy) && candy is int && (int)candy > 0)
+                this.Flatten["candyUsed"] = 1;
         }
         else
             this.Flatten = NBT.FlattenNbtData(auction.NbtData.Data).ToDictionary(x => x.Key, x => x.Value);
@@ -363,7 +409,7 @@ public class ItemBreakDown
         {
             this.Flatten[$"ench.{ench.Type.ToString().ToLower()}"] = ench.Level;
         }
-        RemoveUnecessaryProps();
+        Preprocess();
     }
 }
 #nullable disable
