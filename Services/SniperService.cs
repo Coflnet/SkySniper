@@ -269,15 +269,14 @@ ORDER BY l.`AuctionId`  DESC;
                 if (result.Median == default)
                 {
                     closestMedianBruteCounter.Inc();
-                    var closest = FindClosestTo(l, itemKey);
-
-                    if (closest.Key != default)
+                    foreach (var c in FindClosest(l, itemKey))
                     {
-                        AssignMedian(result, closest.Key, closest.Value);
-                        AdjustMedianForModifiers(result, itemKey, closest, auction);
-                        AdjustForMissingEnchants(result, itemKey, closest);
+                        AssignMedian(result, c.Key, c.Value);
+                        AdjustMedianForModifiers(result, itemKey, c, auction);
+                        AdjustForMissingEnchants(result, itemKey, c);
+                        if (result.Median > 0)
+                            break;
                     }
-
                 }
                 if (result.Lbin.Price == default && l.Count > 0)
                 {
@@ -1047,10 +1046,10 @@ ORDER BY l.`AuctionId`  DESC;
                 // conservatively adjust upwards
                 {
                     Console.WriteLine($"Adjusting target price due to attribute diff {biggestDifference} {medPrice} {Math.Pow(1.1, -biggestDifference)}");
-                    return -(long)(medPrice * (Math.Pow(1.5, Math.Abs(biggestDifference))-1));
+                    return -(long)(medPrice * (Math.Pow(1.5, Math.Abs(biggestDifference)) - 1));
                 }
                 //if (biggestDifference > 0)
-                    return (long)(medPrice - Math.Pow(0.4, biggestDifference) * medPrice);
+                return (long)(medPrice - Math.Pow(0.4, biggestDifference) * medPrice);
                 return (long)medPrice;
 
             }
