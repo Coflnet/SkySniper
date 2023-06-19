@@ -210,7 +210,14 @@ namespace Coflnet.Sky.Sniper.Services
             var allStart = maxId - totalSize;
             var differential = 10;
             // ++++++++++++++++++++++++++++++++
-            await NewMethod(allStart, stoppinToken);
+            try
+            {
+                await NewMethod(allStart, stoppinToken);
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, "failed to fit");
+            }
             throw new Exception("stopped loading sell history");
             // ++++++++++++++++++++++++++++++
 
@@ -257,9 +264,12 @@ namespace Coflnet.Sky.Sniper.Services
             var context = new HypixelContext();
             partialCalcService = new PartialCalcService(sniper.Lookups);
             Console.WriteLine("loading aote from db");
-            var targetTag = "HYPERION";
+            var targetTag = "CRIMSON_LEGGINGS";
+            var id = await context.Items.Where(i => i.Tag == targetTag).Select(i => i.Id).FirstOrDefaultAsync();
+            if (targetTag.StartsWith("CRIMSON"))
+                id = 4526;
             var sold = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
-                        .Where(a => a.Id > allStart && a.Bin && a.HighestBidAmount > 0 && context.Items.Where(i => i.Tag == targetTag).Select(i => i.Id).First() == a.ItemId)
+                        .Where(a => a.Id > allStart && a.Bin && a.HighestBidAmount > 0 && id == a.ItemId)
                         .AsNoTracking()
                         .ToListAsync(stoppinToken);
             Console.WriteLine("applying aote");
@@ -273,7 +283,7 @@ namespace Coflnet.Sky.Sniper.Services
             sold = sold.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(30)).ToList();
             ApplyData(sold, 0.69);
             ApplyData(sold, 0.28);
-            for (int i = 0; i < 30; i++)
+            for (int i = 0; i < 300; i++)
             {
                 ApplyData(sold, 0.17);
             }

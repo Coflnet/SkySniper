@@ -368,6 +368,17 @@ public class ItemBreakDown
         Flatten.Remove("hideInfo");
         Flatten.Remove("stats_book");
         Flatten.Remove("candyUsed");
+        foreach (var attrib in Flatten.OrderBy(x => x.Key).ToList())
+        {
+            if (!Constants.AttributeKeys.Contains(attrib.Key))
+                continue;
+            var combo = (string)Flatten.GetValueOrDefault("atCombo", attrib.Key + "_");
+            if (combo.EndsWith("_") && !combo.StartsWith(attrib.Key))
+                combo += attrib.Key;
+            Flatten["atCombo"] = combo;
+        }
+
+        Flatten.Remove("boss_tier");
 
         Flatten.Remove("champion_combat_xp");
         foreach (var item in Flatten.Where(f => f.Key.EndsWith(".uuid") || f.Key.EndsWith("_gem")).ToList())
