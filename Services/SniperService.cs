@@ -113,14 +113,15 @@ namespace Coflnet.Sky.Sniper.Services
         };
 
         // combos that are worth more starting at lvl 1 because they are together
-        private readonly Dictionary<string, string> AttributeCombos = new(){
-            {"blazing_fortune", "fishing_experience"},
-            {"life_regeneration", "mana_pool"},
-            {"veteran", "mending"},
-            {"mana_regeneration", "mana_pool"},
-            {"dominance", "speed"},
-            {"vitality", "dominance"},
-            {"double_hook", "fishing_speed"}
+        private readonly KeyValuePair<string, string>[] AttributeCombos = new KeyValuePair<string, string>[]{
+            new("blazing_fortune", "fishing_experience"),
+            new("life_regeneration", "mana_pool"),
+            new("veteran", "mending"),
+            new("veteran", "magic_find"),
+            new("mana_regeneration", "mana_pool"),
+            new("dominance", "speed"),
+            new("vitality", "dominance"),
+            new("double_hook", "fishing_speed")
         };
         private readonly HashSet<string> AllShardAttributesKeys = new(Constants.AttributeKeys);
         public readonly ConcurrentDictionary<string, HashSet<string>> AttributeComboLookup = new();
