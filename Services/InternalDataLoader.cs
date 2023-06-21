@@ -209,18 +209,6 @@ namespace Coflnet.Sky.Sniper.Services
             var totalSize = 15_000_000;
             var allStart = maxId - totalSize;
             var differential = 10;
-            // ++++++++++++++++++++++++++++++++
-            try
-            {
-                await NewMethod(allStart, stoppinToken);
-            }
-            catch (Exception e)
-            {
-                logger.LogError(e, "failed to fit");
-            }
-            throw new Exception("stopped loading sell history");
-            // ++++++++++++++++++++++++++++++
-
             logger.LogInformation("loading sell history " + allStart + " " + maxId + " " + batchSize);
             // split batches into 10 distributed groups
             for (var i = 0; i < differential; i++)
@@ -253,21 +241,22 @@ namespace Coflnet.Sky.Sniper.Services
             }
         }
 
-        private async Task NewMethod(int allStart, CancellationToken stoppinToken)
+        public async Task<Dictionary<string, Dictionary<object, double>>> PartialAnalysis(string targetTag, CancellationToken stoppinToken)
         {
             // while (!HasBazaar)
             // {
             //     await Task.Delay(1000);
             //     logger.LogInformation("waiting for bazaar");
             // }
-            allStart -= 5_000_000;
             var context = new HypixelContext();
+            var allStart = context.Auctions.Max(a => a.Id) - 15_000_000;
             partialCalcService = new PartialCalcService(sniper.Lookups);
             Console.WriteLine("loading aote from db");
-            var targetTag = "CRIMSON_LEGGINGS";
             var id = await context.Items.Where(i => i.Tag == targetTag).Select(i => i.Id).FirstOrDefaultAsync();
             if (targetTag.StartsWith("CRIMSON"))
                 id = 4526;
+            if (targetTag.StartsWith("MOLTEN"))
+                id = 4200;
             var sold = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
                         .Where(a => a.Id > allStart && a.Bin && a.HighestBidAmount > 0 && id == a.ItemId)
                         .AsNoTracking()
@@ -275,15 +264,22 @@ namespace Coflnet.Sky.Sniper.Services
             Console.WriteLine("applying aote");
             // filter underpriced ones
             sold = sold.Where(s => s.End - s.Start > TimeSpan.FromMinutes(2) && s.StartingBid != 0).ToList();
-            var testAuctions = sold.Where(a => a.FlatenedNBT.Count > 3 && a.FlatenedNBT.GetValueOrDefault("exp") != "0").Reverse().Take(3);
+            var testAuctions = sold.Where(a => a.FlatenedNBT.Count > 3 && a.FlatenedNBT.GetValueOrDefault("exp") != "0" || Random.Shared.NextDouble() < 0.05).Reverse().Take(3);
             sold = sold.Where(s => s != testAuctions).ToList();
             //ApplyData(sold, 0.2);
             ApplyData(sold, 0.3);
-            ApplyData(sold, 0.1);
+            for (int i = 0; i < 100; i++)
+            {
+                ApplyData(sold, 0.23);
+            }
             sold = sold.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(30)).ToList();
             ApplyData(sold, 0.69);
             ApplyData(sold, 0.28);
-            for (int i = 0; i < 300; i++)
+            for (int i = 0; i < 200; i++)
+            {
+                ApplyData(sold, 0.27);
+            }
+            for (int i = 0; i < 100; i++)
             {
                 ApplyData(sold, 0.17);
             }
@@ -301,7 +297,12 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 logger.LogError(e, "printing test auction");
             }
-            await Task.Delay(20000);
+            foreach (var item in sold)
+            {
+                if (item.FlatenedNBT.TryGetValue("color", out var val) && val == "252:243:255")
+                    Console.WriteLine($"Sold for {item.HighestBidAmount} {item.End} {item.Uuid}");
+            }
+            return partialCalcService.GetAttributeCosts(targetTag);
         }
 
         private void PrintTestAuctionData(List<SaveAuction> sold, SaveAuction testAuction)
@@ -319,7 +320,7 @@ namespace Coflnet.Sky.Sniper.Services
             Console.WriteLine(Newtonsoft.Json.JsonConvert.SerializeObject(testAuction.FlatenedNBT, Newtonsoft.Json.Formatting.Indented));
             Console.WriteLine($"Sold for {testAuction.HighestBidAmount} {testAuction.End} {testAuction.Uuid}");
             Console.WriteLine(Newtonsoft.Json.JsonConvert.SerializeObject(estimate, Newtonsoft.Json.Formatting.Indented));
-            Console.WriteLine($"Applied {sold.Count} auctions");
+            Console.WriteLine($"Applied {sold.Count} auctions, ME: {Math.Abs(estimate.Price - testAuction.HighestBidAmount)}");
         }
 
         private void ApplyData(List<SaveAuction> sold, double v)

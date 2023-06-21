@@ -214,32 +214,36 @@ public class PartialCalcService
 
     private static double GetNumeric(KeyValuePair<string, object> mod)
     {
-        if (mod.Value is string s)
+        return GetNumeric(mod.Value);
+    }
+    private static double GetNumeric(object mod)
+    {
+        if (mod is string s)
         {
             if (double.TryParse(s.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out var d))
                 return d;
-            throw new Exception($"Could not parse string to number {mod.Value}");
+            throw new Exception($"Could not parse string to number {mod}");
         }
-        else if (mod.Value is double d)
+        else if (mod is double d)
             return d;
-        else if (mod.Value is int i)
+        else if (mod is int i)
             return i;
-        else if (mod.Value is long l)
+        else if (mod is long l)
             return l;
-        else if (mod.Value is float f)
+        else if (mod is float f)
             return f;
-        else if (mod.Value is short sh)
+        else if (mod is short sh)
             return sh;
-        else if (mod.Value is byte b)
+        else if (mod is byte b)
             return b;
-        else if (mod.Value is decimal dec)
+        else if (mod is decimal dec)
             return (double)dec;
-        else if (mod.Value is bool bo)
+        else if (mod is bool bo)
             return bo ? 1 : 0;
-        else if (mod.Value is Enum e)
+        else if (mod is Enum e)
             return Convert.ToInt64(e);
         else
-            throw new Exception($"Unknown type {mod.Value.GetType()}");
+            throw new Exception($"Unknown type {mod.GetType()}");
     }
 
     public void CapAtCraftCost()
@@ -255,6 +259,28 @@ public class PartialCalcService
                         if (price < val.Value)
                             Console.WriteLine($"Capping {attrib.Key} {val.Key} at {price} from {val.Value}");
                         attrib.Value[val.Key] = Math.Min(price, val.Value);
+                    }
+                    else if (attrib.Key.StartsWith("ench.") || Constants.AttributeKeys.Contains(attrib.Key))
+                    {
+                        // each higher level is at most double the lower level
+                        var level = GetNumeric(val.Key);
+                        if (attrib.Value.TryGetValue((byte)(level + 1), out var higherVal))
+                        {
+                            if (higherVal < val.Value * 2)
+                            {
+                                Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherVal / 2} from {val.Value}");
+                                attrib.Value[val.Key] = higherVal / 2;
+                            }
+                        }
+                        if (attrib.Value.TryGetValue((byte)(level + 2), out var higherVal2lvl))
+                        {
+                            if (higherVal2lvl < val.Value * 4)
+                            {
+                                Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherVal / 4} from {val.Value}");
+                                attrib.Value[val.Key] = higherVal / 3;
+                            }
+                        }
+
                     }
                 }
             }
@@ -281,7 +307,7 @@ public class PartialCalcService
                 }
                 else
                 {
-                    Console.WriteLine($"Not Found Reforge {key} {s} {cost.Item1}");
+                    // Console.WriteLine($"Not Found Reforge {key} {s} {cost.Item1}");
                 }
             }
             if (key.StartsWith("ench."))
@@ -368,6 +394,8 @@ public class ItemBreakDown
         Flatten.Remove("hideInfo");
         Flatten.Remove("stats_book");
         Flatten.Remove("candyUsed");
+        Flatten.Remove("dungeon_skill_req");
+        Flatten.Remove("item_durability");
         foreach (var attrib in Flatten.OrderBy(x => x.Key).ToList())
         {
             if (!Constants.AttributeKeys.Contains(attrib.Key))
@@ -381,7 +409,7 @@ public class ItemBreakDown
         Flatten.Remove("boss_tier");
 
         Flatten.Remove("champion_combat_xp");
-        foreach (var item in Flatten.Where(f => f.Key.EndsWith(".uuid") || f.Key.EndsWith("_gem")).ToList())
+        foreach (var item in Flatten.Where(f => f.Key.EndsWith(".uuid") || f.Key.EndsWith("_gem") || f.Key.EndsWith("_0")).ToList())
         {
             Flatten.Remove(item.Key);
         }
