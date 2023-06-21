@@ -182,6 +182,7 @@ ORDER BY l.`AuctionId`  DESC;
             "unlocked_slots",
             "skin",
             "candyUsed",
+            "GRAND_SEARING",
             "new_years_cake" // not that valuable but the only attribute
         };
 
