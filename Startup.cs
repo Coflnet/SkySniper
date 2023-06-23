@@ -40,10 +40,12 @@ namespace Coflnet.Sky.Sniper
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "SkySniper", Version = "v1" });
             });
             services.AddSingleton<SniperService>();
-            services.AddHostedService<InternalDataLoader>();
+            services.AddSingleton<InternalDataLoader>();
+            services.AddHostedService<InternalDataLoader>(d=>d.GetRequiredService<InternalDataLoader>());
             services.AddSingleton<IPersitanceManager, MinioPersistanceManager>();
             services.AddSingleton<ITokenService, TokenService>();
             services.AddSingleton<ActiveUpdater>();
+            services.AddSingleton<PartialCalcService>(c => new PartialCalcService(c.GetRequiredService<SniperService>().Lookups));
             services.AddSingleton<Kafka.KafkaCreator>();
             services.AddJaeger(Configuration);
         }

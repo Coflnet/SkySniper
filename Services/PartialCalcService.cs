@@ -15,7 +15,7 @@ public class PartialCalcService
     private ConcurrentDictionary<string, PriceLookup> Lookups;
     private ConcurrentDictionary<string, AttributeLookup> AttributeLookups = new();
     private PropertyMapper Mapper = new();
-    private double adjustRate = 1;
+    private double adjustRate = 0.07;
 
     public PartialCalcService(ConcurrentDictionary<string, PriceLookup> lookups)
     {
@@ -30,19 +30,35 @@ public class PartialCalcService
         return attribs.Values.ToDictionary(x => x.Key, x => x.Value.ToDictionary(y => y.Key, y => y.Value));
     }
 
-    public class Result
+    public class PartialResult
     {
         public long Price;
         public List<string>? BreakDown;
     }
 
-    public Result GetPrice(Item originalItem, bool includeBreakDown = false)
+    public PartialResult GetPrice(Item originalItem, bool includeBreakDown = false)
     {
-        var result = new Result();
+        var result = new PartialResult();
         if (includeBreakDown)
             result.BreakDown = new();
         var breakDown = result.BreakDown;
         var item = new ItemBreakDown(originalItem);
+        if (!Lookups.TryGetValue(item.OriginalItem.Tag, out var cleanItemLookup))
+            return result;
+        var attribs = AttributeLookups.GetOrAdd(item.OriginalItem.Tag, tag => new());
+
+        result.Price = (long)GetValueOf(item.OriginalItem.Tag, attribs, item.Flatten, breakDown);
+
+        return result;
+    }
+
+    public PartialResult GetPrice(SaveAuction auction, bool includeBreakDown = false)
+    {
+        var result = new PartialResult();
+        if (includeBreakDown)
+            result.BreakDown = new();
+        var breakDown = result.BreakDown;
+        var item = new ItemBreakDown(auction);
         if (!Lookups.TryGetValue(item.OriginalItem.Tag, out var cleanItemLookup))
             return result;
         var attribs = AttributeLookups.GetOrAdd(item.OriginalItem.Tag, tag => new());
@@ -112,7 +128,7 @@ public class PartialCalcService
                     return 10000;
                 });
             var percentOfdifference = cost / estimation;
-            if (mod.Key == "exp_expGroup" && (double)mod.Value == 4)
+            if (mod.Key == "exp_expGroup" && (double)mod.Value == 4 && auction.Tag == "PET_BLUE_WHALE")
             {
                 Console.WriteLine($"changing by {perItemChange * percentOfdifference} {percentOfdifference} {cost} {estimation} {perItemChange} on {auction.Uuid}");
             }

@@ -20,7 +20,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         private SniperService service;
         private ITokenService tokenService;
 
-        public SniperController(ILogger<SniperController> logger, SniperService service, ITokenService tokenService)
+        public SniperController(ILogger<SniperController> logger, SniperService service, ITokenService tokenService, InternalDataLoader inter, PartialCalcService partialCalcService)
         {
             _logger = logger;
             this.service = service;

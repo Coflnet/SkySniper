@@ -25,6 +25,7 @@ namespace Coflnet.Sky.Sniper.Services
         private ActivitySource activitySource;
         private ActiveUpdater activeUpdater;
         private Kafka.KafkaCreator kafkaCreator;
+        private PartialCalcService partialCalcService;
 
         private ILogger<InternalDataLoader> logger;
 
@@ -42,7 +43,8 @@ namespace Coflnet.Sky.Sniper.Services
             ILogger<InternalDataLoader> logger,
             ActivitySource activitySource,
             ActiveUpdater activeUpdater,
-            KafkaCreator kafkaCreator)
+            KafkaCreator kafkaCreator,
+            PartialCalcService partialCalcService)
         {
             this.sniper = sniper;
             this.config = config;
@@ -52,6 +54,7 @@ namespace Coflnet.Sky.Sniper.Services
             this.activitySource = activitySource;
             this.activeUpdater = activeUpdater;
             this.kafkaCreator = kafkaCreator;
+            this.partialCalcService = partialCalcService;
         }
 
 
@@ -195,7 +198,6 @@ namespace Coflnet.Sky.Sniper.Services
             }
         }
 
-        private PartialCalcService partialCalcService;
         private async Task LoadSellHistory(CancellationToken stoppinToken)
         {
             var maxId = 0;
@@ -243,14 +245,8 @@ namespace Coflnet.Sky.Sniper.Services
 
         public async Task<Dictionary<string, Dictionary<object, double>>> PartialAnalysis(string targetTag, CancellationToken stoppinToken)
         {
-            // while (!HasBazaar)
-            // {
-            //     await Task.Delay(1000);
-            //     logger.LogInformation("waiting for bazaar");
-            // }
             var context = new HypixelContext();
             var allStart = context.Auctions.Max(a => a.Id) - 15_000_000;
-            partialCalcService = new PartialCalcService(sniper.Lookups);
             Console.WriteLine("loading aote from db");
             var id = await context.Items.Where(i => i.Tag == targetTag).Select(i => i.Id).FirstOrDefaultAsync();
             if (targetTag.StartsWith("CRIMSON"))
@@ -268,20 +264,20 @@ namespace Coflnet.Sky.Sniper.Services
             sold = sold.Where(s => s != testAuctions).ToList();
             //ApplyData(sold, 0.2);
             ApplyData(sold, 0.3);
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < 50; i++)
             {
                 ApplyData(sold, 0.23);
             }
             sold = sold.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(30)).ToList();
             ApplyData(sold, 0.69);
             ApplyData(sold, 0.28);
-            for (int i = 0; i < 200; i++)
+            for (int i = 0; i < 50; i++)
             {
-                ApplyData(sold, 0.27);
+                ApplyData(sold, 0.23);
             }
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < 50; i++)
             {
-                ApplyData(sold, 0.17);
+                ApplyData(sold, 0.07);
             }
             Console.WriteLine("done aote");
             Console.WriteLine(Newtonsoft.Json.JsonConvert.SerializeObject(partialCalcService.GetAttributeCosts(targetTag), Newtonsoft.Json.Formatting.Indented));
@@ -289,7 +285,6 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 foreach (var item in testAuctions)
                 {
-
                     PrintTestAuctionData(sold, item);
                 }
             }
@@ -407,8 +402,6 @@ namespace Coflnet.Sky.Sniper.Services
             , stoppingToken);
         }
 
-        private bool HasBazaar = false;
-
         private async Task ConsumeBazaar(CancellationToken stoppingToken)
         {
             Console.WriteLine("starting bazaar");
@@ -419,7 +412,6 @@ namespace Coflnet.Sky.Sniper.Services
                     {
                         if (item.Timestamp > DateTime.UtcNow - TimeSpan.FromMinutes(1))
                             sniper.UpdateBazaar(item);
-                        HasBazaar = true;
                     }
                     return Task.CompletedTask;
                 }, stoppingToken, 5)
@@ -462,9 +454,6 @@ namespace Coflnet.Sky.Sniper.Services
                 Console.WriteLine(e.Message);
                 Console.WriteLine(e.StackTrace);
             }
-            Console.WriteLine("auction consumption disabled");
-            await Task.Delay(1000000);
-            return;
             Console.WriteLine("loaded lookup");
             if (sniper.Lookups.FirstOrDefault().Value?.Lookup.Select(l => l.Value.References.Count()).FirstOrDefault() > 0)
                 sniper.State = SniperState.Ready;
