@@ -1,7 +1,7 @@
 namespace Coflnet.Sky.Sniper.Models;
 public enum SniperState
 {
-    LadingLbin,
+    LoadingLbin,
     LadingLookup,
     Ready
 }
