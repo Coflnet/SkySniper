@@ -44,7 +44,7 @@ public class PartialCalcTests
             }
         }, 100);
         var result = Service.GetPrice(item);
-        Assert.Greater(9000, result.Price);
+        Assert.Greater(80000, result.Price);
     }
 
     [Test]
@@ -86,17 +86,17 @@ public class PartialCalcTests
             ExtraAttributes = new()
             {
                 { "tier", "LEGENDARY" },
-                { "exp", "1000000" }
+                { "exp", "20000000" }
             },
         };
         AddSell(new SaveAuction()
         {
             Tag = "CLEAN",
             Tier = Tier.LEGENDARY,
-            HighestBidAmount = 800000,
+            HighestBidAmount = 19000000,
             FlatenedNBT = new()
             {
-                { "exp", "10000" }
+                { "exp", "20000000" }
             }
         }, 100);
         AddSell(new SaveAuction()
