@@ -215,8 +215,9 @@ public class PartialCalcService
                             Lookups[key] = new PriceLookup() { Lookup = new(new Dictionary<AuctionKey, ReferenceAuctions>() { { new(), new() { Price = (long)apiPrice } } }) };
                             return apiPrice * 0.8;
                         }
-
                     }
+                    if(key == "mayor")
+                        return 10;
                     return 100000;
                 });
             if (cost == double.NaN || cost < -1000000000 || cost > 1000000000)
