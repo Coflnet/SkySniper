@@ -88,11 +88,9 @@ public class PartialCalcService
             modifiers.Remove(modifiers.OrderBy(x => Random.Shared.Next()).First().Key);
         double estimation = GetValueOf(auction.Tag, attribs, modifiers);
         var difference = auction.HighestBidAmount - estimation;
-        var reduction = 40;
+        var reduction = 5;
         if (modifiers.Count < 3)
-            reduction = 5;
-        else if (modifiers.Count < 5)
-            reduction = 20;
+            reduction = 2;
         // if(!auction.Tag.StartsWith("PET"))
         //     reduction *= 3;
         var perItemChange = difference / reduction * adjustRate;
