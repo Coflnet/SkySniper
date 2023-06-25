@@ -7,7 +7,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Coflnet.Sky.Sniper.Services;
 
-public class CraftCostService : BackgroundService
+public interface ICraftCostService
+{
+    bool TryGetCost(string itemId, out double cost);
+}
+
+public class CraftCostService : BackgroundService, ICraftCostService
 {
     private readonly ICraftsApi craftsApi;
     private readonly ILogger<CraftCostService> logger;

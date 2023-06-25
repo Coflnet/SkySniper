@@ -9,11 +9,19 @@ public class PartialCalcTests
 {
     private PartialCalcService Service = null!;
     private SniperService sniper = null!;
+    private class CraftcostMock : ICraftCostService
+    {
+        public bool TryGetCost(string itemId, out double cost)
+        {
+            cost = 0;
+            return false;
+        }
+    }
     [SetUp]
     public void Setup()
     {
         sniper = new SniperService();
-        Service = new PartialCalcService(sniper.Lookups, null);
+        Service = new PartialCalcService(sniper.Lookups, new CraftcostMock() );
         AddSell(new SaveAuction()
         {
             Tag = "CLEAN",

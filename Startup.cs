@@ -44,12 +44,12 @@ namespace Coflnet.Sky.Sniper
             services.AddSingleton<InternalDataLoader>();
             services.AddHostedService<InternalDataLoader>(d=>d.GetRequiredService<InternalDataLoader>());
             services.AddSingleton<ICraftsApi, CraftsApi>(d=>new CraftsApi(Configuration["CRAFTS_BASE_URl"]));
-            services.AddSingleton<CraftCostService>();
-            services.AddHostedService<CraftCostService>(d=>d.GetRequiredService<CraftCostService>());
+            services.AddSingleton<ICraftCostService, CraftCostService>();
+            services.AddHostedService<CraftCostService>(d=>d.GetRequiredService<ICraftCostService>()  as CraftCostService);
             services.AddSingleton<IPersitanceManager, MinioPersistanceManager>();
             services.AddSingleton<ITokenService, TokenService>();
             services.AddSingleton<ActiveUpdater>();
-            services.AddSingleton<PartialCalcService>(c => new PartialCalcService(c.GetRequiredService<SniperService>().Lookups, c.GetRequiredService<CraftCostService>()));
+            services.AddSingleton<PartialCalcService>(c => new PartialCalcService(c.GetRequiredService<SniperService>().Lookups, c.GetRequiredService<ICraftCostService>()));
             services.AddSingleton<Kafka.KafkaCreator>();
             services.AddJaeger(Configuration);
         }

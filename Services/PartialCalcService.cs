@@ -15,10 +15,10 @@ public class PartialCalcService
     private ConcurrentDictionary<string, PriceLookup> Lookups;
     private ConcurrentDictionary<string, AttributeLookup> AttributeLookups = new();
     private PropertyMapper Mapper = new();
-    private CraftCostService CraftCostService = null!;
+    private ICraftCostService CraftCostService = null!;
     private double adjustRate = 0.07;
 
-    public PartialCalcService(ConcurrentDictionary<string, PriceLookup> lookups, CraftCostService craftCostService)
+    public PartialCalcService(ConcurrentDictionary<string, PriceLookup> lookups, ICraftCostService craftCostService)
     {
         Lookups = lookups;
         CraftCostService = craftCostService;
