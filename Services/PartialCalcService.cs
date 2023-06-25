@@ -333,7 +333,10 @@ public class PartialCalcService
 
             if (TryGetItemCost(s, out var itemPrice))
             {
-
+                if(s.EndsWith("GROWTH_5"))
+                {
+                    Console.WriteLine($"Found GROWTH Val {key} {s} {itemPrice}");
+                }
                 // Console.WriteLine($"Found Val {key} {s} {lookup.Lookup.First().Value.Price}");
                 price = itemPrice;
                 return true;
