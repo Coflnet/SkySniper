@@ -13,7 +13,7 @@ public class PartialCalcTests
     public void Setup()
     {
         sniper = new SniperService();
-        Service = new PartialCalcService(sniper.Lookups);
+        Service = new PartialCalcService(sniper.Lookups, null);
         AddSell(new SaveAuction()
         {
             Tag = "CLEAN",

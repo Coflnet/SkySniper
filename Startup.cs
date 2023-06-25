@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Coflnet.Sky.Core;
+using Coflnet.Sky.Crafts.Client.Api;
 using Coflnet.Sky.Sniper.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
@@ -42,10 +43,13 @@ namespace Coflnet.Sky.Sniper
             services.AddSingleton<SniperService>();
             services.AddSingleton<InternalDataLoader>();
             services.AddHostedService<InternalDataLoader>(d=>d.GetRequiredService<InternalDataLoader>());
+            services.AddSingleton<ICraftsApi, CraftsApi>(d=>new CraftsApi(Configuration["CRAFTS_BASE_URl"]));
+            services.AddSingleton<CraftCostService>();
+            services.AddHostedService<CraftCostService>(d=>d.GetRequiredService<CraftCostService>());
             services.AddSingleton<IPersitanceManager, MinioPersistanceManager>();
             services.AddSingleton<ITokenService, TokenService>();
             services.AddSingleton<ActiveUpdater>();
-            services.AddSingleton<PartialCalcService>(c => new PartialCalcService(c.GetRequiredService<SniperService>().Lookups));
+            services.AddSingleton<PartialCalcService>(c => new PartialCalcService(c.GetRequiredService<SniperService>().Lookups, c.GetRequiredService<CraftCostService>()));
             services.AddSingleton<Kafka.KafkaCreator>();
             services.AddJaeger(Configuration);
         }

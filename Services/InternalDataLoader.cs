@@ -233,6 +233,7 @@ namespace Coflnet.Sky.Sniper.Services
                     await Task.Delay(2000);
                 }
             }
+            partialCalcService.CapAtCraftCost();
             logger.LogInformation($"Loaded {i}/{differential}th of sell history");
             // ready if more than 20% loaded
             if (i >= differential / 5)

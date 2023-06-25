@@ -50,8 +50,6 @@ namespace Coflnet.Sky.Sniper.Services
                         // retry
                         lookup = await LoadItem(client, itemTag);
                     }
-                    if (lookup.Lookup.Sum(l => l.Value.References.Count) > 100)
-                        logger.LogInformation("loaded lookup for " + itemTag);
                     service.AddLookupData(itemTag, lookup);
                 }
                 catch (Exception e)
