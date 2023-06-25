@@ -32,9 +32,11 @@ public class CraftCostService : BackgroundService, ICraftCostService
             foreach (var craft in all)
             {
                 costs[craft.ItemId] = craft.CraftCost;
+                if(craft.ItemId.EndsWith("GROWTH_5"))
+                    logger.LogInformation("Cost for " + craft.ItemId + " is " + craft.CraftCost);
             }
             logger.LogInformation("Updated craft costs for " + all.Count + " items");
-            await Task.Delay(1000 * 60 * 60 * 24, stoppingToken);
+            await Task.Delay(1000 * 6, stoppingToken);
         }
     }
 

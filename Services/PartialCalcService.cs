@@ -328,15 +328,9 @@ public class PartialCalcService
                     // Console.WriteLine($"Not Found Reforge {key} {s} {cost.Item1}");
                 }
             }
-            if (key.StartsWith("ench."))
-                s = $"ENCHANTMENT_{key.Substring(5).ToUpper()}_{s}";
 
             if (TryGetItemCost(s, out var itemPrice))
             {
-                if(s.EndsWith("GROWTH_5"))
-                {
-                    Console.WriteLine($"Found GROWTH Val {key} {s} {itemPrice}");
-                }
                 // Console.WriteLine($"Found Val {key} {s} {lookup.Lookup.First().Value.Price}");
                 price = itemPrice;
                 return true;
@@ -347,9 +341,15 @@ public class PartialCalcService
             }
         }
 
+        if (key.StartsWith("ench.") && TryGetItemCost($"ENCHANTMENT_{key.Substring(5).ToUpper()}_{val}", out var enchPrice))
+        {
+            price = enchPrice;
+            return true;
+        }
+
         if (key == "rarity_upgrades")
         {
-            price = 10_000_000;
+            price = 7_000_000;
             return true;
         }
         price = 0;
@@ -367,114 +367,114 @@ public class PartialCalcService
     }
 
     private AuctionKey DefaultForTier(ItemBreakDown item)
-        {
-            return new AuctionKey()
-            {
-                Tier = Enum.Parse<Tier>(item.Flatten?.GetValueOrDefault("tier")?.ToString() ?? "COMMON"),
-                Enchants = new(),
-                Modifiers = new(),
-                Reforge = ItemReferences.Reforge.Any,
-                Count = 0 // because default for auctions
-            };
-        }
-
-        internal void SetLearningRate(double v)
-        {
-            adjustRate = v;
-        }
-    }
-
-    public class AttributeLookup
     {
-        public ConcurrentDictionary<string, ConcurrentDictionary<object, double>> Values = new();
-
-
+        return new AuctionKey()
+        {
+            Tier = Enum.Parse<Tier>(item.Flatten?.GetValueOrDefault("tier")?.ToString() ?? "COMMON"),
+            Enchants = new(),
+            Modifiers = new(),
+            Reforge = ItemReferences.Reforge.Any,
+            Count = 0 // because default for auctions
+        };
     }
 
-    public class ItemBreakDown
+    internal void SetLearningRate(double v)
     {
-        public Item OriginalItem;
-        public Dictionary<string, object> Flatten;
+        adjustRate = v;
+    }
+}
 
-        public ItemBreakDown(Item item)
+public class AttributeLookup
+{
+    public ConcurrentDictionary<string, ConcurrentDictionary<object, double>> Values = new();
+
+
+}
+
+public class ItemBreakDown
+{
+    public Item OriginalItem;
+    public Dictionary<string, object> Flatten;
+
+    public ItemBreakDown(Item item)
+    {
+        this.OriginalItem = item;
+        this.Flatten = NBT.FlattenNbtData(item.ExtraAttributes).GroupBy(x => x.Key).Select(x => x.First())
+            .ToDictionary(x => x.Key, x => x.Value);
+        foreach (var ench in item.Enchantments ?? new())
         {
-            this.OriginalItem = item;
-            this.Flatten = NBT.FlattenNbtData(item.ExtraAttributes).GroupBy(x => x.Key).Select(x => x.First())
-                .ToDictionary(x => x.Key, x => x.Value);
-            foreach (var ench in item.Enchantments ?? new())
-            {
-                this.Flatten[$"ench.{ench.Key.ToLower()}"] = ench.Value;
-            }
-            Preprocess();
+            this.Flatten[$"ench.{ench.Key.ToLower()}"] = ench.Value;
+        }
+        Preprocess();
+    }
+
+    private void Preprocess()
+    {
+        Flatten.Remove("uid");
+        Flatten.Remove("uuid");
+        Flatten.Remove("spawnedFor");
+        Flatten.Remove("bossId");
+        Flatten.Remove("hideRightClick");
+        Flatten.Remove("type");
+        Flatten.Remove("active");
+        Flatten.Remove("hideInfo");
+        Flatten.Remove("stats_book");
+        Flatten.Remove("candyUsed");
+        Flatten.Remove("dungeon_skill_req");
+        Flatten.Remove("item_durability");
+        foreach (var attrib in Flatten.OrderBy(x => x.Key).ToList())
+        {
+            if (!Constants.AttributeKeys.Contains(attrib.Key))
+                continue;
+            var combo = (string)Flatten.GetValueOrDefault("atCombo", attrib.Key + "_");
+            if (combo.EndsWith("_") && !combo.StartsWith(attrib.Key))
+                combo += attrib.Key;
+            Flatten["atCombo"] = combo;
         }
 
-        private void Preprocess()
+        Flatten.Remove("boss_tier");
+
+        Flatten.Remove("champion_combat_xp");
+        foreach (var item in Flatten.Where(f => f.Key.EndsWith(".uuid") || f.Key.EndsWith("_gem") || f.Key.EndsWith("_0")).ToList())
         {
-            Flatten.Remove("uid");
-            Flatten.Remove("uuid");
-            Flatten.Remove("spawnedFor");
-            Flatten.Remove("bossId");
-            Flatten.Remove("hideRightClick");
-            Flatten.Remove("type");
-            Flatten.Remove("active");
-            Flatten.Remove("hideInfo");
-            Flatten.Remove("stats_book");
-            Flatten.Remove("candyUsed");
-            Flatten.Remove("dungeon_skill_req");
-            Flatten.Remove("item_durability");
-            foreach (var attrib in Flatten.OrderBy(x => x.Key).ToList())
-            {
-                if (!Constants.AttributeKeys.Contains(attrib.Key))
-                    continue;
-                var combo = (string)Flatten.GetValueOrDefault("atCombo", attrib.Key + "_");
-                if (combo.EndsWith("_") && !combo.StartsWith(attrib.Key))
-                    combo += attrib.Key;
-                Flatten["atCombo"] = combo;
-            }
-
-            Flatten.Remove("boss_tier");
-
-            Flatten.Remove("champion_combat_xp");
-            foreach (var item in Flatten.Where(f => f.Key.EndsWith(".uuid") || f.Key.EndsWith("_gem") || f.Key.EndsWith("_0")).ToList())
-            {
-                Flatten.Remove(item.Key);
-            }
-            if (Flatten.TryGetValue("ability_scroll", out var f) && f is string flatten)
-            {
-                foreach (var item in flatten.Split(' '))
-                {
-                    Flatten[$"ability_scroll.{item}"] = 1;
-                }
-                Flatten.Remove("ability_scroll");
-            }
+            Flatten.Remove(item.Key);
         }
-
-        public ItemBreakDown(SaveAuction auction)
+        if (Flatten.TryGetValue("ability_scroll", out var f) && f is string flatten)
         {
-            this.OriginalItem = new() { Tag = auction.Tag };
-            if (auction.FlatenedNBT != null)
+            foreach (var item in flatten.Split(' '))
             {
-                this.Flatten = auction.FlatenedNBT.Select(x =>
-                {
-                    object value = x.Value;
-                    if (int.TryParse(x.Value.ToString(), out var intValue))
-                        value = intValue;
-                    return new KeyValuePair<string, object>(x.Key, value);
-                }).ToDictionary(x => x.Key, x => x.Value);
-                if (!this.Flatten.ContainsKey("tier"))
-                    this.Flatten["tier"] = auction.Tier.ToString();
-                if (!this.Flatten.ContainsKey("modifier") && auction.Reforge != ItemReferences.Reforge.None)
-                    this.Flatten["modifier"] = auction.Reforge.ToString().ToLower();
-                if (this.Flatten.TryGetValue("candyUsed", out var candy) && candy is int && (int)candy > 0)
-                    this.Flatten["candyUsed"] = 1;
+                Flatten[$"ability_scroll.{item}"] = 1;
             }
-            else
-                this.Flatten = NBT.FlattenNbtData(auction.NbtData.Data).ToDictionary(x => x.Key, x => x.Value);
-            foreach (var ench in auction.Enchantments ?? new())
-            {
-                this.Flatten[$"ench.{ench.Type.ToString().ToLower()}"] = ench.Level;
-            }
-            Preprocess();
+            Flatten.Remove("ability_scroll");
         }
     }
+
+    public ItemBreakDown(SaveAuction auction)
+    {
+        this.OriginalItem = new() { Tag = auction.Tag };
+        if (auction.FlatenedNBT != null)
+        {
+            this.Flatten = auction.FlatenedNBT.Select(x =>
+            {
+                object value = x.Value;
+                if (int.TryParse(x.Value.ToString(), out var intValue))
+                    value = intValue;
+                return new KeyValuePair<string, object>(x.Key, value);
+            }).ToDictionary(x => x.Key, x => x.Value);
+            if (!this.Flatten.ContainsKey("tier"))
+                this.Flatten["tier"] = auction.Tier.ToString();
+            if (!this.Flatten.ContainsKey("modifier") && auction.Reforge != ItemReferences.Reforge.None)
+                this.Flatten["modifier"] = auction.Reforge.ToString().ToLower();
+            if (this.Flatten.TryGetValue("candyUsed", out var candy) && candy is int && (int)candy > 0)
+                this.Flatten["candyUsed"] = 1;
+        }
+        else
+            this.Flatten = NBT.FlattenNbtData(auction.NbtData.Data).ToDictionary(x => x.Key, x => x.Value);
+        foreach (var ench in auction.Enchantments ?? new())
+        {
+            this.Flatten[$"ench.{ench.Type.ToString().ToLower()}"] = ench.Level;
+        }
+        Preprocess();
+    }
+}
 #nullable disable
