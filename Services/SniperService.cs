@@ -1203,7 +1203,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             foreach (var item in bazaar.Products)
             {
-                if (item.SellSummary.FirstOrDefault()?.PricePerUnit < 1_000_000)
+                if (item.SellSummary.Count() == 0 && item.BuySummery.Count() == 0)
                     continue;
                 if (!Lookups.TryGetValue(item.ProductId, out var lookup))
                 {
