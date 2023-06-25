@@ -42,14 +42,18 @@ namespace Coflnet.Sky.Sniper
             });
             services.AddSingleton<SniperService>();
             services.AddSingleton<InternalDataLoader>();
-            services.AddHostedService<InternalDataLoader>(d=>d.GetRequiredService<InternalDataLoader>());
-            services.AddSingleton<ICraftsApi, CraftsApi>(d=>new CraftsApi(Configuration["CRAFTS_BASE_URl"]));
+            services.AddHostedService<InternalDataLoader>(d => d.GetRequiredService<InternalDataLoader>());
+            services.AddSingleton<ICraftsApi, CraftsApi>(d => new CraftsApi(Configuration["CRAFTS_BASE_URl"]));
             services.AddSingleton<ICraftCostService, CraftCostService>();
-            services.AddHostedService<CraftCostService>(d=>d.GetRequiredService<ICraftCostService>()  as CraftCostService);
+            services.AddHostedService<CraftCostService>(d => d.GetRequiredService<ICraftCostService>() as CraftCostService);
+            services.AddSingleton<Mayor.Client.Api.IMayorApi, Mayor.Client.Api.MayorApi>(d => new Mayor.Client.Api.MayorApi(Configuration["MAYOR_BASE_URl"]));
+            services.AddSingleton<Mayor.Client.Api.IElectionPeriodsApi>(d => new Mayor.Client.Api.ElectionPeriodsApi(Configuration["MAYOR_BASE_URl"]));
+            services.AddSingleton<IMayorService, MayorService>();
+            services.AddHostedService<MayorService>(d => d.GetRequiredService<IMayorService>() as MayorService);
             services.AddSingleton<IPersitanceManager, MinioPersistanceManager>();
             services.AddSingleton<ITokenService, TokenService>();
             services.AddSingleton<ActiveUpdater>();
-            services.AddSingleton<PartialCalcService>(c => new PartialCalcService(c.GetRequiredService<SniperService>().Lookups, c.GetRequiredService<ICraftCostService>()));
+            services.AddSingleton<PartialCalcService>(c => new PartialCalcService(c.GetRequiredService<SniperService>().Lookups, c.GetRequiredService<ICraftCostService>(), c.GetRequiredService<IMayorService>()));
             services.AddSingleton<Kafka.KafkaCreator>();
             services.AddJaeger(Configuration);
         }

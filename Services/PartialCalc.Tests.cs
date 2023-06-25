@@ -17,11 +17,18 @@ public class PartialCalcTests
             return false;
         }
     }
+    private class MayorMock : IMayorService
+    {
+        public string GetMayor(DateTime time)
+        {
+            return "jerry";
+        }
+    }
     [SetUp]
     public void Setup()
     {
         sniper = new SniperService();
-        Service = new PartialCalcService(sniper.Lookups, new CraftcostMock() );
+        Service = new PartialCalcService(sniper.Lookups, new CraftcostMock(), new MayorMock());
         AddSell(new SaveAuction()
         {
             Tag = "CLEAN",
@@ -74,7 +81,7 @@ public class PartialCalcTests
         {
             Tag = "CLEAN",
             Tier = Tier.EPIC,
-            HighestBidAmount = 8000000,
+            HighestBidAmount = 11000000,
             FlatenedNBT = new(),
             Enchantments = new()
             {

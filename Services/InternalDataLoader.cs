@@ -26,6 +26,7 @@ namespace Coflnet.Sky.Sniper.Services
         private ActiveUpdater activeUpdater;
         private Kafka.KafkaCreator kafkaCreator;
         private PartialCalcService partialCalcService;
+        private IMayorService mayorService;
 
         private ILogger<InternalDataLoader> logger;
 
@@ -44,7 +45,8 @@ namespace Coflnet.Sky.Sniper.Services
             ActivitySource activitySource,
             ActiveUpdater activeUpdater,
             KafkaCreator kafkaCreator,
-            PartialCalcService partialCalcService)
+            PartialCalcService partialCalcService,
+            IMayorService mayorService)
         {
             this.sniper = sniper;
             this.config = config;
@@ -55,6 +57,7 @@ namespace Coflnet.Sky.Sniper.Services
             this.activeUpdater = activeUpdater;
             this.kafkaCreator = kafkaCreator;
             this.partialCalcService = partialCalcService;
+            this.mayorService = mayorService;
         }
 
 
@@ -303,7 +306,7 @@ namespace Coflnet.Sky.Sniper.Services
 
         private void PrintTestAuctionData(List<SaveAuction> sold, SaveAuction testAuction)
         {
-            var breakDown = new ItemBreakDown(testAuction);
+            var breakDown = new ItemBreakDown(testAuction, mayorService.GetMayor(testAuction.End));
             var asItem = new Item()
             {
                 Enchantments = testAuction.Enchantments.Select(e => new KeyValuePair<string, byte>(e.Type.ToString(), e.Level)).ToDictionary(e => e.Key, e => e.Value),

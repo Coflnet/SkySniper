@@ -16,12 +16,14 @@ public class PartialCalcService
     private ConcurrentDictionary<string, AttributeLookup> AttributeLookups = new();
     private PropertyMapper Mapper = new();
     private ICraftCostService CraftCostService = null!;
+    private IMayorService mayorService = null!;
     private double adjustRate = 0.07;
 
-    public PartialCalcService(ConcurrentDictionary<string, PriceLookup> lookups, ICraftCostService craftCostService)
+    public PartialCalcService(ConcurrentDictionary<string, PriceLookup> lookups, ICraftCostService craftCostService, IMayorService mayorService)
     {
         Lookups = lookups;
         CraftCostService = craftCostService;
+        this.mayorService = mayorService;
     }
 
     public Dictionary<string, Dictionary<object, double>> GetAttributeCosts(string tag)
@@ -60,7 +62,7 @@ public class PartialCalcService
         if (includeBreakDown)
             result.BreakDown = new();
         var breakDown = result.BreakDown;
-        var item = new ItemBreakDown(auction);
+        var item = new ItemBreakDown(auction, mayorService.GetMayor(auction.End));
         if (!Lookups.TryGetValue(item.OriginalItem.Tag, out var cleanItemLookup))
             return result;
         var attribs = AttributeLookups.GetOrAdd(item.OriginalItem.Tag, tag => new());
@@ -81,14 +83,14 @@ public class PartialCalcService
 
     public void AddSell(SaveAuction auction)
     {
-        var item = new ItemBreakDown(auction);
+        var item = new ItemBreakDown(auction, mayorService.GetMayor(auction.End));
         var attribs = AttributeLookups.GetOrAdd(auction.Tag, tag => new());
         var modifiers = item.Flatten;
         if (adjustRate > 0.01 && Random.Shared.NextDouble() < 0.05 && modifiers.Count > 2)
             modifiers.Remove(modifiers.OrderBy(x => Random.Shared.Next()).First().Key);
         double estimation = GetValueOf(auction.Tag, attribs, modifiers);
         var difference = auction.HighestBidAmount - estimation;
-        var reduction = 5;
+        var reduction = 4;
         if (modifiers.Count < 3)
             reduction = 2;
         // if(!auction.Tag.StartsWith("PET"))
@@ -447,7 +449,7 @@ public class ItemBreakDown
         }
     }
 
-    public ItemBreakDown(SaveAuction auction)
+    public ItemBreakDown(SaveAuction auction, string mayor)
     {
         this.OriginalItem = new() { Tag = auction.Tag };
         if (auction.FlatenedNBT != null)
@@ -472,6 +474,7 @@ public class ItemBreakDown
         {
             this.Flatten[$"ench.{ench.Type.ToString().ToLower()}"] = ench.Level;
         }
+        Flatten["mayor"] = mayor;
         Preprocess();
     }
 }
