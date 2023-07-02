@@ -72,13 +72,14 @@ namespace Coflnet.Sky.Sniper.Services
                     await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken).ConfigureAwait(false);
                 }
             });
-            Task newAuctions = ConsumeNewAuctions(stoppingToken);
             Task soldAuctions = LoadLookupsAndProcessSells(stoppingToken);
+            Task newAuctions = ConsumeNewAuctions(stoppingToken);
             var sellLoad = LoadSellHistory(stoppingToken);
 
             stoppingToken.Register(() =>
             {
                 Console.WriteLine("saving");
+                partialCalcService.Save();
                 persitance.SaveLookup(sniper.Lookups).Wait();
                 Console.WriteLine("saved");
 
@@ -250,7 +251,7 @@ namespace Coflnet.Sky.Sniper.Services
         public async Task<Dictionary<string, Dictionary<object, double>>> PartialAnalysis(string targetTag, CancellationToken stoppinToken)
         {
             var context = new HypixelContext();
-            var allStart = context.Auctions.Max(a => a.Id) - 15_000_000;
+            var allStart = context.Auctions.Max(a => a.Id) - 150_000_000;
             Console.WriteLine("loading aote from db");
             var id = await context.Items.Where(i => i.Tag == targetTag).Select(i => i.Id).FirstOrDefaultAsync();
             if (targetTag.StartsWith("CRIMSON"))
@@ -259,6 +260,7 @@ namespace Coflnet.Sky.Sniper.Services
                 id = 4200;
             var sold = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
                         .Where(a => a.Id > allStart && a.Bin && a.HighestBidAmount > 0 && id == a.ItemId)
+                        .Take(200_000)
                         .AsNoTracking()
                         .ToListAsync(stoppinToken);
             Console.WriteLine("applying aote");
@@ -451,6 +453,7 @@ namespace Coflnet.Sky.Sniper.Services
             try
             {
                 await persitance.LoadLookups(sniper);
+                await partialCalcService.Load();
             }
             catch (Exception e)
             {
@@ -459,7 +462,7 @@ namespace Coflnet.Sky.Sniper.Services
                 Console.WriteLine(e.StackTrace);
             }
             Console.WriteLine("loaded lookup");
-            if (sniper.Lookups.FirstOrDefault().Value?.Lookup.Select(l => l.Value.References.Count()).FirstOrDefault() > 0)
+            if (sniper.Lookups.FirstOrDefault().Value?.Lookup?.Select(l => l.Value.References.Count()).FirstOrDefault() > 0)
                 sniper.State = SniperState.Ready;
             await Kafka.KafkaConsumer.ConsumeBatch<SaveAuction>(ConsumerConfig, new string[] { config["TOPICS:SOLD_AUCTION"] }, async batch =>
             {

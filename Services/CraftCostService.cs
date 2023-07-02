@@ -36,7 +36,7 @@ public class CraftCostService : BackgroundService, ICraftCostService
                     logger.LogInformation("Cost for " + craft.ItemId + " is " + craft.CraftCost);
             }
             logger.LogInformation("Updated craft costs for " + all.Count + " items");
-            await Task.Delay(1000 * 6, stoppingToken);
+            await Task.Delay(1000 * 60, stoppingToken);
         }
     }
 

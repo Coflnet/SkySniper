@@ -50,10 +50,10 @@ namespace Coflnet.Sky.Sniper
             services.AddSingleton<Mayor.Client.Api.IElectionPeriodsApi>(d => new Mayor.Client.Api.ElectionPeriodsApi(Configuration["MAYOR_BASE_URl"]));
             services.AddSingleton<IMayorService, MayorService>();
             services.AddHostedService<MayorService>(d => d.GetRequiredService<IMayorService>() as MayorService);
-            services.AddSingleton<IPersitanceManager, MinioPersistanceManager>();
+            services.AddSingleton<IPersitanceManager, S3PersistanceManager>();
             services.AddSingleton<ITokenService, TokenService>();
             services.AddSingleton<ActiveUpdater>();
-            services.AddSingleton<PartialCalcService>(c => new PartialCalcService(c.GetRequiredService<SniperService>().Lookups, c.GetRequiredService<ICraftCostService>(), c.GetRequiredService<IMayorService>()));
+            services.AddSingleton<PartialCalcService>();
             services.AddSingleton<Kafka.KafkaCreator>();
             services.AddJaeger(Configuration);
         }

@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Amazon.S3;
+using Amazon.S3.Model;
 using Coflnet.Sky.Sniper.Models;
 using MessagePack;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -13,24 +15,35 @@ using Minio;
 
 namespace Coflnet.Sky.Sniper.Services
 {
-    public class MinioPersistanceManager : IPersitanceManager
+    public class S3PersistanceManager : IPersitanceManager
     {
         private IConfiguration config;
-        private ILogger<MinioPersistanceManager> logger;
+        private ILogger<S3PersistanceManager> logger;
+        private AmazonS3Client s3Client;
 
-        public MinioPersistanceManager(IConfiguration config, ILogger<MinioPersistanceManager> logger)
+        public S3PersistanceManager(IConfiguration config, ILogger<S3PersistanceManager> logger)
         {
             this.config = config;
             this.logger = logger;
+            AmazonS3Config awsCofig = new AmazonS3Config();
+            var prefix = "https://";
+            if (config["MINIO_HOST"]?.StartsWith("minio") ?? false)
+                prefix = "http://";
+            awsCofig.ServiceURL = prefix + (config["S3_HOST"] ?? config["MINIO_HOST"]);
+            // use path style access
+            awsCofig.ForcePathStyle = true;
+
+            s3Client = new AmazonS3Client(
+                    config["ACCESS_KEY"] ?? config["MINIO_KEY"],
+                    config["SECRET_KEY"] ?? config["MINIO_SECRET"],
+                    awsCofig
+                    );
         }
 
         public async Task LoadLookups(SniperService service)
         {
-            var client = new MinioClient()
-                        .WithEndpoint(config["MINIO_HOST"])
-                        .WithCredentials(config["MINIO_KEY"], config["MINIO_SECRET"])
-                        .Build();
-            List<string> items = await GetIemIds(client);
+            List<string> items = await GetIemIds();
+            logger.LogInformation("loaded item ids " + items.Count);
             await Parallel.ForEachAsync(items, new ParallelOptions()
             {
                 MaxDegreeOfParallelism = 5
@@ -38,23 +51,26 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 try
                 {
-                    PriceLookup lookup = null;
+                    PriceLookup lookup = new();
                     try
                     {
-                        lookup = await LoadItem(client, itemTag);
+                        lookup = await LoadItem(itemTag);
+                        if (lookup.Lookup.Count > 100)
+                            logger.LogInformation("loaded " + itemTag + " " + lookup.Lookup.Count);
                     }
                     catch (Exception ex)
                     {
-                        await Task.Delay(500);
+                        await Task.Delay(5000);
                         logger.LogError(ex, "Could not load item once " + itemTag);
                         // retry
-                        lookup = await LoadItem(client, itemTag);
+                        lookup = await LoadItem(itemTag);
                     }
                     service.AddLookupData(itemTag, lookup);
                 }
                 catch (Exception e)
                 {
                     await Task.Delay(200);
+                    await SaveLookup(itemTag, new PriceLookup());
                     logger.LogError(e, "Could not load item twice " + itemTag);
                 }
             });
@@ -63,77 +79,112 @@ namespace Coflnet.Sky.Sniper.Services
 
         public async Task SaveLookup(ConcurrentDictionary<string, PriceLookup> lookups)
         {
-            var client = new MinioClient().WithCredentials(config["MINIO_KEY"], config["MINIO_SECRET"]).WithEndpoint(config["MINIO_HOST"]);
             using var stream = new MemoryStream();
             await MessagePackSerializer.SerializeAsync(stream, lookups.Keys.ToList());
             stream.Position = 0;
-            logger.LogInformation("saving list");
-            await client.PutObjectAsync(new PutObjectArgs().WithBucket("sky-sniper").WithObject("itemList").WithStreamData(stream).WithObjectSize(stream.Length));
-            logger.LogInformation("saved list " + stream.Length);
+            logger.LogInformation("saving list" + stream.Length);
+            // upload to s3
+            await s3Client.PutObjectAsync(new PutObjectRequest()
+            {
+                BucketName = "sky-sniper",
+                Key = "itemList",
+                InputStream = stream
+            });
+            logger.LogInformation("saved list ");
             await Parallel.ForEachAsync(lookups, new ParallelOptions()
             {
                 MaxDegreeOfParallelism = 10
             }, async (item, cancleToken) =>
             {
-                using var itemStream = new MemoryStream();
-                await MessagePackSerializer.SerializeAsync(itemStream, item.Value);
-                itemStream.Position = 0;
-                try
-                {
-                    await client.PutObjectAsync(new PutObjectArgs().WithBucket("sky-sniper").WithObject(item.Key).WithStreamData(itemStream).WithObjectSize(itemStream.Length));
-                    if (!string.IsNullOrEmpty(item.Key) && item.Key.StartsWith('S'))
-                        Console.Write(" saved " + item.Key);
-                }
-                catch (System.Exception e)
-                {
-                    logger.LogError(e, "failed to save " + item.Key);
-                }
+                await SaveLookup(item.Key, item.Value);
             });
             Console.WriteLine();
         }
 
-        private async Task<List<string>> GetIemIds(MinioClient client)
+        private async Task SaveLookup(string tag, PriceLookup lookup)
+        {
+            using var itemStream = new MemoryStream();
+            await MessagePackSerializer.SerializeAsync(itemStream, lookup);
+            itemStream.Position = 0;
+            var length = itemStream.Length;
+            try
+            {
+                var putResponse = await s3Client.PutObjectAsync(new PutObjectRequest()
+                {
+                    BucketName = "sky-sniper",
+                    Key = tag,
+                    InputStream = itemStream
+                });
+                if (!string.IsNullOrEmpty(tag) && tag.StartsWith('S') || tag == "test")
+                    Console.Write($" saved {tag} {length} {putResponse.HttpStatusCode}");
+            }
+            catch (System.Exception e)
+            {
+                logger.LogError(e, "failed to save " + tag);
+            }
+        }
+
+        private async Task<List<string>> GetIemIds()
         {
             List<string> items = new List<string>();
 
             try
             {
-                await client.MakeBucketAsync(new MakeBucketArgs().WithBucket("sky-sniper"));
+                await s3Client.PutBucketAsync("sky-sniper");
             }
-            catch (System.Exception)
+            catch (System.Exception e)
             {
                 // bucket already exists
-                logger.LogInformation("bucket already exists or other error while creating");
+                if (e.Message.Contains("succeeded"))
+                    logger.LogInformation("bucket already exists or other error while creating");
+                else
+                    logger.LogError(e, "failed to create bucket");
             }
-
-            var response = await GetStreamForObject(client, "itemList");
+            using var response = await s3Client.GetObjectAsync("sky-sniper", "itemList");
+            // var response = await GetStreamForObject(client, "itemList");
             try
             {
-                items = await MessagePackSerializer.DeserializeAsync<List<string>>(response);
-                logger.LogInformation("loaded ids " + response.Length);
+                items = await MessagePackSerializer.DeserializeAsync<List<string>>(response.ResponseStream);
+                logger.LogInformation("loaded ids " + items.Count);
             }
             catch (Exception e)
             {
-                logger.LogError(e, "failed to load ids " + response.Length);
+                logger.LogError(e, "failed to load ids " + response.PartsCount);
             }
             return items;
         }
 
-        private static async Task<MemoryStream> GetStreamForObject(MinioClient client, string objectName)
+        private async Task<Stream> GetStreamForObject(string objectName)
         {
-            var response = new MemoryStream();
-            await client.GetObjectAsync(new GetObjectArgs()
-                .WithBucket("sky-sniper")
-                .WithObject(objectName)
-                .WithCallbackStream((stream) => stream.CopyTo(response)));
-            response.Position = 0;
-            return response;
+            var response = await s3Client.GetObjectAsync("sky-sniper", objectName);
+            var stream = response.ResponseStream;
+            return stream;
         }
 
-        private async Task<PriceLookup> LoadItem(MinioClient client, string itemName)
+        private async Task<PriceLookup> LoadItem(string itemName)
         {
-            var result = await GetStreamForObject(client, itemName);
+            using var result = await GetStreamForObject(itemName);
             return await MessagePackSerializer.DeserializeAsync<PriceLookup>(result);
+        }
+
+        public async Task<ConcurrentDictionary<string, AttributeLookup>> GetWeigths()
+        {
+            using var result = await GetStreamForObject("partials");
+            return await MessagePackSerializer.DeserializeAsync<ConcurrentDictionary<string, AttributeLookup>>(result);
+        }
+
+        public async Task SaveWeigths(ConcurrentDictionary<string, AttributeLookup> lookups)
+        {
+            using var stream = new MemoryStream();
+            await MessagePackSerializer.SerializeAsync(stream, lookups);
+            stream.Position = 0;
+            logger.LogInformation("saving partials data " + stream.Length);
+            await s3Client.PutObjectAsync(new PutObjectRequest()
+            {
+                BucketName = "sky-sniper",
+                Key = "partials",
+                InputStream = stream
+            });
         }
     }
 }

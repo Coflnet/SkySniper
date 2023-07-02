@@ -504,11 +504,12 @@ ORDER BY l.`AuctionId`  DESC;
 
         public ReferenceAuctions GetBucketForAuction(SaveAuction auction)
         {
-            if (!Lookups.ContainsKey(auction.Tag))
+            if (!Lookups.TryGetValue(auction.Tag, out var lookup) || lookup == null)
             {
-                Lookups[auction.Tag] = new PriceLookup();
+                lookup = new PriceLookup();
+                Lookups[auction.Tag] = lookup;
             }
-            return GetOrAdd(KeyFromSaveAuction(auction), Lookups[auction.Tag]);
+            return GetOrAdd(KeyFromSaveAuction(auction), lookup);
         }
 
         private static long GetMedian(List<ReferencePrice> deduplicated)
@@ -529,6 +530,8 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static ReferenceAuctions GetOrAdd(AuctionKey key, PriceLookup itemBucket)
         {
+            if(itemBucket.Lookup == null)
+                itemBucket.Lookup = new();
             return itemBucket.Lookup.GetOrAdd(key, (k) => new ReferenceAuctions());
         }
 

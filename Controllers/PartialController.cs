@@ -25,7 +25,10 @@ public class PartialController
     [Route("partial/{tag}")]
     public async Task<Dictionary<string, Dictionary<object, double>>> LoadFor(string tag, CancellationToken token)
     {
-        return await inter.PartialAnalysis(tag, token);
+        var res = await inter.PartialAnalysis(tag, token);
+
+        await partialCalcService.Save();
+        return res;
     }
     [HttpGet]
     [Route("partial/{uuid}")]

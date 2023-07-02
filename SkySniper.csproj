@@ -15,6 +15,7 @@
 
 
   <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" Version="3.7.107" />
     <PackageReference Include="Coflnet.Sky.Mayor.Client" Version="0.3.0" />
     <PackageReference Include="JWT" Version="9.0.3" />
     <PackageReference Include="minio" Version="4.0.5" />

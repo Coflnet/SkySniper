@@ -32,7 +32,7 @@ public class MayorService : BackgroundService, IMayorService
         {
             var year = (int)Constants.SkyblockYear(DateTime.UtcNow);
             var mayor = await electionPeriodsApi.ElectionPeriodYearGetAsync(year);
-            if (mayor.Winner != null)
+            if (mayor?.Winner != null)
                 YearToMayorName[year] = mayor.Winner.Name;
             await Task.Delay(1000 * 60 * 60, stoppingToken);
         }
@@ -41,6 +41,8 @@ public class MayorService : BackgroundService, IMayorService
     private async Task InitMayors()
     {
         var mayors = await electionPeriodsApi.ElectionPeriodRangeGetAsync(0, System.DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        if(mayors == null)
+            return;
         foreach (var mayor in mayors)
         {
             YearToMayorName[mayor.Year] = mayor.Winner.Name;

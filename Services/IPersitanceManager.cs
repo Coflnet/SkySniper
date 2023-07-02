@@ -8,5 +8,7 @@ namespace Coflnet.Sky.Sniper.Services
     {
         Task LoadLookups(SniperService service);
         Task SaveLookup(ConcurrentDictionary<string, PriceLookup> lookups);
+        Task<ConcurrentDictionary<string, AttributeLookup>> GetWeigths();
+        Task SaveWeigths(ConcurrentDictionary<string, AttributeLookup> lookups);
     }
 }

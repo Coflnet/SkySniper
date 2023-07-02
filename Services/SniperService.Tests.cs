@@ -872,12 +872,22 @@ namespace Coflnet.Sky.Sniper.Services
 
     public class MockPersistenceManager : IPersitanceManager
     {
+        public Task<ConcurrentDictionary<string, AttributeLookup>> GetWeigths()
+        {
+            return Task.FromResult(new ConcurrentDictionary<string, AttributeLookup>());
+        }
+
         public Task LoadLookups(SniperService service)
         {
             return Task.CompletedTask;
         }
 
         public Task SaveLookup(ConcurrentDictionary<string, PriceLookup> lookups)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task SaveWeigths(ConcurrentDictionary<string, AttributeLookup> lookups)
         {
             return Task.CompletedTask;
         }

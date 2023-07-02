@@ -6,6 +6,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Models;
+using MessagePack;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Coflnet.Sky.Sniper.Services;
@@ -17,13 +19,17 @@ public class PartialCalcService
     private PropertyMapper Mapper = new();
     private ICraftCostService CraftCostService = null!;
     private IMayorService mayorService = null!;
+    private IPersitanceManager persitanceManager = null!;
+    private ILogger<PartialCalcService> logger = null!;
     private double adjustRate = 0.07;
 
-    public PartialCalcService(ConcurrentDictionary<string, PriceLookup> lookups, ICraftCostService craftCostService, IMayorService mayorService)
+    public PartialCalcService(SniperService sniper, ICraftCostService craftCostService, IMayorService mayorService, IPersitanceManager persitanceManager, ILogger<PartialCalcService> logger)
     {
-        Lookups = lookups;
+        Lookups = sniper.Lookups;
         CraftCostService = craftCostService;
         this.mayorService = mayorService;
+        this.persitanceManager = persitanceManager;
+        this.logger = logger;
     }
 
     public Dictionary<string, Dictionary<object, double>> GetAttributeCosts(string tag)
@@ -129,7 +135,7 @@ public class PartialCalcService
                     throw new Exception("should not reach");
                     return 10000;
                 });
-            var percentOfdifference = cost / estimation;
+            var percentOfdifference = Math.Abs(cost / estimation);
             if (mod.Key == "exp_expGroup" && (double)mod.Value == 4 && auction.Tag == "PET_BLUE_WHALE")
             {
                 Console.WriteLine($"changing by {perItemChange * percentOfdifference} {percentOfdifference} {cost} {estimation} {perItemChange} on {auction.Uuid}");
@@ -216,8 +222,8 @@ public class PartialCalcService
                             return apiPrice * 0.8;
                         }
                     }
-                    if(key == "mayor")
-                        return 10;
+                    if (key == "mayor")
+                        return 1;
                     return 100000;
                 });
             if (cost == double.NaN || cost < -1000000000 || cost > 1000000000)
@@ -273,11 +279,14 @@ public class PartialCalcService
             {
                 foreach (var val in attrib.Value)
                 {
+                    var value = attrib.Value[val.Key];
+                    if(value == 0)
+                        value = 1.1;
                     if (TryGetItemCost(attrib.Key, val.Key, out double price))
                     {
-                        if (price < val.Value)
+                        if (price < val.Value && price > 200_000)
                             Console.WriteLine($"Capping {attrib.Key} {val.Key} at {price} from {val.Value}");
-                        attrib.Value[val.Key] = Math.Min(price, val.Value);
+                        value = Math.Min(price * 0.99, val.Value);
                     }
                     else if (attrib.Key.StartsWith("ench.") || Constants.AttributeKeys.Contains(attrib.Key))
                     {
@@ -288,7 +297,7 @@ public class PartialCalcService
                             if (higherVal < val.Value * 2)
                             {
                                 Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherVal / 2} from {val.Value}");
-                                attrib.Value[val.Key] = higherVal / 2;
+                                value = higherVal / 2;
                             }
                         }
                         if (attrib.Value.TryGetValue((byte)(level + 2), out var higherVal2lvl))
@@ -296,11 +305,13 @@ public class PartialCalcService
                             if (higherVal2lvl < val.Value * 4)
                             {
                                 Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherVal / 4} from {val.Value}");
-                                attrib.Value[val.Key] = higherVal / 3;
+                                value = higherVal / 3;
                             }
                         }
 
                     }
+                    if (value != 0)
+                        attrib.Value[val.Key] = value;
                 }
             }
         }
@@ -359,7 +370,7 @@ public class PartialCalcService
 
     private bool TryGetItemCost(string s, out double value)
     {
-        if (Lookups.TryGetValue(s, out var lookup) && lookup.Lookup.Count > 0 && lookup.Lookup.First().Value.Price > 0)
+        if (Lookups.TryGetValue(s, out var lookup) && lookup?.Lookup != null && lookup.Lookup.Count > 0 && lookup.Lookup.First().Value?.Price > 0)
         {
             value = lookup.Lookup.First().Value.Price;
             return true;
@@ -383,10 +394,30 @@ public class PartialCalcService
     {
         adjustRate = v;
     }
+
+    internal Task Save()
+    {
+        return persitanceManager.SaveWeigths(AttributeLookups);
+    }
+
+    internal async Task Load()
+    {
+        try
+        {
+            AttributeLookups = await persitanceManager.GetWeigths();
+            logger.LogInformation($"Loaded {AttributeLookups.Sum(s=>s.Value.Values.Count)} partial weigths");
+        }
+        catch (System.Exception e)
+        {
+            logger.LogInformation(e, "Could not load weigths");
+        }
+    }
 }
 
+[MessagePackObject]
 public class AttributeLookup
 {
+    [Key(0)]
     public ConcurrentDictionary<string, ConcurrentDictionary<object, double>> Values = new();
 
 

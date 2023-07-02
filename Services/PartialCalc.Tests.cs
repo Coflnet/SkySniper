@@ -1,5 +1,6 @@
 using System;
 using Coflnet.Sky.Core;
+using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
 using NUnit.Framework;
 
@@ -28,7 +29,7 @@ public class PartialCalcTests
     public void Setup()
     {
         sniper = new SniperService();
-        Service = new PartialCalcService(sniper.Lookups, new CraftcostMock(), new MayorMock());
+        Service = new PartialCalcService(sniper, new CraftcostMock(), new MayorMock(), new MockPersistenceManager(), NullLogger<PartialCalcService>.Instance);
         AddSell(new SaveAuction()
         {
             Tag = "CLEAN",
