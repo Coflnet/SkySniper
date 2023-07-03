@@ -1101,6 +1101,14 @@ ORDER BY l.`AuctionId`  DESC;
                     extraValue += prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price);
                 }
             }
+            long gemValue = GetGemValue(auction, key);
+            extraValue += gemValue;
+
+            return extraValue;
+        }
+
+        public long GetGemValue(SaveAuction auction, AuctionKey key)
+        {
             var gemValue = 0L;
             foreach (var item in auction.FlatenedNBT)
             {
@@ -1122,9 +1130,8 @@ ORDER BY l.`AuctionId`  DESC;
                     if (Lookups.TryGetValue(gemkey, out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
                         gemValue += gemLookup.Lookup.Values.First().Price - 100_000;
             }
-            extraValue += gemValue;
 
-            return extraValue;
+            return gemValue;
         }
 
         private bool FindFlip(SaveAuction auction, double lbinPrice, double minMedPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue = 0)

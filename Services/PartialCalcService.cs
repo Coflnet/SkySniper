@@ -22,10 +22,12 @@ public class PartialCalcService
     private IPersitanceManager persitanceManager = null!;
     private ILogger<PartialCalcService> logger = null!;
     private double adjustRate = 0.07;
+    private SniperService sniper;
 
     public PartialCalcService(SniperService sniper, ICraftCostService craftCostService, IMayorService mayorService, IPersitanceManager persitanceManager, ILogger<PartialCalcService> logger)
     {
         Lookups = sniper.Lookups;
+        this.sniper = sniper;
         CraftCostService = craftCostService;
         this.mayorService = mayorService;
         this.persitanceManager = persitanceManager;
@@ -75,6 +77,11 @@ public class PartialCalcService
 
         result.Price = (long)GetValueOf(item.OriginalItem.Tag, attribs, item.Flatten, breakDown);
 
+        var gemValue =  sniper.GetGemValue(auction, new());
+        result.Price += gemValue;
+        if(gemValue > 0)
+            breakDown?.Add($"Gems: {gemValue}");
+
         return result;
     }
 
@@ -95,7 +102,7 @@ public class PartialCalcService
         if (adjustRate > 0.01 && Random.Shared.NextDouble() < 0.05 && modifiers.Count > 2)
             modifiers.Remove(modifiers.OrderBy(x => Random.Shared.Next()).First().Key);
         double estimation = GetValueOf(auction.Tag, attribs, modifiers);
-        var difference = auction.HighestBidAmount - estimation;
+        var difference = auction.HighestBidAmount - sniper.GetGemValue(auction, new()) - estimation;
         var reduction = 4;
         if (modifiers.Count < 3)
             reduction = 2;

@@ -29,6 +29,7 @@ namespace Coflnet.Sky.Sniper.Services
         private IMayorService mayorService;
 
         private ILogger<InternalDataLoader> logger;
+        private IProducer<string, LowPricedAuction> FlipProducer;
 
         Prometheus.Counter foundFlipCount = Prometheus.Metrics
                     .CreateCounter("sky_sniper_found_flips", "Number of flips found");
@@ -98,24 +99,29 @@ namespace Coflnet.Sky.Sniper.Services
         private async Task StartProducer(CancellationToken stoppingToken)
         {
             await kafkaCreator.CreateTopicIfNotExist(LowPricedAuctionTopic);
-            using var lpp = kafkaCreator.BuildProducer<string, LowPricedAuction>(true, pb => pb);
+            FlipProducer = kafkaCreator.BuildProducer<string, LowPricedAuction>(true, pb => pb);
             sniper.FoundSnipe += flip =>
             {
-                if (flip.Auction.Context != null)
-                    flip.Auction.Context["fsend"] = (DateTime.UtcNow - flip.Auction.FindTime).ToString();
-                lpp.Produce(LowPricedAuctionTopic, new Message<string, LowPricedAuction>()
-                {
-                    Key = flip.Auction.Uuid,
-                    Value = flip
-                });
-                foundFlipCount.Inc();
+                Produceflip(flip, FlipProducer);
             };
             while (!stoppingToken.IsCancellationRequested)
             {
                 await Task.Delay(2000);
             }
+            FlipProducer.Dispose();
         }
 
+        private void Produceflip(LowPricedAuction flip, IProducer<string, LowPricedAuction> lpp)
+        {
+            if (flip.Auction.Context != null)
+                flip.Auction.Context["fsend"] = (DateTime.UtcNow - flip.Auction.FindTime).ToString();
+            lpp.Produce(LowPricedAuctionTopic, new Message<string, LowPricedAuction>()
+            {
+                Key = flip.Auction.Uuid,
+                Value = flip
+            });
+            foundFlipCount.Inc();
+        }
 
         private async Task ConsumeNewAuctions(CancellationToken stoppingToken)
         {
@@ -137,6 +143,7 @@ namespace Coflnet.Sky.Sniper.Services
                             try
                             {
                                 sniper.TestNewAuction(a);
+                                CheckForPartial(a);
                             }
                             catch (Exception e)
                             {
@@ -151,6 +158,21 @@ namespace Coflnet.Sky.Sniper.Services
                     logger.LogError(e, "consuming new auction");
                 }
             logger.LogError("done with consuming");
+        }
+
+        private void CheckForPartial(SaveAuction a)
+        {
+            var breakdwon = partialCalcService.GetPrice(a, true);
+            if (breakdwon.Price > a.StartingBid * 1.5 && breakdwon.Price - a.StartingBid > 3_000_000)
+            {
+                Produceflip(new LowPricedAuction()
+                {
+                    Auction = a,
+                    AdditionalProps = new() { { "breakdwon", string.Join(',', breakdwon.BreakDown) } },
+                    Finder = LowPricedAuction.FinderType.AI,
+                    TargetPrice = (long)(breakdwon.Price * 0.8)
+                }, FlipProducer);
+            }
         }
 
         private async Task LoadActiveAuctions(CancellationToken stoppingToken)
