@@ -315,6 +315,8 @@ public class PartialCalcService
                                 value = higherVal / 3;
                             }
                         }
+                        if(attrib.Key.StartsWith("ench.telekinesis"))
+                            value = 100;
 
                     }
                     if (value != 0)
@@ -461,6 +463,7 @@ public class ItemBreakDown
         Flatten.Remove("candyUsed");
         Flatten.Remove("dungeon_skill_req");
         Flatten.Remove("item_durability");
+        Flatten.Remove("compact_blocks");
         foreach (var attrib in Flatten.OrderBy(x => x.Key).ToList())
         {
             if (!Constants.AttributeKeys.Contains(attrib.Key))

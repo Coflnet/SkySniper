@@ -319,15 +319,15 @@ namespace Coflnet.Sky.Sniper.Services
             var testAuctions = sold.Where(a => a.FlatenedNBT.Count > 3 && a.FlatenedNBT.GetValueOrDefault("exp") != "0" || Random.Shared.NextDouble() < 0.05).Reverse().Take(3);
             sold = sold.Where(s => s != testAuctions).ToList();
             //ApplyData(sold, 0.2);
-            ApplyData(sold, 0.3);
-            for (int i = 0; i < 50; i++)
+            for (int i = 0; i < 5; i++)
             {
-                ApplyData(sold, 0.23);
+                ApplyData(sold, 0.13);
             }
             sold = sold.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(30)).ToList();
-            ApplyData(sold, 0.69);
+            if(sold.Count == 0)
+                return;
             ApplyData(sold, 0.28);
-            for (int i = 0; i < 50; i++)
+            for (int i = 0; i < 5; i++)
             {
                 ApplyData(sold, 0.23);
             }
