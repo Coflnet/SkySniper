@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Coflnet.Sky.Mayor.Client.Api;
 using Coflnet.Sky.Core;
 using System;
+using Microsoft.Extensions.Logging;
 
 namespace Coflnet.Sky.Sniper.Services;
 
@@ -18,11 +19,13 @@ public class MayorService : BackgroundService, IMayorService
     private Dictionary<int, string> YearToMayorName = new();
     private Mayor.Client.Api.IMayorApi mayorApi;
     private IElectionPeriodsApi electionPeriodsApi;
+    private readonly ILogger<MayorService> logger;
 
-    public MayorService(IMayorApi mayorApi, IElectionPeriodsApi electionPeriodsApi)
+    public MayorService(IMayorApi mayorApi, IElectionPeriodsApi electionPeriodsApi, ILogger<MayorService> logger)
     {
         this.mayorApi = mayorApi;
         this.electionPeriodsApi = electionPeriodsApi;
+        this.logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -31,18 +34,27 @@ public class MayorService : BackgroundService, IMayorService
         while (!stoppingToken.IsCancellationRequested)
         {
             var year = (int)Constants.SkyblockYear(DateTime.UtcNow);
-            var mayor = await electionPeriodsApi.ElectionPeriodYearGetAsync(year);
-            if (mayor?.Winner != null)
-                YearToMayorName[year] = mayor.Winner.Name;
-            await Task.Delay(1000 * 60 * 60, stoppingToken);
+            await LoadMayorForYear(year);
+            await LoadMayorForYear(year - 1);
+            await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
         }
+    }
+
+    private async Task LoadMayorForYear(int year)
+    {
+        var mayor = await electionPeriodsApi.ElectionPeriodYearGetAsync(year);
+        if (mayor?.Winner != null)
+            YearToMayorName[year] = mayor.Winner.Name;
     }
 
     private async Task InitMayors()
     {
         var mayors = await electionPeriodsApi.ElectionPeriodRangeGetAsync(0, System.DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-        if(mayors == null)
+        if (mayors == null)
+        {
+            logger.LogError("Failed to load mayors");
             return;
+        }
         foreach (var mayor in mayors)
         {
             YearToMayorName[mayor.Year] = mayor.Winner.Name;
