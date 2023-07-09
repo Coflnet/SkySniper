@@ -927,6 +927,10 @@ ORDER BY l.`AuctionId`  DESC;
                         }
                         if (!closests.Any())
                             return;
+                        if (ShouldIgnoreMostSimilar(auction))
+                        {
+                            return;
+                        }
                         bucket = closests.FirstOrDefault().Value;
                         key = closests.FirstOrDefault().Key;
                         if (bucket.HitsSinceCalculating > 8)
@@ -962,6 +966,11 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 TryFindClosestRisky(auction, l, ref lbinPrice, ref medPrice);
             }
+        }
+
+        private static bool ShouldIgnoreMostSimilar(SaveAuction auction)
+        {
+            return auction.Tag.StartsWith("RUNE_");
         }
 
         private void TryFindClosestRisky(SaveAuction auction, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, ref double lbinPrice, ref double medPrice)

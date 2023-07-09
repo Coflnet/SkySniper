@@ -742,6 +742,21 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void DoNotUseHigherLevelRune()
+        {
+            highestValAuction.FlatenedNBT = new() { { "MUSIC", "1" } };
+            highestValAuction.Tag = "RUNE_MUSIC";
+            var higherLevel = Dupplicate(highestValAuction);
+            higherLevel.FlatenedNBT["MUSIC"] = "3";
+            higherLevel.HighestBidAmount = 100_000_000;
+            AddVolume(higherLevel);
+            service.State = SniperState.Ready;
+            service.FinishedUpdate();
+            service.TestNewAuction(highestValAuction);
+            Assert.AreEqual(0, found.Count, "should not use raw rune");
+        }
+
+        [Test]
         public void AttributeCombination()
         {
             highestValAuction.FlatenedNBT = new() { { "mana_pool", "7" } };
