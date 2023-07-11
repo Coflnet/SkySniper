@@ -421,6 +421,20 @@ public class PartialCalcService
             logger.LogInformation(e, "Could not load weigths");
         }
     }
+
+    internal void Correct(string itemTag, Dictionary<string, Dictionary<object, double>> corrections)
+    {
+        foreach (var attrib in corrections)
+        {
+            foreach (var val in attrib.Value)
+            {
+                if(!AttributeLookups.GetOrAdd(itemTag, _ => new()).Values.TryGetValue(attrib.Key, out var dictionary))
+                    continue;
+                dictionary[val.Key] = val.Value;
+                logger.LogInformation($"Corrected {itemTag} {attrib.Key} {val.Key} to {val.Value}");
+            }
+        }
+    }
 }
 
 [MessagePackObject]

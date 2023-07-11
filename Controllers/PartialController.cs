@@ -31,7 +31,21 @@ public class PartialController
         return res;
     }
     [HttpGet]
-    [Route("partial/{uuid}")]
+    [Route("tag/{itemTag}")]
+    public Dictionary<string, Dictionary<object, double>> GetAttributeCosts(string itemTag)
+    {
+        return partialCalcService.GetAttributeCosts(itemTag);
+    }
+    [HttpPost]
+    [Route("tag/{itemTag}/correct")]
+    public async Task<Dictionary<string, Dictionary<object, double>>> Correct(string itemTag, [FromBody] Dictionary<string, Dictionary<object, double>> corrections)
+    {
+        partialCalcService.Correct(itemTag, corrections);
+        await partialCalcService.Save();
+        return partialCalcService.GetAttributeCosts(itemTag);
+    }
+    [HttpGet]
+    [Route("uuid/{uuid}")]
     public async Task<PartialCalcService.PartialResult> GetBreakDown(string uuid)
     {
         var uid = AuctionService.Instance.GetId(uuid);
