@@ -274,12 +274,8 @@ namespace Coflnet.Sky.Sniper.Services
         {
             var context = new HypixelContext();
             using var scope = logger.BeginScope("partial analysis");
-            Console.WriteLine("loading aote from db");
-            var id = await context.Items.Where(i => i.Tag == targetTag).Select(i => i.Id).FirstOrDefaultAsync();
-            if (targetTag.StartsWith("CRIMSON"))
-                id = 4526;
-            if (targetTag.StartsWith("MOLTEN"))
-                id = 4200;
+            logger.LogInformation("loading aote from db");
+            var id = ItemDetails.Instance.GetItemIdForTag(targetTag);
 
             for (var start = DateTime.Now - TimeSpan.FromDays(300); start < DateTime.Now; start += TimeSpan.FromDays(10))
             {
@@ -287,22 +283,7 @@ namespace Coflnet.Sky.Sniper.Services
                 await LoadpartialBatch(context, id, start, end, stoppinToken);
                 logger.LogInformation(Newtonsoft.Json.JsonConvert.SerializeObject(partialCalcService.GetAttributeCosts(targetTag), Newtonsoft.Json.Formatting.Indented));
             }
-            /* try
-             {
-                 foreach (var item in testAuctions)
-                 {
-                     PrintTestAuctionData(sold, item);
-                 }
-             }
-             catch (System.Exception e)
-             {
-                 logger.LogError(e, "printing test auction");
-             }
-             foreach (var item in sold)
-             {
-                 if (item.FlatenedNBT.TryGetValue("color", out var val) && val == "252:243:255")
-                     Console.WriteLine($"Sold for {item.HighestBidAmount} {item.End} {item.Uuid}");
-             }*/
+
             return partialCalcService.GetAttributeCosts(targetTag);
         }
 
