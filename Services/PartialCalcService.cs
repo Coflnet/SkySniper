@@ -77,9 +77,9 @@ public class PartialCalcService
 
         result.Price = (long)GetValueOf(item.OriginalItem.Tag, attribs, item.Flatten, breakDown);
 
-        var gemValue =  sniper.GetGemValue(auction, new());
+        var gemValue = sniper.GetGemValue(auction, new());
         result.Price += gemValue;
-        if(gemValue > 0)
+        if (gemValue > 0)
             breakDown?.Add($"Gems: {gemValue}");
 
         return result;
@@ -287,7 +287,7 @@ public class PartialCalcService
                 foreach (var val in attrib.Value)
                 {
                     var value = attrib.Value[val.Key];
-                    if(value == 0)
+                    if (value == 0)
                         value = 1.1;
                     if (TryGetItemCost(attrib.Key, val.Key, out double price))
                     {
@@ -297,33 +297,50 @@ public class PartialCalcService
                     }
                     else if (attrib.Key.StartsWith("ench.") || Constants.AttributeKeys.Contains(attrib.Key))
                     {
-                        // each higher level is at most double the lower level
-                        var level = GetNumeric(val.Key);
-                        if (attrib.Value.TryGetValue((byte)(level + 1), out var higherVal))
+                        value = CapAtExponetialGrowth(attrib, val, value);
+                    }
+                    else if (attrib.Key == "tier")
+                    {
+                        // higher tier can't be cheaper
+                        if (Enum.TryParse<Tier>(val.Key.ToString(), true, out var tier) && attrib.Value.TryGetValue(tier + 1, out var higherTier))
                         {
-                            if (higherVal < val.Value * 2)
+                            if (higherTier < val.Value)
                             {
-                                Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherVal / 2} from {val.Value}");
-                                value = higherVal / 2;
+                                Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherTier} from {val.Value} on {item.Key}");
+                                value = higherTier;
                             }
                         }
-                        if (attrib.Value.TryGetValue((byte)(level + 2), out var higherVal2lvl))
-                        {
-                            if (higherVal2lvl < val.Value * 4)
-                            {
-                                Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherVal / 4} from {val.Value}");
-                                value = higherVal / 3;
-                            }
-                        }
-                        if(attrib.Key.StartsWith("ench.telekinesis"))
-                            value = 100;
-
                     }
                     if (value != 0)
                         attrib.Value[val.Key] = value;
                 }
             }
         }
+    }
+
+    private static double CapAtExponetialGrowth(KeyValuePair<string, ConcurrentDictionary<object, double>> attrib, KeyValuePair<object, double> val, double value)
+    {
+        // each higher level is at most double the lower level
+        var level = GetNumeric(val.Key);
+        if (attrib.Value.TryGetValue((byte)(level + 1), out var higherVal))
+        {
+            if (higherVal < val.Value * 2)
+            {
+                Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherVal / 2} from {val.Value}");
+                value = higherVal / 2;
+            }
+        }
+        else if (attrib.Value.TryGetValue((byte)(level + 2), out var higherVal2lvl))
+        {
+            if (higherVal2lvl < val.Value * 4)
+            {
+                Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherVal / 4} from {val.Value}");
+                value = higherVal / 3;
+            }
+        }
+        if (attrib.Key.StartsWith("ench.telekinesis"))
+            value = 100;
+        return value;
     }
 
     private bool TryGetItemCost(string key, object val, out double price)
@@ -414,7 +431,7 @@ public class PartialCalcService
         try
         {
             AttributeLookups = await persitanceManager.GetWeigths();
-            logger.LogInformation($"Loaded {AttributeLookups.Sum(s=>s.Value.Values.Count)} partial weigths");
+            logger.LogInformation($"Loaded {AttributeLookups.Sum(s => s.Value.Values.Count)} partial weigths");
         }
         catch (System.Exception e)
         {
@@ -428,7 +445,7 @@ public class PartialCalcService
         {
             foreach (var val in attrib.Value)
             {
-                if(!AttributeLookups.GetOrAdd(itemTag, _ => new()).Values.TryGetValue(attrib.Key, out var dictionary))
+                if (!AttributeLookups.GetOrAdd(itemTag, _ => new()).Values.TryGetValue(attrib.Key, out var dictionary))
                     continue;
                 dictionary[val.Key] = val.Value;
                 logger.LogInformation($"Corrected {itemTag} {attrib.Key} {val.Key} to {val.Value}");

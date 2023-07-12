@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Coflnet.Sky.Crafts.Client.Api;
 using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
+using System;
 
 namespace Coflnet.Sky.Sniper.Services;
 
@@ -29,6 +30,12 @@ public class CraftCostService : BackgroundService, ICraftCostService
         while (!stoppingToken.IsCancellationRequested)
         {
             var all = await craftsApi.CraftsAllGetAsync();
+            if(all == null)
+            {
+                logger.LogError("Crafts api returned null");
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                continue;
+            }
             foreach (var craft in all)
             {
                 costs[craft.ItemId] = craft.CraftCost;
@@ -36,7 +43,7 @@ public class CraftCostService : BackgroundService, ICraftCostService
                     logger.LogInformation("Cost for " + craft.ItemId + " is " + craft.CraftCost);
             }
             logger.LogInformation("Updated craft costs for " + all.Count + " items");
-            await Task.Delay(1000 * 60, stoppingToken);
+            await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
         }
     }
 
