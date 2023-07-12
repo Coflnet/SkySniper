@@ -102,7 +102,7 @@ public class PartialCalcService
         if (adjustRate > 0.01 && Random.Shared.NextDouble() < 0.05 && modifiers.Count > 2)
             modifiers.Remove(modifiers.OrderBy(x => Random.Shared.Next()).First().Key);
         double estimation = GetValueOf(auction.Tag, attribs, modifiers);
-        var difference = auction.HighestBidAmount - sniper.GetGemValue(auction, new()) - estimation;
+        var difference = GetItemSellValue(auction) - sniper.GetGemValue(auction, new()) - estimation;
         var reduction = 4;
         if (modifiers.Count < 3)
             reduction = 2;
@@ -155,6 +155,13 @@ public class PartialCalcService
             else
                 attribs.Values[mod.Key][mod.Value] = Math.Clamp(cost, 10, 800_000_000);
         }
+    }
+
+    private static long GetItemSellValue(SaveAuction auction)
+    {
+        if (auction.Count > 1)
+            return auction.HighestBidAmount / auction.Count;
+        return auction.HighestBidAmount;
     }
 
     private double GetValueOf(string tag, AttributeLookup attribs, Dictionary<string, object> modifiers, List<string>? breakDown = null)
@@ -477,7 +484,20 @@ public class ItemBreakDown
         {
             this.Flatten[$"ench.{ench.Key.ToLower()}"] = ench.Value;
         }
+        RecordSpecialCount(item.Count);
         Preprocess();
+    }
+
+    private void RecordSpecialCount(byte count)
+    {
+        if (count == 64)
+            this.Flatten["count"] = 64;
+        else if (count >= 32)
+            this.Flatten["count"] = 32;
+        else if (count >= 16)
+            this.Flatten["count"] = 16;
+        else if (count >= 8)
+            this.Flatten["count"] = 8;
     }
 
     private void Preprocess()
@@ -547,6 +567,7 @@ public class ItemBreakDown
         {
             this.Flatten[$"ench.{ench.Type.ToString().ToLower()}"] = ench.Level;
         }
+        RecordSpecialCount((byte)auction.Count);
         Flatten["mayor"] = mayor;
         Preprocess();
     }
