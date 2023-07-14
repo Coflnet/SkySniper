@@ -71,6 +71,7 @@ namespace Coflnet.Sky.Sniper.Services
                 {
                     await LoadActiveAuctions(stoppingToken).ConfigureAwait(false);
                     await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken).ConfigureAwait(false);
+                    await partialCalcService.Load();
                 }
             });
             Task soldAuctions = LoadLookupsAndProcessSells(stoppingToken);
@@ -305,7 +306,7 @@ namespace Coflnet.Sky.Sniper.Services
                 ApplyData(sold, 0.13);
             }
             sold = sold.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(30)).ToList();
-            if(sold.Count == 0)
+            if (sold.Count == 0)
                 return;
             ApplyData(sold, 0.28);
             for (int i = 0; i < 5; i++)
