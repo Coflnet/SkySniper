@@ -163,15 +163,15 @@ namespace Coflnet.Sky.Sniper.Services
 
         private void CheckForPartial(SaveAuction a)
         {
-            var breakdwon = partialCalcService.GetPrice(a, true);
-            if (breakdwon.Price > a.StartingBid * 1.5 && breakdwon.Price - a.StartingBid > 3_000_000)
+            var breakdown = partialCalcService.GetPrice(a, true);
+            if (breakdown.Price > a.StartingBid * 1.5 && breakdown.Price - a.StartingBid > 3_000_000)
             {
                 Produceflip(new LowPricedAuction()
                 {
                     Auction = a,
-                    AdditionalProps = new() { { "breakdwon", string.Join(',', breakdwon.BreakDown) } },
+                    AdditionalProps = new() { { "breakdown", string.Join('\n', breakdown.BreakDown) } },
                     Finder = LowPricedAuction.FinderType.AI,
-                    TargetPrice = (long)(breakdwon.Price * 0.8)
+                    TargetPrice = (long)(breakdown.Price * 0.8)
                 }, FlipProducer);
             }
         }
@@ -313,10 +313,10 @@ namespace Coflnet.Sky.Sniper.Services
             batch = batch.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(30)).ToList();
             if (batch.Count == 0)
                 return newSample;
-            ApplyData(batch, 0.28);
+            ApplyData(batch, 0.18);
             for (int i = 0; i < 5; i++)
             {
-                ApplyData(batch, 0.23);
+                ApplyData(batch, 0.13);
             }
             for (int i = 0; i < 50; i++)
             {
