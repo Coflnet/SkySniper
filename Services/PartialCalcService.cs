@@ -309,7 +309,7 @@ public class PartialCalcService
                     else if (attrib.Key == "tier")
                     {
                         // higher tier can't be cheaper
-                        if (Enum.TryParse<Tier>(val.Key.ToString(), true, out var tier) && attrib.Value.TryGetValue(tier + 1, out var higherTier))
+                        if (Enum.TryParse<Tier>(val.Key.ToString(), true, out var tier) && attrib.Value.TryGetValue((tier + 1).ToString(), out var higherTier))
                         {
                             if (higherTier < val.Value)
                             {

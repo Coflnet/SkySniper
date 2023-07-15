@@ -130,6 +130,36 @@ public class PartialCalcTests
         Assert.Greater(result.Price, 5_000_000);
     }
 
+    [Test]
+    public void CapTier()
+    {
+        var item = new Item()
+        {
+            Tag = "CLEAN",
+            ExtraAttributes = new()
+            {
+                { "tier", "EPIC" }
+            },
+        };
+        Service.SetLearningRate(0.1);
+        AddSell(new SaveAuction()
+        {
+            Tag = "CLEAN",
+            Tier = Tier.EPIC,
+            HighestBidAmount = 19000000
+        }, 100);
+        AddSell(new SaveAuction()
+        {
+            Tag = "CLEAN",
+            Tier = Tier.LEGENDARY,
+            HighestBidAmount = 600000
+        }, 100);
+        Service.CapAtCraftCost();
+        var result = Service.GetPrice(item, true);
+        Console.WriteLine(string.Join("\n", result.BreakDown));
+        Assert.Greater(600000, result.Price);
+    }
+
     private void AddSell(SaveAuction sell, int volume = 1)
     {
         for (int i = 0; i < 4; i++)
