@@ -227,12 +227,12 @@ namespace Coflnet.Sky.Sniper.Services
 
         private async Task LoadSellHistory(CancellationToken stoppinToken)
         {
+            await Task.Delay(TimeSpan.FromSeconds(10), stoppinToken);
             var maxId = 0;
             using (var context = new HypixelContext())
             {
                 maxId = await context.Auctions.MaxAsync(a => a.Id);
             }
-
 
             var batchSize = 20_000;
             var totalSize = 15_000_000;

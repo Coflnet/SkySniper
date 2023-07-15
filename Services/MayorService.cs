@@ -44,7 +44,8 @@ public class MayorService : BackgroundService, IMayorService
     {
         var mayor = await electionPeriodsApi.ElectionPeriodYearGetAsync(year);
         if (mayor?.Winner != null)
-            YearToMayorName[year] = mayor.Winner.Name;
+            YearToMayorName[mayor.Year] = mayor.Winner.Name;
+        logger.LogInformation("Loaded mayor for year " + year + " " + mayor?.Winner?.Name);
     }
 
     private async Task InitMayors()
@@ -59,6 +60,8 @@ public class MayorService : BackgroundService, IMayorService
         {
             YearToMayorName[mayor.Year] = mayor.Winner.Name;
         }
+        logger.LogInformation("Loaded " + mayors.Count + " mayors");
+        logger.LogInformation("Current mayor is " + GetMayor(DateTime.UtcNow));
     }
 
     public string GetMayor(DateTime time)

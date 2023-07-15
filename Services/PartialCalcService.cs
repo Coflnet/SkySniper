@@ -70,7 +70,7 @@ public class PartialCalcService
         if (includeBreakDown)
             result.BreakDown = new();
         var breakDown = result.BreakDown;
-        var item = new ItemBreakDown(auction, mayorService.GetMayor(auction.End));
+        var item = new ItemBreakDown(auction, mayorService.GetMayor(DateTime.UtcNow));
         if (!Lookups.TryGetValue(item.OriginalItem.Tag, out var cleanItemLookup))
             return result;
         var attribs = AttributeLookups.GetOrAdd(item.OriginalItem.Tag, tag => new());
