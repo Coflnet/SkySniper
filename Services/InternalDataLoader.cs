@@ -278,45 +278,51 @@ namespace Coflnet.Sky.Sniper.Services
             logger.LogInformation("loading aote from db");
             var id = ItemDetails.Instance.GetItemIdForTag(targetTag);
 
+            var samples = new List<SaveAuction>();
             for (var start = DateTime.Now - TimeSpan.FromDays(300); start < DateTime.Now; start += TimeSpan.FromDays(10))
             {
                 var end = start + TimeSpan.FromDays(10);
-                await LoadpartialBatch(context, id, start, end, stoppinToken);
+                samples.AddRange(await LoadpartialBatch(context, id, start, end, stoppinToken, samples));
                 logger.LogInformation(Newtonsoft.Json.JsonConvert.SerializeObject(partialCalcService.GetAttributeCosts(targetTag), Newtonsoft.Json.Formatting.Indented));
+                if(samples.Count > 1200)
+                {
+                    samples = samples.OrderBy(s => Random.Shared.NextDouble()).Take(1200).ToList();
+                }
             }
 
             return partialCalcService.GetAttributeCosts(targetTag);
         }
 
-        private async Task LoadpartialBatch(HypixelContext context, int id, DateTime start, DateTime end, CancellationToken stoppinToken)
+        private async Task<List<SaveAuction>> LoadpartialBatch(HypixelContext context, int id, DateTime start, DateTime end, CancellationToken stoppinToken, List<SaveAuction> lastSample)
         {
-            var sold = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
+            var batch = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
                         .Where(a => a.End > start && a.End < end && a.Bin && a.HighestBidAmount > 0 && id == a.ItemId)
                         .Take(20_000)
                         .AsNoTracking()
                         .ToListAsync(stoppinToken);
             Console.WriteLine("applying aote");
             // filter underpriced ones
-            sold = sold.Where(s => s.End - s.Start > TimeSpan.FromMinutes(2) && s.StartingBid != 0).ToList();
-            var testAuctions = sold.Where(a => a.FlatenedNBT.Count > 3 && a.FlatenedNBT.GetValueOrDefault("exp") != "0" || Random.Shared.NextDouble() < 0.05).Reverse().Take(3);
-            sold = sold.Where(s => s != testAuctions).ToList();
+            batch = batch.Where(s => s.End - s.Start > TimeSpan.FromMinutes(2) && s.StartingBid != 0).ToList();
+            var newSample = batch.OrderBy(s => Random.Shared.NextDouble()).Take(100).ToList();
+            batch = batch.Concat(lastSample).ToList();
             //ApplyData(sold, 0.2);
             for (int i = 0; i < 5; i++)
             {
-                ApplyData(sold, 0.13);
+                ApplyData(batch, 0.13);
             }
-            sold = sold.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(30)).ToList();
-            if (sold.Count == 0)
-                return;
-            ApplyData(sold, 0.28);
+            batch = batch.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(30)).ToList();
+            if (batch.Count == 0)
+                return newSample;
+            ApplyData(batch, 0.28);
             for (int i = 0; i < 5; i++)
             {
-                ApplyData(sold, 0.23);
+                ApplyData(batch, 0.23);
             }
             for (int i = 0; i < 50; i++)
             {
-                ApplyData(sold, 0.07);
+                ApplyData(batch, 0.07);
             }
+            return newSample;
         }
 
         private void PrintTestAuctionData(List<SaveAuction> sold, SaveAuction testAuction)
