@@ -284,7 +284,7 @@ namespace Coflnet.Sky.Sniper.Services
                 var end = start + TimeSpan.FromDays(10);
                 samples.AddRange(await LoadpartialBatch(context, id, start, end, stoppinToken, samples));
                 logger.LogInformation(Newtonsoft.Json.JsonConvert.SerializeObject(partialCalcService.GetAttributeCosts(targetTag), Newtonsoft.Json.Formatting.Indented));
-                if(samples.Count > 1200)
+                if (samples.Count > 1200)
                 {
                     samples = samples.OrderBy(s => Random.Shared.NextDouble()).Take(1200).ToList();
                 }
@@ -404,8 +404,11 @@ namespace Coflnet.Sky.Sniper.Services
                 if (!ShouldAuctionBeIncluded(item, references.References))
                     continue;
                 sniper.AddAuctionToBucket(item, true, references);
-                partialCalcService.AddSell(item);
             }
+            for (int i = 0; i < 5; i++)
+                foreach (var item in sold)
+                    partialCalcService.AddSell(item);
+
             Console.WriteLine($"Applied batch {batchStart} - {end}");
         }
 
