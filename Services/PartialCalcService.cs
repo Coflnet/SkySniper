@@ -331,7 +331,7 @@ public class PartialCalcService
         var level = GetNumeric(val.Key);
         if (attrib.Value.TryGetValue((byte)(level + 1), out var higherVal))
         {
-            if (higherVal < val.Value * 2)
+            if (higherVal < val.Value * 2 && higherVal > 1)
             {
                 Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherVal / 2} from {val.Value}");
                 value = higherVal / 2;
@@ -339,7 +339,7 @@ public class PartialCalcService
         }
         else if (attrib.Value.TryGetValue((byte)(level + 2), out var higherVal2lvl))
         {
-            if (higherVal2lvl < val.Value * 4)
+            if (higherVal2lvl < val.Value * 4 && higherVal > 1)
             {
                 Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherVal / 4} from {val.Value}");
                 value = higherVal / 3;
@@ -439,6 +439,22 @@ public class PartialCalcService
         {
             AttributeLookups = await persitanceManager.GetWeigths();
             logger.LogInformation($"Loaded {AttributeLookups.Sum(s => s.Value.Values.Count)} partial weigths");
+            foreach (var item in AttributeLookups)
+            {
+                foreach (var attrib in item.Value.Values)
+                {
+                    foreach (var val in attrib.Value.Keys)
+                    {
+                        if (val is string x)
+                            continue;
+                        if (!attrib.Value.TryGetValue(val.ToString() ?? "", out var _))
+                            continue;
+                        // remove invalid key
+                        attrib.Value.Remove(val, out _);
+                        logger.LogInformation($"Removed invalid key {item.Key} {attrib.Key} {val}");
+                    }
+                }
+            }
         }
         catch (System.Exception e)
         {
