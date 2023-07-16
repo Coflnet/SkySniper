@@ -42,14 +42,23 @@ public class RetrainService : BackgroundService
     {
         // optain lock 
         var db = redis.GetDatabase();
+        RedisValue token = Environment.MachineName;
         if (!(await db.KeyExistsAsync(streamName)) ||
             (await db.StreamGroupInfoAsync(streamName)).All(x => x.Name != groupName))
         {
             await db.StreamCreateConsumerGroupAsync(streamName, groupName, "0-0", true);
         }
+        var sub = redis.GetSubscriber();
+        sub.Subscribe("retrained", (channel, value) =>
+        {
+            // check if we are the one who retrained
+            if (value == Environment.MachineName)
+                return;
+            logger.LogInformation("Loading retrained from " + value);
+            _ = partialCalcService.Load();
+        });
         while (!stoppingToken.IsCancellationRequested)
         {
-            RedisValue token = Environment.MachineName;
             if (db.LockTake(streamName + "lock", token, TimeSpan.FromMinutes(10)))
             {
                 logger.LogInformation("Optained retrain lock");
@@ -114,6 +123,7 @@ public class RetrainService : BackgroundService
         if (lockInfo != Environment.MachineName)
             return;
         await partialCalcService.Save();
+        await db.PublishAsync("retrained", Environment.MachineName);
         logger.LogInformation($"Saved retrain results for {tag}");
     }
 }
