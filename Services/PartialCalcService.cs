@@ -220,8 +220,7 @@ public class PartialCalcService
                         return price / 2;
                     if (key == "skin")
                     {
-                        Console.WriteLine($"Skin {value}");
-                        return 50_000_000;
+                        return 40_000_000;
                     }
                     if (key == "heldItem")
                     {
@@ -233,12 +232,12 @@ public class PartialCalcService
                         if (apiPrice > 0)
                         {
                             Lookups[key] = new PriceLookup() { Lookup = new(new Dictionary<AuctionKey, ReferenceAuctions>() { { new(), new() { Price = (long)apiPrice } } }) };
-                            return apiPrice * 0.8;
+                            return apiPrice * 0.7;
                         }
                     }
                     if (key == "mayor")
                         return 1;
-                    return 100000;
+                    return 12000;
                 });
             if (cost == double.NaN || cost < -1000000000 || cost > 1000000000)
             {
@@ -556,6 +555,14 @@ public class ItemBreakDown
             }
             Flatten.Remove("ability_scroll");
         }
+        // normalize
+        foreach (var item in Flatten.Keys)
+        {
+            var kv = new KeyValuePair<string, string>(item, Flatten[item].ToString() ?? "");
+            var normalized = SniperService.NormalizeGeneral(kv, true, Convert.ToInt64(Flatten.GetValueOrDefault("exp", 0)));
+            if(normalized.Key != SniperService.Ignore.Key)
+                Flatten[normalized.Key] = normalized.Value;
+        }
     }
 
     public ItemBreakDown(SaveAuction auction, string mayor)
@@ -574,8 +581,6 @@ public class ItemBreakDown
                 this.Flatten["tier"] = auction.Tier.ToString();
             if (!this.Flatten.ContainsKey("modifier") && auction.Reforge != ItemReferences.Reforge.None)
                 this.Flatten["modifier"] = auction.Reforge.ToString().ToLower();
-            if (this.Flatten.TryGetValue("candyUsed", out var candy) && candy is int && (int)candy > 0)
-                this.Flatten["candyUsed"] = 1;
         }
         else
             this.Flatten = NBT.FlattenNbtData(auction.NbtData.Data).ToDictionary(x => x.Key, x => x.Value);

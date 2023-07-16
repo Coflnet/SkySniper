@@ -17,6 +17,7 @@ namespace Coflnet.Sky.Sniper.Services
 {
     public class S3PersistanceManager : IPersitanceManager
     {
+        private const string PartialObjectStoreKey = "partialsMidJuly";
         private IConfiguration config;
         private ILogger<S3PersistanceManager> logger;
         private AmazonS3Client s3Client;
@@ -169,7 +170,7 @@ namespace Coflnet.Sky.Sniper.Services
 
         public async Task<ConcurrentDictionary<string, AttributeLookup>> GetWeigths()
         {
-            using var result = await GetStreamForObject("partials");
+            using var result = await GetStreamForObject(PartialObjectStoreKey);
             return await MessagePackSerializer.DeserializeAsync<ConcurrentDictionary<string, AttributeLookup>>(result);
         }
 
@@ -182,7 +183,7 @@ namespace Coflnet.Sky.Sniper.Services
             await s3Client.PutObjectAsync(new PutObjectRequest()
             {
                 BucketName = "sky-sniper",
-                Key = "partials",
+                Key = PartialObjectStoreKey,
                 InputStream = stream
             });
         }

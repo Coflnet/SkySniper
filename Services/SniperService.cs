@@ -201,7 +201,7 @@ ORDER BY l.`AuctionId`  DESC;
             "new_years_cake" // not that valuable but the only attribute
         };
 
-        private static KeyValuePair<string, string> Ignore = new KeyValuePair<string, string>(string.Empty, string.Empty);
+        public static KeyValuePair<string, string> Ignore { get; } = new KeyValuePair<string, string>(string.Empty, string.Empty);
 
 
         public SniperService()
@@ -530,7 +530,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static ReferenceAuctions GetOrAdd(AuctionKey key, PriceLookup itemBucket)
         {
-            if(itemBucket.Lookup == null)
+            if (itemBucket.Lookup == null)
                 itemBucket.Lookup = new();
             return itemBucket.Lookup.GetOrAdd(key, (k) => new ReferenceAuctions());
         }
@@ -697,34 +697,9 @@ ORDER BY l.`AuctionId`  DESC;
                 else
                     return NormalizeNumberTo(s, PetExpMaxlevel / 6, 6);
             }
-            if (s.Key == "winning_bid")
-                if (auction.Tag.StartsWith("MIDAS"))
-                    return NormalizeNumberTo(s, 10_000_000, 10);
-                else
-                    return Ignore;
-            if (s.Key.EndsWith("_kills"))
-                return NormalizeNumberTo(s, 10_000);
-            if (s.Key == "yogsKilled")
-                return NormalizeNumberTo(s, 5_000, 2);
-            if (s.Key == "thunder_charge")
-                return NormalizeNumberTo(s, 1_000_000, 5);
-            if (s.Key == "candyUsed")
-                if (GetNumeric(auction.FlatenedNBT.FirstOrDefault(f => f.Key == "exp")) >= PetExpMaxlevel)
-                    return Ignore; // not displayed on max exp items
-                else
-                    // all candied are the same
-                    return new KeyValuePair<string, string>(s.Key, (double.Parse(s.Value) > 0 ? 1 : 0).ToString());
-            if (s.Key == "edition")
-            {
-                var val = int.Parse(s.Value);
-                if (val < 100)
-                    return new KeyValuePair<string, string>(s.Key, "verylow");
-                if (val < 1000)
-                    return new KeyValuePair<string, string>(s.Key, "low");
-                if (val < 10000)
-                    return new KeyValuePair<string, string>(s.Key, "10k");
-                return new KeyValuePair<string, string>(s.Key, "100k");
-            }
+            var generalNormalizations = NormalizeGeneral(s, auction?.Tag?.StartsWith("MIDAS") ?? false, GetNumeric(auction.FlatenedNBT.FirstOrDefault(f => f.Key == "exp")));
+            if (generalNormalizations.Key != Ignore.Key)
+                return generalNormalizations;
             if (s.Key == "hpc")
                 return GetNumeric(s) switch
                 {
@@ -764,8 +739,6 @@ ORDER BY l.`AuctionId`  DESC;
                     return s;
                 return Ignore;
             }
-            if (s.Key == "talisman_enrichment")
-                return new KeyValuePair<string, string>("talisman_enrichment", "yes");
             if (s.Key == "baseStatBoostPercentage")
             {
                 var val = int.Parse(s.Value);
@@ -780,6 +753,46 @@ ORDER BY l.`AuctionId`  DESC;
             }
 
             return s;
+        }
+
+        public static KeyValuePair<string, string> NormalizeGeneral(KeyValuePair<string, string> s, bool isMiddas, long expAmount)
+        {
+            if (s.Key == "winning_bid")
+                if (isMiddas)
+                    return NormalizeNumberTo(s, 10_000_000, 10);
+                else
+                    return Ignore;
+            if (s.Key.EndsWith("_kills"))
+                return NormalizeNumberTo(s, 10_000);
+            if (s.Key == "yogsKilled")
+                return NormalizeNumberTo(s, 5_000, 2);
+            if (s.Key == "thunder_charge")
+                return NormalizeNumberTo(s, 1_000_000, 5);
+            if (s.Key == "candyUsed")
+                if (expAmount >= PetExpMaxlevel)
+                    return Ignore; // not displayed on max exp items
+                else
+                    // all candied are the same
+                    return new KeyValuePair<string, string>(s.Key, (double.Parse(s.Value) > 0 ? 1 : 0).ToString());
+            if (s.Key == "edition")
+            {
+                return NormalizeEdition(s);
+            }
+            if (s.Key == "talisman_enrichment")
+                return new KeyValuePair<string, string>("talisman_enrichment", "yes");
+            return Ignore;
+        }
+
+        public static KeyValuePair<string, string> NormalizeEdition(KeyValuePair<string, string> s)
+        {
+            var val = int.Parse(s.Value);
+            if (val < 100)
+                return new KeyValuePair<string, string>(s.Key, "verylow");
+            if (val < 1000)
+                return new KeyValuePair<string, string>(s.Key, "low");
+            if (val < 10000)
+                return new KeyValuePair<string, string>(s.Key, "10k");
+            return new KeyValuePair<string, string>(s.Key, "100k");
         }
 
         /// <summary>
