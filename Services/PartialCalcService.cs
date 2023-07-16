@@ -217,10 +217,10 @@ public class PartialCalcService
                 .GetOrAdd(value, (k) =>
                 {
                     if (TryGetItemCost(key, value, out var price) && price > 0)
-                        return price / 2;
+                        return price / 20;
                     if (key == "skin")
                     {
-                        return 40_000_000;
+                        return 20_000_000;
                     }
                     if (key == "heldItem")
                     {
