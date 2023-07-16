@@ -21,7 +21,7 @@ public class PartialCalcService
     private IMayorService mayorService = null!;
     private IPersitanceManager persitanceManager = null!;
     private ILogger<PartialCalcService> logger = null!;
-    private double adjustRate = 0.07;
+    private double adjustRate = 0.04;
     private SniperService sniper;
 
     public PartialCalcService(SniperService sniper, ICraftCostService craftCostService, IMayorService mayorService, IPersitanceManager persitanceManager, ILogger<PartialCalcService> logger)
@@ -99,8 +99,8 @@ public class PartialCalcService
         var item = new ItemBreakDown(auction, mayorService.GetMayor(auction.End));
         var attribs = AttributeLookups.GetOrAdd(auction.Tag, tag => new());
         var modifiers = item.Flatten;
-        if (adjustRate > 0.01 && Random.Shared.NextDouble() < 0.05 && modifiers.Count > 2)
-            modifiers.Remove(modifiers.OrderBy(x => Random.Shared.Next()).First().Key);
+        //if (adjustRate > 0.01 && Random.Shared.NextDouble() < 0.05 && modifiers.Count > 2)
+        //    modifiers.Remove(modifiers.OrderBy(x => Random.Shared.Next()).First().Key);
         double estimation = GetValueOf(auction.Tag, attribs, modifiers);
         var difference = GetItemSellValue(auction) - sniper.GetGemValue(auction, new()) - estimation;
         var reduction = 4;
@@ -116,36 +116,17 @@ public class PartialCalcService
                 if (def.Behaviour == PropertyMapper.Behaviour.Exp)
                 {
                     continue;
-                    var exp = Math.Min(def.Max, GetNumeric(mod));
-                    if (exp == 0)
-                        continue;
-                    var current = attribs.Values.GetOrAdd(mod.Key, _ => new())
-                        .GetOrAdd(String.Empty, 0.1);
-                    var toalValueOfExp = exp * current;
-                    // store per exp cost in attribs
-                    var partOfTotal = toalValueOfExp / estimation;
-                    var newValue = (toalValueOfExp + perItemChange * partOfTotal * partOfTotal) / exp;
-                    if (newValue == double.NaN || newValue.ToString() == "NaN")
-                    {
-                        Console.WriteLine($"aaaa NaN {mod.Key} {mod.Value}");
-                        Task.Delay(10000).Wait();
-                    }
-                    attribs.Values[mod.Key][String.Empty] = Math.Clamp(newValue, 0.0001, 1000000);
-                    continue;
                 }
             }
             var cost = attribs.Values.GetOrAdd(mod.Key, _ => new())
                 .GetOrAdd(mod.Value, (k) =>
                 {
-                    if (mod.Key == "candyUsed")
-                        return -10000;
                     throw new Exception("should not reach");
-                    return 10000;
                 });
             var percentOfdifference = Math.Abs(cost / estimation);
             if (mod.Key == "exp_expGroup" && (double)mod.Value == 4 && auction.Tag == "PET_BLUE_WHALE")
             {
-                Console.WriteLine($"changing by {perItemChange * percentOfdifference} {percentOfdifference} {cost} {estimation} {perItemChange} on {auction.Uuid}");
+                Console.WriteLine($"changing by {perItemChange * percentOfdifference} {percentOfdifference} {cost} est:{estimation} {perItemChange} on {auction.Uuid}");
             }
             cost += perItemChange * percentOfdifference;
             if (cost < 0)
@@ -209,7 +190,7 @@ public class PartialCalcService
             costSum += cost;
         }
 
-        return costSum;
+        return Math.Max(costSum, 1);
 
         double GetPriceFor(string key, object value)
         {
@@ -559,8 +540,8 @@ public class ItemBreakDown
         foreach (var item in Flatten.Keys)
         {
             var kv = new KeyValuePair<string, string>(item, Flatten[item].ToString() ?? "");
-            var normalized = SniperService.NormalizeGeneral(kv, true, Convert.ToInt64(Flatten.GetValueOrDefault("exp", 0)));
-            if(normalized.Key != SniperService.Ignore.Key)
+            var normalized = SniperService.NormalizeGeneral(kv, true, (long)Convert.ToDouble(Flatten.GetValueOrDefault("exp", 0)));
+            if (normalized.Key != SniperService.Ignore.Key)
                 Flatten[normalized.Key] = normalized.Value;
         }
     }

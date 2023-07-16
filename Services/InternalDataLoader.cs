@@ -302,7 +302,7 @@ namespace Coflnet.Sky.Sniper.Services
                         .ToListAsync(stoppinToken);
             Console.WriteLine("applying aote");
             // filter underpriced ones
-            batch = batch.Where(s => s.End - s.Start > TimeSpan.FromMinutes(2) && s.StartingBid != 0).ToList();
+            batch = batch.Where(s => s.StartingBid != 0).ToList();
             var newSample = batch.OrderBy(s => Random.Shared.NextDouble()).Take(100).ToList();
             batch = batch.Concat(lastSample).ToList();
             //ApplyData(sold, 0.2);
@@ -405,6 +405,7 @@ namespace Coflnet.Sky.Sniper.Services
                     continue;
                 sniper.AddAuctionToBucket(item, true, references);
             }
+            partialCalcService.SetLearningRate(0.02);
             for (int i = 0; i < 5; i++)
                 foreach (var item in sold)
                     partialCalcService.AddSell(item);

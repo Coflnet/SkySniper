@@ -887,7 +887,7 @@ ORDER BY l.`AuctionId`  DESC;
             return new KeyValuePair<string, string>(s.Key, Math.Min(group, highestGroup).ToString());
         }
 
-        private static long GetNumeric(KeyValuePair<string, string> s)
+        public static long GetNumeric(KeyValuePair<string, string> s)
         {
             if (s.Value == null)
                 return 0;
