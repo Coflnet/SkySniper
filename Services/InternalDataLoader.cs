@@ -27,6 +27,7 @@ namespace Coflnet.Sky.Sniper.Services
         private Kafka.KafkaCreator kafkaCreator;
         private PartialCalcService partialCalcService;
         private IMayorService mayorService;
+        public event Action<LowPricedAuction> FoundPartialFlip;
 
         private ILogger<InternalDataLoader> logger;
         private IProducer<string, LowPricedAuction> FlipProducer;
@@ -166,13 +167,15 @@ namespace Coflnet.Sky.Sniper.Services
             var breakdown = partialCalcService.GetPrice(a, true);
             if (breakdown.Price > a.StartingBid * 1.5 && breakdown.Price - a.StartingBid > 3_000_000)
             {
-                Produceflip(new LowPricedAuction()
+                var flip = new LowPricedAuction()
                 {
                     Auction = a,
                     AdditionalProps = new() { { "breakdown", string.Join('\n', breakdown.BreakDown) } },
                     Finder = LowPricedAuction.FinderType.AI,
                     TargetPrice = (long)(breakdown.Price * 0.8)
-                }, FlipProducer);
+                };
+                Produceflip(flip, FlipProducer);
+                FoundPartialFlip?.Invoke(flip);
             }
         }
 
@@ -283,12 +286,12 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 var end = start + TimeSpan.FromDays(10);
                 samples.AddRange(await LoadpartialBatch(context, id, start, end, stoppinToken, samples));
-                logger.LogInformation(Newtonsoft.Json.JsonConvert.SerializeObject(partialCalcService.GetAttributeCosts(targetTag), Newtonsoft.Json.Formatting.Indented));
                 if (samples.Count > 1200)
                 {
                     samples = samples.OrderBy(s => Random.Shared.NextDouble()).Take(1200).ToList();
                 }
             }
+            logger.LogInformation(Newtonsoft.Json.JsonConvert.SerializeObject(partialCalcService.GetAttributeCosts(targetTag), Newtonsoft.Json.Formatting.Indented));
 
             return partialCalcService.GetAttributeCosts(targetTag);
         }

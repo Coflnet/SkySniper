@@ -25,6 +25,13 @@ public class RetrainService : BackgroundService
         this.internalDataLoader = internalDataLoader;
         this.redis = redis;
         this.logger = logger;
+
+        this.internalDataLoader.FoundPartialFlip += ( flip) =>
+        {
+            if(flip.TargetPrice / flip.Auction.StartingBid < 5 || flip.TargetPrice - flip.Auction.StartingBid < 1_000_000)
+                return;
+            SheduleRetrain(flip.Auction.Tag);
+        };
     }
 
     public void SheduleRetrain(string tag)
