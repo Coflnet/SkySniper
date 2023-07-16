@@ -1,0 +1,120 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using StackExchange.Redis;
+
+namespace Coflnet.Sky.Sniper.Services;
+
+public class RetrainService : BackgroundService
+{
+    private PartialCalcService partialCalcService;
+    private InternalDataLoader internalDataLoader;
+    private IConnectionMultiplexer redis;
+    private ILogger<RetrainService> logger;
+    string streamName = "retrain";
+    string groupName = "retrain";
+    private Dictionary<string, DateTime> lastRetrain = new();
+
+    public RetrainService(PartialCalcService partialCalcService, InternalDataLoader internalDataLoader, IConnectionMultiplexer redis, ILogger<RetrainService> logger)
+    {
+        this.partialCalcService = partialCalcService;
+        this.internalDataLoader = internalDataLoader;
+        this.redis = redis;
+        this.logger = logger;
+    }
+
+    public void SheduleRetrain(string tag)
+    {
+        if (!partialCalcService.ItemKeys.Contains(tag))
+        {
+            logger.LogWarning("Blocked retrain for unknown item " + tag);
+            return;
+        }
+        var db = redis.GetDatabase();
+        db.StreamAdd("retrain", new[] { new NameValueEntry("tag", tag) });
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        // optain lock 
+        var db = redis.GetDatabase();
+        if (!(await db.KeyExistsAsync(streamName)) ||
+            (await db.StreamGroupInfoAsync(streamName)).All(x => x.Name != groupName))
+        {
+            await db.StreamCreateConsumerGroupAsync(streamName, groupName, "0-0", true);
+        }
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            RedisValue token = Environment.MachineName;
+            if (db.LockTake(streamName + "lock", token, TimeSpan.FromMinutes(10)))
+            {
+                logger.LogInformation("Optained retrain lock");
+                try
+                {
+                    while (!stoppingToken.IsCancellationRequested)
+                    {
+                        await RetrainOne(db, stoppingToken);
+                        db.LockExtend(streamName + "lock", token, TimeSpan.FromMinutes(10));
+                        logger.LogInformation("Extended retrain lock");
+                    }
+                }
+                finally
+                {
+                    db.LockRelease(streamName + "lock", token);
+                }
+            }
+            else
+            {
+                var lockInfo = await db.LockQueryAsync(streamName + "lock");
+                logger.LogInformation("could not optain retrain lock\n" + lockInfo);
+                if (lockInfo == token)
+                {
+                    db.LockRelease(streamName + "lock", token);
+                    logger.LogInformation("Released own retrain lock");
+                }
+            }
+            await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);
+        }
+    }
+
+    private async Task RetrainOne(IDatabase db, CancellationToken stoppingToken)
+    {
+        // read oldest entry
+        var entry = await db.StreamReadGroupAsync(streamName, groupName, Environment.MachineName, ">", 1);
+        if (entry.Length == 0)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+            return;
+        }
+        var id = entry[0].Id;
+        var tag = entry[0].Values.First().Value.ToString();
+        if (lastRetrain.TryGetValue(tag, out var last) && last > DateTime.UtcNow.AddHours(-1))
+        {
+            logger.LogInformation("Skipping " + tag + " because it was retrained recently");
+            await db.StreamAcknowledgeAsync(streamName, groupName, id);
+            return;
+        }
+        lastRetrain[tag] = DateTime.UtcNow;
+        logger.LogInformation("Retraining " + tag);
+        try
+        {
+            await internalDataLoader.PartialAnalysis(tag, stoppingToken);
+        }
+        catch (System.Exception e)
+        {
+            logger.LogError(e, "Failed to retrain " + tag);
+        }
+
+        var lockInfo = await db.LockQueryAsync(streamName + "lock");
+        await db.StreamAcknowledgeAsync(streamName, groupName, id);
+        if (lockInfo != Environment.MachineName)
+            return;
+        await partialCalcService.Save();
+        logger.LogInformation($"Saved retrain results for {tag}");
+    }
+}
+#nullable disable

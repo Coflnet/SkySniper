@@ -56,7 +56,7 @@ namespace Coflnet.Sky.Sniper.Services
                     try
                     {
                         lookup = await LoadItem(itemTag);
-                        if (lookup.Lookup.Count > 100)
+                        if (lookup.Lookup.Count > 500)
                             logger.LogInformation("loaded " + itemTag + " " + lookup.Lookup.Count);
                     }
                     catch (Exception ex)

@@ -392,12 +392,15 @@ namespace Coflnet.Sky.Sniper.Services
         {
             var end = batchStart + batchSize;
             using var context = new HypixelContext();
-            Console.WriteLine($"Start Loading batch {batchStart} - {end}");
+            var shouldLog = (batchStart % batchSize) % 10 == 1;
+            if (shouldLog)
+                Console.WriteLine($"Start Loading batch {batchStart} - {end}");
             var sold = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
                                     .Where(a => a.Id > batchStart && a.Id < end && a.Bin && a.HighestBidAmount > 0)
                                     .AsNoTracking()
                                     .ToListAsync(stoppinToken);
-            Console.WriteLine($"Loaded batch {batchStart} - {end}");
+            if (shouldLog)
+                Console.WriteLine($"Loaded batch {batchStart} - {end}");
             foreach (var item in sold)
             {
                 var references = sniper.GetBucketForAuction(item);
@@ -410,7 +413,8 @@ namespace Coflnet.Sky.Sniper.Services
                 foreach (var item in sold)
                     partialCalcService.AddSell(item);
 
-            Console.WriteLine($"Applied batch {batchStart} - {end}");
+            if (shouldLog)
+                Console.WriteLine($"Applied batch {batchStart} - {end}");
         }
 
         /// <summary>

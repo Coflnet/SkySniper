@@ -14,11 +14,13 @@ public class PartialController
 {
     private InternalDataLoader inter;
     private PartialCalcService partialCalcService;
+    private RetrainService retrainService;
 
-    public PartialController(InternalDataLoader inter, PartialCalcService partialCalcService)
+    public PartialController(InternalDataLoader inter, PartialCalcService partialCalcService, RetrainService retrainService)
     {
         this.inter = inter;
         this.partialCalcService = partialCalcService;
+        this.retrainService = retrainService;
     }
 
     [HttpPost]
@@ -29,6 +31,12 @@ public class PartialController
 
         await partialCalcService.Save();
         return res;
+    }
+    [HttpPost]
+    [Route("partial/{tag}/shedule")]
+    public void SheduleLoadFor(string tag)
+    {
+        retrainService.SheduleRetrain(tag);
     }
     [HttpGet]
     [Route("tag/{itemTag}")]

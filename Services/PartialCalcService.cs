@@ -24,6 +24,8 @@ public class PartialCalcService
     private double adjustRate = 0.04;
     private SniperService sniper;
 
+    public IEnumerable<string> ItemKeys => Lookups.Keys;
+
     public PartialCalcService(SniperService sniper, ICraftCostService craftCostService, IMayorService mayorService, IPersitanceManager persitanceManager, ILogger<PartialCalcService> logger)
     {
         Lookups = sniper.Lookups;
@@ -126,7 +128,8 @@ public class PartialCalcService
             var percentOfdifference = Math.Abs(cost / estimation);
             if (mod.Key == "exp_expGroup" && (double)mod.Value == 4 && auction.Tag == "PET_BLUE_WHALE")
             {
-                Console.WriteLine($"changing by {perItemChange * percentOfdifference} {percentOfdifference} {cost} est:{estimation} {perItemChange} on {auction.Uuid}");
+                if (Random.Shared.NextDouble() < 0.1)
+                    Console.WriteLine($"changing by {perItemChange * percentOfdifference} {percentOfdifference} {cost} est:{estimation} {perItemChange} on {auction.Uuid}");
             }
             cost += perItemChange * percentOfdifference;
             if (cost < 0)
@@ -278,7 +281,7 @@ public class PartialCalcService
                         value = 1.1;
                     if (TryGetItemCost(attrib.Key, val.Key, out double price))
                     {
-                        if (price < val.Value && price > 200_000)
+                        if (price < val.Value && price > 200_000 && Random.Shared.NextDouble() < 0.1)
                             Console.WriteLine($"Capping {attrib.Key} {val.Key} at {price} from {val.Value}");
                         value = Math.Min(price * 0.99, val.Value);
                     }
@@ -293,7 +296,6 @@ public class PartialCalcService
                         {
                             if (higherTier < val.Value)
                             {
-                                Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherTier} from {val.Value} on {item.Key}");
                                 value = higherTier;
                             }
                         }
@@ -313,7 +315,8 @@ public class PartialCalcService
         {
             if (higherVal < val.Value * 2 && higherVal > 1)
             {
-                Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherVal / 2} from {val.Value}");
+                if (higherVal > 1_000_000)
+                    Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherVal / 2} from {val.Value}");
                 value = higherVal / 2;
             }
         }
@@ -321,7 +324,8 @@ public class PartialCalcService
         {
             if (higherVal2lvl < val.Value * 4 && higherVal > 1)
             {
-                Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherVal / 4} from {val.Value}");
+                if (higherVal > 1_000_000)
+                    Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherVal / 4} from {val.Value}");
                 value = higherVal / 3;
             }
         }

@@ -19,6 +19,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using Newtonsoft.Json;
 using Prometheus;
+using StackExchange.Redis;
 
 namespace Coflnet.Sky.Sniper
 {
@@ -50,6 +51,10 @@ namespace Coflnet.Sky.Sniper
             services.AddSingleton<Mayor.Client.Api.IElectionPeriodsApi>(d => new Mayor.Client.Api.ElectionPeriodsApi(Configuration["MAYOR_BASE_URl"]));
             services.AddSingleton<IMayorService, MayorService>();
             services.AddHostedService<MayorService>(d => d.GetRequiredService<IMayorService>() as MayorService);
+            services.AddSingleton<RetrainService>();
+            services.AddHostedService<RetrainService>(d => d.GetRequiredService<RetrainService>());
+            // register redis connectionmultiplexer
+            services.AddSingleton<IConnectionMultiplexer>(d => ConnectionMultiplexer.Connect(Configuration["REDIS_HOST"]));
             services.AddSingleton<IPersitanceManager, S3PersistanceManager>();
             services.AddSingleton<ITokenService, TokenService>();
             services.AddSingleton<ActiveUpdater>();
