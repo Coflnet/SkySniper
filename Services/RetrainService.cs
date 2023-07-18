@@ -78,6 +78,10 @@ public class RetrainService : BackgroundService
                         logger.LogInformation("Extended retrain lock");
                     }
                 }
+                catch (System.Exception e)
+                {
+                    logger.LogError(e, "Failed to retrain");
+                }
                 finally
                 {
                     db.LockRelease(streamName + "lock", token);

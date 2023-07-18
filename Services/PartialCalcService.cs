@@ -283,7 +283,7 @@ public class PartialCalcService
                     {
                         if (price < val.Value && price > 200_000 && Random.Shared.NextDouble() < 0.1)
                             Console.WriteLine($"Capping {attrib.Key} {val.Key} at {price} from {val.Value}");
-                        value = Math.Min(price * 0.99, val.Value);
+                        value = Math.Min(price * 1.05, val.Value);
                     }
                     else if (attrib.Key.StartsWith("ench.") || Constants.AttributeKeys.Contains(attrib.Key))
                     {
@@ -299,6 +299,16 @@ public class PartialCalcService
                                 value = higherTier;
                             }
                         }
+                        var twoDaysAgo = SniperService.GetDay(DateTime.UtcNow) - 2;
+                        var allOrdered = Lookups.GetValueOrDefault(item.Key)?.Lookup.Where(l => l.Key.Tier == tier).SelectMany(l => l.Value.References).Where(r => r.Day > twoDaysAgo).OrderBy(l => l.Price).ToList();
+                        var totalCount = allOrdered?.Count() ?? 0;
+                        var target = allOrdered?.Skip(totalCount / 20 + 2).FirstOrDefault();
+                        if (target.HasValue && totalCount > 20 && target.Value.Price < val.Value)
+                        {
+                            logger.LogInformation($"Capping {attrib.Key} {val.Key} at {target.Value.Price} from {val.Value} on {item.Key}");
+                            Task.Delay(2000).Wait();
+                            value = target.Value.Price;
+                        }
                     }
                     if (value != 0)
                         attrib.Value[val.Key] = value;
@@ -313,11 +323,11 @@ public class PartialCalcService
         var level = GetNumeric(val.Key);
         if (attrib.Value.TryGetValue((byte)(level + 1), out var higherVal))
         {
-            if (higherVal < val.Value * 2 && higherVal > 1)
+            if (higherVal < val.Value * 1.9 && higherVal > 100)
             {
                 if (higherVal > 1_000_000)
                     Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherVal / 2} from {val.Value}");
-                value = higherVal / 2;
+                value = higherVal / 1.9;
             }
         }
         else if (attrib.Value.TryGetValue((byte)(level + 2), out var higherVal2lvl))
