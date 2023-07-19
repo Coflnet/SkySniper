@@ -485,19 +485,20 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(7200000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
             Assert.AreEqual("zombie_kills:2 (2000000)", estimate.AdditionalProps["missingModifiers"]);
         }
-        [Test]
-        public void StonksDecreaseForMiniosReliqPetItem()
+        [TestCase("MINOS_RELIC", "petItem:MINOS_RELIC (4000000)")]
+        [TestCase("PET_ITEM_QUICK_CLAW", "petItem:QUICK_CLAW (4000000)")]
+        public void StonksDecreaseForMiniosReliqPetItem(string itemId, string textNote)
         {
             highestValAuction.FlatenedNBT = new() { { "heldItem", "YELLOW_BANDANA" } };
             var withoutKills = Dupplicate(highestValAuction);
             withoutKills.HighestBidAmount = 10_000_000;
-            withoutKills.FlatenedNBT["heldItem"] = "MINOS_RELIC";
+            withoutKills.FlatenedNBT["heldItem"] = itemId;
             AddVolume(withoutKills);
             service.UpdateBazaar(new()
             {
                 Products = new(){
                 new (){
-                    ProductId = "MINOS_RELIC",
+                    ProductId = itemId,
                     SellSummary = new(){
                         new (){
                             PricePerUnit = 4_000_000
@@ -515,7 +516,7 @@ namespace Coflnet.Sky.Sniper.Services
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             Assert.AreEqual(5400000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
-            Assert.AreEqual("petItem:MINOS_RELIC (4000000)", estimate.AdditionalProps["missingModifiers"]);
+            Assert.AreEqual(textNote, estimate.AdditionalProps["missingModifiers"]);
         }
 
         [Test]

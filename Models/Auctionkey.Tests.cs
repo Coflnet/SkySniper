@@ -330,6 +330,21 @@ namespace Coflnet.Sky.Sniper.Models
         }
 
         [Test]
+        public void TakeAttributeCombo()
+        {
+            var auction = new SaveAuction()
+            {
+                Tag = "MOLTEN_CLOAK",
+                FlatenedNBT = new() { { "dominance", "2" },
+                                {"mending", "2"} },
+            };
+            var service = new SniperService();
+            var key = service.KeyFromSaveAuction(auction);
+            Assert.AreEqual(2, key.Modifiers.Count);
+            Assert.IsTrue(key.Modifiers.Any(x => x.Key == "dominance" && x.Value == "2"));
+        }
+
+        [Test]
         public void IngoreUltWiseOnGauntlet()
         {
             var auction = new SaveAuction()

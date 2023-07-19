@@ -120,7 +120,7 @@ namespace Coflnet.Sky.Sniper.Services
             new("veteran", "magic_find"),
             new("mana_regeneration", "mana_pool"),
             new("dominance", "speed"),
-            new("vitality", "dominance"),
+            new("mending", "dominance"),
             new("double_hook", "fishing_speed")
         };
         private readonly HashSet<string> AllShardAttributesKeys = new(Constants.AttributeKeys);
