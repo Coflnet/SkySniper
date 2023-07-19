@@ -21,7 +21,7 @@ public class PartialCalcService
     private IMayorService mayorService = null!;
     private IPersitanceManager persitanceManager = null!;
     private ILogger<PartialCalcService> logger = null!;
-    private double adjustRate = 0.04;
+    private double adjustRate = 0.03;
     private SniperService sniper;
 
     public IEnumerable<string> ItemKeys => Lookups.Keys;

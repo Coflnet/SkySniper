@@ -33,11 +33,16 @@ public class MayorService : BackgroundService, IMayorService
         await InitMayors();
         while (!stoppingToken.IsCancellationRequested)
         {
-            var year = (int)Constants.SkyblockYear(DateTime.UtcNow);
+            int year = ElectionYear(DateTime.UtcNow);
             await LoadMayorForYear(year);
             await LoadMayorForYear(year - 1);
             await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
         }
+    }
+
+    private static int ElectionYear(DateTime time)
+    {
+        return (int)(Constants.SkyblockYear(time) - 0.2365635);
     }
 
     private async Task LoadMayorForYear(int year)
@@ -66,7 +71,7 @@ public class MayorService : BackgroundService, IMayorService
 
     public string GetMayor(DateTime time)
     {
-        if (YearToMayorName.TryGetValue((int)Constants.SkyblockYear(time), out var name))
+        if (YearToMayorName.TryGetValue(ElectionYear(time), out var name))
             return name;
         return "Unknown";
     }
