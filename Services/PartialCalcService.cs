@@ -131,7 +131,13 @@ public class PartialCalcService
                 if (Random.Shared.NextDouble() < 0.1)
                     Console.WriteLine($"changing by {perItemChange * percentOfdifference} {percentOfdifference} {cost} est:{estimation} {perItemChange} on {auction.Uuid}");
             }
-            cost += perItemChange * percentOfdifference;
+            var changeAmount = perItemChange * percentOfdifference;
+            while(Math.Abs(changeAmount) > Math.Abs(cost) * adjustRate * 2)
+            {
+                // no one item should change the value by more than it is currently times the adjust factor - anti market manipulation
+                changeAmount /= 2;
+            }
+            cost += changeAmount;
             if (cost < 0)
             {
                 attribs.Values[mod.Key][mod.Value] = Math.Clamp(cost, -250_000_000, -10);
