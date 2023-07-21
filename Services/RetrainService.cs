@@ -28,7 +28,7 @@ public class RetrainService : BackgroundService
 
         this.internalDataLoader.FoundPartialFlip += ( flip) =>
         {
-            if(flip.TargetPrice / flip.Auction.StartingBid < 5 || flip.TargetPrice - flip.Auction.StartingBid < 1_000_000)
+            if(flip.TargetPrice / flip.Auction.StartingBid < 2 || flip.TargetPrice - flip.Auction.StartingBid < 1_000_000)
                 return;
             SheduleRetrain(flip.Auction.Tag);
         };
