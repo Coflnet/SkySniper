@@ -305,11 +305,11 @@ public class PartialCalcService
                                 value = higherTier;
                             }
                         }
-                        var twoDaysAgo = SniperService.GetDay(DateTime.UtcNow) - 2;
-                        var allOrdered = Lookups.GetValueOrDefault(item.Key)?.Lookup.Where(l => l.Key.Tier == tier).SelectMany(l => l.Value.References).Where(r => r.Day > twoDaysAgo).OrderBy(l => l.Price).ToList();
+                        var minDay = SniperService.GetDay(DateTime.UtcNow) - 5;
+                        var allOrdered = Lookups.GetValueOrDefault(item.Key)?.Lookup.Where(l => l.Key.Tier == tier).SelectMany(l => l.Value.References).Where(r => r.Day >= minDay).OrderBy(l => l.Price).ToList();
                         var totalCount = allOrdered?.Count() ?? 0;
                         var target = allOrdered?.Skip(totalCount / 20 + 2).FirstOrDefault();
-                        if (target.HasValue && totalCount > 20 && target.Value.Price < val.Value)
+                        if (target.HasValue && totalCount > 3 && target.Value.Price < val.Value)
                         {
                             logger.LogInformation($"Capping {attrib.Key} {val.Key} at {target.Value.Price} from {val.Value} on {item.Key}");
                             Task.Delay(2000).Wait();
