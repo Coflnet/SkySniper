@@ -311,18 +311,18 @@ namespace Coflnet.Sky.Sniper.Services
             //ApplyData(sold, 0.2);
             for (int i = 0; i < 5; i++)
             {
-                ApplyData(batch, 0.13);
+                ApplyData(batch, 0.03);
             }
             batch = batch.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(30)).ToList();
             if (batch.Count == 0)
                 return newSample;
             for (int i = 0; i < 5; i++)
             {
-                ApplyData(batch, 0.13);
+                ApplyData(batch, 0.03);
             }
             for (int i = 0; i < 50; i++)
             {
-                ApplyData(batch, 0.05);
+                ApplyData(batch, 0.02);
             }
             return newSample;
         }
