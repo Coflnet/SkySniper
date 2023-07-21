@@ -36,6 +36,7 @@ public class PartialCalcTests
             Tier = Tier.EPIC,
             HighestBidAmount = 1000,
         });
+        Service.SetLearningRate(0.1);
     }
     [Test]
     public void BasicIncrement()

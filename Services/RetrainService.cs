@@ -26,9 +26,9 @@ public class RetrainService : BackgroundService
         this.redis = redis;
         this.logger = logger;
 
-        this.internalDataLoader.FoundPartialFlip += ( flip) =>
+        this.internalDataLoader.FoundPartialFlip += (flip) =>
         {
-            if(flip.TargetPrice / flip.Auction.StartingBid < 2 || flip.TargetPrice - flip.Auction.StartingBid < 1_000_000)
+            if (flip.TargetPrice / flip.Auction.StartingBid < 2 || flip.TargetPrice - flip.Auction.StartingBid < 1_000_000)
                 return;
             SheduleRetrain(flip.Auction.Tag);
         };
@@ -39,6 +39,10 @@ public class RetrainService : BackgroundService
         if (!partialCalcService.ItemKeys.Contains(tag))
         {
             logger.LogWarning("Blocked retrain for unknown item " + tag);
+            return;
+        }
+        if (lastRetrain.TryGetValue(tag, out var last) && last > DateTime.UtcNow.AddMinutes(-20))
+        {
             return;
         }
         var db = redis.GetDatabase();

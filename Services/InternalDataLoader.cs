@@ -316,14 +316,13 @@ namespace Coflnet.Sky.Sniper.Services
             batch = batch.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(30)).ToList();
             if (batch.Count == 0)
                 return newSample;
-            ApplyData(batch, 0.18);
             for (int i = 0; i < 5; i++)
             {
                 ApplyData(batch, 0.13);
             }
             for (int i = 0; i < 50; i++)
             {
-                ApplyData(batch, 0.07);
+                ApplyData(batch, 0.05);
             }
             return newSample;
         }
