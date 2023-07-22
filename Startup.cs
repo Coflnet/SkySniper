@@ -54,7 +54,12 @@ namespace Coflnet.Sky.Sniper
             services.AddSingleton<RetrainService>();
             services.AddHostedService<RetrainService>(d => d.GetRequiredService<RetrainService>());
             // register redis connectionmultiplexer
-            services.AddSingleton<IConnectionMultiplexer>(d => ConnectionMultiplexer.Connect(Configuration["REDIS_HOST"]));
+            services.AddSingleton<IConnectionMultiplexer>(d =>
+            {
+                var redisConfig = ConfigurationOptions.Parse(Configuration["REDIS_HOST"]);
+                redisConfig.SyncTimeout = 5000;
+                return ConnectionMultiplexer.Connect(redisConfig);
+            });
             services.AddSingleton<IPersitanceManager, S3PersistanceManager>();
             services.AddSingleton<ITokenService, TokenService>();
             services.AddSingleton<ActiveUpdater>();
