@@ -274,15 +274,17 @@ namespace Coflnet.Sky.Sniper.Services
             }
         }
 
-        public async Task<Dictionary<string, Dictionary<object, double>>> PartialAnalysis(string targetTag, CancellationToken stoppinToken)
+        public async Task<Dictionary<string, Dictionary<object, double>>> PartialAnalysis(string targetTag, CancellationToken stoppinToken, DateTime totalStart = default)
         {
             var context = new HypixelContext();
             using var scope = logger.BeginScope("partial analysis");
             logger.LogInformation("loading aote from db");
             var id = ItemDetails.Instance.GetItemIdForTag(targetTag);
+            if (totalStart == default)
+                totalStart = DateTime.UtcNow - TimeSpan.FromDays(300);
 
             var samples = new List<SaveAuction>();
-            for (var start = DateTime.Now - TimeSpan.FromDays(300); start < DateTime.Now; start += TimeSpan.FromDays(10))
+            for (var start = totalStart; start < DateTime.UtcNow; start += TimeSpan.FromDays(10))
             {
                 var end = start + TimeSpan.FromDays(10);
                 samples.AddRange(await LoadpartialBatch(context, id, start, end, stoppinToken, samples));

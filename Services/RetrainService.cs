@@ -126,7 +126,7 @@ public class RetrainService : BackgroundService
         logger.LogInformation("Retraining " + tag);
         try
         {
-            await internalDataLoader.PartialAnalysis(tag, stoppingToken);
+            await internalDataLoader.PartialAnalysis(tag, stoppingToken, DateTime.UtcNow - TimeSpan.FromDays(14));
         }
         catch (System.Exception e)
         {
