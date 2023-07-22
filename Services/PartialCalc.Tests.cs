@@ -132,6 +132,50 @@ public class PartialCalcTests
     }
 
     [Test]
+    public void OverValuedDoesNotScrew()
+    {
+        var item = new Item()
+        {
+            Tag = "CLEAN",
+            ExtraAttributes = new()
+            {
+                { "tier", "LEGENDARY" },
+                { "exp", "8000" }
+            },
+        };
+        Service.SetLearningRate(0.03);
+        var normalPriced = new SaveAuction()
+        {
+            Tag = "CLEAN",
+            Tier = Tier.LEGENDARY,
+            HighestBidAmount = 600000,
+            FlatenedNBT = new()
+            {
+                { "exp", "8000" }
+            }
+        };
+        for (int i = 0; i < 50; i++)
+        {
+            AddSell(normalPriced, 50);
+            AddSell(new SaveAuction()
+            {
+                Tag = "CLEAN",
+                Tier = Tier.LEGENDARY,
+                HighestBidAmount = 1_000_000_000,
+                FlatenedNBT = new()
+            {
+                { "exp", "8000" }
+            }
+            }, 1);
+            AddSell(normalPriced, 20);
+            Console.WriteLine(JsonConvert.SerializeObject(Service.GetAttributeCosts("CLEAN")));
+        }
+        var result = Service.GetPrice(item, true);
+        Console.WriteLine(string.Join("\n", result.BreakDown));
+        Assert.Greater(700000,result.Price);
+    }
+
+    [Test]
     public void CapTier()
     {
         var item = new Item()

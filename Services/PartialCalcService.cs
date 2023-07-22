@@ -132,13 +132,13 @@ public class PartialCalcService
                     Console.WriteLine($"changing by {perItemChange * percentOfdifference} {percentOfdifference} {cost} est:{estimation} {perItemChange} on {auction.Uuid}");
             }
             var changeAmount = perItemChange * percentOfdifference;
-            while(Math.Abs(changeAmount) > Math.Abs(cost) * adjustRate * 2)
+            while (Math.Abs(changeAmount) > Math.Abs(cost) * adjustRate * 2)
             {
                 // no one item should change the value by more than it is currently times the adjust factor - anti market manipulation
                 changeAmount /= 2;
+                if (changeAmount < 0)
+                    break; // allow higher decreases
             }
-            if(mod.Key == "tier" && changeAmount > 0)
-                changeAmount /= 3; // increase tier slower 
             cost += changeAmount;
             if (cost < 0)
             {
