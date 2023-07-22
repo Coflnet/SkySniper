@@ -72,7 +72,7 @@ public class RetrainService : BackgroundService
         {
             if (db.LockTake(streamName + "lock", token, TimeSpan.FromMinutes(10)))
             {
-                logger.LogInformation("Optained retrain lock");
+                logger.LogInformation("Optained retrain lock " + token);
                 try
                 {
                     while (!stoppingToken.IsCancellationRequested)
@@ -94,7 +94,8 @@ public class RetrainService : BackgroundService
             else
             {
                 var lockInfo = await db.LockQueryAsync(streamName + "lock");
-                logger.LogInformation("could not optain retrain lock\n" + lockInfo);
+                if (Random.Shared.NextDouble() < 0.05)
+                    logger.LogInformation("could not optain retrain lock - " + lockInfo);
                 if (lockInfo == token)
                 {
                     db.LockRelease(streamName + "lock", token);
@@ -126,7 +127,8 @@ public class RetrainService : BackgroundService
         logger.LogInformation("Retraining " + tag);
         try
         {
-            await internalDataLoader.PartialAnalysis(tag, stoppingToken, DateTime.UtcNow - TimeSpan.FromDays(14));
+            var trainToken = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken, new CancellationTokenSource(TimeSpan.FromMinutes(8)).Token).Token;
+            await internalDataLoader.PartialAnalysis(tag, trainToken, DateTime.UtcNow - TimeSpan.FromDays(14));
         }
         catch (System.Exception e)
         {
