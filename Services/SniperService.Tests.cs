@@ -83,7 +83,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.TestNewAuction(secondAuction);
             Assert.AreEqual(LowPricedAuction.FinderType.STONKS, found.Last().Finder);
             Assert.AreEqual(LowPricedAuction.FinderType.SNIPER_MEDIAN, found.AsEnumerable().Reverse().Skip(1).First().Finder);
-            Assert.AreEqual(810, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
+            Assert.AreEqual(900, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
         }
 
         /// <summary>

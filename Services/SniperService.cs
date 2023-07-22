@@ -470,9 +470,9 @@ ORDER BY l.`AuctionId`  DESC;
                 return;
             }
             // short term protects against price drops after updates
-            var shortTermList = deduplicated.OrderByDescending(b => b.Day).ThenBy(b => b.Price).Take(3).ToList();
+            var shortTermList = deduplicated.OrderByDescending(b => b.Day).Take(3).ToList();
             if (deduplicated.Where(d => d.Day == shortTermList.First().Day).Count() > SizeToKeep / 2)
-                shortTermList = deduplicated.OrderByDescending(b => b.Day).ThenBy(b => b.Price).Take(7).ToList();
+                shortTermList = deduplicated.OrderByDescending(b => b.Day).Take(7).ToList();
             var shortTermPrice = GetMedian(shortTermList);
             bucket.OldestRef = shortTermList.Min(s => s.Day);
             // long term protects against market manipulation
@@ -1284,9 +1284,9 @@ ORDER BY l.`AuctionId`  DESC;
         private static long MaxMedianPriceForSnipe(ReferenceAuctions bucket)
         {
             if (bucket.Price < 15_000_000)
-                return bucket.Price * 12 / 10;
+                return bucket.Price * 13 / 10;
             if (bucket.Price < 100_000_000)
-                return bucket.Price * 11 / 10;
+                return bucket.Price * 14 / 12;
             return bucket.Price * 21 / 20;
         }
 
