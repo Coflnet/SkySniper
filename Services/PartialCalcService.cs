@@ -21,7 +21,7 @@ public class PartialCalcService
     private IMayorService mayorService = null!;
     private IPersitanceManager persitanceManager = null!;
     private ILogger<PartialCalcService> logger = null!;
-    private double adjustRate = 0.03;
+    private double adjustRate = 0.01;
     private SniperService sniper;
 
     public IEnumerable<string> ItemKeys => Lookups.Keys;
@@ -137,6 +137,8 @@ public class PartialCalcService
                 // no one item should change the value by more than it is currently times the adjust factor - anti market manipulation
                 changeAmount /= 2;
             }
+            if(mod.Key == "tier" && changeAmount > 0)
+                changeAmount /= 3; // increase tier slower 
             cost += changeAmount;
             if (cost < 0)
             {

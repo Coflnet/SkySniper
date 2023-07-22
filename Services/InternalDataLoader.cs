@@ -311,7 +311,7 @@ namespace Coflnet.Sky.Sniper.Services
             //ApplyData(sold, 0.2);
             for (int i = 0; i < 5; i++)
             {
-                ApplyData(batch, 0.03);
+                ApplyData(batch, 0.023);
             }
             batch = batch.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(30)).ToList();
             if (batch.Count == 0)
@@ -322,7 +322,7 @@ namespace Coflnet.Sky.Sniper.Services
             }
             for (int i = 0; i < 50; i++)
             {
-                ApplyData(batch, 0.02);
+                ApplyData(batch, 0.015);
             }
             return newSample;
         }
@@ -410,7 +410,7 @@ namespace Coflnet.Sky.Sniper.Services
                     continue;
                 sniper.AddAuctionToBucket(item, true, references);
             }
-            partialCalcService.SetLearningRate(0.02);
+            partialCalcService.SetLearningRate(0.01);
             for (int i = 0; i < 5; i++)
                 foreach (var item in sold)
                     partialCalcService.AddSell(item);
