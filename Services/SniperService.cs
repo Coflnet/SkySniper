@@ -29,6 +29,10 @@ namespace Coflnet.Sky.Sniper.Services
         private Counter closestMedianBruteCounter = Metrics.CreateCounter("sky_sniper_closest_median_brute", "Number of brute force searches for closest median");
 
         public event Action<LowPricedAuction> FoundSnipe;
+        public void MockFoundFlip(LowPricedAuction auction)
+        {
+            FoundSnipe?.Invoke(auction);
+        }
         private readonly HashSet<string> IncludeKeys = new HashSet<string>()
         {
             "baseStatBoostPercentage", // has an effect on drops from dungeons, is filtered to only max level
