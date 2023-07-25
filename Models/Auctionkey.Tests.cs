@@ -144,6 +144,23 @@ namespace Coflnet.Sky.Sniper.Models
             Assert.IsTrue(modifierList.Any(x => x.Value == "0" && x.Key == "candyUsed"));
         }
 
+        [TestCase(0, 0)]
+        [TestCase(1, 1)]
+        [TestCase(2, 1)]
+        public void NormalizedCandy(int amount, int target)
+        {
+            var service = new SniperService();
+            var auction = new SaveAuction()
+            {
+                Tag = "PET_SCATHA",
+                FlatenedNBT = new() { { "heldItem", "PET_ITEM_TIER_BOOST" },
+                                {"candyUsed", amount.ToString()} },
+            };
+            var modifierList = service.KeyFromSaveAuction(auction).Modifiers;
+            Assert.IsTrue(modifierList.Any(x => x.Value == SniperService.TierBoostShorthand));
+            Assert.IsTrue(modifierList.Any(x => x.Value == target.ToString() && x.Key == "candyUsed"));
+        }
+
         [Test]
         public void CheckFishingSpeedAttributeInclude()
         {
@@ -357,7 +374,7 @@ namespace Coflnet.Sky.Sniper.Models
             var service = new SniperService();
             var key = service.KeyFromSaveAuction(auction);
             Assert.AreEqual(0, key.Enchants.Count);
-        } 
+        }
 
         //[Test]
         public void HyperionMostSimilar()

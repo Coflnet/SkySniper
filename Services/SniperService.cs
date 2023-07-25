@@ -702,7 +702,7 @@ ORDER BY l.`AuctionId`  DESC;
                     return NormalizeNumberTo(s, PetExpMaxlevel / 6, 6);
             }
             var generalNormalizations = NormalizeGeneral(s, auction?.Tag?.StartsWith("MIDAS") ?? false, GetNumeric(auction.FlatenedNBT.FirstOrDefault(f => f.Key == "exp")));
-            if (generalNormalizations.Key != Ignore.Key)
+            if (generalNormalizations.Value != "continue")
                 return generalNormalizations;
             if (s.Key == "hpc")
                 return GetNumeric(s) switch
@@ -784,7 +784,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (s.Key == "talisman_enrichment")
                 return new KeyValuePair<string, string>("talisman_enrichment", "yes");
-            return Ignore;
+            return new KeyValuePair<string, string>(Ignore.Key, "continue");
         }
 
         public static KeyValuePair<string, string> NormalizeEdition(KeyValuePair<string, string> s)
