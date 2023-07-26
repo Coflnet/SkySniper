@@ -322,10 +322,20 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 ApplyData(batch, 0.03);
             }
+            var lastWeek = batch.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(5)).ToList();
+            if (lastWeek.Count > 20)
+                batch = lastWeek;
             for (int i = 0; i < 50; i++)
             {
                 ApplyData(batch, 0.015);
             }
+            var recent = batch.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(1))
+                .OrderByDescending(s => s.End).Take(50).ToList();
+            if (recent.Count > 10)
+                for (int i = 0; i < 20; i++)
+                {
+                    ApplyData(recent, 0.005);
+                }
             return newSample;
         }
 
