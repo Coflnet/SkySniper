@@ -149,7 +149,7 @@ namespace Coflnet.Sky.Sniper.Services
                             }
                             catch (Exception e)
                             {
-                                logger.LogError(e, "testing new auction failed");
+                                logger.LogError(e, "testing new auction failed " + a.Uuid);
                             }
                         }
                         return Task.CompletedTask;

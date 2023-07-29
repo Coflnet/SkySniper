@@ -1178,7 +1178,7 @@ ORDER BY l.`AuctionId`  DESC;
                     LogNonFlip(auction, bucket, key, extraValue, volume, medianPrice);
                     return false;
                 }
-                var props = CreateReference(bucket.References.Last().AuctionId, key, extraValue);
+                var props = CreateReference(bucket.References.LastOrDefault().AuctionId, key, extraValue);
                 AddMedianSample(bucket, props);
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, adjustedMedianPrice + extraValue, props);
             }
