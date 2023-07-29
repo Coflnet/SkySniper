@@ -1312,6 +1312,8 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (targetPrice < MIN_TARGET)
                 return false; // to low
+            if(targetPrice < auction.StartingBid - 2000)
+                return false; // not profitable
             var refAge = (GetDay() - bucket.OldestRef);
             if (refAge > 60)
                 return false; // too old
