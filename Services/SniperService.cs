@@ -820,7 +820,7 @@ ORDER BY l.`AuctionId`  DESC;
             var exp = baseKey.Modifiers.Where(m => m.Key == "exp").FirstOrDefault();
             if (exp.Key != default && exp.Value != "6")
             {
-                for (int i = int.Parse(exp.Value) + 1; i < 7; i++)
+                for (int i = (int)float.Parse(exp.Value) + 1; i < 7; i++)
                 {
                     yield return new AuctionKey(baseKey)
                     {
