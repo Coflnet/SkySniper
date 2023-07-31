@@ -908,7 +908,8 @@ ORDER BY l.`AuctionId`  DESC;
 
         public void TestNewAuction(SaveAuction auction, bool triggerEvents = true)
         {
-            var lookup = Lookups.GetOrAdd(auction.Tag, key => new PriceLookup());
+            string itemGroupTag = GetAuctionGroupTag(auction);
+            var lookup = Lookups.GetOrAdd(itemGroupTag, key => new PriceLookup());
             var l = lookup.Lookup;
             var cost = auction.StartingBid;
             var lbinPrice = auction.StartingBid * 1.03;
@@ -943,7 +944,10 @@ ORDER BY l.`AuctionId`  DESC;
                             Console.WriteLine($"Closest bucket clean: {item.Key}");
                         }
                         if (!closests.Any())
+                        {
+                            Console.WriteLine($"No closest bucket found for {key} {auction.Uuid}");
                             return;
+                        }
                         if (ShouldIgnoreMostSimilar(auction))
                         {
                             return;
@@ -983,6 +987,19 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 TryFindClosestRisky(auction, l, ref lbinPrice, ref medPrice);
             }
+        }
+
+        /// <summary>
+        /// Remaps item tags into one item if they are easily switchable
+        /// </summary>
+        /// <param name="auction"></param>
+        /// <returns></returns>
+        private static string GetAuctionGroupTag(SaveAuction auction)
+        {
+            var itemGroupTag = auction.Tag;
+            if (itemGroupTag == "SCYLLA" || itemGroupTag == "VALKYRIE")
+                itemGroupTag = "HYPERION"; // easily craftable from one into the other
+            return itemGroupTag;
         }
 
         private static bool ShouldIgnoreMostSimilar(SaveAuction auction)
@@ -1312,7 +1329,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (targetPrice < MIN_TARGET)
                 return false; // to low
-            if(targetPrice < auction.StartingBid - 2000)
+            if (targetPrice < auction.StartingBid - 2000)
                 return false; // not profitable
             var refAge = (GetDay() - bucket.OldestRef);
             if (refAge > 60)
