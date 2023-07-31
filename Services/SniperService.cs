@@ -508,10 +508,11 @@ ORDER BY l.`AuctionId`  DESC;
 
         public ReferenceAuctions GetBucketForAuction(SaveAuction auction)
         {
-            if (!Lookups.TryGetValue(auction.Tag, out var lookup) || lookup == null)
+            string itemGroupTag = GetAuctionGroupTag(auction);
+            if (!Lookups.TryGetValue(itemGroupTag, out var lookup) || lookup == null)
             {
                 lookup = new PriceLookup();
-                Lookups[auction.Tag] = lookup;
+                Lookups[itemGroupTag] = lookup;
             }
             return GetOrAdd(KeyFromSaveAuction(auction), lookup);
         }
@@ -997,7 +998,7 @@ ORDER BY l.`AuctionId`  DESC;
         private static string GetAuctionGroupTag(SaveAuction auction)
         {
             var itemGroupTag = auction.Tag;
-            if (itemGroupTag == "SCYLLA" || itemGroupTag == "VALKYRIE")
+            if (itemGroupTag == "SCYLLA" || itemGroupTag == "VALKYRIE" || itemGroupTag == "NECRON_BLADE")
                 itemGroupTag = "HYPERION"; // easily craftable from one into the other
             return itemGroupTag;
         }
