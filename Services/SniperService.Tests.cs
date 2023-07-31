@@ -773,6 +773,21 @@ namespace Coflnet.Sky.Sniper.Services
             var price = service.GetPrice(highAttrib);
             Assert.AreEqual(400000, price.Median, price.MedianKey);
         }
+
+        [Test]
+        public void WitherBladeCombination()
+        {
+            highestValAuction.Tag = "HYPERION";
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.HighestBidAmount = 100_000_000;
+            AddVolume(highestValAuction);
+            var scylla = Dupplicate(highestValAuction);
+            scylla.StartingBid = 5;
+            scylla.Tag = "SCYLLA";
+            service.TestNewAuction(scylla);
+            Assert.AreEqual(100_000_000, found.First().TargetPrice);            
+        }
+
         [Test]
         public void AttributeHigherThanRef()
         {
