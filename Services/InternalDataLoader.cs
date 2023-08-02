@@ -263,7 +263,17 @@ namespace Coflnet.Sky.Sniper.Services
                     await Task.Delay(2000);
                 }
             }
-            partialCalcService.CapAtCraftCost();
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    partialCalcService.CapAtCraftCost();
+                }
+                catch (System.Exception e)
+                {
+                    logger.LogError(e, "capping at craft cost");
+                }
+            });
             logger.LogInformation($"Loaded {i}/{differential}th of sell history");
             // ready if more than 20% loaded
             if (i >= differential / 5)
