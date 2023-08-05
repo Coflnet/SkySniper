@@ -313,19 +313,7 @@ namespace Coflnet.Sky.Sniper.Services
                 new Core.Enchantment(Core.Enchantment.EnchantmentType.sharpness,7)
             };
             AddVolume(moreEnchants);
-            service.UpdateBazaar(new()
-            {
-                Products = new(){
-                new (){
-                    ProductId = "ENCHANTMENT_SHARPNESS_7",
-                    SellSummary = new(){
-                        new (){
-                            PricePerUnit = 49_000_000
-                        }
-                    }
-                }
-            }
-            });
+            SetBazaarPrice("ENCHANTMENT_SHARPNESS_7", 49_000_000);
 
             var toTest = Dupplicate(highestValAuction);
             service.FinishedUpdate();
@@ -346,19 +334,7 @@ namespace Coflnet.Sky.Sniper.Services
             reforge.HighestBidAmount = 10_000_000;
             reforge.Reforge = ItemReferences.Reforge.Gilded;
             AddVolume(reforge);
-            service.UpdateBazaar(new()
-            {
-                Products = new(){
-                new (){
-                    ProductId = "MIDAS_JEWEL",
-                    SellSummary = new(){
-                        new (){
-                            PricePerUnit = 4_000_000
-                        }
-                    }
-                }
-            }
-            });
+            SetBazaarPrice("MIDAS_JEWEL", 4_000_000);
 
             var toTest = Dupplicate(highestValAuction);
             service.FinishedUpdate();
@@ -494,20 +470,7 @@ namespace Coflnet.Sky.Sniper.Services
             withoutKills.HighestBidAmount = 10_000_000;
             withoutKills.FlatenedNBT["heldItem"] = itemId;
             AddVolume(withoutKills);
-            service.UpdateBazaar(new()
-            {
-                Products = new(){
-                new (){
-                    ProductId = itemId,
-                    SellSummary = new(){
-                        new (){
-                            PricePerUnit = 4_000_000
-                        }
-                    }
-                }
-            }
-            });
-
+            SetBazaarPrice(itemId, 4_000_000);
             var toTest = Dupplicate(highestValAuction);
             service.FinishedUpdate();
             service.State = SniperState.Ready;
@@ -527,27 +490,8 @@ namespace Coflnet.Sky.Sniper.Services
             upgradeLvl9.HighestBidAmount = 100_000_000;
             upgradeLvl9.FlatenedNBT["upgrade_level"] = "9";
             AddVolume(upgradeLvl9);
-            service.UpdateBazaar(new()
-            {
-                Products = new(){
-                new (){
-                    ProductId = "FOURTH_MASTER_STAR",
-                    SellSummary = new(){
-                        new (){
-                            PricePerUnit = 49_000_000
-                        }
-                    }
-                },
-                new (){
-                    ProductId = "THIRD_MASTER_STAR",
-                    SellSummary = new(){
-                        new (){
-                            PricePerUnit = 19_000_000
-                        }
-                    }
-                }
-            }
-            });
+            SetBazaarPrice("FOURTH_MASTER_STAR", 49_000_000);
+            SetBazaarPrice("THIRD_MASTER_STAR", 19_000_000);
             var toTest = Dupplicate(highestValAuction);
             service.FinishedUpdate();
             service.State = SniperState.Ready;
@@ -781,11 +725,27 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.FlatenedNBT = new();
             highestValAuction.HighestBidAmount = 100_000_000;
             AddVolume(highestValAuction);
+            SetBazaarPrice("GIANT_FRAGMENT_LASER", 20_000);
             var scylla = Dupplicate(highestValAuction);
             scylla.StartingBid = 5;
             scylla.Tag = "SCYLLA";
             service.TestNewAuction(scylla);
-            Assert.AreEqual(100_000_000, found.First().TargetPrice);            
+            Assert.AreEqual(100_000_000 - 8 * 20_000, found.First().TargetPrice);            
+        }
+
+        [Test]
+        public void CombineFragged()
+        {
+            highestValAuction.Tag = "SHADOW_FURY";
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.HighestBidAmount = 40_000_000;
+            AddVolume(highestValAuction);
+            SetBazaarPrice("LIVID_FRAGMENT", 20_000);
+            var starred = Dupplicate(highestValAuction);
+            starred.StartingBid = 5;
+            starred.Tag = "STARRED_SHADOW_FURY";
+            var price = service.GetPrice(starred);
+            Assert.AreEqual(40_000_000 - 8 * 20_000, price.Median);
         }
 
         [Test]
@@ -846,19 +806,7 @@ namespace Coflnet.Sky.Sniper.Services
             clean.HighestBidAmount = 500_000;
             AddVolume(clean);
             highestValAuction.HighestBidAmount = 10_000_000;
-            service.UpdateBazaar(new()
-            {
-                Products = new(){
-                new (){
-                    ProductId = "ENCHANTMENT_SHARPNESS_7",
-                    SellSummary = new(){
-                        new (){
-                            PricePerUnit = 3_000_000
-                        }
-                    }
-                }
-            }
-            });
+            SetBazaarPrice("ENCHANTMENT_SHARPNESS_7", 3_000_000);
             AddVolume(highestValAuction);
             service.FinishedUpdate();
             highestValAuction.StartingBid = 5;

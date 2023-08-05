@@ -252,9 +252,10 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (auction == null || auction.Tag == null)
                 return null;
+            var tagGroup = GetAuctionGroupTag(auction);
 
             var result = new PriceEstimate();
-            if (Lookups.TryGetValue(auction.Tag, out PriceLookup lookup))
+            if (Lookups.TryGetValue(tagGroup.Item1, out PriceLookup lookup))
             {
                 var l = lookup.Lookup;
                 var itemKey = KeyFromSaveAuction(auction);
@@ -292,6 +293,12 @@ ORDER BY l.`AuctionId`  DESC;
                         result.Lbin = closest.Value.Lbin;
                         result.LbinKey = closest.Key.ToString();
                     }
+                }
+                // correct for combined items
+                if (tagGroup.Item2 != 0)
+                {
+                    result.Median -= tagGroup.Item2;
+                    result.MedianKey += $"-dif:{tagGroup.Item2}";
                 }
             }
             return result;
@@ -363,6 +370,15 @@ ORDER BY l.`AuctionId`  DESC;
             }).Where(m => m != null).ToList();
             var medianSumIngredients = values.Select(m => m.Price).DefaultIfEmpty(0).Sum();
             return medianSumIngredients;
+        }
+
+        private long GetPriceForItem(string item)
+        {
+            if (Lookups.TryGetValue(item, out var lookup))
+            {
+                return lookup.Lookup.Values.FirstOrDefault()?.Price ?? 0;
+            }
+            return 0;
         }
 
         private static KeyValuePair<AuctionKey, ReferenceAuctions> FindClosestTo(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey)
@@ -508,7 +524,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         public ReferenceAuctions GetBucketForAuction(SaveAuction auction)
         {
-            string itemGroupTag = GetAuctionGroupTag(auction);
+            var itemGroupTag = GetAuctionGroupTag(auction).Item1;
             if (!Lookups.TryGetValue(itemGroupTag, out var lookup) || lookup == null)
             {
                 lookup = new PriceLookup();
@@ -909,12 +925,12 @@ ORDER BY l.`AuctionId`  DESC;
 
         public void TestNewAuction(SaveAuction auction, bool triggerEvents = true)
         {
-            string itemGroupTag = GetAuctionGroupTag(auction);
-            var lookup = Lookups.GetOrAdd(itemGroupTag, key => new PriceLookup());
+            var itemGroupTag = GetAuctionGroupTag(auction);
+            var lookup = Lookups.GetOrAdd(itemGroupTag.Item1, key => new PriceLookup());
             var l = lookup.Lookup;
             var cost = auction.StartingBid;
-            var lbinPrice = auction.StartingBid * 1.03;
-            var medPrice = auction.StartingBid * 1.05;
+            var lbinPrice = auction.StartingBid * 1.03 + itemGroupTag.Item2;
+            var medPrice = auction.StartingBid * 1.05 + itemGroupTag.Item2;
             var lastKey = new AuctionKey();
             var shouldTryToFindClosest = false;
             for (int i = 0; i < 5; i++)
@@ -979,7 +995,7 @@ ORDER BY l.`AuctionId`  DESC;
                     UpdateLbin(auction, bucket);
                 if (triggerEvents)
                 {
-                    long extraValue = GetExtraValue(auction, key);
+                    long extraValue = GetExtraValue(auction, key) - itemGroupTag.Item2;
                     if (FindFlip(auction, lbinPrice, medPrice, bucket, key, l, extraValue))
                         break; // found a snipe, no need to check other lower value buckets
                 }
@@ -995,12 +1011,14 @@ ORDER BY l.`AuctionId`  DESC;
         /// </summary>
         /// <param name="auction"></param>
         /// <returns></returns>
-        private static string GetAuctionGroupTag(SaveAuction auction)
+        private (string, long) GetAuctionGroupTag(SaveAuction auction)
         {
             var itemGroupTag = auction.Tag;
             if (itemGroupTag == "SCYLLA" || itemGroupTag == "VALKYRIE" || itemGroupTag == "NECRON_BLADE")
-                itemGroupTag = "HYPERION"; // easily craftable from one into the other
-            return itemGroupTag;
+                return ("HYPERION", GetPriceForItem("GIANT_FRAGMENT_LASER") * 8); // easily craftable from one into the other
+            if (itemGroupTag.StartsWith("STARRED_"))
+                return (itemGroupTag.Substring(8), GetPriceForItem("LIVID_FRAGMENT") * 8);
+            return (itemGroupTag, 0);
         }
 
         private static bool ShouldIgnoreMostSimilar(SaveAuction auction)
