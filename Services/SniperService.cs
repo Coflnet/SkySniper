@@ -744,6 +744,9 @@ ORDER BY l.`AuctionId`  DESC;
                     "PET_ITEM_EXP_SHARE" => "EXP_SHARE",
                     _ => null
                 };
+                // ignore exp share if exp is maxed
+                if (heldItem == "EXP_SHARE" && GetNumeric(auction.FlatenedNBT.FirstOrDefault(f => f.Key == "exp")) >= PetExpMaxlevel)
+                    return Ignore;
                 if (heldItem == null)
                     return Ignore;
                 return new KeyValuePair<string, string>(PetItemKey, heldItem);
