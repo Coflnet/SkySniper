@@ -1313,7 +1313,7 @@ ORDER BY l.`AuctionId`  DESC;
             var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue);
             AddMedianSample(bucket, props);
             props["mVal"] = bucket.Price.ToString();
-            var targetPrice = Math.Min(higherValueLowerBin, MaxMedianPriceForSnipe(bucket)) + extraValue;
+            var targetPrice = (Math.Min(higherValueLowerBin, MaxMedianPriceForSnipe(bucket)) + extraValue)-1000;
             if (targetPrice < auction.StartingBid * 1.03)
                 return false;
             return FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
