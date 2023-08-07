@@ -1315,8 +1315,11 @@ ORDER BY l.`AuctionId`  DESC;
             var targetPrice = (Math.Min(higherValueLowerBin, MaxMedianPriceForSnipe(bucket)) + extraValue) - MIN_TARGET / 200;
             if (targetPrice < auction.StartingBid * 1.03)
                 return false;
-            // check for 80th percentile from references
-            var percentile = bucket.References.OrderByDescending(r => r.Day).Take(20).Select(r => r.Price).OrderBy(p => p).ElementAt(bucket.References.Count * 8 / 10);
+            // check for 90th percentile from references
+            var subsetSize = 20;
+            var percentile = bucket.References
+                    .OrderByDescending(r => r.Day).Take(subsetSize).Select(r => r.Price).OrderBy(p => p)
+                    .ElementAt(Math.Min(bucket.References.Count, subsetSize) * 9 / 10);
             targetPrice = Math.Min(targetPrice, percentile);
             return FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
         }
