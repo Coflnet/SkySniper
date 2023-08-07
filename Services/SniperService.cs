@@ -873,13 +873,12 @@ ORDER BY l.`AuctionId`  DESC;
                     };
                 }
                 foreach (var item in l.Keys.Where(k => k != baseKey && baseKey.Modifiers
-                    .All(m => k.Modifiers.Any(km => km.Key == m.Key && km.Value == m.Value))
+                    .All(m => k.Modifiers != null && k.Modifiers.Any(km => km.Key == m.Key && km.Value == m.Value))
                             && baseKey.Enchants
-                    .All(e => k.Enchants.Any(ek => e.Type == ek.Type && ek.Lvl == e.Lvl)) && k.Tier == baseKey.Tier))
+                    .All(e => k.Enchants != null && k.Enchants.Any(ek => e.Type == ek.Type && ek.Lvl == e.Lvl)) && k.Tier == baseKey.Tier))
                 {
                     if (l[item].Price == 0)
                         continue;
-                    Console.WriteLine($"Found higher tier {item} for {baseKey} with {l[item].Lbin.Price} lbin price {l[item].Price}");
                     yield return item;
                 }
             }
@@ -1313,7 +1312,7 @@ ORDER BY l.`AuctionId`  DESC;
             var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue);
             AddMedianSample(bucket, props);
             props["mVal"] = bucket.Price.ToString();
-            var targetPrice = (Math.Min(higherValueLowerBin, MaxMedianPriceForSnipe(bucket)) + extraValue)-1000;
+            var targetPrice = (Math.Min(higherValueLowerBin, MaxMedianPriceForSnipe(bucket)) + extraValue) - 1000;
             if (targetPrice < auction.StartingBid * 1.03)
                 return false;
             return FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
