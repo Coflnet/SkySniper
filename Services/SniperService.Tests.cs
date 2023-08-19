@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -233,6 +234,32 @@ namespace Coflnet.Sky.Sniper.Services
             }
         }
 
+        [Test]
+        public void UpdatesOldestRefWithMedian()
+        {
+            var bucket = new ReferenceAuctions();
+            var end = new System.DateTime(2023, 1, 1);
+            var auction = new SaveAuction
+            {
+                Tag = "1",
+                FlatenedNBT = new() { { "new_years_cake", "252" } },
+                StartingBid = 900,
+                HighestBidAmount = 900,
+                End = end
+            };
+            var lookup = new PriceLookup();
+            lookup.Lookup.TryAdd(new(), bucket);
+            service.Lookups.TryAdd("1", lookup);
+            for (int i = 0; i < 11; i++)
+            {
+                Console.WriteLine($"Day: {SniperService.GetDay(auction.End)}");
+                service.AddAuctionToBucket(Dupplicate(auction), false, bucket);
+                auction.End = auction.End.AddDays(-1);
+            }
+            var day = SniperService.GetDay(end) - 2;
+            Assert.AreEqual(day, bucket.OldestRef);
+        }
+
 
         [Test]
         public void RandomEnchantLbin()
@@ -463,7 +490,7 @@ namespace Coflnet.Sky.Sniper.Services
         }
         [TestCase("MINOS_RELIC", "petItem:MINOS_RELIC (4000000)")]
         [TestCase("PET_ITEM_QUICK_CLAW", "petItem:QUICK_CLAW (4000000)")]
-        public void StonksDecreaseForMiniosReliqPetItem(string itemId, string textNote)
+        public void StonksDecreaseForPetItem(string itemId, string textNote)
         {
             highestValAuction.FlatenedNBT = new() { { "heldItem", "YELLOW_BANDANA" } };
             var withoutKills = Dupplicate(highestValAuction);
@@ -730,7 +757,7 @@ namespace Coflnet.Sky.Sniper.Services
             scylla.StartingBid = 5;
             scylla.Tag = "SCYLLA";
             service.TestNewAuction(scylla);
-            Assert.AreEqual(100_000_000 - 8 * 20_000, found.First().TargetPrice);            
+            Assert.AreEqual(100_000_000 - 8 * 20_000, found.First().TargetPrice);
         }
 
         [Test]

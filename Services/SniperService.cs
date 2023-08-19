@@ -482,7 +482,7 @@ ORDER BY l.`AuctionId`  DESC;
                 .OrderByDescending(b => b.Day)
                 .Take(60)
                 .GroupBy(a => a.Seller)
-                .Select(a => a.Last())  // only use one (the last) price from each seller
+                .Select(a => a.First())  // only use one (the latest) price from each seller
                 .ToList();
             size = deduplicated.Count();
             if (size <= 3)
@@ -491,11 +491,9 @@ ORDER BY l.`AuctionId`  DESC;
                 return;
             }
             // short term protects against price drops after updates
-            var shortTermList = deduplicated.OrderByDescending(b => b.Day).Take(3).ToList();
-            if (deduplicated.Where(d => d.Day == shortTermList.First().Day).Count() > SizeToKeep / 2)
-                shortTermList = deduplicated.OrderByDescending(b => b.Day).Take(7).ToList();
+            List<ReferencePrice> shortTermList = GetShortTermBatch(deduplicated);
             var shortTermPrice = GetMedian(shortTermList);
-            bucket.OldestRef = shortTermList.Min(s => s.Day);
+            bucket.OldestRef = shortTermList.OrderByDescending(s => s.Day).Take(4).Min(s => s.Day);
             // long term protects against market manipulation
             var longSpanPrice = GetMedian(deduplicated.Take(29).ToList());
             var medianPrice = Math.Min(shortTermPrice, longSpanPrice);
@@ -521,6 +519,15 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
             bucket.Price = medianPrice;
+        }
+
+        private static List<ReferencePrice> GetShortTermBatch(List<ReferencePrice> deduplicated)
+        {
+            var shortTermList = deduplicated.OrderByDescending(b => b.Day).Take(3).ToList();
+            // if more than half of the references are less than 12 hours old, use more references
+            if (deduplicated.Where(d => d.Day >= GetDay(DateTime.Now - TimeSpan.FromHours(12))).Count() > SizeToKeep / 2)
+                shortTermList = deduplicated.OrderByDescending(b => b.Day).Take(7).ToList();
+            return shortTermList;
         }
 
         public ReferenceAuctions GetBucketForAuction(SaveAuction auction)
