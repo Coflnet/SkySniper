@@ -314,7 +314,6 @@ public class PartialCalcService
                         if (target.HasValue && totalCount > 3 && target.Value.Price < val.Value)
                         {
                             logger.LogInformation($"Capping {attrib.Key} {val.Key} at {target.Value.Price} from {val.Value} on {item.Key}");
-                            Task.Delay(2000).Wait();
                             value = target.Value.Price;
                         }
                     }
