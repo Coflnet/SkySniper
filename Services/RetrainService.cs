@@ -41,7 +41,7 @@ public class RetrainService : BackgroundService
             logger.LogWarning("Blocked retrain for unknown item " + tag);
             return;
         }
-        if (lastRetrain.TryGetValue(tag, out var last) && last > DateTime.UtcNow.AddMinutes(-20))
+        if (lastRetrain.TryGetValue(tag, out var last) && last > DateTime.UtcNow.AddMinutes(-30))
         {
             return;
         }
