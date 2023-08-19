@@ -49,8 +49,10 @@ public class TokenService : ITokenService
     public bool HasTokenAccess(string token)
     {
         var data = VerifyToken(token);
+        var expires = (long)data["exp"];
+        var secondsLeft = expires - DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var current = tokenUsages.AddOrUpdate((long)data["id"], 1, (k, v) => v + 1);
-        return current < 2500 && DateTimeOffset.UtcNow.ToUnixTimeSeconds() < (long)data["exp"];
+        return current < secondsLeft && secondsLeft > 0;
     }
 
     private IDictionary<string, object> VerifyToken(string token)
