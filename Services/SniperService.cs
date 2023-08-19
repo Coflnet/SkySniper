@@ -1221,7 +1221,7 @@ ORDER BY l.`AuctionId`  DESC;
                 long adjustedMedianPrice = CheckHigherValueKeyForLowerPrice(bucket, key, l, medianPrice);
                 if (adjustedMedianPrice + extraValue < minMedPrice)
                 {
-                    LogNonFlip(auction, bucket, key, extraValue, volume, medianPrice);
+                    LogNonFlip(auction, bucket, key, extraValue, volume, medianPrice, $"Adjusted median {adjustedMedianPrice} lower than min price {minMedPrice}");
                     return false;
                 }
                 var props = CreateReference(bucket.References.LastOrDefault().AuctionId, key, extraValue);
@@ -1230,18 +1230,18 @@ ORDER BY l.`AuctionId`  DESC;
             }
             else
             {
-                LogNonFlip(auction, bucket, key, extraValue, volume, medianPrice);
+                LogNonFlip(auction, bucket, key, extraValue, volume, medianPrice, $"Median {medianPrice} lower than min price {minMedPrice} {bucket.References.Count}");
             }
             return foundSnipe;
 
-            void LogNonFlip(SaveAuction auction, ReferenceAuctions bucket, AuctionKey key, long extraValue, float volume, long medianPrice)
+            void LogNonFlip(SaveAuction auction, ReferenceAuctions bucket, AuctionKey key, long extraValue, float volume, long medianPrice, string v = null)
             {
                 if (auction.UId % 10 == 0)
                     Console.Write("p");
                 if (volume == 0 || bucket.Lbin.Price == 0 || bucket.Price == 0 || bucket.Price > MIN_TARGET)
                     Logs.Enqueue(new LogEntry()
                     {
-                        Key = key.ToString() + $"+{extraValue}",
+                        Key = key.ToString() + $"+{extraValue} {v}",
                         LBin = bucket.Lbin.Price,
                         Median = medianPrice,
                         Uuid = auction.Uuid,
