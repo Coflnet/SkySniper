@@ -680,16 +680,20 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static void RemoveNoEffectEnchants(SaveAuction auction, AuctionKey key)
         {
-            if (auction.Tag != null && (auction.Tag.Contains("GAUNTLET") || auction.Tag.Contains("DRILL")))
+            if (auction.Tag == null)
+                return;
+            if (auction.Tag.Contains("GAUNTLET") || auction.Tag.Contains("DRILL"))
                 RemoveEnchantFromKey(key, Core.Enchantment.EnchantmentType.ultimate_wise);
-            if (auction.Tag != null && auction.Tag.StartsWith("DIVAN_"))
+            if (auction.Tag.StartsWith("DIVAN_"))
                 RemoveEnchantFromKey(key, Core.Enchantment.EnchantmentType.ultimate_legion);
+            if (!auction.Tag.EndsWith("KATANA"))
+                RemoveEnchantFromKey(key, Core.Enchantment.EnchantmentType.ender_slayer, 6);
         }
 
-        private static void RemoveEnchantFromKey(AuctionKey key, Core.Enchantment.EnchantmentType ench)
+        private static void RemoveEnchantFromKey(AuctionKey key, Core.Enchantment.EnchantmentType ench, int maxLevel = 10)
         {
             if (key.Enchants.Any(e => e.Type == ench))
-                key.Enchants = key.Enchants.Where(e => e.Type != ench).ToList();
+                key.Enchants = key.Enchants.Where(e => e.Type != ench || e.Lvl > maxLevel).ToList();
         }
 
         private static void AssignEmptyModifiers(SaveAuction auction, AuctionKey key)

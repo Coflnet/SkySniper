@@ -3,6 +3,7 @@ using System.Linq;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Services;
 using NUnit.Framework;
+using static Coflnet.Sky.Core.Enchantment;
 
 namespace Coflnet.Sky.Sniper.Models
 {
@@ -122,6 +123,21 @@ namespace Coflnet.Sky.Sniper.Models
             {
                 return new AuctionKey(null, ItemReferences.Reforge.Any, new() { new("exp", amount) }, Tier.UNKNOWN, 1);
             }
+        }
+
+        [TestCase("SWORD", EnchantmentType.ender_slayer, 6, true)]
+        [TestCase("ATOMSPLIT_KATANA", EnchantmentType.ender_slayer, 6, false)]
+        [TestCase("SWORD", EnchantmentType.ender_slayer, 7, false)]
+        public void EnderSlayer6IgnoredOnEverythingExceptKatana(string tag, Core.Enchantment.EnchantmentType type, byte level, bool shouldIgnore)
+        {
+            var service = new SniperService();
+            var auction = new SaveAuction()
+            {
+                Tag = tag,
+                Enchantments = new() { new(type, level) },
+            };
+            var key = service.KeyFromSaveAuction(auction);
+            Assert.AreEqual(shouldIgnore, key.Enchants.Count == 0);
         }
 
         [TestCase(0)]
