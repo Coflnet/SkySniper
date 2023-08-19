@@ -280,7 +280,7 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 sniper.State = SniperState.Ready;
                 UpdateAllMedian();
-                await Task.Delay(100);
+                await Task.Delay(500);
             }
         }
 
@@ -298,9 +298,10 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 var end = start + TimeSpan.FromDays(10);
                 samples.AddRange(await LoadpartialBatch(context, id, start, end, stoppinToken, samples));
-                if (samples.Count > 1200)
+                if (samples.Count > 5000)
                 {
-                    samples = samples.OrderBy(s => Random.Shared.NextDouble()).Take(1200).ToList();
+                    var commonalityCount = samples.GroupBy(s => s.Tag).ToDictionary(g => g.Key, g => g.Count());
+                    samples = samples.OrderBy(s => Random.Shared.NextDouble() / commonalityCount.GetValueOrDefault(s.Tag, 1)).Take(2500).ToList();
                 }
             }
             logger.LogInformation(Newtonsoft.Json.JsonConvert.SerializeObject(partialCalcService.GetAttributeCosts(targetTag), Newtonsoft.Json.Formatting.Indented));

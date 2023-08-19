@@ -55,11 +55,22 @@ public class MayorService : BackgroundService, IMayorService
 
     private async Task InitMayors()
     {
-        var mayors = await electionPeriodsApi.ElectionPeriodRangeGetAsync(0, System.DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-        if (mayors == null)
+        List<Mayor.Client.Model.ModelElectionPeriod> mayors = null;
+        while (mayors == null)
         {
-            logger.LogError("Failed to load mayors");
-            return;
+            try
+            {
+                mayors = await electionPeriodsApi.ElectionPeriodRangeGetAsync(0, System.DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            }
+            catch (System.Exception)
+            {
+
+            }
+            if (mayors == null)
+            {
+                logger.LogError("Failed to load mayors");
+                await Task.Delay(10000);
+            }
         }
         foreach (var mayor in mayors)
         {
