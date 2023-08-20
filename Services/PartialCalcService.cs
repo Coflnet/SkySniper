@@ -237,7 +237,7 @@ public class PartialCalcService
                 Console.WriteLine(JsonConvert.SerializeObject(attribs.Values.GetOrAdd(key, _ => new()), Formatting.Indented));
                 Task.Delay(10000).Wait();
             }
-            breakDown?.Add($"{key} {value}: {cost}");
+            breakDown?.Add($"{key} {value}: {cost.ToString("0.0")}");
             return cost;
         }
     }
