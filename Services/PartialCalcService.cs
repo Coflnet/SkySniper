@@ -387,10 +387,19 @@ public class PartialCalcService
             }
         }
 
-        if (key.StartsWith("ench.") && TryGetItemCost($"ENCHANTMENT_{key.Substring(5).ToUpper()}_{val}", out var enchPrice))
+        if (key.StartsWith("ench."))
         {
-            price = enchPrice;
-            return true;
+            if (TryGetItemCost($"ENCHANTMENT_{key.Substring(5).ToUpper()}_{val}", out var enchPrice))
+            {
+                price = enchPrice;
+                return true;
+            }
+            // could not get match, try to find lvl 5 cost (craftable enchants have an estimated one)
+            if (TryGetItemCost($"ENCHANTMENT_{key.Substring(5).ToUpper()}_{5}", out enchPrice))
+            {
+                price = enchPrice / 2; // devide by 2 since its at most lvl 4 - here for capping value
+                return true;
+            }
         }
 
         if (key == "rarity_upgrades")
