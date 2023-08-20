@@ -802,6 +802,8 @@ ORDER BY l.`AuctionId`  DESC;
                     return NormalizeNumberTo(s, 10_000_000, 10);
                 else
                     return Ignore;
+            if (s.Key == "eman_kills")
+                return NormalizeGroupNumber(s, 10_000, 25_000, 50_000, 75_000, 100_000, 125_000, 150_000, 200_000);
             if (s.Key.EndsWith("_kills"))
                 return NormalizeNumberTo(s, 10_000);
             if (s.Key == "yogsKilled")
@@ -924,6 +926,26 @@ ORDER BY l.`AuctionId`  DESC;
         {
             var group = GetNumeric(s) / groupingSize;
             return new KeyValuePair<string, string>(s.Key, Math.Min(group, highestGroup).ToString());
+        }
+
+        /// <summary>
+        /// Determine group by  making less than comparison, smallest group is first
+        /// </summary>
+        /// <param name="s"></param>
+        /// <param name="groups"></param>
+        /// <returns></returns>
+        public static KeyValuePair<string, string> NormalizeGroupNumber(KeyValuePair<string, string> s, params int[] groups)
+        {
+            var val = GetNumeric(s);
+            for (int i = 0; i < groups.Length; i++)
+            {
+                if (val < groups[i])
+                {
+                    return new KeyValuePair<string, string>(s.Key, i.ToString());
+                }
+            }
+            var highestGroup = groups.Length - 1;
+            return new KeyValuePair<string, string>(s.Key, highestGroup.ToString());
         }
 
         public static long GetNumeric(KeyValuePair<string, string> s)

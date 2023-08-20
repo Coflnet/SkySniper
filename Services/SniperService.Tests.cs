@@ -260,6 +260,18 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(day, bucket.OldestRef);
         }
 
+        [TestCase(1, 0)]
+        [TestCase(200, 1)]
+        [TestCase(499, 1)]
+        [TestCase(999, 2)]
+        [TestCase(999999, 3)]
+        public void NormalizeGroupNumber(int val, int expectedGroup)
+        {
+            var simAttr = new KeyValuePair<string, string>("new_years_cake", val.ToString());
+            var comb = SniperService.NormalizeGroupNumber(simAttr, 200, 500, 1000, 2000);
+            Assert.AreEqual(expectedGroup.ToString(), comb.Value);
+        }
+
 
         [Test]
         public void RandomEnchantLbin()
