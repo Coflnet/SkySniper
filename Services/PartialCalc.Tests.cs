@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Coflnet.Sky.Core;
 using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
@@ -10,12 +11,13 @@ public class PartialCalcTests
 {
     private PartialCalcService Service = null!;
     private SniperService sniper = null!;
+    private CraftcostMock craftcost = null!;
     private class CraftcostMock : ICraftCostService
     {
+        public Dictionary<string, double> Values = new();
         public bool TryGetCost(string itemId, out double cost)
         {
-            cost = 0;
-            return false;
+            return Values.TryGetValue(itemId, out cost);
         }
     }
     private class MayorMock : IMayorService
@@ -29,7 +31,8 @@ public class PartialCalcTests
     public void Setup()
     {
         sniper = new SniperService();
-        Service = new PartialCalcService(sniper, new CraftcostMock(), new MayorMock(), new MockPersistenceManager(), NullLogger<PartialCalcService>.Instance);
+        craftcost = new CraftcostMock();
+        Service = new PartialCalcService(sniper, craftcost, new MayorMock(), new MockPersistenceManager(), NullLogger<PartialCalcService>.Instance);
         AddSell(new SaveAuction()
         {
             Tag = "CLEAN",
@@ -172,7 +175,7 @@ public class PartialCalcTests
         }
         var result = Service.GetPrice(item, true);
         Console.WriteLine(string.Join("\n", result.BreakDown));
-        Assert.Greater(700000,result.Price);
+        Assert.Greater(700000, result.Price);
     }
 
     [Test]
@@ -203,6 +206,41 @@ public class PartialCalcTests
         var result = Service.GetPrice(item, true);
         Console.WriteLine(string.Join("\n", result.BreakDown));
         Assert.Greater(600000, result.Price);
+    }
+
+    [Test]
+    public void CapEnchatAtCraftCost()
+    {
+        var item = new Item()
+        {
+            Tag = "HYPERION",
+            ExtraAttributes = new()
+            {
+                { "tier", "EPIC" }
+            },
+            Enchantments = new()
+            {
+                { "impaling", 3 }
+            }
+        };
+        Service.SetLearningRate(0.1);
+        AddSell(new SaveAuction()
+        {
+            Tag = "HYPERION",
+            Tier = Tier.EPIC,
+            HighestBidAmount = 800_000_000,
+            Enchantments = new()
+            {
+                new Core.Enchantment(Core.Enchantment.EnchantmentType.impaling, 3),
+                new Core.Enchantment(Core.Enchantment.EnchantmentType.aiming, 2)
+            }
+        }, 100);
+        craftcost.Values["ENCHANTMENT_IMPALING_5"] = 1500;
+
+        Service.CapAtCraftCost();
+        var result = Service.GetPrice(item, true);
+        Console.WriteLine(string.Join("\n", result.BreakDown));
+        Assert.AreEqual("ench.impaling 3: 787,5", result.BreakDown[1]);
     }
 
     private void AddSell(SaveAuction sell, int volume = 1)
