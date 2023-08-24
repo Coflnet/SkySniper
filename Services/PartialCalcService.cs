@@ -238,6 +238,19 @@ public class PartialCalcService
                 Task.Delay(10000).Wait();
             }
             breakDown?.Add($"{key} {value}: {cost.ToString("0.0")}");
+            if (breakDown != null && cost == 12000)
+            {
+                try
+                {
+                    var startKey = key.Substring(0, 3);
+                    var toReport = attribs.Values.Where(v => v.Key.StartsWith(startKey)).SelectMany(v => v.Value).ToList();
+                    breakDown.Add($"Unknown {JsonConvert.SerializeObject(toReport, Formatting.Indented)}");
+                }
+                catch (System.Exception e)
+                {
+                    logger.LogError(e, "Error while trying to get unknown item");
+                }
+            }
             return cost;
         }
     }
