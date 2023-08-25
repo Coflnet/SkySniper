@@ -36,7 +36,7 @@ public class PartialCalcService
         this.logger = logger;
     }
 
-    public Dictionary<string, Dictionary<object, double>> GetAttributeCosts(string tag)
+    public Dictionary<string, Dictionary<string, double>> GetAttributeCosts(string tag)
     {
         if (!AttributeLookups.TryGetValue(tag, out var attribs))
             return new();
@@ -126,7 +126,7 @@ public class PartialCalcService
                     throw new Exception("should not reach");
                 });
             var percentOfdifference = Math.Abs(cost / estimation);
-            if (mod.Key == "exp_expGroup" && (double)mod.Value == 4 && auction.Tag == "PET_BLUE_WHALE")
+            if (mod.Key == "exp_expGroup" && mod.Value == "4" && auction.Tag == "PET_BLUE_WHALE")
             {
                 if (Random.Shared.NextDouble() < 0.1)
                     Console.WriteLine($"changing by {perItemChange * percentOfdifference} {percentOfdifference} {cost} est:{estimation} {perItemChange} on {auction.Uuid}");
@@ -156,7 +156,7 @@ public class PartialCalcService
         return auction.HighestBidAmount;
     }
 
-    private double GetValueOf(string tag, AttributeLookup attribs, Dictionary<string, object> modifiers, List<string>? breakDown = null)
+    private double GetValueOf(string tag, AttributeLookup attribs, Dictionary<string, string> modifiers, List<string>? breakDown = null)
     {
         double costSum = 0d;
         foreach (var mod in modifiers.ToList())
@@ -168,15 +168,15 @@ public class PartialCalcService
                     var exp = Math.Min(def.Max, GetNumeric(mod));
                     if (exp == def.Max)
                     {
-                        modifiers.Add(mod.Key + "_max", true);
-                        costSum += GetPriceFor(mod.Key + "_max", true);
+                        modifiers.Add(mod.Key + "_max", "true");
+                        costSum += GetPriceFor(mod.Key + "_max", "true");
                         continue;
                     }
                     else
                     {
                         var expGroup = Math.Floor(exp / def.Max * 5);
-                        modifiers.Add(mod.Key + "_expGroup", expGroup);
-                        costSum += GetPriceFor(mod.Key + "_expGroup", expGroup);
+                        modifiers.Add(mod.Key + "_expGroup", expGroup.ToString());
+                        costSum += GetPriceFor(mod.Key + "_expGroup", expGroup.ToString());
                         continue;
                     }
                     if (exp == 0)
@@ -203,7 +203,7 @@ public class PartialCalcService
 
         return Math.Max(costSum, 1);
 
-        double GetPriceFor(string key, object value)
+        double GetPriceFor(string key, string value)
         {
             var cost = attribs.Values.GetOrAdd(key, _ => new())
                 .GetOrAdd(value, (k) =>
@@ -255,7 +255,7 @@ public class PartialCalcService
         }
     }
 
-    private static double GetNumeric(KeyValuePair<string, object> mod)
+    private static double GetNumeric(KeyValuePair<string, string> mod)
     {
         return GetNumeric(mod.Value);
     }
@@ -337,11 +337,11 @@ public class PartialCalcService
         }
     }
 
-    private static double CapAtExponetialGrowth(KeyValuePair<string, ConcurrentDictionary<object, double>> attrib, KeyValuePair<object, double> val, double value)
+    private static double CapAtExponetialGrowth(KeyValuePair<string, ConcurrentDictionary<string, double>> attrib, KeyValuePair<string, double> val, double value)
     {
         // each higher level is at most double the lower level
         var level = GetNumeric(val.Key);
-        if (attrib.Value.TryGetValue((byte)(level + 1), out var higherVal))
+        if (attrib.Value.TryGetValue((level + 1).ToString(), out var higherVal))
         {
             if (higherVal < val.Value * 1.9 && higherVal > 100)
             {
@@ -350,7 +350,7 @@ public class PartialCalcService
                 value = higherVal / 1.9;
             }
         }
-        else if (attrib.Value.TryGetValue((byte)(level + 2), out var higherVal2lvl))
+        else if (attrib.Value.TryGetValue((level + 2).ToString(), out var higherVal2lvl))
         {
             if (higherVal2lvl < val.Value * 4 && higherVal > 1)
             {
@@ -364,7 +364,7 @@ public class PartialCalcService
         return value;
     }
 
-    private bool TryGetItemCost(string key, object val, out double price)
+    private bool TryGetItemCost(string key, string val, out double price)
     {
         if (val is string s)
         {
@@ -485,7 +485,7 @@ public class PartialCalcService
         }
     }
 
-    internal void Correct(string itemTag, Dictionary<string, Dictionary<object, double>> corrections)
+    internal void Correct(string itemTag, Dictionary<string, Dictionary<string, double>> corrections)
     {
         foreach (var attrib in corrections)
         {
@@ -504,7 +504,7 @@ public class PartialCalcService
 public class AttributeLookup
 {
     [Key(0)]
-    public ConcurrentDictionary<string, ConcurrentDictionary<object, double>> Values = new();
+    public ConcurrentDictionary<string, ConcurrentDictionary<string, double>> Values = new();
 
 
 }
@@ -512,16 +512,16 @@ public class AttributeLookup
 public class ItemBreakDown
 {
     public Item OriginalItem;
-    public Dictionary<string, object> Flatten;
+    public Dictionary<string, string> Flatten;
 
     public ItemBreakDown(Item item)
     {
         this.OriginalItem = item;
         this.Flatten = NBT.FlattenNbtData(item.ExtraAttributes).GroupBy(x => x.Key).Select(x => x.First())
-            .ToDictionary(x => x.Key, x => x.Value);
+            .ToDictionary(x => x.Key, x => x.Value.ToString()!);
         foreach (var ench in item.Enchantments ?? new())
         {
-            this.Flatten[$"ench.{ench.Key.ToLower()}"] = ench.Value;
+            this.Flatten[$"ench.{ench.Key.ToLower()}"] = ench.Value.ToString();
         }
         RecordSpecialCount(item.Count);
         Preprocess();
@@ -530,13 +530,13 @@ public class ItemBreakDown
     private void RecordSpecialCount(byte count)
     {
         if (count == 64)
-            this.Flatten["count"] = 64;
+            this.Flatten["count"] = "64";
         else if (count >= 32)
-            this.Flatten["count"] = 32;
+            this.Flatten["count"] = "32";
         else if (count >= 16)
-            this.Flatten["count"] = 16;
+            this.Flatten["count"] = "16";
         else if (count >= 8)
-            this.Flatten["count"] = 8;
+            this.Flatten["count"] = "8";
     }
 
     private void Preprocess()
@@ -575,7 +575,7 @@ public class ItemBreakDown
         {
             foreach (var item in flatten.Split(' '))
             {
-                Flatten[$"ability_scroll.{item}"] = 1;
+                Flatten[$"ability_scroll.{item}"] = "1";
             }
             Flatten.Remove("ability_scroll");
         }
@@ -583,7 +583,7 @@ public class ItemBreakDown
         foreach (var item in Flatten.Keys)
         {
             var kv = new KeyValuePair<string, string>(item, Flatten[item].ToString() ?? "");
-            var normalized = SniperService.NormalizeGeneral(kv, true, (long)Convert.ToDouble(Flatten.GetValueOrDefault("exp", 0)));
+            var normalized = SniperService.NormalizeGeneral(kv, true, (long)Convert.ToDouble(Flatten.GetValueOrDefault("exp", "0")));
             if (normalized.Key != SniperService.Ignore.Key)
                 Flatten[normalized.Key] = normalized.Value;
         }
@@ -594,23 +594,17 @@ public class ItemBreakDown
         this.OriginalItem = new() { Tag = auction.Tag };
         if (auction.FlatenedNBT != null)
         {
-            this.Flatten = auction.FlatenedNBT.Select(x =>
-            {
-                object value = x.Value;
-                if (int.TryParse(x.Value.ToString(), out var intValue))
-                    value = intValue;
-                return new KeyValuePair<string, object>(x.Key, value);
-            }).ToDictionary(x => x.Key, x => x.Value);
+            this.Flatten = auction.FlatenedNBT.ToDictionary(x => x.Key, x => x.Value);
             if (!this.Flatten.ContainsKey("tier"))
                 this.Flatten["tier"] = auction.Tier.ToString();
             if (!this.Flatten.ContainsKey("modifier") && auction.Reforge != ItemReferences.Reforge.None)
                 this.Flatten["modifier"] = auction.Reforge.ToString().ToLower();
         }
         else
-            this.Flatten = NBT.FlattenNbtData(auction.NbtData.Data).ToDictionary(x => x.Key, x => x.Value);
+            this.Flatten = NBT.FlattenNbtData(auction.NbtData.Data).ToDictionary(x => x.Key, x => x.Value.ToString()!);
         foreach (var ench in auction.Enchantments ?? new())
         {
-            this.Flatten[$"ench.{ench.Type.ToString().ToLower()}"] = ench.Level;
+            this.Flatten[$"ench.{ench.Type.ToString().ToLower()}"] = ench.Level.ToString();
         }
         RecordSpecialCount((byte)auction.Count);
         Flatten["mayor"] = mayor;
