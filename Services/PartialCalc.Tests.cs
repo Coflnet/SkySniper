@@ -240,7 +240,7 @@ public class PartialCalcTests
         Service.CapAtCraftCost();
         var result = Service.GetPrice(item, true);
         Console.WriteLine(string.Join("\n", result.BreakDown));
-        Assert.AreEqual("ench.impaling 3: 787,5", result.BreakDown[1]);
+        Assert.AreEqual("ench.impaling 3: 787.5", result.BreakDown[1].Replace(",", "."));
     }
 
     private void AddSell(SaveAuction sell, int volume = 1)
