@@ -40,9 +40,9 @@ public class PartialController
     }
     [HttpGet]
     [Route("tag/{itemTag}")]
-    public Dictionary<string, Dictionary<object, double>> GetAttributeCosts(string itemTag)
+    public Dictionary<string, List<(object, double, string)>> GetAttributeCosts(string itemTag)
     {
-        return partialCalcService.GetAttributeCosts(itemTag);
+        return partialCalcService.GetAttributeCosts(itemTag).ToDictionary(a => a.Key, a => a.Value.Select(b => (b.Key, b.Value, b.Key.GetType().Name)).ToList());
     }
     [HttpPost]
     [Route("tag/{itemTag}/correct")]
