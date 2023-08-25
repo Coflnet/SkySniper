@@ -25,7 +25,7 @@ public class PartialController
 
     [HttpPost]
     [Route("partial/{tag}")]
-    public async Task<Dictionary<string, Dictionary<object, double>>> LoadFor(string tag, CancellationToken token)
+    public async Task<Dictionary<string, Dictionary<string, double>>> LoadFor(string tag, CancellationToken token)
     {
         var res = await inter.PartialAnalysis(tag, token);
 
@@ -40,13 +40,13 @@ public class PartialController
     }
     [HttpGet]
     [Route("tag/{itemTag}")]
-    public Dictionary<string, List<(object, double, string)>> GetAttributeCosts(string itemTag)
+    public Dictionary<string, List<(string, double, string)>> GetAttributeCosts(string itemTag)
     {
         return partialCalcService.GetAttributeCosts(itemTag).ToDictionary(a => a.Key, a => a.Value.Select(b => (b.Key, b.Value, b.Key.GetType().Name)).ToList());
     }
     [HttpPost]
     [Route("tag/{itemTag}/correct")]
-    public async Task<Dictionary<string, Dictionary<object, double>>> Correct(string itemTag, [FromBody] Dictionary<string, Dictionary<object, double>> corrections)
+    public async Task<Dictionary<string, Dictionary<string, double>>> Correct(string itemTag, [FromBody] Dictionary<string, Dictionary<string, double>> corrections)
     {
         partialCalcService.Correct(itemTag, corrections);
         await partialCalcService.Save();

@@ -284,7 +284,7 @@ namespace Coflnet.Sky.Sniper.Services
             }
         }
 
-        public async Task<Dictionary<string, Dictionary<object, double>>> PartialAnalysis(string targetTag, CancellationToken stoppinToken, DateTime totalStart = default)
+        public async Task<Dictionary<string, Dictionary<string, double>>> PartialAnalysis(string targetTag, CancellationToken stoppinToken, DateTime totalStart = default)
         {
             var context = new HypixelContext();
             using var scope = logger.BeginScope("partial analysis");
@@ -350,23 +350,6 @@ namespace Coflnet.Sky.Sniper.Services
             return newSample;
         }
 
-        private void PrintTestAuctionData(List<SaveAuction> sold, SaveAuction testAuction)
-        {
-            var breakDown = new ItemBreakDown(testAuction, mayorService.GetMayor(testAuction.End));
-            var asItem = new Item()
-            {
-                Enchantments = testAuction.Enchantments.Select(e => new KeyValuePair<string, byte>(e.Type.ToString(), e.Level)).ToDictionary(e => e.Key, e => e.Value),
-                ExtraAttributes = breakDown.Flatten,
-                Tag = testAuction.Tag,
-            };
-            if (!asItem.ExtraAttributes.ContainsKey("tier"))
-                asItem.ExtraAttributes.Add("tier", testAuction.Tier.ToString());
-            var estimate = partialCalcService.GetPrice(asItem, true);
-            Console.WriteLine(Newtonsoft.Json.JsonConvert.SerializeObject(testAuction.FlatenedNBT, Newtonsoft.Json.Formatting.Indented));
-            Console.WriteLine($"Sold for {testAuction.HighestBidAmount} {testAuction.End} {testAuction.Uuid}");
-            Console.WriteLine(Newtonsoft.Json.JsonConvert.SerializeObject(estimate, Newtonsoft.Json.Formatting.Indented));
-            Console.WriteLine($"Applied {sold.Count} auctions, ME: {Math.Abs(estimate.Price - testAuction.HighestBidAmount)}");
-        }
 
         private void ApplyData(List<SaveAuction> sold, double v)
         {
