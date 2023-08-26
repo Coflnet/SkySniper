@@ -554,6 +554,7 @@ public class ItemBreakDown
         Flatten.Remove("dungeon_skill_req");
         Flatten.Remove("item_durability");
         Flatten.Remove("compact_blocks");
+        Flatten.Remove("farmed_cultivating");
         foreach (var attrib in Flatten.OrderBy(x => x.Key).ToList())
         {
             if (!Constants.AttributeKeys.Contains(attrib.Key))
