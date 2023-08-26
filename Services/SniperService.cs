@@ -527,7 +527,7 @@ ORDER BY l.`AuctionId`  DESC;
             var shortTermList = deduplicated.OrderByDescending(b => b.Day).Take(3).ToList();
             // if more than half of the references are less than 12 hours old, use more references
             if (deduplicated.Where(d => d.Day >= GetDay(DateTime.Now - TimeSpan.FromHours(12))).Count() > SizeToKeep / 2)
-                shortTermList = deduplicated.OrderByDescending(b => b.Day).Take(7).ToList();
+                shortTermList = deduplicated.OrderByDescending(b => b.Day).Take(6).ToList();
             return shortTermList;
         }
 
