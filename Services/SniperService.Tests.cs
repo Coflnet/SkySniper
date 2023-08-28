@@ -364,6 +364,29 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(45900000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
             Assert.AreEqual("sharpness_7 (49000000)", estimate.AdditionalProps["missingEnchants"]);
         }
+        [Test]
+        public void SubstractsEnchantsCrafted()
+        {
+            highestValAuction.FlatenedNBT = new();
+            var moreEnchants = Dupplicate(highestValAuction);
+            moreEnchants.HighestBidAmount = 1_600_000_000;
+            moreEnchants.Enchantments = new List<Core.Enchantment>(){
+                new Core.Enchantment(Core.Enchantment.EnchantmentType.compact,10)
+            };
+            AddVolume(moreEnchants);
+            SetBazaarPrice("ENCHANTMENT_COMPACT_1", 3_000_000);
+
+            var toTest = Dupplicate(highestValAuction);
+            service.FinishedUpdate();
+            service.State = SniperState.Ready;
+            service.TestNewAuction(toTest);
+            service.FinishedUpdate();
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            Assert.AreEqual(57600000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+            // substracted 2^lvldifference * price
+            Assert.AreEqual("compact_10 (1536000000)", estimate.AdditionalProps["missingEnchants"]);
+        }
 
         [Test]
         public void StonksReforgeDifference()

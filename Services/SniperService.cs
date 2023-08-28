@@ -312,10 +312,10 @@ ORDER BY l.`AuctionId`  DESC;
             var missingEnchants = closest.Key.Enchants.Where(m => !itemKey.Enchants.Any(e => e.Type == m.Type && e.Lvl >= m.Lvl)).ToList();
             if (missingEnchants.Count > 0)
             {
-                var median = GetPriceSumForEnchants(missingEnchants);
-                if (median > 0)
+                var enchCost = GetPriceSumForEnchants(missingEnchants);
+                if (enchCost > 0)
                 {
-                    result.Median -= median;
+                    result.Median -= enchCost;
                     result.MedianKey += $"-{string.Join(",", missingEnchants.Select(m => $"{m.Type}{m.Lvl}"))}";
                 }
             }
@@ -1183,6 +1183,11 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     var prices = enchantLookup.Lookup.Values.First();
                     toSubstract += prices.Price;
+                }
+                else if (Lookups.TryGetValue($"ENCHANTMENT_{item.Type}_1".ToUpper(), out enchantLookup))
+                {
+                    var lvl1Price = enchantLookup.Lookup.Values.First().Price;
+                    toSubstract += (long) (lvl1Price * Math.Pow(2, item.Lvl - 1));
                 }
             }
             return toSubstract;
