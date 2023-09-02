@@ -719,6 +719,8 @@ ORDER BY l.`AuctionId`  DESC;
 
         private KeyValuePair<string, string> NormalizeData(KeyValuePair<string, string> s, SaveAuction auction)
         {
+            if(auction.Tag == "ATTRIBUTE_SHARD")
+                return s; // don't normalize attribute shards only one attribute on them
             if (s.Key == "exp")
             {
                 var exp = GetNumeric(s);
