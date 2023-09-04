@@ -84,7 +84,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.TestNewAuction(secondAuction);
             Assert.AreEqual(LowPricedAuction.FinderType.STONKS, found.Last().Finder);
             Assert.AreEqual(LowPricedAuction.FinderType.SNIPER_MEDIAN, found.AsEnumerable().Reverse().Skip(1).First().Finder);
-            Assert.AreEqual(900, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
+            Assert.AreEqual(810, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
         }
 
         /// <summary>
@@ -254,10 +254,34 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 Console.WriteLine($"Day: {SniperService.GetDay(auction.End)}");
                 service.AddAuctionToBucket(Dupplicate(auction), false, bucket);
-                auction.End = auction.End.AddDays(-1);
+                auction.End = auction.End.AddDays(1);
             }
-            var day = SniperService.GetDay(end) - 2;
+            var day = SniperService.GetDay(end);
             Assert.AreEqual(day, bucket.OldestRef);
+        }
+
+        [Test]
+        public void UpdateMedianWithShortTermOnDrop()
+        {
+            var bucket = new ReferenceAuctions();
+            var end = new System.DateTime(2023, 1, 1);
+            var auction = new SaveAuction
+            {
+                Tag = "1",
+                FlatenedNBT = new() { { "new_years_cake", "252" } },
+                StartingBid = 2900,
+                HighestBidAmount = 2900,
+                End = end
+            };
+            var lookup = new PriceLookup();
+            lookup.Lookup.TryAdd(new(), bucket);
+            service.Lookups.TryAdd("1", lookup);
+            for (int i = 0; i < 11; i++)
+            {
+                service.AddAuctionToBucket(Dupplicate(auction), false, bucket);
+                auction.HighestBidAmount -= 100;
+            }
+            Assert.AreEqual(2000, bucket.Price);
         }
 
         [TestCase(1, 0)]

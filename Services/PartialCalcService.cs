@@ -289,7 +289,7 @@ public class PartialCalcService
             throw new Exception($"Unknown type {mod.GetType()}");
     }
 
-    public void CapAtCraftCost()
+    public async Task CapAtCraftCost()
     {
         foreach (var item in AttributeLookups)
         {
@@ -527,7 +527,7 @@ public class ItemBreakDown
         Preprocess();
     }
 
-    private void RecordSpecialCount(byte count)
+    private void RecordSpecialCount(long count)
     {
         if (count == 64)
             this.Flatten["count"] = "64";
