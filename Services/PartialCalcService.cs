@@ -329,6 +329,10 @@ public class PartialCalcService
                             logger.LogInformation($"Capping {attrib.Key} {val.Key} at {target.Value.Price} from {val.Value} on {item.Key}");
                             value = target.Value.Price;
                         }
+                    } else if(attrib.Key == "mayor")
+                    {
+                        var maxRarityValue = item.Value.Values.TryGetValue("rarity", out var rarity) ? rarity.Values.Max() : int.MaxValue;
+                        value = Math.Min(maxRarityValue / 5, val.Value); // mayor doesn't change value by more than 20% of rarity
                     }
                     if (value != 0)
                         attrib.Value[val.Key] = value;
