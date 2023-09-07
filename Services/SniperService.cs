@@ -286,6 +286,8 @@ ORDER BY l.`AuctionId`  DESC;
                         AssignMedian(result, c.Key, c.Value);
                         AdjustMedianForModifiers(result, itemKey, c, auction);
                         AdjustForMissingEnchants(result, itemKey, c);
+                        if(Random.Shared.NextDouble() < 0.1)
+                            Console.WriteLine($"no match found for {itemKey} {auction.Uuid}");
                         if (result.Median > 0)
                             break;
                     }
