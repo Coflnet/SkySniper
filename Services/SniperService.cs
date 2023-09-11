@@ -104,7 +104,7 @@ namespace Coflnet.Sky.Sniper.Services
             {"breeze", 2},
             {"speed", 2},
             {"life_regeneration", 2}, // especially valuable in combination with mana_pool
-            {"fishing_experience", 2},
+            {"fishing_experience", 1}, // golem said lvl 1 important
             {"ignition", 2},
             {"blazing_fortune", 2},
             {"double_hook", 3},
@@ -131,6 +131,7 @@ namespace Coflnet.Sky.Sniper.Services
             new("breeze", "mana_pool"),
             new("dominance", "magic_find"),
             new("dominance", "veteran"),
+            new("mending", "mana_pool"),
         };
         private readonly HashSet<string> AllShardAttributesKeys = new(Constants.AttributeKeys);
         public readonly ConcurrentDictionary<string, HashSet<string>> AttributeComboLookup = new();
