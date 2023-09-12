@@ -511,7 +511,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var key = KeyFromSaveAuction(auction);
                 var enchantPrice = GetPriceSumForEnchants(key.Enchants);
                 key.Enchants = new();
-                if (!Lookups[auction.Tag].Lookup.TryGetValue(key, out var clean))
+                if (!Lookups.GetOrAdd(auction.Tag, new PriceLookup()).Lookup.TryGetValue(key, out var clean))
                 {
                     sellClosestSearch.Inc();
                     var closest = FindClosest(Lookups[auction.Tag].Lookup, key).Take(5).ToList();
