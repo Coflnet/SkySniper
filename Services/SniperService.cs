@@ -287,7 +287,7 @@ ORDER BY l.`AuctionId`  DESC;
                         AssignMedian(result, c.Key, c.Value);
                         AdjustMedianForModifiers(result, itemKey, c, auction);
                         AdjustForMissingEnchants(result, itemKey, c);
-                        if(Random.Shared.NextDouble() < 0.05)
+                        if (Random.Shared.NextDouble() < 0.05)
                             Console.WriteLine($"no match found for {auction.Tag} {itemKey} options: {l.Count} {auction.Uuid}");
                         if (result.Median > 0)
                             break;
@@ -437,6 +437,17 @@ ORDER BY l.`AuctionId`  DESC;
         /// <param name="loadedVal"></param>
         public void AddLookupData(string itemTag, PriceLookup loadedVal)
         {
+            foreach (var item in loadedVal.Lookup.Keys)
+            {
+                if (item.Modifiers.Any(m => m.Key == "candyUsed" && m.Value == "0")
+                        && item.Modifiers.Any(m => m.Key == "exp" && m.Value == "6"))
+                    loadedVal.Lookup.TryRemove(item, out _); // have been dropped
+                var value = loadedVal.Lookup.GetValueOrDefault(item);
+                if(value == null)
+                    continue;
+                if (value.References.All(r => r.Day < GetDay() - 60))
+                    loadedVal.Lookup.TryRemove(item, out _); // unimportant
+            }
             Lookups.AddOrUpdate(itemTag, loadedVal, (key, value) =>
             {
                 foreach (var item in loadedVal.Lookup)
@@ -627,7 +638,7 @@ ORDER BY l.`AuctionId`  DESC;
                                     || n.Key == "MINOS_INQUISITOR_750"
                                     || n.Key.StartsWith("MASTER_CRYPT_UNDEAD_") && n.Key.Length > 23) // admins
                                 .OrderByDescending(n => n.Key)
-                                .Select(i => NormalizeData(i, auction))
+                                .Select(i => NormalizeData(i, auction.Tag, auction.FlatenedNBT))
                                 .Where(i => i.Key != Ignore.Key).ToList();
                 if (auction.ItemCreatedAt < UnlockedIntroduction && auction.FlatenedNBT.Any(v => GemPurities.Contains(v.Value)))
                     key.Modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", "all"));
@@ -636,7 +647,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 key.Modifiers = auction.FlatenedNBT?.Where(n => VeryValuable.Contains(n.Key) || Increadable.Contains(n.Key) || n.Value == "PERFECT" || n.Value == "PET_ITEM_TIER_BOOST")
                             .OrderByDescending(n => n.Key)
-                            .Select(i => NormalizeData(i, auction))
+                            .Select(i => NormalizeData(i, auction.Tag, auction.FlatenedNBT))
                                 .Where(i => i.Key != Ignore.Key)
                             .ToList();
                 key.Enchants = auction.Enchantments
@@ -722,9 +733,9 @@ ORDER BY l.`AuctionId`  DESC;
                     key.Modifiers = EmptyPetModifiers;
         }
 
-        private KeyValuePair<string, string> NormalizeData(KeyValuePair<string, string> s, SaveAuction auction)
+        private KeyValuePair<string, string> NormalizeData(KeyValuePair<string, string> s, string tag, Dictionary<string, string> flattenedNbt)
         {
-            if(auction.Tag == "ATTRIBUTE_SHARD")
+            if (tag == "ATTRIBUTE_SHARD")
                 return s; // don't normalize attribute shards only one attribute on them
             if (s.Key == "exp")
             {
@@ -733,12 +744,12 @@ ORDER BY l.`AuctionId`  DESC;
                     return new KeyValuePair<string, string>(s.Key, "0.3");
                 else if (exp > 2_500_000 && exp < PetExpMaxlevel / 6)
                     return new KeyValuePair<string, string>(s.Key, "0.6");
-                if (auction.Tag == "PET_GOLDEN_DRAGON")
+                if (tag == "PET_GOLDEN_DRAGON")
                     return NormalizeNumberTo(s, 30_036_483, 7);
                 else
                     return NormalizeNumberTo(s, PetExpMaxlevel / 6, 6);
             }
-            var generalNormalizations = NormalizeGeneral(s, auction?.Tag?.StartsWith("MIDAS") ?? false, GetNumeric(auction.FlatenedNBT.FirstOrDefault(f => f.Key == "exp")));
+            var generalNormalizations = NormalizeGeneral(s, tag?.StartsWith("MIDAS") ?? false, GetNumeric(flattenedNbt.FirstOrDefault(f => f.Key == "exp")));
             if (generalNormalizations.Value != "continue")
                 return generalNormalizations;
             if (s.Key == "hpc")
@@ -768,13 +779,13 @@ ORDER BY l.`AuctionId`  DESC;
                 };
                 // ignore exp based items if exp is maxed
                 if ((heldItem == "EXP_SHARE" || (heldItem?.Contains("_SKILL") ?? false))
-                    && GetNumeric(auction.FlatenedNBT.FirstOrDefault(f => f.Key == "exp")) >= PetExpMaxlevel)
+                    && GetNumeric(flattenedNbt.FirstOrDefault(f => f.Key == "exp")) >= PetExpMaxlevel)
                     return Ignore;
                 if (heldItem == null)
                     return Ignore;
                 return new KeyValuePair<string, string>(PetItemKey, heldItem);
             }
-            if (s.Key == "dungeon_item_level" && auction.FlatenedNBT.TryGetValue("upgrade_level", out _))
+            if (s.Key == "dungeon_item_level" && flattenedNbt.TryGetValue("upgrade_level", out _))
                 return Ignore; // upgrade level is always higher (newer)
             if (s.Key == "dungeon_item_level")
                 return new KeyValuePair<string, string>("upgrade_level", s.Value);
@@ -782,7 +793,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 if (int.Parse(s.Value) >= minLvl)
                     return s;
-                if (HasAttributeCombo(s, auction))
+                if (HasAttributeCombo(s, flattenedNbt))
                     return s;
                 return Ignore;
             }
@@ -850,9 +861,9 @@ ORDER BY l.`AuctionId`  DESC;
         /// <param name="s"></param>
         /// <param name="auction"></param>
         /// <returns></returns>
-        private bool HasAttributeCombo(KeyValuePair<string, string> s, SaveAuction auction)
+        private bool HasAttributeCombo(KeyValuePair<string, string> s, Dictionary<string, string> flattenedNbt)
         {
-            return AttributeComboLookup.TryGetValue(s.Key, out var otherKeys) && otherKeys.Any(otherKey => auction.FlatenedNBT.TryGetValue(otherKey, out _));
+            return AttributeComboLookup.TryGetValue(s.Key, out var otherKeys) && otherKeys.Any(otherKey => flattenedNbt.TryGetValue(otherKey, out _));
         }
 
         /// <summary>
@@ -1194,7 +1205,7 @@ ORDER BY l.`AuctionId`  DESC;
                 else if (Lookups.TryGetValue($"ENCHANTMENT_{item.Type}_1".ToUpper(), out enchantLookup))
                 {
                     var lvl1Price = enchantLookup.Lookup.Values.First().Price;
-                    toSubstract += (long) (lvl1Price * Math.Pow(2, item.Lvl - 1));
+                    toSubstract += (long)(lvl1Price * Math.Pow(2, item.Lvl - 1));
                 }
             }
             return toSubstract;

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Models;
 using dev;
+using FluentAssertions;
 using Microsoft.VisualBasic;
 using Newtonsoft.Json;
 using NUnit.Framework;
@@ -294,6 +295,27 @@ namespace Coflnet.Sky.Sniper.Services
             var simAttr = new KeyValuePair<string, string>("new_years_cake", val.ToString());
             var comb = SniperService.NormalizeGroupNumber(simAttr, 200, 500, 1000, 2000);
             Assert.AreEqual(expectedGroup.ToString(), comb.Value);
+        }
+
+        [Test]
+        public void DropOldkey()
+        {
+            service.AddLookupData("PET_TEST", new PriceLookup(){
+                Lookup = new (new Dictionary<AuctionKey, ReferenceAuctions>()
+                {
+                    {new(){
+                        Modifiers = new (){
+                            new("exp","6"),
+                            new("candyUsed","0"),
+                        }
+                    }, new ReferenceAuctions(){
+                        Price = 1000,
+                        OldestRef = 1
+                    } }
+                })
+            });
+            // not added because can't be reached anymore
+            service.Lookups["PET_TEST"].Lookup.Count.Should().Be(0);
         }
 
 
