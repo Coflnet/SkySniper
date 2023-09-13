@@ -221,6 +221,15 @@ namespace Coflnet.Sky.Sniper.Services
                     }
                     logger.LogInformation("finished loading sold auctions " + count);
                 }
+
+                foreach (var item in sniper.Lookups)
+                {
+                    foreach (var bucket in item.Value.Lookup)
+                    {
+                        // make sure all medians are up to date
+                        sniper.UpdateMedian(bucket.Value, (item.Key, bucket.Key));
+                    }
+                }
             }
             catch (Exception e)
             {

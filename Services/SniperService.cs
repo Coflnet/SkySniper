@@ -443,7 +443,7 @@ ORDER BY l.`AuctionId`  DESC;
                         && item.Modifiers.Any(m => m.Key == "exp" && m.Value == "6"))
                     loadedVal.Lookup.TryRemove(item, out _); // have been dropped
                 var value = loadedVal.Lookup.GetValueOrDefault(item);
-                if(value == null)
+                if (value == null)
                     continue;
                 if (value.References.All(r => r.Day < GetDay() - 60))
                     loadedVal.Lookup.TryRemove(item, out _); // unimportant
@@ -490,10 +490,13 @@ ORDER BY l.`AuctionId`  DESC;
             if (bucket.References.Count > SizeToKeep)
                 bucket.References.TryDequeue(out ReferencePrice ra);
             if (!preventMedianUpdate)
-                UpdateMedian(bucket, auction);
+            {
+                var key = KeyFromSaveAuction(auction);
+                UpdateMedian(bucket, (auction.Tag, key));
+            }
         }
 
-        public void UpdateMedian(ReferenceAuctions bucket, SaveAuction auction = null)
+        public void UpdateMedian(ReferenceAuctions bucket, (string tag, AuctionKey) keyCombo = default)
         {
             var size = bucket.References.Count;
             var deduplicated = bucket.References
@@ -517,22 +520,23 @@ ORDER BY l.`AuctionId`  DESC;
             var medianPrice = Math.Min(shortTermPrice, longSpanPrice);
             bucket.HitsSinceCalculating = 0;
             // get price of item without enchants and add enchant value 
-            if (auction != null)
+            if (keyCombo != default)
             {
-                var key = KeyFromSaveAuction(auction);
+                //var key = KeyFromSaveAuction(auction);
+                var key = keyCombo.Item2;
                 var enchantPrice = GetPriceSumForEnchants(key.Enchants);
                 key.Enchants = new();
-                if (!Lookups.GetOrAdd(auction.Tag, new PriceLookup()).Lookup.TryGetValue(key, out var clean))
+                if (!Lookups.GetOrAdd(keyCombo.tag, new PriceLookup()).Lookup.TryGetValue(key, out var clean))
                 {
                     sellClosestSearch.Inc();
-                    var closest = FindClosest(Lookups[auction.Tag].Lookup, key).Take(5).ToList();
+                    var closest = FindClosest(Lookups[keyCombo.tag].Lookup, key).Take(5).ToList();
                     if (closest.Count > 0)
                         clean = closest.MinBy(m => m.Value.Price).Value;
                 }
                 if (enchantPrice != 0 && clean != default && clean.Price > 10_000 && clean.Volume > 1)
                 {
                     bucket.Price = Math.Min(medianPrice, clean.Price + enchantPrice);
-                    Console.WriteLine($"Adjusted for enchat cost {auction.Tag} {auction.Uuid} {auction.StartingBid} -> {medianPrice}  {key} - {enchantPrice} {clean.Price} {clean.Volume}");
+                    Console.WriteLine($"Adjusted for enchat cost {keyCombo.tag} -> {medianPrice}  {key} - {enchantPrice} {clean.Price} {clean.Volume}");
                     return;
                 }
             }
