@@ -1209,7 +1209,13 @@ ORDER BY l.`AuctionId`  DESC;
                 else if (Lookups.TryGetValue($"ENCHANTMENT_{item.Type}_1".ToUpper(), out enchantLookup))
                 {
                     var lvl1Price = enchantLookup.Lookup.Values.First().Price;
-                    toSubstract += (long)(lvl1Price * Math.Pow(2, item.Lvl - 1));
+                    if (Constants.EnchantToAttribute.TryGetValue(item.Type, out var attribute))
+                    {
+                        // not exponetial, use additive
+                        toSubstract += (long)(lvl1Price * item.Lvl);
+                    }
+                    else
+                        toSubstract += (long)(lvl1Price * Math.Pow(2, item.Lvl - 1));
                 }
             }
             return toSubstract;

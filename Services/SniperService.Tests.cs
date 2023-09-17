@@ -400,11 +400,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(moreEnchants);
             SetBazaarPrice("ENCHANTMENT_SHARPNESS_7", 49_000_000);
 
-            var toTest = Dupplicate(highestValAuction);
-            service.FinishedUpdate();
-            service.State = SniperState.Ready;
-            service.TestNewAuction(toTest);
-            service.FinishedUpdate();
+            SimulateNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             Assert.AreEqual(45900000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
@@ -417,21 +413,45 @@ namespace Coflnet.Sky.Sniper.Services
             var moreEnchants = Dupplicate(highestValAuction);
             moreEnchants.HighestBidAmount = 1_600_000_000;
             moreEnchants.Enchantments = new List<Core.Enchantment>(){
-                new Core.Enchantment(Core.Enchantment.EnchantmentType.compact,10)
+                new Core.Enchantment(Core.Enchantment.EnchantmentType.ultimate_chimera,5)
             };
             AddVolume(moreEnchants);
-            SetBazaarPrice("ENCHANTMENT_COMPACT_1", 3_000_000);
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_CHIMERA_1", 95_000_000);
+            SimulateNewAuction(highestValAuction);
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            Assert.AreEqual(72000000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+            // substracted 2^lvldifference * price
+            Assert.AreEqual("ultimate_chimera_5 (1520000000)", estimate.AdditionalProps["missingEnchants"]);
+        }
 
-            var toTest = Dupplicate(highestValAuction);
+        private void SimulateNewAuction(SaveAuction x)
+        {
+            var toTest = Dupplicate(x);
             service.FinishedUpdate();
             service.State = SniperState.Ready;
             service.TestNewAuction(toTest);
             service.FinishedUpdate();
+        }
+
+        [Test]
+        public void StonksSubstractsLeveledEnchant()
+        {
+            // {"enchantments":[{"color":"§9","type":"efficiency","level":5},{"color":"§9","type":"smelting_touch","level":1},{"color":"§5","type":"harvesting","level":6},{"color":"§5","type":"cultivating","level":9},{"color":"§5","type":"dedication","level":3},{"color":"§9","type":"turbo_cactus","level":5}],"uuid":"fb4d9ec40a834f808147bb6dff74dfb5","count":1,"startingBid":60000000,"tag":"CACTUS_KNIFE","itemName":"Blessed Cactus Knife","start":"2023-09-13T09:37:41","end":"2023-09-15T19:47:03","auctioneerId":"90f20a02e67146659f44ae54abb6aecc","profileId":"1280e7de2f5e4d2086a3a57766556660","coop":null,"coopMembers":null,"highestBidAmount":60000000,"bids":[{"bidder":"98730e6ba68b403c84f756ccbfd136cb","profileId":"unknown","amount":60000000,"timestamp":"2023-09-15T19:47:03"}],"anvilUses":0,"nbtData":{"data":{"rarity_upgrades":1,"farmed_cultivating":33602119,"uid":"a3f0b16cac7e","farming_for_dummies_count":5,"uuid":"5789afb2-80f7-45ce-bf6d-a3f0b16cac7e"}},"itemCreatedAt":"2023-02-14T22:09:00","reforge":"blessed","category":"MISC","tier":"LEGENDARY","bin":true,"flatNbt":{"rarity_upgrades":"1","farmed_cultivating":"33602119","uid":"a3f0b16cac7e","farming_for_dummies_count":"5","uuid":"5789afb2-80f7-45ce-bf6d-a3f0b16cac7e"}}
+            highestValAuction.FlatenedNBT = new();
+            var moreEnchants = Dupplicate(highestValAuction);
+            moreEnchants.HighestBidAmount = 60_000_000;
+            moreEnchants.Enchantments = new List<Core.Enchantment>(){
+                new Core.Enchantment(Core.Enchantment.EnchantmentType.cultivating,9),
+            };
+            AddVolume(moreEnchants);
+            SetBazaarPrice("ENCHANTMENT_CULTIVATING_1", 3_000_000);
+
+            SimulateNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
-            Assert.AreEqual(57600000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
-            // substracted 2^lvldifference * price
-            Assert.AreEqual("compact_10 (1536000000)", estimate.AdditionalProps["missingEnchants"]);
+            var expectedValue = (moreEnchants.HighestBidAmount  - 3_000_000 * 9) * 9 / 10;
+            Assert.AreEqual(expectedValue, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
         }
 
         [Test]
