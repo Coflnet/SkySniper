@@ -404,6 +404,19 @@ namespace Coflnet.Sky.Sniper.Models
             var key = service.KeyFromSaveAuction(auction);
             Assert.AreEqual(1, key.Enchants.Count);
         }
+
+        [Test]
+        public void ExcludesPower6()
+        {
+            var auction = new SaveAuction()
+            {
+                Enchantments = new() { new(Core.Enchantment.EnchantmentType.power, 6) },
+                Tag = "DEMONLORD_GAUNTLET"
+            };
+            var service = new SniperService();
+            var key = service.KeyFromSaveAuction(auction);
+            Assert.AreEqual(0, key.Enchants.Count);
+        }
         //[Test]
         public void HyperionMostSimilar()
         {
