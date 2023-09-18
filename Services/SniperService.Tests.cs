@@ -300,8 +300,9 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void DropOldkey()
         {
-            service.AddLookupData("PET_TEST", new PriceLookup(){
-                Lookup = new (new Dictionary<AuctionKey, ReferenceAuctions>()
+            service.AddLookupData("PET_TEST", new PriceLookup()
+            {
+                Lookup = new(new Dictionary<AuctionKey, ReferenceAuctions>()
                 {
                     {new(){
                         Modifiers = new (){
@@ -450,8 +451,18 @@ namespace Coflnet.Sky.Sniper.Services
             SimulateNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
-            var expectedValue = (moreEnchants.HighestBidAmount  - 3_000_000 * 9) * 9 / 10;
+            var expectedValue = (moreEnchants.HighestBidAmount - 3_000_000 - 1_000_000 * 9) * 9 / 10;
             Assert.AreEqual(expectedValue, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+        }
+
+        [Test]
+        public void CorrectsDuplexToReiterate()
+        {
+            var mapper = new PropertyMapper();
+            var result = mapper.EnchantValue(new Core.Enchantment(Core.Enchantment.EnchantmentType.ultimate_duplex, 1), null, new(){
+                {"ENCHANTMENT_ULTIMATE_REITERATE_1", 3000}
+            });
+            Assert.AreEqual(3000, result);
         }
 
         [Test]

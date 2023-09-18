@@ -24,6 +24,7 @@ namespace Coflnet.Sky.Sniper.Services
         public SniperState State { get; set; } = SniperState.LoadingLbin;
         private PropertyMapper mapper = new();
         private string[] EmptyArray = new string[0];
+        private Dictionary<string, double> BazaarPrices = new();
 
         private Counter sellClosestSearch = Metrics.CreateCounter("sky_sniper_sell_closest_search", "Number of searches for closest sell");
         private Counter closestMedianBruteCounter = Metrics.CreateCounter("sky_sniper_closest_median_brute", "Number of brute force searches for closest median");
@@ -1201,22 +1202,7 @@ ORDER BY l.`AuctionId`  DESC;
             long toSubstract = 0;
             foreach (var item in missingEnchants)
             {
-                if (Lookups.TryGetValue($"ENCHANTMENT_{item.Type}_{item.Lvl}".ToUpper(), out var enchantLookup))
-                {
-                    var prices = enchantLookup.Lookup.Values.First();
-                    toSubstract += prices.Price;
-                }
-                else if (Lookups.TryGetValue($"ENCHANTMENT_{item.Type}_1".ToUpper(), out enchantLookup))
-                {
-                    var lvl1Price = enchantLookup.Lookup.Values.First().Price;
-                    if (Constants.EnchantToAttribute.TryGetValue(item.Type, out var attribute))
-                    {
-                        // not exponetial, use additive
-                        toSubstract += (long)(lvl1Price * item.Lvl);
-                    }
-                    else
-                        toSubstract += (long)(lvl1Price * Math.Pow(2, item.Lvl - 1));
-                }
+                toSubstract += mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices);
             }
             return toSubstract;
         }
@@ -1358,7 +1344,10 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 var refernces = lookup.Lookup.GetOrAdd(defaultKey, _ => new());
                 if (item.SellSummary.Any())
+                {
                     refernces.Price = (long)item.SellSummary.First().PricePerUnit;
+                    BazaarPrices[item.ProductId] = refernces.Price;
+                }
             }
             Console.WriteLine($"Updated bazaar {Lookups.Count} items");
         }
