@@ -25,7 +25,7 @@ namespace Coflnet.Sky.Sniper.Services
                 return;
             RecentUpdates.Enqueue(sum);
 
-            if (RecentUpdates.Min(r => r.Time) > DateTime.UtcNow - TimeSpan.FromMinutes(4) || RecentUpdates.Count < 5)
+            if (RecentUpdates.Where(r => r != null).Min(r => r.Time) > DateTime.UtcNow - TimeSpan.FromMinutes(4) || RecentUpdates.Count < 5)
                 return;
             var completeLookup = new Dictionary<long, long>();
             foreach (var sumary in RecentUpdates)

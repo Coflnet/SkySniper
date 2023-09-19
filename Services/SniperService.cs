@@ -918,7 +918,7 @@ ORDER BY l.`AuctionId`  DESC;
                             && baseKey.Enchants
                     .All(e => k.Enchants != null && k.Enchants.Any(ek => e.Type == ek.Type && ek.Lvl == e.Lvl)) && k.Tier == baseKey.Tier))
                 {
-                    if (l[item].Price == 0)
+                    if (l.GetValueOrDefault(item)?.Price == 0)
                         continue;
                     yield return item;
                 }
