@@ -714,7 +714,10 @@ ORDER BY l.`AuctionId`  DESC;
             if (auction.Tag.Contains("GAUNTLET") || auction.Tag.Contains("DRILL"))
                 RemoveEnchantFromKey(key, Core.Enchantment.EnchantmentType.ultimate_wise);
             if (auction.Tag.StartsWith("DIVAN_"))
+            {
                 RemoveEnchantFromKey(key, Core.Enchantment.EnchantmentType.ultimate_legion);
+                RemoveEnchantFromKey(key, Core.Enchantment.EnchantmentType.ultimate_wisdom);
+            }
             if (!auction.Tag.EndsWith("KATANA"))
                 RemoveEnchantFromKey(key, Core.Enchantment.EnchantmentType.ender_slayer, 6);
         }
