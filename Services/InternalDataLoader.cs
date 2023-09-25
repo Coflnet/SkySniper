@@ -441,7 +441,7 @@ namespace Coflnet.Sky.Sniper.Services
         /// <returns></returns>
         public bool ShouldAuctionBeIncluded(SaveAuction item, ConcurrentQueue<ReferencePrice> references)
         {
-            return references.FirstOrDefault().Day < SniperService.GetDay(item.End) || references.Count < 12;
+            return references.Select(d => d.Day).DefaultIfEmpty(default).Min() < SniperService.GetDay(item.End) || references.Count < 12;
         }
 
         private async Task ActiveUpdater(CancellationToken stoppingToken)
