@@ -169,7 +169,16 @@ namespace Coflnet.Sky.Sniper.Controllers
         public IEnumerable<object> SimilarKeys(string tag, string auctionId)
         {
             var firstKey = Search(tag, auctionId).FirstOrDefault();
-            return SniperService.FindClosest(service.Lookups[tag].Lookup, firstKey).Take(10).Select(v => new { Key = v.Key.ToString(), Price = v.Value.Price, asJson = JsonConvert.SerializeObject(v.Key) }).ToList();
+            return SniperService.FindClosest(service.Lookups[tag].Lookup, firstKey)
+                                .Take(10)
+                                .Select(v => new
+                                {
+                                    Key = v.Key.ToString(),
+                                    Price = v.Value.Price,
+                                    asJson = JsonConvert.SerializeObject(v.Key),
+                                    msgPack = MessagePack.MessagePackSerializer.Serialize(v.Key)
+                                })
+                                .ToList();
         }
 
         [Route("migrate")]

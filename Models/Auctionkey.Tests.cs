@@ -424,7 +424,7 @@ public class AuctionkeyTests
     {
         var json = "{\"Enchants\":[{\"Type\":\"cultivating\",\"Lvl\":8}],\"Reforge\":\"Any\",\"Modifiers\":[{\"Key\":\"rarity_upgrades\",\"Value\":\"1\"}],\"Tier\":\"MYTHIC\",\"Count\":1}";
         var deserilaizedKey = JsonConvert.DeserializeObject<AuctionKey>(json);
-        var originalKey = new AuctionKey(new(){new(){Type=EnchantmentType.cultivating, Lvl=8}}, ItemReferences.Reforge.Any, new() { new("rarity_upgrades", "1") }, Tier.MYTHIC, 1);
+        var originalKey = new AuctionKey(new(){new(){Type=EnchantmentType.cultivating, Lvl=8}}, ItemReferences.Reforge.Any, new() { new("rarity_upgrades", 1.ToString()) }, Tier.MYTHIC, 1);
         var key = MessagePackSerializer.Deserialize<AuctionKey>(MessagePackSerializer.Serialize(originalKey));
         Assert.AreEqual(key, deserilaizedKey, JsonConvert.SerializeObject(key));
         Assert.AreEqual(key, originalKey);
