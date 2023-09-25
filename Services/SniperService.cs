@@ -463,18 +463,15 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 foreach (var item in value.Lookup.Keys.ToList())
                 {
-                    SniperService.FindClosest(Lookups[itemTag].Lookup, item).Take(8).Where(m => m.Key.ToString() == item.ToString())
-                        .ToList().ForEach(m =>
-                        {
-                            if (m.Key.ToString() != item.ToString())
-                            {
-                                return;
-                            }
-                            CombineBuckets(m, value.Lookup[item]);
-                            value.Lookup.TryRemove(m.Key, out _);
-                            Console.WriteLine($"Combined {m.Key} into {item}");
-                            UpdateMedian(m.Value, (itemTag, m.Key));
-                        });
+                    try
+                    {
+                        Deduplicate(itemTag, value, item);
+                    }
+                    catch (System.Exception)
+                    {
+                        
+                        throw;
+                    }
                 }
                 return value;
             });
@@ -498,6 +495,24 @@ ORDER BY l.`AuctionId`  DESC;
                     if (!existingBucket.Lbins.Contains(binAuction) && binAuction.Price > 0)
                         existingBucket.Lbins.Add(binAuction);
                 }
+            }
+
+            void Deduplicate(string itemTag, PriceLookup value, AuctionKey item)
+            {
+                SniperService.FindClosest(Lookups[itemTag].Lookup, item).Take(8).Where(m => m.Key.ToString() == item.ToString())
+                    .ToList().ForEach(m =>
+                    {
+                        if (m.Key.ToString() != item.ToString())
+                        {
+                            return;
+                        }
+                        var equal = m.Key.Equals(item);
+                        var hashEqual = m.Key.GetHashCode() == item.GetHashCode();
+                        CombineBuckets(m, value.Lookup[item]);
+                        value.Lookup.TryRemove(m.Key, out _);
+                        Console.WriteLine($"Combined {m.Key} into {item} {equal} {hashEqual} {m.Value.References.FirstOrDefault().AuctionId}");
+                        UpdateMedian(m.Value, (itemTag, m.Key));
+                    });
             }
         }
 
