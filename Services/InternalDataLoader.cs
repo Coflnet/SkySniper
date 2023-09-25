@@ -272,11 +272,11 @@ namespace Coflnet.Sky.Sniper.Services
                     await Task.Delay(2000);
                 }
             }
-            _ = Task.Run(() =>
+            _ = Task.Run(async () =>
             {
                 try
                 {
-                    partialCalcService.CapAtCraftCost();
+                    await partialCalcService.CapAtCraftCost();
                 }
                 catch (System.Exception e)
                 {
@@ -426,9 +426,8 @@ namespace Coflnet.Sky.Sniper.Services
                 sniper.AddAuctionToBucket(item, true, references);
             }
             partialCalcService.SetLearningRate(0.01);
-            for (int i = 0; i < 5; i++)
-                foreach (var item in sold)
-                    partialCalcService.AddSell(item);
+            foreach (var item in sold)
+                partialCalcService.AddSell(item);
 
             if (shouldLog)
                 Console.WriteLine($"Applied batch {batchStart} - {end}");
@@ -442,7 +441,7 @@ namespace Coflnet.Sky.Sniper.Services
         /// <returns></returns>
         public bool ShouldAuctionBeIncluded(SaveAuction item, ConcurrentQueue<ReferencePrice> references)
         {
-            return references.FirstOrDefault().Day < SniperService.GetDay(item.End);
+            return references.FirstOrDefault().Day < SniperService.GetDay(item.End) || references.Count < 12;
         }
 
         private async Task ActiveUpdater(CancellationToken stoppingToken)

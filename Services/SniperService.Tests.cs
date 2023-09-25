@@ -56,7 +56,6 @@ namespace Coflnet.Sky.Sniper.Services
             };
             SniperService.MIN_TARGET = 0;
             service = new SniperService();
-            SetBazaarPrice("ENCHANTMENT_SHARPNESS_7", 49_000_000);
 
             found = new List<LowPricedAuction>();
             service.FoundSnipe += found.Add;
@@ -175,6 +174,7 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void CheckBelowMoreEnchants()
         {
+            SetBazaarPrice("ENCHANTMENT_SHARPNESS_7", 49_000_000);
             highestValAuction.Enchantments = new List<Core.Enchantment>() {
                 new Core.Enchantment(Core.Enchantment.EnchantmentType.sharpness,7),
                 new Core.Enchantment(Core.Enchantment.EnchantmentType.ultimate_legion,5),
@@ -453,6 +453,19 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             var expectedValue = (moreEnchants.HighestBidAmount - 3_000_000 - 1_000_000 * 9) * 9 / 10;
             Assert.AreEqual(expectedValue, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+        }
+
+        [Test]
+        public void PutsIntoCorrectBucket()
+        {
+            highestValAuction.Enchantments = new List<Core.Enchantment>(){
+                new Core.Enchantment(Core.Enchantment.EnchantmentType.cultivating,9),
+            };
+            highestValAuction.Tag = "test";
+            AddVolume(highestValAuction);
+            var val = service.Lookups["test"].Lookup;
+            Assert.AreEqual(1, val.Count);
+            Assert.AreEqual(1, val.First().Key.Enchants.Count);
         }
 
         [Test]

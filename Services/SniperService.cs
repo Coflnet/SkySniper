@@ -449,7 +449,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (value.References.All(r => r.Day < GetDay() - 60))
                     loadedVal.Lookup.TryRemove(item, out _); // unimportant
             }
-            Lookups.AddOrUpdate(itemTag, loadedVal, (key, value) =>
+            Lookups.AddOrUpdate(itemTag, loadedVal, (tag, value) =>
             {
                 foreach (var item in loadedVal.Lookup)
                 {
@@ -458,20 +458,46 @@ ORDER BY l.`AuctionId`  DESC;
                         value.Lookup[item.Key] = item.Value;
                         continue;
                     }
-                    existingBucket.References = item.Value.References;
-                    existingBucket.Price = item.Value.Price;
-                    if (item.Value.Lbins == null)
-                        item.Value.Lbins = new();
-                    // load all non-empty lbins
-                    foreach (var binAuction in item.Value.Lbins)
-                    {
-                        if (!existingBucket.Lbins.Contains(binAuction) && binAuction.Price > 0)
-                            existingBucket.Lbins.Add(binAuction);
-                    }
+                    CombineBuckets(item, existingBucket);
                     item.Value.Lbins.Sort(ReferencePrice.Compare);
+                }
+                foreach (var item in value.Lookup.Keys)
+                {
+                    SniperService.FindClosest(Lookups[itemTag].Lookup, item).Take(8).Where(m => m.Key.ToString() == item.ToString())
+                        .ToList().ForEach(m =>
+                        {
+                            if (m.Key.ToString() != item.ToString())
+                            {
+                                return;
+                            }
+                            CombineBuckets(m, value.Lookup[item]);
+                            Lookups[itemTag].Lookup.TryRemove(m.Key, out _);
+                            Console.WriteLine($"Combined {m.Key} into {item}");
+                        });
                 }
                 return value;
             });
+
+            static void CombineBuckets(KeyValuePair<AuctionKey, ReferenceAuctions> item, ReferenceAuctions existingBucket)
+            {
+                var existingRef = existingBucket.References;
+                existingBucket.References = item.Value.References;
+                if (existingRef != null)
+                    foreach (var refPrice in existingRef)
+                    {
+                        if (!existingBucket.References.Contains(refPrice))
+                            existingBucket.References.Enqueue(refPrice);
+                    }
+                existingBucket.Price = item.Value.Price;
+                if (item.Value.Lbins == null)
+                    item.Value.Lbins = new();
+                // load all non-empty lbins
+                foreach (var binAuction in item.Value.Lbins)
+                {
+                    if (!existingBucket.Lbins.Contains(binAuction) && binAuction.Price > 0)
+                        existingBucket.Lbins.Add(binAuction);
+                }
+            }
         }
 
         public void AddSoldItem(SaveAuction auction, bool preventMedianUpdate = false)
@@ -575,7 +601,7 @@ ORDER BY l.`AuctionId`  DESC;
         private ReferenceAuctions CreateAndAddBucket(SaveAuction auction, int dropLevel = 0)
         {
             var key = KeyFromSaveAuction(auction, dropLevel);
-            var itemBucket = Lookups[auction.Tag];
+            var itemBucket = Lookups.GetOrAdd(auction.Tag, new PriceLookup());
             return GetOrAdd(key, itemBucket);
         }
 
