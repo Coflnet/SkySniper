@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Coflnet.Sky.Core;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 
 namespace Coflnet.Sky.Sniper.Controllers
 {
@@ -168,7 +169,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         public IEnumerable<object> SimilarKeys(string tag, string auctionId)
         {
             var firstKey = Search(tag, auctionId).FirstOrDefault();
-            return SniperService.FindClosest(service.Lookups[tag].Lookup, firstKey).Take(10).Select(v => new { Key = v.Key.ToString(), Price = v.Value.Price }).ToList();
+            return SniperService.FindClosest(service.Lookups[tag].Lookup, firstKey).Take(10).Select(v => new { Key = v.Key.ToString(), Price = v.Value.Price, asJson = JsonConvert.SerializeObject(v.Key) }).ToList();
         }
 
         [Route("migrate")]
