@@ -2,7 +2,7 @@ using MessagePack;
 
 namespace Coflnet.Sky.Sniper.Models;
 [MessagePackObject]
-public class Enchantment
+public struct Enchantment
 {
     [Key(0)]
     public Core.Enchantment.EnchantmentType Type;

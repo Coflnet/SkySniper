@@ -464,7 +464,7 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.Tag = "test";
             AddVolume(highestValAuction);
             var val = service.Lookups["test"].Lookup;
-            Assert.AreEqual(1, val.Count);
+            Assert.AreEqual(1, val.Count, JsonConvert.SerializeObject(val));
             Assert.AreEqual(1, val.First().Key.Enchants.Count);
         }
 

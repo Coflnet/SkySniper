@@ -461,7 +461,7 @@ ORDER BY l.`AuctionId`  DESC;
                     CombineBuckets(item, existingBucket);
                     item.Value.Lbins.Sort(ReferencePrice.Compare);
                 }
-                foreach (var item in value.Lookup.Keys)
+                foreach (var item in value.Lookup.Keys.ToList())
                 {
                     SniperService.FindClosest(Lookups[itemTag].Lookup, item).Take(8).Where(m => m.Key.ToString() == item.ToString())
                         .ToList().ForEach(m =>
@@ -471,8 +471,9 @@ ORDER BY l.`AuctionId`  DESC;
                                 return;
                             }
                             CombineBuckets(m, value.Lookup[item]);
-                            Lookups[itemTag].Lookup.TryRemove(m.Key, out _);
+                            value.Lookup.TryRemove(m.Key, out _);
                             Console.WriteLine($"Combined {m.Key} into {item}");
+                            UpdateMedian(m.Value, (itemTag, m.Key));
                         });
                 }
                 return value;
@@ -953,7 +954,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
             var compactEnch = baseKey.Enchants.FirstOrDefault(e => e.Type == Core.Enchantment.EnchantmentType.compact && e.Lvl >= 5);
-            if (compactEnch != null)
+            if (compactEnch.Lvl != default)
             {
                 for (int i = compactEnch.Lvl + 1; i < 10; i++)
                 {

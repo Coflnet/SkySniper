@@ -22,15 +22,7 @@ namespace Coflnet.Sky.Sniper.Models
         [Key(4)]
         public byte Count;
 
-        public override bool Equals(object obj)
-        {
-            return obj is AuctionKey key &&
-                    (key.Enchants == null && this.Enchants == null || (this.Enchants != null && key.Enchants != null && key.Enchants.SequenceEqual(this.Enchants))) &&
-                   Reforge == key.Reforge &&
-                   (key.Modifiers == null && this.Modifiers == null || (this.Modifiers != null && key.Modifiers != null && key.Modifiers.SequenceEqual(this.Modifiers))) &&
-                   Tier == key.Tier &&
-                   Count == key.Count;
-        }
+
 
         public int Similarity(AuctionKey key)
         {
@@ -80,7 +72,7 @@ namespace Coflnet.Sky.Sniper.Models
             return enchantsToCompare.Sum(ench =>
             {
                 var match = key.Enchants.FirstOrDefault(k => k.Type == ench.Type);
-                if (match == null)
+                if (match.Lvl == 0)
                     return 6;
                 if (match.Lvl == ench.Lvl)
                     return -2;
@@ -99,7 +91,7 @@ namespace Coflnet.Sky.Sniper.Models
                 if (match.Key == null)
                     if (float.TryParse(m.Value, CultureInfo.InvariantCulture, out var parsed))
                         return Math.Abs(parsed);
-                    else if(m.Value == SniperService.TierBoostShorthand)
+                    else if (m.Value == SniperService.TierBoostShorthand)
                         return 58; // tier boost is very valuable
                     else
                         return 4 + m.Value.Length;
@@ -116,12 +108,34 @@ namespace Coflnet.Sky.Sniper.Models
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Enchants?.FirstOrDefault()?.Type, Reforge, Modifiers?.FirstOrDefault().Value, Tier, Count);
+            var enchRes = 0x02;
+            if (Enchants != null)
+                foreach (var item in Enchants)
+                {
+                    enchRes = enchRes * 31 +  item.GetHashCode();
+                }
+            var modRes = 0x20;
+            if(Modifiers != null)
+                foreach (var item in Modifiers)
+                {
+                    modRes = modRes * 31 + (item.Value == null ? 0 : item.Value.GetHashCode());
+                }
+            return HashCode.Combine(enchRes, Reforge, modRes, Tier, Count);
         }
 
         public override string ToString()
         {
             return $"{(Enchants == null ? "ne" : string.Join(',', Enchants.Select(m => $"{m.Type}={m.Lvl}")))} {Reforge} {(Modifiers == null ? "nm" : string.Join(',', Modifiers.Select(m => m.ToString())))} {Tier} {Count}";
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is AuctionKey key &&
+                    (key.Enchants == null && this.Enchants == null || (this.Enchants != null && key.Enchants != null && key.Enchants.SequenceEqual(this.Enchants))) &&
+                   Reforge == key.Reforge &&
+                   (key.Modifiers == null && this.Modifiers == null || (this.Modifiers != null && key.Modifiers != null && key.Modifiers.SequenceEqual(this.Modifiers))) &&
+                   Tier == key.Tier &&
+                   Count == key.Count;
         }
 
         public AuctionKey(List<Enchantment> enchants, ItemReferences.Reforge reforge, List<KeyValuePair<string, string>> modifiers, Tier tier, byte count)
