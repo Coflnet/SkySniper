@@ -195,8 +195,8 @@ namespace Coflnet.Sky.Sniper.Controllers
                         continue;
                     if (key.Enchants == null)
                         continue;
-                    key.Modifiers = key.Modifiers.OrderBy(m => m.Key).ToList();
-                    key.Enchants = key.Enchants.OrderBy(e => e.Type).ToList();
+                    key.Modifiers = key.Modifiers.OrderBy(m => m.Key).ToList().AsReadOnly();
+                    key.Enchants = key.Enchants.OrderBy(e => e.Type).ToList().AsReadOnly();
                     if (key == lookup.Key)
                         continue;
                     // move reference to other key

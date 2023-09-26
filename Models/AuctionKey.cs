@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using Coflnet.Sky.Core;
@@ -12,17 +13,17 @@ namespace Coflnet.Sky.Sniper.Models
     public class AuctionKey
     {
         [Key(0)]
-        public List<Enchantment> Enchants = new();
+        public ReadOnlyCollection<Enchantment> Enchants = new(new List<Enchantment>());
         [Key(1)]
         public ItemReferences.Reforge Reforge;
         [Key(2)]
-        public List<KeyValuePair<string, string>> Modifiers = new();
+        public ReadOnlyCollection<KeyValuePair<string, string>> Modifiers = new(new List<KeyValuePair<string,string>>());
         [Key(3)]
         public Tier Tier;
         [Key(4)]
         public byte Count;
 
-
+        public static ReadOnlyCollection<KeyValuePair<string, string>> EmptyModifiers = new(new List<KeyValuePair<string, string>>());
 
         public int Similarity(AuctionKey key)
         {
@@ -67,7 +68,7 @@ namespace Coflnet.Sky.Sniper.Models
             return sum;
         }
 
-        private int EnchantSimilarity(List<Enchantment> enchantsToCompare, AuctionKey key)
+        private int EnchantSimilarity(IEnumerable<Enchantment> enchantsToCompare, AuctionKey key)
         {
             return enchantsToCompare.Sum(ench =>
             {
@@ -83,7 +84,7 @@ namespace Coflnet.Sky.Sniper.Models
             });
         }
 
-        private static float ModifierDifference(AuctionKey key, List<KeyValuePair<string, string>> leftMods)
+        private static float ModifierDifference(AuctionKey key, IEnumerable<KeyValuePair<string, string>> leftMods)
         {
             return leftMods.Sum(m =>
             {
@@ -140,18 +141,18 @@ namespace Coflnet.Sky.Sniper.Models
 
         public AuctionKey(List<Enchantment> enchants, ItemReferences.Reforge reforge, List<KeyValuePair<string, string>> modifiers, Tier tier, byte count)
         {
-            Enchants = enchants;
+            Enchants = enchants?.AsReadOnly();
             Reforge = reforge;
-            Modifiers = modifiers;
+            Modifiers = modifiers?.AsReadOnly();
             Tier = tier;
             Count = count;
         }
 
         public AuctionKey(AuctionKey key)
         {
-            Enchants = key.Enchants?.Select(e => new Enchantment() { Lvl = e.Lvl, Type = e.Type }).ToList();
+            Enchants = key.Enchants?.Select(e => new Enchantment() { Lvl = e.Lvl, Type = e.Type }).ToList().AsReadOnly();
             Reforge = key.Reforge;
-            Modifiers = key.Modifiers?.Select(m => new KeyValuePair<string, string>(m.Key, m.Value)).ToList();
+            Modifiers = key.Modifiers?.Select(m => new KeyValuePair<string, string>(m.Key, m.Value)).ToList().AsReadOnly();
             Tier = key.Tier;
             Count = key.Count;
         }

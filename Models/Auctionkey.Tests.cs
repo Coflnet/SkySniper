@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Services;
@@ -8,37 +9,38 @@ using NUnit.Framework;
 using static Coflnet.Sky.Core.Enchantment;
 
 namespace Coflnet.Sky.Sniper.Models;
+
 public class AuctionkeyTests
 {
     [Test]
     public void DifferentModifiersDecrease()
     {
         var key = new AuctionKey();
-        var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new KeyValuePair<string, string>("test", "test") } };
+        var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new KeyValuePair<string, string>("test", "test") }.AsReadOnly() };
         // by default reforge and tier match
         Assert.Greater(key.Similarity(key), keyB.Similarity(key));
     }
     [Test]
     public void SameModsMatch()
     {
-        var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new KeyValuePair<string, string>("test", "test") } };
-        var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new KeyValuePair<string, string>("test", "test") } };
+        var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new KeyValuePair<string, string>("test", "test") }.AsReadOnly() };
+        var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new KeyValuePair<string, string>("test", "test") }.AsReadOnly() };
         // by default reforge and tier match
         Assert.AreEqual(key.Similarity(key), keyB.Similarity(key));
     }
     [Test]
     public void SameModsDecreaseFurther()
     {
-        var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new KeyValuePair<string, string>("test", "testxy") } };
-        var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new KeyValuePair<string, string>("test", "test") } };
+        var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new KeyValuePair<string, string>("test", "testxy") }.AsReadOnly() };
+        var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new KeyValuePair<string, string>("test", "test") }.AsReadOnly() };
         // by default reforge and tier match
         Assert.Greater(key.Similarity(key), keyB.Similarity(key));
     }
     [Test]
     public void NoModsNoError()
     {
-        var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() };
-        var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() };
+        var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>().AsReadOnly() };
+        var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>().AsReadOnly() };
         // by default reforge and tier match
         Assert.AreEqual(key.Similarity(key), keyB.Similarity(key));
     }
@@ -47,7 +49,7 @@ public class AuctionkeyTests
     public void DifferentEnchantsDecrease()
     {
         var key = new AuctionKey();
-        var keyB = new AuctionKey() { Enchants = new List<Enchantment>() { new Enchantment() { Lvl = 1, Type = Core.Enchantment.EnchantmentType.angler } } };
+        var keyB = new AuctionKey() { Enchants = new List<Enchantment>() { new Enchantment() { Lvl = 1, Type = Core.Enchantment.EnchantmentType.angler } }.AsReadOnly() };
         // by default reforge and tier match
         Assert.Greater(key.Similarity(key), keyB.Similarity(key), "extra enchants should decrease");
     }
@@ -67,8 +69,12 @@ public class AuctionkeyTests
     [Test]
     public void IgnoresBadEnchants()
     {
-        var key = new AuctionKey() { Reforge = ItemReferences.Reforge.Any, Enchants = new List<Enchantment>(), Modifiers = new() };
-        key.Enchants.Add(new() { Type = Core.Enchantment.EnchantmentType.execute, Lvl = 8 });
+        var key = new AuctionKey()
+        {
+            Reforge = ItemReferences.Reforge.Any,
+            Enchants = new List<Enchantment>() { new() { Type = Core.Enchantment.EnchantmentType.execute, Lvl = 8 } }.AsReadOnly(),
+            Modifiers = new(new List<KeyValuePair<string, string>>())
+        };
         System.Console.WriteLine(key);
         var auction = new SaveAuction()
         {
@@ -243,7 +249,7 @@ public class AuctionkeyTests
     public void RunesAppart()
     {
         var clean = CreateFromLevel("0");
-        clean.Modifiers.Clear();
+        clean.Modifiers = AuctionKey.EmptyModifiers;
 
         var lvl1 = CreateFromLevel("1");
         var lvl2 = CreateFromLevel("2");
@@ -270,12 +276,11 @@ public class AuctionkeyTests
         Assert.Greater(simValue, clean.Similarity(lvl2));
         static AuctionKey CreateFromExp(string amount, bool boost)
         {
-            var key = new AuctionKey(null, ItemReferences.Reforge.Any, new() { new("exp", amount) }, Tier.EPIC, 1);
             if (boost)
             {
-                key.Modifiers.Add(new(SniperService.PetItemKey, SniperService.TierBoostShorthand));
+                return new AuctionKey(null, ItemReferences.Reforge.Any, new() { new("exp", amount), new(SniperService.PetItemKey, SniperService.TierBoostShorthand) }, Tier.EPIC, 1);
             }
-            return key;
+            return new AuctionKey(null, ItemReferences.Reforge.Any, new() { new("exp", amount) }, Tier.EPIC, 1); ;
         }
     }
 
@@ -287,7 +292,7 @@ public class AuctionkeyTests
         var close = Create();
         close.Tier = Tier.SPECIAL;
         var far = Create();
-        far.Enchants.Add(new Enchantment() { Type = Core.Enchantment.EnchantmentType.efficiency, Lvl = 10 });
+        far.Enchants = new(new List<Enchantment>() { new () { Type = Core.Enchantment.EnchantmentType.efficiency, Lvl = 10 } });
 
         var simValue = clean.Similarity(close);
         System.Console.WriteLine(simValue);
@@ -350,12 +355,12 @@ public class AuctionkeyTests
             };
 
         var baseKey = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 5);
-        baseKey.Enchants.AddRange(differentEnchants);
+     //   baseKey.Enchants.AddRange(differentEnchants); TODO REMOVE
 
         var closer = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 5);
 
         var lvl2 = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_duplex, 5);
-        lvl2.Enchants.AddRange(differentEnchants);
+     //   lvl2.Enchants.AddRange(differentEnchants);
 
         var simValue = baseKey.Similarity(closer);
         System.Console.WriteLine(simValue);
@@ -424,7 +429,7 @@ public class AuctionkeyTests
     {
         var json = "{\"Enchants\":[{\"Type\":\"cultivating\",\"Lvl\":8}],\"Reforge\":\"Any\",\"Modifiers\":[{\"Key\":\"rarity_upgrades\",\"Value\":\"1\"}],\"Tier\":\"MYTHIC\",\"Count\":1}";
         var deserilaizedKey = JsonConvert.DeserializeObject<AuctionKey>(json);
-        var originalKey = new AuctionKey(new(){new(){Type=EnchantmentType.cultivating, Lvl=8}}, ItemReferences.Reforge.Any, new() { new("rarity_upgrades", 1.ToString()) }, Tier.MYTHIC, 1);
+        var originalKey = new AuctionKey(new() { new() { Type = EnchantmentType.cultivating, Lvl = 8 } }, ItemReferences.Reforge.Any, new() { new("rarity_upgrades", 1.ToString()) }, Tier.MYTHIC, 1);
         var key = MessagePackSerializer.Deserialize<AuctionKey>(MessagePackSerializer.Serialize(originalKey));
         Assert.AreEqual(key, deserilaizedKey, JsonConvert.SerializeObject(key));
         Assert.AreEqual(key, originalKey);

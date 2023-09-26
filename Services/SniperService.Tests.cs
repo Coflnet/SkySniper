@@ -305,10 +305,10 @@ namespace Coflnet.Sky.Sniper.Services
                 Lookup = new(new Dictionary<AuctionKey, ReferenceAuctions>()
                 {
                     {new(){
-                        Modifiers = new (){
+                        Modifiers = new(new List<KeyValuePair<string,string>>(){
                             new("exp","6"),
                             new("candyUsed","0"),
-                        }
+                        })
                     }, new ReferenceAuctions(){
                         Price = 1000,
                         OldestRef = 1

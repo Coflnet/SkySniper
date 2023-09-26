@@ -450,8 +450,8 @@ public class PartialCalcService
         return new AuctionKey()
         {
             Tier = Enum.Parse<Tier>(item.Flatten?.GetValueOrDefault("tier")?.ToString() ?? "COMMON"),
-            Enchants = new(),
-            Modifiers = new(),
+            Enchants = new(new List<Models.Enchantment>()),
+            Modifiers = new(new List<KeyValuePair<string,string>>()),
             Reforge = ItemReferences.Reforge.Any,
             Count = 0 // because default for auctions
         };

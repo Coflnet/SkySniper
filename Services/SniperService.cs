@@ -343,7 +343,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private long GetPriceSumForModifiers(List<KeyValuePair<string, string>> missingModifiers, List<KeyValuePair<string, string>> modifiers, SaveAuction auction)
+        private long GetPriceSumForModifiers(List<KeyValuePair<string, string>> missingModifiers, IEnumerable<KeyValuePair<string, string>> modifiers, SaveAuction auction)
         {
             if (missingModifiers == null)
                 return 0;
@@ -469,7 +469,7 @@ ORDER BY l.`AuctionId`  DESC;
                     }
                     catch (System.Exception)
                     {
-                        
+
                         throw;
                     }
                 }
@@ -502,7 +502,9 @@ ORDER BY l.`AuctionId`  DESC;
                 SniperService.FindClosest(Lookups[itemTag].Lookup, item).Take(8).Where(m => m.Key.ToString() == item.ToString())
                     .ToList().ForEach(m =>
                     {
-                        if (m.Key.ToString() != item.ToString())
+                        if (m.Key.ToString() != item.ToString() ||
+                        item.Equals(m.Key) // perfect match
+                        )
                         {
                             return;
                         }
@@ -568,7 +570,7 @@ ORDER BY l.`AuctionId`  DESC;
                 //var key = KeyFromSaveAuction(auction);
                 var key = keyCombo.Item2;
                 var enchantPrice = GetPriceSumForEnchants(key.Enchants);
-                key.Enchants = new();
+                key.Enchants = new(new List<Models.Enchantment>());
                 if (!Lookups.GetOrAdd(keyCombo.tag, new PriceLookup()).Lookup.TryGetValue(key, out var clean))
                 {
                     sellClosestSearch.Inc();
@@ -661,23 +663,25 @@ ORDER BY l.`AuctionId`  DESC;
             return l.TryGetValue(KeyFromSaveAuction(auction, 3), out bucket);
         }
 
-        private static List<KeyValuePair<string, string>> EmptyModifiers = new();
-        private static List<KeyValuePair<string, string>> EmptyPetModifiers = new() { new("exp", "0"), new("candyUsed", "0") };
+        private static System.Collections.ObjectModel.ReadOnlyCollection<KeyValuePair<string, string>> EmptyModifiers = new(new List<KeyValuePair<string, string>>());
+        private static System.Collections.ObjectModel.ReadOnlyCollection<KeyValuePair<string, string>> EmptyPetModifiers = new(new List<KeyValuePair<string, string>>() { new("exp", "0"), new("candyUsed", "0") });
         private static DateTime UnlockedIntroduction = new DateTime(2021, 9, 4);
         private static List<string> GemPurities = new() { "PERFECT", "FLAWLESS", "FINE", "ROUGH" };
         public AuctionKey KeyFromSaveAuction(SaveAuction auction, int dropLevel = 0)
         {
             var key = new AuctionKey();
+            var enchants = new List<Models.Enchantment>();
+            var modifiers = new List<KeyValuePair<string, string>>();
 
             var shouldIncludeReforge = Coflnet.Sky.Core.Constants.RelevantReforges.Contains(auction.Reforge) && dropLevel < 3;
             key.Reforge = shouldIncludeReforge ? auction.Reforge : ItemReferences.Reforge.Any;
             if (dropLevel == 0)
             {
-                key.Enchants = auction.Enchantments
+                enchants = auction.Enchantments
                     ?.Where(e => MinEnchantMap.TryGetValue(e.Type, out byte value) && e.Level >= value)
                     .Select(e => new Models.Enchantment() { Lvl = e.Level, Type = e.Type }).ToList();
 
-                key.Modifiers = auction.FlatenedNBT?.Where(n =>
+                modifiers = auction.FlatenedNBT?.Where(n =>
                                        IncludeKeys.Contains(n.Key)
                                     || n.Value == "PERFECT"
                                     || n.Key.StartsWith("MASTER_CRYPT_TANK_ZOMBIE")
@@ -688,42 +692,42 @@ ORDER BY l.`AuctionId`  DESC;
                                 .Select(i => NormalizeData(i, auction.Tag, auction.FlatenedNBT))
                                 .Where(i => i.Key != Ignore.Key).ToList();
                 if (auction.ItemCreatedAt < UnlockedIntroduction && auction.FlatenedNBT.Any(v => GemPurities.Contains(v.Value)))
-                    key.Modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", "all"));
+                    modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", "all"));
             }
             else if (dropLevel == 1 || dropLevel == 2)
             {
-                key.Modifiers = auction.FlatenedNBT?.Where(n => VeryValuable.Contains(n.Key) || Increadable.Contains(n.Key) || n.Value == "PERFECT" || n.Value == "PET_ITEM_TIER_BOOST")
+                modifiers = auction.FlatenedNBT?.Where(n => VeryValuable.Contains(n.Key) || Increadable.Contains(n.Key) || n.Value == "PERFECT" || n.Value == "PET_ITEM_TIER_BOOST")
                             .OrderByDescending(n => n.Key)
                             .Select(i => NormalizeData(i, auction.Tag, auction.FlatenedNBT))
                                 .Where(i => i.Key != Ignore.Key)
                             .ToList();
-                key.Enchants = auction.Enchantments
+                enchants = auction.Enchantments
                     ?.Where(e => Coflnet.Sky.Core.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
                     .Select(e => new Models.Enchantment() { Lvl = e.Level, Type = e.Type }).ToList();
-                if (key?.Enchants?.Count == 0)
+                if (enchants?.Count == 0)
                 {
                     var enchant = Constants.SelectBest(auction.Enchantments);
-                    key.Enchants = new List<Models.Enchantment>() { new Models.Enchantment() { Lvl = enchant.Level, Type = enchant.Type } };
+                    enchants = new List<Models.Enchantment>() { new Models.Enchantment() { Lvl = enchant.Level, Type = enchant.Type } };
                 }
             }
             else if (dropLevel == 3)
             {
                 var enchant = Constants.SelectBest(auction.Enchantments);
                 if (enchant == default)
-                    key.Enchants = new List<Models.Enchantment>();
+                    enchants = new List<Models.Enchantment>();
                 else
-                    key.Enchants = new List<Models.Enchantment>() { new Models.Enchantment() { Lvl = enchant.Level, Type = enchant.Type } };
-                AssignEmptyModifiers(auction, key);
+                    enchants = new List<Models.Enchantment>() { new Models.Enchantment() { Lvl = enchant.Level, Type = enchant.Type } };
+                modifiers = AssignEmptyModifiers(auction);
             }
             else
             {
                 //key.Modifiers = new List<KeyValuePair<string, string>>();
-                key.Enchants = new List<Models.Enchantment>();
-                AssignEmptyModifiers(auction, key);
+                enchants = new List<Models.Enchantment>();
+                modifiers = AssignEmptyModifiers(auction);
             }
 
-            if (key.Enchants == null)
-                key.Enchants = new List<Models.Enchantment>();
+            if (enchants == null)
+                enchants = new List<Models.Enchantment>();
             key.Tier = auction.Tier;
             if (auction.Tag == "ENCHANTED_BOOK")
             {
@@ -733,54 +737,56 @@ ORDER BY l.`AuctionId`  DESC;
             if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false)
             {
                 // Jasper0 slot can't be accessed on starred (Fragged) items
-                key.Modifiers?.RemoveAll(m => m.Key == "JASPER_0");
+                modifiers?.RemoveAll(m => m.Key == "JASPER_0");
             }
-            RemoveNoEffectEnchants(auction, key);
+            enchants = RemoveNoEffectEnchants(auction, enchants);
 
             key.Count = (byte)auction.Count;
 
             // order attributes
             if (key.Modifiers != null)
-                key.Modifiers = key.Modifiers.OrderBy(m => m.Key).ToList();
+                key.Modifiers = modifiers.OrderBy(m => m.Key).ToList().AsReadOnly();
             // order enchants
             if (key.Enchants != null)
-                key.Enchants = key.Enchants.OrderBy(e => e.Type).ToList();
+                key.Enchants = enchants.OrderBy(e => e.Type).ToList().AsReadOnly();
 
             return key;
         }
 
-        private static void RemoveNoEffectEnchants(SaveAuction auction, AuctionKey key)
+        private static List<Models.Enchantment> RemoveNoEffectEnchants(SaveAuction auction, List<Models.Enchantment> ench)
         {
             if (auction.Tag == null)
-                return;
+                return ench;
             if (auction.Tag.Contains("GAUNTLET") || auction.Tag.Contains("DRILL"))
-                RemoveEnchantFromKey(key, Core.Enchantment.EnchantmentType.ultimate_wise);
+                ench = RemoveEnchantFromKey(ench, Core.Enchantment.EnchantmentType.ultimate_wise);
             if (auction.Tag.StartsWith("DIVAN_"))
             {
-                RemoveEnchantFromKey(key, Core.Enchantment.EnchantmentType.ultimate_legion);
-                RemoveEnchantFromKey(key, Core.Enchantment.EnchantmentType.ultimate_wisdom);
+                ench = RemoveEnchantFromKey(ench, Core.Enchantment.EnchantmentType.ultimate_legion);
+                ench = RemoveEnchantFromKey(ench, Core.Enchantment.EnchantmentType.ultimate_wisdom);
             }
             if (!auction.Tag.EndsWith("KATANA"))
-                RemoveEnchantFromKey(key, Core.Enchantment.EnchantmentType.ender_slayer, 6);
+                ench = RemoveEnchantFromKey(ench, Core.Enchantment.EnchantmentType.ender_slayer, 6);
+            return ench;
         }
 
-        private static void RemoveEnchantFromKey(AuctionKey key, Core.Enchantment.EnchantmentType ench, int maxLevel = 10)
+        private static List<Models.Enchantment> RemoveEnchantFromKey(List<Models.Enchantment> enchList, Core.Enchantment.EnchantmentType ench, int maxLevel = 10)
         {
-            if (key.Enchants.Any(e => e.Type == ench))
-                key.Enchants = key.Enchants.Where(e => e.Type != ench || e.Lvl > maxLevel).ToList();
+            if (enchList.Any(e => e.Type == ench))
+                return enchList.Where(e => e.Type != ench || e.Lvl > maxLevel).ToList();
+            return enchList;
         }
 
-        private static void AssignEmptyModifiers(SaveAuction auction, AuctionKey key)
+        private static List<KeyValuePair<string, string>> AssignEmptyModifiers(SaveAuction auction)
         {
-            if (auction.FlatenedNBT.Any(n => NeverDrop.Contains(n.Key)))
-                key.Modifiers = auction.FlatenedNBT.Where(n => NeverDrop.Contains(n.Key)).ToList();
-            else
-                key.Modifiers = EmptyModifiers;
             if (auction.Tag.StartsWith("PET_") && !auction.Tag.StartsWith("PET_ITEM") && !auction.Tag.StartsWith("PET_SKIN"))
                 if (auction.FlatenedNBT.TryGetValue("heldItem", out var val) && val == "PET_ITEM_TIER_BOOST")
-                    key.Modifiers = new(EmptyPetModifiers) { new(PetItemKey, TierBoostShorthand) };
+                    return new List<KeyValuePair<string, string>>(EmptyPetModifiers) { new(PetItemKey, TierBoostShorthand) };
                 else
-                    key.Modifiers = EmptyPetModifiers;
+                    return EmptyPetModifiers.ToList();
+            if (auction.FlatenedNBT.Any(n => NeverDrop.Contains(n.Key)))
+                return auction.FlatenedNBT.Where(n => NeverDrop.Contains(n.Key)).ToList();
+            else
+                return EmptyModifiers.ToList();
         }
 
         private KeyValuePair<string, string> NormalizeData(KeyValuePair<string, string> s, string tag, Dictionary<string, string> flattenedNbt)
@@ -930,7 +936,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     yield return new AuctionKey(baseKey)
                     {
-                        Modifiers = baseKey.Modifiers.Where(m => m.Key != "exp").Append(new("exp", i.ToString())).OrderBy(m => m.Key).ToList()
+                        Modifiers = baseKey.Modifiers.Where(m => m.Key != "exp").Append(new("exp", i.ToString())).OrderBy(m => m.Key).ToList().AsReadOnly()
                     };
                 }
             }
@@ -940,7 +946,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     yield return new AuctionKey(baseKey)
                     {
-                        Modifiers = baseKey.Modifiers.Where(m => m.Key != item.Key).Append(new(item.Key, i.ToString())).OrderBy(m => m.Key).ToList()
+                        Modifiers = baseKey.Modifiers.Where(m => m.Key != item.Key).Append(new(item.Key, i.ToString())).OrderBy(m => m.Key).ToList().AsReadOnly()
                     };
                 }
             }
@@ -950,7 +956,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     yield return new AuctionKey(baseKey)
                     {
-                        Modifiers = baseKey.Modifiers.Append(new("rarity_upgrades", "1")).OrderBy(m => m.Key).ToList(),
+                        Modifiers = baseKey.Modifiers.Append(new("rarity_upgrades", "1")).OrderBy(m => m.Key).ToList().AsReadOnly(),
                         Tier = (Tier)(i + 1)
                     };
                     yield return new AuctionKey(baseKey)
@@ -979,7 +985,7 @@ ORDER BY l.`AuctionId`  DESC;
                         {
                             Type = Core.Enchantment.EnchantmentType.compact,
                             Lvl = (byte)i
-                        }).OrderBy(e => e.Type).ToList()
+                        }).OrderBy(e => e.Type).ToList().AsReadOnly()
                     };
                 }
             }
@@ -1242,7 +1248,7 @@ ORDER BY l.`AuctionId`  DESC;
             return 0;
         }
 
-        private long GetPriceSumForEnchants(List<Models.Enchantment> missingEnchants)
+        private long GetPriceSumForEnchants(IEnumerable<Models.Enchantment> missingEnchants)
         {
             long toSubstract = 0;
             foreach (var item in missingEnchants)
