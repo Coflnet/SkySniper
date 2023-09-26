@@ -568,9 +568,11 @@ ORDER BY l.`AuctionId`  DESC;
             if (keyCombo != default)
             {
                 //var key = KeyFromSaveAuction(auction);
-                var key = keyCombo.Item2;
-                var enchantPrice = GetPriceSumForEnchants(key.Enchants);
-                key.Enchants = new(new List<Models.Enchantment>());
+                var key = new AuctionKey(keyCombo.Item2)
+                {
+                    Enchants = new(new List<Models.Enchantment>())
+                };
+                var enchantPrice = GetPriceSumForEnchants(keyCombo.Item2.Enchants);
                 if (!Lookups.GetOrAdd(keyCombo.tag, new PriceLookup()).Lookup.TryGetValue(key, out var clean))
                 {
                     sellClosestSearch.Inc();
@@ -669,12 +671,10 @@ ORDER BY l.`AuctionId`  DESC;
         private static List<string> GemPurities = new() { "PERFECT", "FLAWLESS", "FINE", "ROUGH" };
         public AuctionKey KeyFromSaveAuction(SaveAuction auction, int dropLevel = 0)
         {
-            var key = new AuctionKey();
             var enchants = new List<Models.Enchantment>();
             var modifiers = new List<KeyValuePair<string, string>>();
 
             var shouldIncludeReforge = Coflnet.Sky.Core.Constants.RelevantReforges.Contains(auction.Reforge) && dropLevel < 3;
-            key.Reforge = shouldIncludeReforge ? auction.Reforge : ItemReferences.Reforge.Any;
             if (dropLevel == 0)
             {
                 enchants = auction.Enchantments
@@ -728,11 +728,11 @@ ORDER BY l.`AuctionId`  DESC;
 
             if (enchants == null)
                 enchants = new List<Models.Enchantment>();
-            key.Tier = auction.Tier;
+            var tier = auction.Tier;
             if (auction.Tag == "ENCHANTED_BOOK")
             {
                 // rarities don't matter for enchanted books and often used for scamming
-                key.Tier = Tier.UNCOMMON;
+                tier = Tier.UNCOMMON;
             }
             if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false)
             {
@@ -741,16 +741,15 @@ ORDER BY l.`AuctionId`  DESC;
             }
             enchants = RemoveNoEffectEnchants(auction, enchants);
 
-            key.Count = (byte)auction.Count;
-
-            // order attributes
-            if (key.Modifiers != null)
-                key.Modifiers = modifiers.OrderBy(m => m.Key).ToList().AsReadOnly();
-            // order enchants
-            if (key.Enchants != null)
-                key.Enchants = enchants.OrderBy(e => e.Type).ToList().AsReadOnly();
-
-            return key;
+            return new AuctionKey()
+            {
+                // order attributes
+                Modifiers = modifiers.OrderBy(m => m.Key).ToList().AsReadOnly(),
+                Enchants = enchants.OrderBy(e => e.Type).ToList().AsReadOnly(),
+                Tier = tier,
+                Reforge = shouldIncludeReforge ? auction.Reforge : ItemReferences.Reforge.Any,
+                Count = (byte)auction.Count,
+            };
         }
 
         private static List<Models.Enchantment> RemoveNoEffectEnchants(SaveAuction auction, List<Models.Enchantment> ench)

@@ -13,7 +13,7 @@ namespace Coflnet.Sky.Sniper.Models
     public class AuctionKey
     {
         [Key(0)]
-        public ReadOnlyCollection<Enchantment> Enchants = new(new List<Enchantment>());
+        public ReadOnlyCollection<Enchantment> Enchants { get; init; } = new(new List<Enchantment>());
         [Key(1)]
         public ItemReferences.Reforge Reforge;
         [Key(2)]
@@ -24,6 +24,14 @@ namespace Coflnet.Sky.Sniper.Models
         public byte Count;
 
         public static ReadOnlyCollection<KeyValuePair<string, string>> EmptyModifiers = new(new List<KeyValuePair<string, string>>());
+
+        public AuctionKey WithEnchants(IEnumerable<Enchantment> enchants)
+        {
+            return new AuctionKey(this)
+            {
+                Enchants = enchants.ToList().AsReadOnly()
+            };
+        }
 
         public int Similarity(AuctionKey key)
         {

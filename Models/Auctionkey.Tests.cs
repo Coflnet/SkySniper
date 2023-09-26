@@ -292,7 +292,7 @@ public class AuctionkeyTests
         var close = Create();
         close.Tier = Tier.SPECIAL;
         var far = Create();
-        far.Enchants = new(new List<Enchantment>() { new () { Type = Core.Enchantment.EnchantmentType.efficiency, Lvl = 10 } });
+        far = far.WithEnchants(new List<Enchantment>() { new () { Type = Core.Enchantment.EnchantmentType.efficiency, Lvl = 10 } });
 
         var simValue = clean.Similarity(close);
         System.Console.WriteLine(simValue);

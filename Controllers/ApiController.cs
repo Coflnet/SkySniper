@@ -190,13 +190,15 @@ namespace Coflnet.Sky.Sniper.Controllers
                 var startCount = item.Value.Lookup.Count;
                 foreach (var lookup in item.Value.Lookup)
                 {
-                    var key = new AuctionKey(lookup.Key);
+                    var key = new AuctionKey(lookup.Key)
+                    {
+                        Enchants = lookup.Key.Enchants?.OrderBy(e => e.Type).ToList().AsReadOnly(),
+                        Modifiers = lookup.Key.Modifiers?.OrderBy(m => m.Key).ToList().AsReadOnly()
+                    };
                     if (key.Modifiers == null)
                         continue;
                     if (key.Enchants == null)
                         continue;
-                    key.Modifiers = key.Modifiers.OrderBy(m => m.Key).ToList().AsReadOnly();
-                    key.Enchants = key.Enchants.OrderBy(e => e.Type).ToList().AsReadOnly();
                     if (key == lookup.Key)
                         continue;
                     // move reference to other key
