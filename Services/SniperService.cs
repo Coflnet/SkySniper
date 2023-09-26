@@ -499,22 +499,25 @@ ORDER BY l.`AuctionId`  DESC;
 
             void Deduplicate(string itemTag, PriceLookup value, AuctionKey item)
             {
-                SniperService.FindClosest(Lookups[itemTag].Lookup, item).Take(8).Where(m => m.Key.ToString() == item.ToString())
-                    .ToList().ForEach(m =>
+                var closest = SniperService.FindClosest(Lookups[itemTag].Lookup, new()).FirstOrDefault();
+                if (closest.Key == null)
+                    return;
+                var closestBucket = closest.Value;
+                if (closestBucket == null)
+                    return;
+                var closestRef = closestBucket.References.OrderByDescending(r=>r.Day).FirstOrDefault();
+                if (closestRef.AuctionId == 0)
+                    return;
+                // search all other buckets for this auction and if found remove this bucket
+                foreach (var bucket in Lookups[itemTag].Lookup.Values)
+                {
+                    if (bucket.References.Any(r => r.AuctionId == closestRef.AuctionId))
                     {
-                        if (m.Key.ToString() != item.ToString() ||
-                        item.Equals(m.Key) // perfect match
-                        )
-                        {
-                            return;
-                        }
-                        var equal = m.Key.Equals(item);
-                        var hashEqual = m.Key.GetHashCode() == item.GetHashCode();
-                        CombineBuckets(m, value.Lookup[item]);
-                        value.Lookup.TryRemove(m.Key, out _);
-                        Console.WriteLine($"Combined {m.Key} into {item} {equal} {hashEqual} {m.Value.References.FirstOrDefault().AuctionId}");
-                        UpdateMedian(m.Value, (itemTag, m.Key));
-                    });
+                        value.Lookup.TryRemove(closest.Key, out _);
+                        Console.WriteLine($"Removed {closest.Key} from {itemTag} because wrong");
+                        return;
+                    }
+                }
             }
         }
 
