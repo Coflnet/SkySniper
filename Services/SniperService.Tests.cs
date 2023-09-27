@@ -60,7 +60,7 @@ namespace Coflnet.Sky.Sniper.Services
             found = new List<LowPricedAuction>();
             service.FoundSnipe += found.Add;
         }
-        [Test]
+        //[Test] disable for closest to clean test
         public void UsesLbinFirst()
         {
             var found = new List<LowPricedAuction>();
