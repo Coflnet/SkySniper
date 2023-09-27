@@ -446,10 +446,10 @@ ORDER BY l.`AuctionId`  DESC;
                 var value = loadedVal.Lookup.GetValueOrDefault(item);
                 if (value == null)
                     continue;
-                if (value.References.All(r => r.Day < GetDay() - 60))
+                if (value.References.All(r => r.Day < GetDay() - 21))
                     loadedVal.Lookup.TryRemove(item, out _); // unimportant
             }
-            Lookups.AddOrUpdate(itemTag, loadedVal, (tag, value) =>
+            var current = Lookups.AddOrUpdate(itemTag, loadedVal, (tag, value) =>
             {
                 foreach (var item in loadedVal.Lookup)
                 {
@@ -461,20 +461,20 @@ ORDER BY l.`AuctionId`  DESC;
                     CombineBuckets(item, existingBucket);
                     item.Value.Lbins.Sort(ReferencePrice.Compare);
                 }
-                foreach (var item in value.Lookup.Keys.ToList())
-                {
-                    try
-                    {
-                        Deduplicate(itemTag, value, item);
-                    }
-                    catch (System.Exception)
-                    {
-
-                        throw;
-                    }
-                }
                 return value;
             });
+
+            foreach (var item in current.Lookup.Keys.ToList())
+            {
+                try
+                {
+                    Deduplicate(itemTag, current, item);
+                }
+                catch (System.Exception e)
+                {
+                    dev.Logger.Instance.Error(e, $"Could not deduplicate");
+                }
+            }
 
             static void CombineBuckets(KeyValuePair<AuctionKey, ReferenceAuctions> item, ReferenceAuctions existingBucket)
             {
@@ -499,25 +499,17 @@ ORDER BY l.`AuctionId`  DESC;
 
             void Deduplicate(string itemTag, PriceLookup value, AuctionKey item)
             {
-                var closest = SniperService.FindClosest(Lookups[itemTag].Lookup, new()).FirstOrDefault();
-                if (closest.Key == null)
+                if (item.Enchants?.Count == 0)
                     return;
-                var closestBucket = closest.Value;
-                if (closestBucket == null)
+                var keyWithoutEnchants = new AuctionKey(item) { Enchants = new(new Models.Enchantment[0]) };
+                var without = value.Lookup.GetValueOrDefault(keyWithoutEnchants);
+                var with = value.Lookup.GetValueOrDefault(item);
+                if (without == null || with == null)
                     return;
-                var closestRef = closestBucket.References.OrderByDescending(r=>r.Day).FirstOrDefault();
-                if (closestRef.AuctionId == 0)
+                if (!without.References.Any(r => with.References.Any(w => w.AuctionId == r.AuctionId && r.AuctionId != 0)))
                     return;
-                // search all other buckets for this auction and if found remove this bucket
-                foreach (var bucket in Lookups[itemTag].Lookup.Values)
-                {
-                    if (bucket.References.Any(r => r.AuctionId == closestRef.AuctionId))
-                    {
-                        value.Lookup.TryRemove(closest.Key, out _);
-                        Console.WriteLine($"Removed {closest.Key} from {itemTag} because wrong");
-                        return;
-                    }
-                }
+                // remove without enchants
+                value.Lookup.TryRemove(keyWithoutEnchants, out _);
             }
         }
 

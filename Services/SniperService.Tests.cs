@@ -213,6 +213,25 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void RemovesDupplicatesFromLookup()
+        {
+            var dict = new ConcurrentDictionary<AuctionKey, ReferenceAuctions>();
+            var refPrice = new ReferencePrice[] { new() { AuctionId = 1, Price = 1000, Day = SniperService.GetDay() } };
+            var keyWithEnch = new AuctionKey()
+            {
+                Enchants = new(new List<Models.Enchantment>() {
+                new() { Type = Core.Enchantment.EnchantmentType.ultimate_legion, Lvl = 5 } })
+            };
+            dict.TryAdd(new AuctionKey(), new() { References = new(refPrice) });
+            dict.TryAdd(keyWithEnch, new() { References = new(refPrice) });
+            service.AddLookupData("test", new()
+            {
+                Lookup = dict
+            });
+            Assert.AreEqual(1, service.Lookups["test"].Lookup.Count);
+        }
+
+        [Test]
         public void TakesClosestCake()
         {
             AuctionKey key = CreateKey(252, 4);
