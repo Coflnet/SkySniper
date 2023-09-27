@@ -1089,6 +1089,7 @@ ORDER BY l.`AuctionId`  DESC;
                         medPrice *= Math.Pow(1.25, bucket.HitsSinceCalculating);
                         bucket.HitsSinceCalculating++;
                         shouldTryToFindClosest = true;
+                        break; // don't use most similar until key lenght limit is added
                     }
                     else if (i != 0)
                         continue;
