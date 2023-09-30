@@ -1139,7 +1139,7 @@ ORDER BY l.`AuctionId`  DESC;
             var shouldTryToFindClosest = false;
             for (int i = 0; i < 5; i++)
             {
-                AuctionKey key = KeyFromSaveAuction(auction, i);
+                var key = KeyFromSaveAuction(auction, i);
                 if (i > 0 && key == lastKey)
                 {
                     if (i < 4)
@@ -1174,10 +1174,10 @@ ORDER BY l.`AuctionId`  DESC;
                             return;
                         }
                         bucket = closests.FirstOrDefault().Value;
-                        key = closests.FirstOrDefault().Key;
+                        var closestKey = closests.FirstOrDefault().Key;
                         if (bucket.HitsSinceCalculating > 8)
                         {
-                            Console.WriteLine($"Bucket {key} for {auction.Uuid} has been hit {bucket.HitsSinceCalculating} times, skipping");
+                            Console.WriteLine($"Bucket {closestKey} for {auction.Uuid} has been hit {bucket.HitsSinceCalculating} times, skipping");
                             TryFindClosestRisky(auction, l, ref lbinPrice, ref medPrice);
                             return;
                         }
@@ -1397,7 +1397,7 @@ ORDER BY l.`AuctionId`  DESC;
             return gemValue;
         }
 
-        private bool FindFlip(SaveAuction auction, double lbinPrice, double minMedPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue = 0)
+        private bool FindFlip(SaveAuction auction, double lbinPrice, double minMedPrice, ReferenceAuctions bucket, AuctionKeyWithValue key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue = 0)
         {
             var volume = bucket.Volume;
             var medianPrice = bucket.Price + extraValue;
@@ -1417,6 +1417,10 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 var props = CreateReference(bucket.References.LastOrDefault().AuctionId, key, extraValue);
                 AddMedianSample(bucket, props);
+                if(key.ValueSubstract != 0)
+                {
+                    props["valuedropped"] = key.ValueSubstract.ToString();
+                }
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, adjustedMedianPrice + extraValue, props);
             }
             else
