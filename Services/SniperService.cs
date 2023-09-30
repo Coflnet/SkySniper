@@ -515,7 +515,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         public void AddSoldItem(SaveAuction auction, bool preventMedianUpdate = false)
         {
-            (ReferenceAuctions bucket,var key) = GetBucketForAuction(auction);
+            (ReferenceAuctions bucket, var key) = GetBucketForAuction(auction);
             AddAuctionToBucket(auction, preventMedianUpdate, bucket, key.ValueSubstract);
         }
 
@@ -600,7 +600,7 @@ ORDER BY l.`AuctionId`  DESC;
             return deduplicated.AsEnumerable().Reverse().Take(3).ToList();
         }
 
-        public (ReferenceAuctions auctions,AuctionKeyWithValue key) GetBucketForAuction(SaveAuction auction)
+        public (ReferenceAuctions auctions, AuctionKeyWithValue key) GetBucketForAuction(SaveAuction auction)
         {
             var itemGroupTag = GetAuctionGroupTag(auction).Item1;
             if (!Lookups.TryGetValue(itemGroupTag, out var lookup) || lookup == null)
@@ -609,7 +609,7 @@ ORDER BY l.`AuctionId`  DESC;
                 Lookups[itemGroupTag] = lookup;
             }
             var key = KeyFromSaveAuction(auction);
-            return (GetOrAdd(key, lookup),key);
+            return (GetOrAdd(key, lookup), key);
         }
 
         private static long GetMedian(List<ReferencePrice> deduplicated)
@@ -703,6 +703,7 @@ ORDER BY l.`AuctionId`  DESC;
 
             var shouldIncludeReforge = Coflnet.Sky.Core.Constants.RelevantReforges.Contains(auction.Reforge) && dropLevel < 3;
             long valueSubstracted = 0;
+            bool removedRarity = false;
             if (dropLevel == 0)
             {
                 enchants = auction.Enchantments
@@ -722,7 +723,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (auction.ItemCreatedAt < UnlockedIntroduction && auction.FlatenedNBT.Any(v => GemPurities.Contains(v.Value)))
                     modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", "all"));
 
-                valueSubstracted = CapKeyLength(enchants, modifiers);
+                (valueSubstracted, removedRarity) = CapKeyLength(enchants, modifiers);
             }
             else if (dropLevel == 1 || dropLevel == 2)
             {
@@ -742,7 +743,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     var enchant = Constants.SelectBest(auction.Enchantments);
                     enchants = new List<Models.Enchantment>() { new Models.Enchantment() { Lvl = enchant.Level, Type = enchant.Type
-} };
+                        } };
                 }
             }
             else if (dropLevel == 3)
@@ -769,6 +770,8 @@ ORDER BY l.`AuctionId`  DESC;
                 // rarities don't matter for enchanted books and often used for scamming
                 tier = Tier.UNCOMMON;
             }
+            if(removedRarity)
+                tier--;
             if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false)
             {
                 // Jasper0 slot can't be accessed on starred (Fragged) items
@@ -795,7 +798,7 @@ ORDER BY l.`AuctionId`  DESC;
         /// <param name="enchants"></param>
         /// <param name="modifiers"></param>
         /// <returns>The coin amount substracted</returns>
-        private long CapKeyLength(List<Models.Enchantment> enchants, List<KeyValuePair<string, string>> modifiers)
+        private (long, bool removedRarity) CapKeyLength(List<Models.Enchantment> enchants, List<KeyValuePair<string, string>> modifiers)
         {
             var valuePerEnchant = enchants?.Select(item => new RankElem(item, mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices)));
             var valuePerModifier = modifiers?.Select(mod =>
@@ -822,16 +825,21 @@ ORDER BY l.`AuctionId`  DESC;
             else if (valuePerModifier != null)
                 combined = valuePerModifier.OrderByDescending(i => i.Value).ToList();
             long valueSubstracted = 0;
+            bool removedRarity = false;
             foreach (var item in combined.Skip(5).Where(c => c.Value > 0))
             {
                 // remove all but the top 5
                 if (item.Enchant.Type != 0)
                     enchants.Remove(item.Enchant);
                 else
+                {
                     modifiers.Remove(item.Modifier);
+                    if (item.Modifier.Key == "rarity_upgrades")
+                        removedRarity = true;
+                }
                 valueSubstracted += item.Value;
             }
-            return valueSubstracted;
+            return (valueSubstracted, removedRarity);
         }
 
         private static List<Models.Enchantment> RemoveNoEffectEnchants(SaveAuction auction, List<Models.Enchantment> ench)
