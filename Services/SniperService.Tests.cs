@@ -88,6 +88,36 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         /// <summary>
+        /// Least valuable entries are removed first until only 5 are left
+        /// </summary>
+        [Test]
+        public void CapKeySize()
+        {
+            SetBazaarPrice("ENCHANTMENT_MANA_VAMPIRE_6", 2_100_000);
+            SetBazaarPrice("ENCHANTMENT_GROWTH_6", 6_200_000);
+            SetBazaarPrice("ENCHANTMENT_SNIPE_4", 86_000_000);
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_LEGION_1", 1_800_000);
+            SetBazaarPrice("HOT_POTATO_BOOK", 80_000);
+            SetBazaarPrice("FUMING_POTATO_BOOK", 1_100_000);
+            SetBazaarPrice("RECOMBOBULATOR_3000", 6_600_000);
+            var key = service.KeyFromSaveAuction(new SaveAuction()
+            {
+                Enchantments = new List<Core.Enchantment>(){
+                    new (Core.Enchantment.EnchantmentType.ultimate_legion, 1),
+                    new (Core.Enchantment.EnchantmentType.snipe, 4),
+                    new (Core.Enchantment.EnchantmentType.growth, 6),
+                    new (Core.Enchantment.EnchantmentType.mana_vampire, 6),
+                },
+                FlatenedNBT = new (){
+                    {"hpc", "15"},
+                    {"rarity_upgrades", "1"},
+                    {"upgrade_level", "5"}
+                }
+            });
+            Assert.IsTrue(!key.Enchants.Any(e => e.Type == Core.Enchantment.EnchantmentType.ultimate_legion));
+        }
+
+        /// <summary>
         /// Same uuid with very high profit percent is probably a bait, so we ignore it after the first listing
         /// </summary>
         [Test]

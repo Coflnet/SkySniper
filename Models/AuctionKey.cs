@@ -9,6 +9,10 @@ using MessagePack;
 
 namespace Coflnet.Sky.Sniper.Models
 {
+    public class AuctionKeyWithValue : AuctionKey
+    {
+        public long ValueSubstract { get; set; }
+    }
     [MessagePackObject]
     public class AuctionKey
     {

@@ -366,10 +366,10 @@ namespace Coflnet.Sky.Sniper.Services
                 foreach (var item in sold)
                 {
 
-                    var references = sniper.GetBucketForAuction(item);
+                    var references = sniper.GetBucketForAuction(item).auctions;
                     if (!ShouldAuctionBeIncluded(item, references.References))
                         continue;
-                    sniper.AddAuctionToBucket(item, true, references);
+                    sniper.AddAuctionToBucket(item, true, references, 0);
                 }
             partialCalcService.SetLearningRate(v);
             Parallel.ForEach(sold, item =>
@@ -420,10 +420,10 @@ namespace Coflnet.Sky.Sniper.Services
                 Console.WriteLine($"Loaded batch {batchStart} - {end}");
             foreach (var item in sold)
             {
-                var references = sniper.GetBucketForAuction(item);
+                var references = sniper.GetBucketForAuction(item).auctions;
                 if (!ShouldAuctionBeIncluded(item, references.References))
                     continue;
-                sniper.AddAuctionToBucket(item, true, references);
+                sniper.AddAuctionToBucket(item, true, references, 0);
             }
             partialCalcService.SetLearningRate(0.01);
             foreach (var item in sold)

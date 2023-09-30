@@ -515,15 +515,22 @@ ORDER BY l.`AuctionId`  DESC;
 
         public void AddSoldItem(SaveAuction auction, bool preventMedianUpdate = false)
         {
-            ReferenceAuctions bucket = GetBucketForAuction(auction);
-            AddAuctionToBucket(auction, preventMedianUpdate, bucket);
+            (ReferenceAuctions bucket,var key) = GetBucketForAuction(auction);
+            AddAuctionToBucket(auction, preventMedianUpdate, bucket, key.ValueSubstract);
         }
 
-        public void AddAuctionToBucket(SaveAuction auction, bool preventMedianUpdate, ReferenceAuctions bucket)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="auction"></param>
+        /// <param name="preventMedianUpdate"></param>
+        /// <param name="bucket"></param>
+        /// <param name="valueSubstract">Extra value to substract based on what is not matching in the bucket</param>
+        public void AddAuctionToBucket(SaveAuction auction, bool preventMedianUpdate, ReferenceAuctions bucket, long valueSubstract = 0)
         {
             if (bucket.References.Where(r => r.AuctionId == auction.UId).Any())
                 return; // duplicate
-            var reference = CreateReferenceFromAuction(auction);
+            var reference = CreateReferenceFromAuction(auction, valueSubstract);
             // move reference to sold
             bucket.References.Enqueue(reference);
             bucket.Lbins.Remove(reference);
@@ -593,7 +600,7 @@ ORDER BY l.`AuctionId`  DESC;
             return deduplicated.AsEnumerable().Reverse().Take(3).ToList();
         }
 
-        public ReferenceAuctions GetBucketForAuction(SaveAuction auction)
+        public (ReferenceAuctions auctions,AuctionKeyWithValue key) GetBucketForAuction(SaveAuction auction)
         {
             var itemGroupTag = GetAuctionGroupTag(auction).Item1;
             if (!Lookups.TryGetValue(itemGroupTag, out var lookup) || lookup == null)
@@ -601,7 +608,8 @@ ORDER BY l.`AuctionId`  DESC;
                 lookup = new PriceLookup();
                 Lookups[itemGroupTag] = lookup;
             }
-            return GetOrAdd(KeyFromSaveAuction(auction), lookup);
+            var key = KeyFromSaveAuction(auction);
+            return (GetOrAdd(key, lookup),key);
         }
 
         private static long GetMedian(List<ReferencePrice> deduplicated)
@@ -627,13 +635,13 @@ ORDER BY l.`AuctionId`  DESC;
             return itemBucket.Lookup.GetOrAdd(key, (k) => new ReferenceAuctions());
         }
 
-        private static ReferencePrice CreateReferenceFromAuction(SaveAuction auction)
+        private static ReferencePrice CreateReferenceFromAuction(SaveAuction auction, long valueSubstract = 0)
         {
             return new ReferencePrice()
             {
                 AuctionId = auction.UId,
                 Day = GetDay(auction.End),
-                Price = auction.HighestBidAmount == 0 ? auction.StartingBid : auction.HighestBidAmount,
+                Price = (auction.HighestBidAmount == 0 ? auction.StartingBid : auction.HighestBidAmount) - valueSubstract,
                 Seller = auction.AuctioneerId == null ? (short)(auction.SellerId % (2 << 14)) : Convert.ToInt16(auction.AuctioneerId.Substring(0, 4), 16)
             };
         }
@@ -664,12 +672,37 @@ ORDER BY l.`AuctionId`  DESC;
         private static System.Collections.ObjectModel.ReadOnlyCollection<KeyValuePair<string, string>> EmptyPetModifiers = new(new List<KeyValuePair<string, string>>() { new("exp", "0"), new("candyUsed", "0") });
         private static DateTime UnlockedIntroduction = new DateTime(2021, 9, 4);
         private static List<string> GemPurities = new() { "PERFECT", "FLAWLESS", "FINE", "ROUGH" };
-        public AuctionKey KeyFromSaveAuction(SaveAuction auction, int dropLevel = 0)
+        public class RankElem
+        {
+            public long Value { get; set; }
+            public Models.Enchantment Enchant { get; set; }
+            public KeyValuePair<string, string> Modifier { get; set; }
+
+
+            public override string ToString()
+            {
+                return $"{Enchant} {Modifier} {Value}";
+            }
+
+            public RankElem(Models.Enchantment enchant, long value)
+            {
+                Enchant = enchant;
+                Value = value;
+            }
+
+            public RankElem(KeyValuePair<string, string> modifier, long value)
+            {
+                Modifier = modifier;
+                Value = value;
+            }
+        }
+        public AuctionKeyWithValue KeyFromSaveAuction(SaveAuction auction, int dropLevel = 0)
         {
             var enchants = new List<Models.Enchantment>();
             var modifiers = new List<KeyValuePair<string, string>>();
 
             var shouldIncludeReforge = Coflnet.Sky.Core.Constants.RelevantReforges.Contains(auction.Reforge) && dropLevel < 3;
+            long valueSubstracted = 0;
             if (dropLevel == 0)
             {
                 enchants = auction.Enchantments
@@ -688,6 +721,8 @@ ORDER BY l.`AuctionId`  DESC;
                                 .Where(i => i.Key != Ignore.Key).ToList();
                 if (auction.ItemCreatedAt < UnlockedIntroduction && auction.FlatenedNBT.Any(v => GemPurities.Contains(v.Value)))
                     modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", "all"));
+
+                valueSubstracted = CapKeyLength(enchants, modifiers);
             }
             else if (dropLevel == 1 || dropLevel == 2)
             {
@@ -698,11 +733,16 @@ ORDER BY l.`AuctionId`  DESC;
                             .ToList();
                 enchants = auction.Enchantments
                     ?.Where(e => Coflnet.Sky.Core.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
-                    .Select(e => new Models.Enchantment() { Lvl = e.Level, Type = e.Type }).ToList();
+                            .Select(e => new Models.Enchantment()
+                            {
+                                Lvl = e.Level,
+                                Type = e.Type
+                            }).ToList();
                 if (enchants?.Count == 0)
                 {
                     var enchant = Constants.SelectBest(auction.Enchantments);
-                    enchants = new List<Models.Enchantment>() { new Models.Enchantment() { Lvl = enchant.Level, Type = enchant.Type } };
+                    enchants = new List<Models.Enchantment>() { new Models.Enchantment() { Lvl = enchant.Level, Type = enchant.Type
+} };
                 }
             }
             else if (dropLevel == 3)
@@ -736,7 +776,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             enchants = RemoveNoEffectEnchants(auction, enchants);
 
-            return new AuctionKey()
+            return new AuctionKeyWithValue()
             {
                 // order attributes
                 Modifiers = modifiers.OrderBy(m => m.Key).ToList().AsReadOnly(),
@@ -744,7 +784,54 @@ ORDER BY l.`AuctionId`  DESC;
                 Tier = tier,
                 Reforge = shouldIncludeReforge ? auction.Reforge : ItemReferences.Reforge.Any,
                 Count = (byte)auction.Count,
+                ValueSubstract = valueSubstracted
             };
+        }
+
+        /// <summary>
+        /// To find more matches the key length is capped.
+        /// This is done by removing the lowest value enchantment or modifier
+        /// </summary>
+        /// <param name="enchants"></param>
+        /// <param name="modifiers"></param>
+        /// <returns>The coin amount substracted</returns>
+        private long CapKeyLength(List<Models.Enchantment> enchants, List<KeyValuePair<string, string>> modifiers)
+        {
+            var valuePerEnchant = enchants?.Select(item => new RankElem(item, mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices)));
+            var valuePerModifier = modifiers?.Select(mod =>
+            {
+                if (!mapper.TryGetIngredients(mod.Key, mod.Value, null, out var list))
+                    return new RankElem(mod, 0);
+
+                var sum = 0L;
+                foreach (var item in list)
+                {
+                    if (Lookups.TryGetValue(item, out var lookup))
+                    {
+                        sum += lookup.Lookup.Values.FirstOrDefault()?.Price ?? 0;
+                    }
+                }
+
+                return new RankElem(mod, sum);
+            }).ToList();
+            IEnumerable<RankElem> combined = null;
+            if (valuePerEnchant != null && valuePerModifier != null)
+                combined = valuePerEnchant.Concat(valuePerModifier).OrderByDescending(i => i.Value).ToList();
+            else if (valuePerEnchant != null)
+                combined = valuePerEnchant.OrderByDescending(i => i.Value).ToList();
+            else if (valuePerModifier != null)
+                combined = valuePerModifier.OrderByDescending(i => i.Value).ToList();
+            long valueSubstracted = 0;
+            foreach (var item in combined.Skip(5).Where(c => c.Value > 0))
+            {
+                // remove all but the top 5
+                if (item.Enchant.Type != 0)
+                    enchants.Remove(item.Enchant);
+                else
+                    modifiers.Remove(item.Modifier);
+                valueSubstracted += item.Value;
+            }
+            return valueSubstracted;
         }
 
         private static List<Models.Enchantment> RemoveNoEffectEnchants(SaveAuction auction, List<Models.Enchantment> ench)
@@ -805,8 +892,9 @@ ORDER BY l.`AuctionId`  DESC;
             if (s.Key == "hpc")
                 return GetNumeric(s) switch
                 {
-                    15 => new(s.Key, "1"),
-                    > 10 => new(s.Key, "0"),
+                    15 => new("hotpc", "1"),
+                    /// this is mirrored in <see cref="PropertyMapper"/>
+                    > 10 => new("hotpc", "0"),
                     _ => Ignore
                 };
             if (s.Key == "heldItem")
@@ -1043,7 +1131,7 @@ ORDER BY l.`AuctionId`  DESC;
             var shouldTryToFindClosest = false;
             for (int i = 0; i < 5; i++)
             {
-                var key = KeyFromSaveAuction(auction, i);
+                AuctionKey key = KeyFromSaveAuction(auction, i);
                 if (i > 0 && key == lastKey)
                 {
                     if (i < 4)
