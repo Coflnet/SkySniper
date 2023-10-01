@@ -259,6 +259,8 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (auction == null || auction.Tag == null)
                 return null;
+            if (BazaarPrices.TryGetValue(auction.Tag, out var bazaar))
+                return null;
             var tagGroup = GetAuctionGroupTag(auction);
 
             var result = new PriceEstimate();
@@ -279,7 +281,6 @@ ORDER BY l.`AuctionId`  DESC;
                         AssignMedian(result, itemKey, bucket);
                     }
                 }
-
                 if (result.Median == default)
                 {
                     closestMedianBruteCounter.Inc();
@@ -289,7 +290,7 @@ ORDER BY l.`AuctionId`  DESC;
                         AdjustMedianForModifiers(result, itemKey, c, auction);
                         AdjustForMissingEnchants(result, itemKey, c);
                         if (Random.Shared.NextDouble() < 0.05)
-                            Console.WriteLine($"no match found for {auction.Tag} {itemKey} options: {l.Count} {auction.Uuid}");
+                            Console.WriteLine($"no match found for {auction.Tag} {itemKey} options: {l.Count} {itemKey}");
                         if (result.Median > 0)
                             break;
                     }
@@ -564,7 +565,7 @@ ORDER BY l.`AuctionId`  DESC;
             bucket.OldestRef = shortTermList.OrderByDescending(s => s.Day).Take(4).Min(s => s.Day);
             // long term protects against market manipulation
             var longSpanPrice = GetMedian(deduplicated.Take(29).ToList());
-            if(deduplicated.Count > 4 && deduplicated.All(d => d.Day >= GetDay()))
+            if (deduplicated.Count > 4 && deduplicated.All(d => d.Day >= GetDay()))
             {
                 // all prices are from today, use 25th percentile instead
                 longSpanPrice = deduplicated.OrderBy(d => d.Price).Take((int)(deduplicated.Count() * 0.25)).Max(d => d.Price);
@@ -775,7 +776,7 @@ ORDER BY l.`AuctionId`  DESC;
                 // rarities don't matter for enchanted books and often used for scamming
                 tier = Tier.UNCOMMON;
             }
-            if(removedRarity)
+            if (removedRarity)
                 tier--;
             if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false)
             {
@@ -1422,7 +1423,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 var props = CreateReference(bucket.References.LastOrDefault().AuctionId, key, extraValue);
                 AddMedianSample(bucket, props);
-                if(key.ValueSubstract != 0)
+                if (key.ValueSubstract != 0)
                 {
                     props["valuedropped"] = key.ValueSubstract.ToString();
                 }

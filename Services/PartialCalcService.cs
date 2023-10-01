@@ -302,7 +302,7 @@ public class PartialCalcService
                         value = 1.1;
                     if (TryGetItemCost(attrib.Key, val.Key, out double price))
                     {
-                        if (price < val.Value && price > 200_000 && Random.Shared.NextDouble() < 0.1)
+                        if (price < val.Value && price > 500_000 && Random.Shared.NextDouble() < 0.05)
                             Console.WriteLine($"Capping {attrib.Key} {val.Key} at {price} from {val.Value}");
                         value = Math.Min(price * 1.05, val.Value);
                     }
@@ -326,7 +326,7 @@ public class PartialCalcService
                         var target = allOrdered?.Skip(totalCount / 20 + 2).FirstOrDefault();
                         if (target.HasValue && totalCount > 3 && target.Value.Price < val.Value)
                         {
-                            if (value > 500_000)
+                            if (value > 500_000 && Random.Shared.NextDouble() < 0.05)
                                 logger.LogInformation($"Capping {attrib.Key} {val.Key} at {target.Value.Price} from {val.Value} on {item.Key}");
                             value = target.Value.Price;
                         }
@@ -356,7 +356,7 @@ public class PartialCalcService
         {
             if (higherVal < val.Value * 1.9 && higherVal > 100)
             {
-                if (higherVal > 1_000_000)
+                if (higherVal > 1_000_000 && Random.Shared.NextDouble() < 0.05)
                     Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherVal / 2} from {val.Value}");
                 value = higherVal / 1.9;
             }
@@ -365,7 +365,7 @@ public class PartialCalcService
         {
             if (higherVal2lvl < val.Value * 4 && higherVal > 1)
             {
-                if (higherVal > 1_000_000)
+                if (higherVal > 1_000_000 && Random.Shared.NextDouble() < 0.05)
                     Console.WriteLine($"Capping {attrib.Key} {val.Key} at {higherVal / 4} from {val.Value}");
                 value = higherVal / 3;
             }
