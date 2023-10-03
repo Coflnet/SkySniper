@@ -108,13 +108,51 @@ namespace Coflnet.Sky.Sniper.Services
                     new (Core.Enchantment.EnchantmentType.growth, 6),
                     new (Core.Enchantment.EnchantmentType.mana_vampire, 6),
                 },
-                FlatenedNBT = new (){
+                FlatenedNBT = new(){
                     {"hpc", "15"},
                     {"rarity_upgrades", "1"},
                     {"upgrade_level", "5"}
                 }
             });
             Assert.IsTrue(!key.Enchants.Any(e => e.Type == Core.Enchantment.EnchantmentType.ultimate_legion));
+        }
+
+        /// <summary>
+        /// Gems are excluded from keys because they don't need comparison
+        /// </summary>
+        [Test]
+        public void RemoveGemsFromKey()
+        {
+            SetBazaarPrice("PERFECT_AMBER_GEM", 8_000_000);
+            SetBazaarPrice("PERFECT_JASPER_GEM", 8_000_000);
+            var key = service.KeyFromSaveAuction(new SaveAuction()
+            {
+                Enchantments = new List<Core.Enchantment>()
+                {
+                },
+                FlatenedNBT = new(){
+                    {"AMBER_0", "PERFECT"},
+                    {"AMBER_1", "PERFECT"},
+                    {"AMBER_2", "PERFECT"},
+                    {"JASPER_1", "PERFECT"}
+                }
+            });
+            Assert.IsTrue(!key.Modifiers.Any(e => e.Value == "PERFECT"));
+            Assert.AreEqual(32_000_000, key.ValueSubstract);
+        }
+
+        [Test]
+        public void RemovedValueIsSubstractedInReference()
+        {
+            SetBazaarPrice("PERFECT_AMBER_GEM", 8_000_000);
+            AddVolume(new SaveAuction()
+            {
+                Tag = "test",
+                FlatenedNBT = new() { { "AMBER_0", "PERFECT" } },
+                HighestBidAmount = 10_000_000
+            });
+            var actualPrice = service.Lookups["test"].Lookup.First().Value.References.First().Price;
+            Assert.AreEqual(2_000_000,actualPrice);
         }
 
         /// <summary>

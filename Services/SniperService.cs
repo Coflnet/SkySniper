@@ -23,7 +23,7 @@ namespace Coflnet.Sky.Sniper.Services
         private AuctionKey defaultKey = new AuctionKey();
         public SniperState State { get; set; } = SniperState.LoadingLbin;
         private PropertyMapper mapper = new();
-        private string[] EmptyArray = new string[0];
+        private (string,int)[] EmptyArray = new (string,int)[0];
         private Dictionary<string, double> BazaarPrices = new();
 
         private Counter sellClosestSearch = Metrics.CreateCounter("sky_sniper_sell_closest_search", "Number of searches for closest sell");
@@ -348,31 +348,12 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (missingModifiers == null)
                 return 0;
-            var values = missingModifiers.SelectMany<KeyValuePair<string, string>, string>(m =>
+            var values = missingModifiers.SelectMany(m =>
             {
-                if (ModifierItemPrefixes.TryGetValue(m.Key, out var prefix))
-                    if (prefix == string.Empty)
-                        return new string[] { prefix + m.Value.ToUpper() };
-                    else
-                        // some of the items actually don't have the prefix
-                        return new string[] { prefix + m.Value.ToUpper(), m.Value.ToUpper() };
-                if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false && m.Key.StartsWith("JASPER_0"))
-                {
-                    // Jasper0 slot can't be accessed on starred (Fragged) items
-                    return EmptyArray;
-                }
-                if (m.Value == "PERFECT")
-                    return new string[] { $"PERFECT_{m.Key.Split('_').First()}_GEM" };
-                if (m.Value == "FLAWLESS")
-                    return new string[] { $"FLAWLESS_{m.Key.Split('_').First()}_GEM" };
-                if (mapper.TryGetIngredients(m.Key, m.Value, modifiers?.Where(mi => mi.Key == m.Key).Select(mi => mi.Value).FirstOrDefault(), out var ingredients))
-                {
-                    return ingredients;
-                }
-                return EmptyArray;
-            }).Where(m => m != null).Select(k =>
+                return GetItemKeysForModifier(modifiers, auction, m);
+            }).Where(m => m.Item1 != null).Select(k =>
             {
-                if (Lookups.TryGetValue(k, out var lookup))
+                if (Lookups.TryGetValue(k.Item1, out var lookup))
                 {
                     return lookup.Lookup.Values.FirstOrDefault();
                 }
@@ -380,6 +361,29 @@ ORDER BY l.`AuctionId`  DESC;
             }).Where(m => m != null).ToList();
             var medianSumIngredients = values.Select(m => m.Price).DefaultIfEmpty(0).Sum();
             return medianSumIngredients;
+        }
+
+        private IEnumerable<(string tag,int amount)> GetItemKeysForModifier(IEnumerable<KeyValuePair<string, string>> modifiers, SaveAuction auction, KeyValuePair<string, string> m)
+        {
+            if (ModifierItemPrefixes.TryGetValue(m.Key, out var prefix))
+                if (prefix == string.Empty)
+                    return new (string,int)[] { (prefix + m.Value.ToUpper(),1) };
+                else
+                    // some of the items actually don't have the prefix
+                    return new (string,int)[] { (prefix + m.Value.ToUpper(),1), (m.Value.ToUpper(),1) };
+            if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false && m.Key.StartsWith("JASPER_0"))
+            {
+                // Jasper0 slot can't be accessed on starred (Fragged) items
+                return EmptyArray;
+            }
+            
+            if (m.Value == "PERFECT" || m.Value == "FLAWLESS")
+                return new (string,int)[] { (mapper.GetItemKeyForGem(m, auction.FlatenedNBT),1) };
+            if (mapper.TryGetIngredients(m.Key, m.Value, modifiers?.Where(mi => mi.Key == m.Key).Select(mi => mi.Value).FirstOrDefault(), out var ingredients))
+            {
+                return ingredients.Select(i => (i, 1));
+            }
+            return EmptyArray;
         }
 
         private long GetPriceForItem(string item)
@@ -729,7 +733,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (auction.ItemCreatedAt < UnlockedIntroduction && auction.FlatenedNBT.Any(v => GemPurities.Contains(v.Value)))
                     modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", "all"));
 
-                (valueSubstracted, removedRarity) = CapKeyLength(enchants, modifiers);
+                (valueSubstracted, removedRarity) = CapKeyLength(enchants, modifiers, auction);
             }
             else if (dropLevel == 1 || dropLevel == 2)
             {
@@ -804,20 +808,33 @@ ORDER BY l.`AuctionId`  DESC;
         /// <param name="enchants"></param>
         /// <param name="modifiers"></param>
         /// <returns>The coin amount substracted</returns>
-        private (long, bool removedRarity) CapKeyLength(List<Models.Enchantment> enchants, List<KeyValuePair<string, string>> modifiers)
+        private (long, bool removedRarity) CapKeyLength(List<Models.Enchantment> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction)
         {
             var valuePerEnchant = enchants?.Select(item => new RankElem(item, mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices)));
+
+            var gems = modifiers.Where(m => m.Value == "PERFECT").ToList();
+            long valueSubstracted = 0;
+            foreach (var item in gems)
+            {
+                var gemKey = mapper.GetItemKeyForGem(item, auction.FlatenedNBT);
+                if(BazaarPrices.TryGetValue(gemKey, out var price))
+                {
+                    valueSubstracted += (long)price; // no removal cost because this is just add
+                    modifiers.Remove(item);
+                }
+            }
+
             var valuePerModifier = modifiers?.Select(mod =>
             {
-                if (!mapper.TryGetIngredients(mod.Key, mod.Value, null, out var list))
-                    return new RankElem(mod, 0);
-
+                //if (!mapper.TryGetIngredients(mod.Key, mod.Value, null, out var list))
+                //    return new RankElem(mod, 0);
+                var items = GetItemKeysForModifier(modifiers, auction, mod);
                 var sum = 0L;
-                foreach (var item in list)
+                foreach (var item in items)
                 {
-                    if (Lookups.TryGetValue(item, out var lookup))
+                    if (Lookups.TryGetValue(item.tag, out var lookup))
                     {
-                        sum += lookup.Lookup.Values.FirstOrDefault()?.Price ?? 0;
+                        sum += (lookup.Lookup.Values.FirstOrDefault()?.Price ?? 0) * item.amount;
                     }
                 }
 
@@ -830,7 +847,6 @@ ORDER BY l.`AuctionId`  DESC;
                 combined = valuePerEnchant.OrderByDescending(i => i.Value).ToList();
             else if (valuePerModifier != null)
                 combined = valuePerModifier.OrderByDescending(i => i.Value).ToList();
-            long valueSubstracted = 0;
             bool removedRarity = false;
             foreach (var item in combined.Skip(5).Where(c => c.Value > 0))
             {
@@ -1328,7 +1344,6 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 //if (biggestDifference > 0)
                 return (long)(medPrice - Math.Pow(0.4, biggestDifference) * medPrice);
-                return (long)medPrice;
 
             }
 
