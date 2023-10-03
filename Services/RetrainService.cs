@@ -77,6 +77,7 @@ public class RetrainService : BackgroundService
                 {
                     while (!stoppingToken.IsCancellationRequested)
                     {
+                        partialCalcService.IsPrimary = true;
                         await RetrainOne(db, stoppingToken);
                         db.LockExtend(streamName + "lock", token, TimeSpan.FromMinutes(10));
                         logger.LogInformation("Extended retrain lock");
@@ -102,6 +103,7 @@ public class RetrainService : BackgroundService
                     logger.LogInformation("Released own retrain lock");
                 }
             }
+            partialCalcService.IsPrimary = false;
             await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);
         }
     }

@@ -40,6 +40,7 @@ public class PartialCalcTests
             HighestBidAmount = 1000,
         });
         Service.SetLearningRate(0.1);
+        Service.IsPrimary = true;
     }
     [Test]
     public void BasicIncrement()

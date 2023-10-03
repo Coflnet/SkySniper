@@ -23,6 +23,7 @@ public class PartialCalcService
     private ILogger<PartialCalcService> logger = null!;
     private double adjustRate = 0.01;
     private SniperService sniper;
+    public bool IsPrimary { get; set; }
 
     public IEnumerable<string> ItemKeys => Lookups.Keys;
 
@@ -98,6 +99,8 @@ public class PartialCalcService
 
     public void AddSell(SaveAuction auction)
     {
+        if(!IsPrimary)
+            return;
         var item = new ItemBreakDown(auction, mayorService.GetMayor(auction.End));
         var attribs = AttributeLookups.GetOrAdd(auction.Tag, tag => new());
         var modifiers = item.Flatten;
@@ -291,6 +294,8 @@ public class PartialCalcService
 
     public async Task CapAtCraftCost()
     {
+        if(!IsPrimary)
+            return;
         foreach (var item in AttributeLookups)
         {
             foreach (var attrib in item.Value.Values)
