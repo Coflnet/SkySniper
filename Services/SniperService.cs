@@ -260,7 +260,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (auction == null || auction.Tag == null)
                 return null;
             if (BazaarPrices.TryGetValue(auction.Tag, out var bazaar))
-                return null;
+                return new();
             var tagGroup = GetAuctionGroupTag(auction);
 
             var result = new PriceEstimate();
