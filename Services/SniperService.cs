@@ -551,11 +551,11 @@ ORDER BY l.`AuctionId`  DESC;
         public void UpdateMedian(ReferenceAuctions bucket, (string tag, AuctionKey) keyCombo = default)
         {
             var size = bucket.References.Count;
-            var deduplicated = bucket.References
+            var deduplicated = bucket.References.Reverse()
                 .OrderByDescending(b => b.Day)
-                .Take(60)
                 .GroupBy(a => a.Seller)
                 .Select(a => a.First())  // only use one (the latest) price from each seller
+                .Take(60)
                 .ToList();
             size = deduplicated.Count();
             if (size <= 3)
@@ -606,8 +606,8 @@ ORDER BY l.`AuctionId`  DESC;
         {
             // if more than half of the references are less than 12 hours old, use more references
             if (deduplicated.Where(d => d.Day >= GetDay(DateTime.Now - TimeSpan.FromHours(12))).Count() > SizeToKeep / 2)
-                return deduplicated.AsEnumerable().Reverse().Take(6).ToList();
-            return deduplicated.AsEnumerable().Reverse().Take(3).ToList();
+                return deduplicated.Take(6).ToList();
+            return deduplicated.Take(3).ToList();
         }
 
         public (ReferenceAuctions auctions, AuctionKeyWithValue key) GetBucketForAuction(SaveAuction auction)

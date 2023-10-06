@@ -152,7 +152,7 @@ namespace Coflnet.Sky.Sniper.Services
                 HighestBidAmount = 10_000_000
             });
             var actualPrice = service.Lookups["test"].Lookup.First().Value.References.First().Price;
-            Assert.AreEqual(2_000_000,actualPrice);
+            Assert.AreEqual(2_000_000, actualPrice);
         }
 
         /// <summary>
@@ -344,7 +344,7 @@ namespace Coflnet.Sky.Sniper.Services
                 service.AddAuctionToBucket(Dupplicate(auction), false, bucket);
                 auction.End = auction.End.AddDays(1);
             }
-            var day = SniperService.GetDay(end);
+            var day = SniperService.GetDay(auction.End) - 3;
             Assert.AreEqual(day, bucket.OldestRef);
         }
 
