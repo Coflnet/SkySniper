@@ -487,6 +487,12 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 try
                 {
+                    // remove all with perfect
+                    if(item.Modifiers.Any(m => m.Value == "PERFECT"))
+                        current.Lookup.TryRemove(item, out _);
+                    // remove all with too many enchants
+                    if (item.Enchants.Count > 5)
+                        current.Lookup.TryRemove(item, out _);
                     Deduplicate(itemTag, current, item);
                 }
                 catch (System.Exception e)
@@ -825,7 +831,7 @@ ORDER BY l.`AuctionId`  DESC;
         /// <param name="enchants"></param>
         /// <param name="modifiers"></param>
         /// <returns>The coin amount substracted</returns>
-        private (long, bool removedRarity) CapKeyLength(List<Models.Enchantment> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction)
+        public (long, bool removedRarity) CapKeyLength(List<Models.Enchantment> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction)
         {
             var valuePerEnchant = enchants?.Select(item => new RankElem(item, mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices)));
 
