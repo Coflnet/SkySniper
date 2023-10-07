@@ -23,7 +23,7 @@ namespace Coflnet.Sky.Sniper.Services
         private AuctionKey defaultKey = new AuctionKey();
         public SniperState State { get; set; } = SniperState.LoadingLbin;
         private PropertyMapper mapper = new();
-        private (string,int)[] EmptyArray = new (string,int)[0];
+        private (string, int)[] EmptyArray = new (string, int)[0];
         private Dictionary<string, double> BazaarPrices = new();
 
         private Counter sellClosestSearch = Metrics.CreateCounter("sky_sniper_sell_closest_search", "Number of searches for closest sell");
@@ -134,7 +134,12 @@ namespace Coflnet.Sky.Sniper.Services
             new("dominance", "veteran"),
             new("mending", "mana_pool"),
         };
-        private readonly HashSet<string> AllShardAttributesKeys = new(Constants.AttributeKeys);
+
+        private readonly KeyValuePair<List<string>, List<KeyValuePair<string, string>>>[] ItemSpecificAttribCombo = new KeyValuePair<List<string>, List<KeyValuePair<string, string>>>[]
+        {
+            new(new (){"TERROR_BOOTS", "TERROR_LEGGINGS", "TERROR_CHESTPLATE"}, new (){new("lifeline", "mana_pool")})
+        };
+        public readonly Dictionary<string, List<KeyValuePair<string, string>>> ItemSpecificAttributeComboLookup = new();
         public readonly ConcurrentDictionary<string, HashSet<string>> AttributeComboLookup = new();
 
         public void FinishedUpdate()
@@ -233,6 +238,15 @@ ORDER BY l.`AuctionId`  DESC;
             foreach (var item in AttributeCombos)
             {
                 IncludeKeys.Add(item.Key);
+            }
+            foreach (var elements in ItemSpecificAttribCombo)
+            {
+                foreach (var item in elements.Key)
+                {
+                    var lookup = ItemSpecificAttributeComboLookup.GetValueOrDefault(item, new());
+                    lookup.AddRange(elements.Value);
+                    ItemSpecificAttributeComboLookup[item] = lookup;
+                }
             }
             foreach (var item in Constants.AttributeKeys)
             {
@@ -363,22 +377,22 @@ ORDER BY l.`AuctionId`  DESC;
             return medianSumIngredients;
         }
 
-        private IEnumerable<(string tag,int amount)> GetItemKeysForModifier(IEnumerable<KeyValuePair<string, string>> modifiers, SaveAuction auction, KeyValuePair<string, string> m)
+        private IEnumerable<(string tag, int amount)> GetItemKeysForModifier(IEnumerable<KeyValuePair<string, string>> modifiers, SaveAuction auction, KeyValuePair<string, string> m)
         {
             if (ModifierItemPrefixes.TryGetValue(m.Key, out var prefix))
                 if (prefix == string.Empty)
-                    return new (string,int)[] { (prefix + m.Value.ToUpper(),1) };
+                    return new (string, int)[] { (prefix + m.Value.ToUpper(), 1) };
                 else
                     // some of the items actually don't have the prefix
-                    return new (string,int)[] { (prefix + m.Value.ToUpper(),1), (m.Value.ToUpper(),1) };
+                    return new (string, int)[] { (prefix + m.Value.ToUpper(), 1), (m.Value.ToUpper(), 1) };
             if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false && m.Key.StartsWith("JASPER_0"))
             {
                 // Jasper0 slot can't be accessed on starred (Fragged) items
                 return EmptyArray;
             }
-            
+
             if (m.Value == "PERFECT" || m.Value == "FLAWLESS")
-                return new (string,int)[] { (mapper.GetItemKeyForGem(m, auction.FlatenedNBT),1) };
+                return new (string, int)[] { (mapper.GetItemKeyForGem(m, auction.FlatenedNBT), 1) };
             if (mapper.TryGetIngredients(m.Key, m.Value, modifiers?.Where(mi => mi.Key == m.Key).Select(mi => mi.Value).FirstOrDefault(), out var ingredients))
             {
                 return ingredients.Select(i => (i, 1));
@@ -730,7 +744,7 @@ ORDER BY l.`AuctionId`  DESC;
                                 .OrderByDescending(n => n.Key)
                                 .Select(i => NormalizeData(i, auction.Tag, auction.FlatenedNBT))
                                 .Where(i => i.Key != Ignore.Key).ToList();
-                if (auction.ItemCreatedAt < UnlockedIntroduction 
+                if (auction.ItemCreatedAt < UnlockedIntroduction
                     && auction.FlatenedNBT.Any(v => GemPurities.Contains(v.Value))
                     // gauntlets are always unlocked
                     && auction.Tag != "GEMSTONE_GAUNTLET")
@@ -820,7 +834,7 @@ ORDER BY l.`AuctionId`  DESC;
             foreach (var item in gems)
             {
                 var gemKey = mapper.GetItemKeyForGem(item, auction.FlatenedNBT);
-                if(BazaarPrices.TryGetValue(gemKey, out var price))
+                if (BazaarPrices.TryGetValue(gemKey, out var price))
                 {
                     valueSubstracted += (long)price; // no removal cost because this is just add
                     modifiers.Remove(item);
@@ -964,7 +978,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 if (int.Parse(s.Value) >= minLvl)
                     return s;
-                if (HasAttributeCombo(s, flattenedNbt))
+                if (HasAttributeCombo(s, flattenedNbt, tag))
                     return s;
                 return Ignore;
             }
@@ -1032,9 +1046,11 @@ ORDER BY l.`AuctionId`  DESC;
         /// <param name="s"></param>
         /// <param name="auction"></param>
         /// <returns></returns>
-        private bool HasAttributeCombo(KeyValuePair<string, string> s, Dictionary<string, string> flattenedNbt)
+        private bool HasAttributeCombo(KeyValuePair<string, string> s, Dictionary<string, string> flattenedNbt, string tag)
         {
-            return AttributeComboLookup.TryGetValue(s.Key, out var otherKeys) && otherKeys.Any(otherKey => flattenedNbt.TryGetValue(otherKey, out _));
+            return AttributeComboLookup.TryGetValue(s.Key, out var otherKeys) && otherKeys.Any(otherKey => flattenedNbt.TryGetValue(otherKey, out _))
+                || ItemSpecificAttributeComboLookup.TryGetValue(tag, out var combos)
+                    && combos.Any(combo => (s.Key == combo.Key && flattenedNbt.TryGetValue(combo.Value, out _) || s.Key == combo.Value && flattenedNbt.TryGetValue(combo.Key, out _)));
         }
 
         /// <summary>

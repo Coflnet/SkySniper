@@ -384,6 +384,23 @@ public class AuctionkeyTests
     }
 
     [Test]
+    public void SpecialItemCombo()
+    {
+        var auction = new SaveAuction()
+        {
+            Tag = "MOLTEN_CLOAK",
+            FlatenedNBT = new() { { "lifeline", "1" },
+                                {"mana_pool", "2"} },
+        };
+        var service = new SniperService();
+        var key = service.KeyFromSaveAuction(auction);
+        Assert.AreEqual(1, key.Modifiers.Count);
+        auction.Tag = "TERROR_LEGGINGS";
+        key = service.KeyFromSaveAuction(auction);
+        Assert.AreEqual(2, key.Modifiers.Count);
+    }
+
+    [Test]
     public void IngoreUltWiseOnGauntlet()
     {
         var auction = new SaveAuction()
