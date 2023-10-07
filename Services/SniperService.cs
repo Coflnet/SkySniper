@@ -854,6 +854,35 @@ ORDER BY l.`AuctionId`  DESC;
                         sum += (lookup.Lookup.Values.FirstOrDefault()?.Price ?? 0) * item.amount;
                     }
                 }
+                if(mod.Key == "upgrade_level")
+                {
+                    var val = mod.Value switch
+                    {
+                        "2" => 300,
+                        "3" => 500,
+                        "4" => 900,
+                        "5" => 1500,
+                        _ => 150,
+                    };
+                    if(BazaarPrices.TryGetValue("ESSENCE_WITHER", out var price))
+                    {
+                        sum += (long)price * val;
+                        // halfe for low value items as stars are also worht less
+                        if(auction.StartingBid < 50_000_000)
+                            sum /= 2;
+                    }
+                }
+                if(mod.Key == "unlocked_slots")
+                {
+                    // thats a guess
+                    var val = mod.Value.Count(x=>x==',') switch
+                    {
+                        1 => 5_000_000,
+                        2 => 13_000_000,
+                        _ => 15_000_000,
+                    };
+                    sum += val;
+                }
 
                 return new RankElem(mod, sum);
             }).ToList();
