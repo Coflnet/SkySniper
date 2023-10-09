@@ -917,6 +917,33 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.IsNotNull(flip, "flip should have been found");
             Assert.AreEqual(expectedPrice, flip.TargetPrice, "median should be adjusted for exp diff");
         }
+
+        [TestCase(31023190, 766632161)]
+        public void MedianAdjustForBucketExpDiffGoldenDrag(int exp, int expectedPrice)
+        {
+            highestValAuction.Count = 1;
+            highestValAuction.Tag = "PET_GOLDEN_DRAGON";
+            highestValAuction.FlatenedNBT = new(){
+                {"exp",(SniperService.PetExpMaxlevel * 50).ToString()}
+            };
+            highestValAuction.HighestBidAmount = 1_100_000_000;
+            AddVolume(highestValAuction);
+            highestValAuction.FlatenedNBT["candyUsed"] = "0";
+            var lowerExp = Dupplicate(highestValAuction);
+            lowerExp.FlatenedNBT["exp"] = "0";
+            lowerExp.HighestBidAmount = 600_000_000;
+            AddVolume(lowerExp);
+            highestValAuction.HighestBidAmount = 800_000_000;
+            var sample = Dupplicate(highestValAuction);
+            sample.FlatenedNBT["exp"] = exp.ToString();
+            AddVolume(sample);
+            AddVolume(sample);
+            sample.HighestBidAmount = 5;
+            service.TestNewAuction(sample);
+            var flip = found.Where(a => a.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
+            Assert.IsNotNull(flip, "flip should have been found");
+            Assert.AreEqual(expectedPrice, flip.TargetPrice, "median should be adjusted for exp diff");
+        }
         [Test]
         public void ComponetExtraValue()
         {

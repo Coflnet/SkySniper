@@ -14,7 +14,7 @@ namespace Coflnet.Sky.Sniper.Services
         public const string TierBoostShorthand = "TIER_BOOST";
         private const int SizeToKeep = 80;
         public const int PetExpMaxlevel = 4_225_538 * 6;
-        private const int GoldenDragonMaxExp = 30_036_483;
+        private const int GoldenDragonMaxExp = 30_036_483 * 7;
         public static int MIN_TARGET = 200_000;
         public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>(3, 2000);
 
@@ -965,11 +965,14 @@ ORDER BY l.`AuctionId`  DESC;
                 else if (exp > 2_500_000 && exp < PetExpMaxlevel / 6)
                     return new KeyValuePair<string, string>(s.Key, "0.6");
                 if (tag == "PET_GOLDEN_DRAGON")
-                    return NormalizeNumberTo(s, GoldenDragonMaxExp, 7);
+                    return NormalizeNumberTo(s, GoldenDragonMaxExp / 7, 7);
                 else
                     return NormalizeNumberTo(s, PetExpMaxlevel / 6, 6);
             }
-            var generalNormalizations = NormalizeGeneral(s, tag?.StartsWith("MIDAS") ?? false, GetNumeric(flattenedNbt.FirstOrDefault(f => f.Key == "exp")));
+            var generalNormalizations = NormalizeGeneral(s, tag?.StartsWith("MIDAS") ?? false,
+                GetNumeric(flattenedNbt.FirstOrDefault(f => f.Key == "exp")),
+                tag == "PET_GOLDEN_DRAGON"
+                );
             if (generalNormalizations.Value != "continue")
                 return generalNormalizations;
             if (s.Key == "hpc")
@@ -1034,7 +1037,7 @@ ORDER BY l.`AuctionId`  DESC;
             return s;
         }
 
-        public static KeyValuePair<string, string> NormalizeGeneral(KeyValuePair<string, string> s, bool isMiddas, long expAmount)
+        public static KeyValuePair<string, string> NormalizeGeneral(KeyValuePair<string, string> s, bool isMiddas, long expAmount, bool isGDrag)
         {
             if (s.Key == "winning_bid")
                 if (isMiddas)
@@ -1050,7 +1053,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (s.Key == "thunder_charge")
                 return NormalizeNumberTo(s, 1_000_000, 5);
             if (s.Key == "candyUsed")
-                if (expAmount >= PetExpMaxlevel)
+                if (expAmount >= PetExpMaxlevel && !isGDrag || expAmount >= GoldenDragonMaxExp)
                     return Ignore; // not displayed on max exp items
                 else
                     // all candied are the same
