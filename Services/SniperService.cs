@@ -13,7 +13,8 @@ namespace Coflnet.Sky.Sniper.Services
         public const string PetItemKey = "petItem";
         public const string TierBoostShorthand = "TIER_BOOST";
         private const int SizeToKeep = 80;
-        private const int PetExpMaxlevel = 4_225_538 * 6;
+        public const int PetExpMaxlevel = 4_225_538 * 6;
+        private const int GoldenDragonMaxExp = 30_036_483;
         public static int MIN_TARGET = 200_000;
         public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>(3, 2000);
 
@@ -488,7 +489,7 @@ ORDER BY l.`AuctionId`  DESC;
                 try
                 {
                     // remove all with perfect
-                    if(item.Modifiers.Any(m => m.Value == "PERFECT"))
+                    if (item.Modifiers.Any(m => m.Value == "PERFECT"))
                         current.Lookup.TryRemove(item, out _);
                     // remove all with too many enchants
                     if (item.Enchants.Count > 5)
@@ -699,7 +700,7 @@ ORDER BY l.`AuctionId`  DESC;
         }
 
         private static System.Collections.ObjectModel.ReadOnlyCollection<KeyValuePair<string, string>> EmptyModifiers = new(new List<KeyValuePair<string, string>>());
-        private static System.Collections.ObjectModel.ReadOnlyCollection<KeyValuePair<string, string>> EmptyPetModifiers = new(new List<KeyValuePair<string, string>>() { new("exp", "0"), new("candyUsed", "0") });
+        private static System.Collections.ObjectModel.ReadOnlyCollection<KeyValuePair<string, string>> EmptyPetModifiers = new(new List<KeyValuePair<string, string>>() { new("candyUsed", "0"), new("exp", "0") });
         private static DateTime UnlockedIntroduction = new DateTime(2021, 9, 4);
         private static List<string> GemPurities = new() { "PERFECT", "FLAWLESS", "FINE", "ROUGH" };
         public class RankElem
@@ -860,7 +861,7 @@ ORDER BY l.`AuctionId`  DESC;
                         sum += (lookup.Lookup.Values.FirstOrDefault()?.Price ?? 0) * item.amount;
                     }
                 }
-                if(mod.Key == "upgrade_level")
+                if (mod.Key == "upgrade_level")
                 {
                     var val = mod.Value switch
                     {
@@ -870,18 +871,18 @@ ORDER BY l.`AuctionId`  DESC;
                         "5" => 1500,
                         _ => 150,
                     };
-                    if(BazaarPrices.TryGetValue("ESSENCE_WITHER", out var price))
+                    if (BazaarPrices.TryGetValue("ESSENCE_WITHER", out var price))
                     {
                         sum += (long)price * val;
                         // halfe for low value items as stars are also worht less
-                        if(auction.StartingBid < 50_000_000)
+                        if (auction.StartingBid < 50_000_000)
                             sum /= 2;
                     }
                 }
-                if(mod.Key == "unlocked_slots")
+                if (mod.Key == "unlocked_slots")
                 {
                     // thats a guess
-                    var val = mod.Value.Count(x=>x==',') switch
+                    var val = mod.Value.Count(x => x == ',') switch
                     {
                         1 => 5_000_000,
                         2 => 13_000_000,
@@ -964,7 +965,7 @@ ORDER BY l.`AuctionId`  DESC;
                 else if (exp > 2_500_000 && exp < PetExpMaxlevel / 6)
                     return new KeyValuePair<string, string>(s.Key, "0.6");
                 if (tag == "PET_GOLDEN_DRAGON")
-                    return NormalizeNumberTo(s, 30_036_483, 7);
+                    return NormalizeNumberTo(s, GoldenDragonMaxExp, 7);
                 else
                     return NormalizeNumberTo(s, PetExpMaxlevel / 6, 6);
             }
@@ -1474,6 +1475,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private bool FindFlip(SaveAuction auction, double lbinPrice, double minMedPrice, ReferenceAuctions bucket, AuctionKeyWithValue key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue = 0)
         {
+            extraValue += GetValueDifferenceForExp(auction, key, l);
             var volume = bucket.Volume;
             var medianPrice = bucket.Price + extraValue;
             var foundSnipe = false;
@@ -1520,6 +1522,31 @@ ORDER BY l.`AuctionId`  DESC;
                 if (Logs.Count > 2000)
                     PrintLogQueue();
             }
+        }
+
+        private static long GetValueDifferenceForExp(SaveAuction auction, AuctionKeyWithValue key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
+        {
+            // determine extra expvalue
+            if (auction.FlatenedNBT.TryGetValue("exp", out var expString))
+            {
+                var maxExp = auction.Tag == "PET_GOLDEN_DRAGON" ? ("7", GoldenDragonMaxExp) : ("6", PetExpMaxlevel);
+                var exp = Math.Min((long)double.Parse(expString), maxExp.Item2);
+                var lvl1Key = new AuctionKey(new(), ItemReferences.Reforge.Any, EmptyPetModifiers.ToList(), auction.Tier, 1);
+                var lvl100Key = new AuctionKey(new(), ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>>() { new("exp", maxExp.Item1) }, auction.Tier, 1);
+                if (l.TryGetValue(lvl1Key, out var lvl1Bucket) && l.TryGetValue(lvl100Key, out var lvl100Bucket))
+                {
+                    var lvl1Price = lvl1Bucket.Price;
+                    var lvl100Price = lvl100Bucket.Price;
+                    var accountedFor = double.Parse(key.Modifiers.Where(m => m.Key == "exp").Select(v => v.Value).FirstOrDefault("0"));
+                    var accountedMiddle = accountedFor + Math.Min(0.5, accountedFor / 2);
+                    var accountedExp = maxExp.Item2 / 7 * accountedMiddle;
+                    var expValue = (long)((lvl100Price - lvl1Price) / (double)(maxExp.Item2 - 1) * (exp - 1 - accountedExp));
+                    return expValue;
+                }
+
+            }
+
+            return 0;
         }
 
         /// <summary>

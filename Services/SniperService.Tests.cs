@@ -892,6 +892,31 @@ namespace Coflnet.Sky.Sniper.Services
 
         }
 
+
+        [TestCase(4300000, 4821272)]
+        [TestCase(8400000, 5468132)]
+        [TestCase(20_400000, 5647096)]
+        public void MedianAdjustForBucketExpDiff(int exp, int expectedPrice)
+        {
+            highestValAuction.Count = 1;
+            highestValAuction.FlatenedNBT = new(){
+                {"exp",SniperService.PetExpMaxlevel.ToString()}
+            };
+            highestValAuction.HighestBidAmount = 5_000_000;
+            AddVolume(highestValAuction);
+            highestValAuction.FlatenedNBT["candyUsed"] = "0";
+            var lowerExp = Dupplicate(highestValAuction);
+            lowerExp.FlatenedNBT["exp"] = "0";
+            lowerExp.HighestBidAmount = 1_000_000;
+            AddVolume(lowerExp);
+            var sample = Dupplicate(highestValAuction);
+            sample.FlatenedNBT["exp"] = exp.ToString();
+            AddVolume(sample);
+            service.TestNewAuction(sample);
+            var flip = found.Where(a => a.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
+            Assert.IsNotNull(flip, "flip should have been found");
+            Assert.AreEqual(expectedPrice, flip.TargetPrice, "median should be adjusted for exp diff");
+        }
         [Test]
         public void ComponetExtraValue()
         {
