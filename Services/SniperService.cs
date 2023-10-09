@@ -1478,7 +1478,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private bool FindFlip(SaveAuction auction, double lbinPrice, double minMedPrice, ReferenceAuctions bucket, AuctionKeyWithValue key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue = 0)
         {
-            extraValue += GetValueDifferenceForExp(auction, key, l);
+            var expValue = GetValueDifferenceForExp(auction, key, l);
             var volume = bucket.Volume;
             var medianPrice = bucket.Price + extraValue;
             var foundSnipe = false;
@@ -1501,7 +1501,11 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     props["valuedropped"] = key.ValueSubstract.ToString();
                 }
-                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, adjustedMedianPrice + extraValue, props);
+                if(expValue != 0)
+                {
+                    props["expvalue"] = expValue.ToString();
+                }
+                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, adjustedMedianPrice + extraValue + expValue, props);
             }
             else
             {
@@ -1534,6 +1538,8 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var maxExp = auction.Tag == "PET_GOLDEN_DRAGON" ? ("7", GoldenDragonMaxExp) : ("6", PetExpMaxlevel);
                 var exp = Math.Min((long)double.Parse(expString), maxExp.Item2);
+                if(exp > 11_600_000)
+                    return 0; // bad effect with so many exp
                 var lvl1Key = new AuctionKey(new(), ItemReferences.Reforge.Any, EmptyPetModifiers.ToList(), auction.Tier, 1);
                 var lvl100Key = new AuctionKey(new(), ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>>() { new("exp", maxExp.Item1) }, auction.Tier, 1);
                 if (l.TryGetValue(lvl1Key, out var lvl1Bucket) && l.TryGetValue(lvl100Key, out var lvl100Bucket))
