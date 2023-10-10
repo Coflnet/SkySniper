@@ -512,6 +512,21 @@ namespace Coflnet.Sky.Sniper.Services
             // substracted 2^lvldifference * price
             Assert.AreEqual("ultimate_chimera_5 (1520000000)", estimate.AdditionalProps["missingEnchants"]);
         }
+        [Test]
+        public void SubstractsSkinValue()
+        {
+            highestValAuction.FlatenedNBT = new() { { "candyUsed", "1" }, { "exp", "0" } };
+            var withSkin = Dupplicate(highestValAuction);
+            withSkin.HighestBidAmount = 60_000_000;
+            withSkin.FlatenedNBT.Add("skin", "SKELETON");
+            AddVolume(withSkin);
+            SetBazaarPrice("SKELETON", 25_000_000);
+            SimulateNewAuction(highestValAuction);
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            Assert.AreEqual((withSkin.HighestBidAmount - 25_000_000) * 0.9, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.AreEqual("skin:SKELETON (25000000)", estimate.AdditionalProps["missingModifiers"]);
+        }
 
         private void SimulateNewAuction(SaveAuction x)
         {
