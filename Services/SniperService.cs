@@ -307,7 +307,7 @@ ORDER BY l.`AuctionId`  DESC;
                         AdjustMedianForModifiers(result, itemKey, c, auction);
                         AdjustForMissingEnchants(result, itemKey, c);
                         if (Random.Shared.NextDouble() < 0.05)
-                            Console.WriteLine($"no match found for {auction.Tag} {itemKey} options: {l.Count} {itemKey}");
+                            Console.WriteLine($"no match found for {auction.Tag} {itemKey} options: {l.Count} {c.Key}");
                         if (result.Median > 0)
                             break;
                     }
@@ -1289,7 +1289,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     long extraValue = GetExtraValue(auction, key) - itemGroupTag.Item2;
                     if (FindFlip(auction, lbinPrice, medPrice, bucket, key, l, extraValue))
-                        break; // found a snipe, no need to check other lower value buckets
+                        return; // found a snipe, no need to check other lower value buckets
                 }
             }
             if (shouldTryToFindClosest && triggerEvents && this.State == SniperState.Ready)
@@ -1337,7 +1337,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return;
             }
             if (closest.Key == key)
-                Console.WriteLine($"Found exact match for {key} {closest.Value.Volume} {auction.Uuid} for {closest.Value.Price}");
+                return; // already found - or rather not - by median
             else
                 Console.WriteLine($"Would estimate closest to {key} {closest.Key} {auction.Uuid} for {closest.Value.Price}");
             if (closest.Value.Price <= medPrice)
