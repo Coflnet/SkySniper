@@ -523,6 +523,7 @@ ORDER BY l.`AuctionId`  DESC;
                     if (!existingBucket.Lbins.Contains(binAuction) && binAuction.Price > 0)
                         existingBucket.Lbins.Add(binAuction);
                 }
+                CapBucketSize(existingBucket);
             }
 
             void Deduplicate(string itemTag, PriceLookup value, AuctionKey item)
@@ -539,6 +540,11 @@ ORDER BY l.`AuctionId`  DESC;
                 // remove without enchants
                 value.Lookup.TryRemove(keyWithoutEnchants, out _);
             }
+        }
+
+        private static void CapBucketSize(ReferenceAuctions bucket)
+        {
+            while (bucket.References.Count > SizeToKeep && bucket.References.TryDequeue(out _)) { }
         }
 
         public void AddSoldItem(SaveAuction auction, bool preventMedianUpdate = false)
@@ -562,8 +568,7 @@ ORDER BY l.`AuctionId`  DESC;
             // move reference to sold
             bucket.References.Enqueue(reference);
             bucket.Lbins.Remove(reference);
-            if (bucket.References.Count > SizeToKeep)
-                bucket.References.TryDequeue(out ReferencePrice ra);
+            CapBucketSize(bucket);
             if (!preventMedianUpdate)
             {
                 var key = KeyFromSaveAuction(auction);
