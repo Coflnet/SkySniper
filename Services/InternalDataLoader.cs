@@ -330,10 +330,12 @@ namespace Coflnet.Sky.Sniper.Services
             batch = batch.Where(s => s.StartingBid != 0).ToList();
             var newSample = batch.OrderBy(s => Random.Shared.NextDouble()).Take(100).ToList();
             batch = batch.Concat(lastSample).ToList();
+            const int MillisecondsDelay = 500;
             //ApplyData(sold, 0.2);
             for (int i = 0; i < 5; i++)
             {
                 ApplyData(batch, 0.023);
+                await Task.Delay(MillisecondsDelay);
             }
             batch = batch.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(30)).ToList();
             if (batch.Count == 0)
@@ -341,6 +343,7 @@ namespace Coflnet.Sky.Sniper.Services
             for (int i = 0; i < 5; i++)
             {
                 ApplyData(batch, 0.03);
+                await Task.Delay(MillisecondsDelay);
             }
             var lastWeek = batch.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(5)).ToList();
             if (lastWeek.Count > 20)
@@ -348,6 +351,7 @@ namespace Coflnet.Sky.Sniper.Services
             for (int i = 0; i < 50; i++)
             {
                 ApplyData(batch, 0.015);
+                await Task.Delay(MillisecondsDelay);
             }
             var recent = batch.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(1))
                 .OrderByDescending(s => s.End).Take(50).ToList();
