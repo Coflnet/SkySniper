@@ -147,6 +147,7 @@ namespace Coflnet.Sky.Sniper.Services
 
         public void FinishedUpdate()
         {
+            var count = LbinUpdates.Count;
             while (LbinUpdates.TryDequeue(out var update))
             {
                 var (auction, bucket) = update;
@@ -160,6 +161,7 @@ namespace Coflnet.Sky.Sniper.Services
                     bucket.Lbins.Sort(ReferencePrice.Compare);
                 }
             }
+            Console.WriteLine($"Finished processing {count} lbin updates");
         }
 
         private readonly Dictionary<string, string> ModifierItemPrefixes = new()
