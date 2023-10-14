@@ -11,7 +11,6 @@ using MessagePack;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Minio;
 
 namespace Coflnet.Sky.Sniper.Services
 {

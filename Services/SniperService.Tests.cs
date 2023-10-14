@@ -799,6 +799,8 @@ namespace Coflnet.Sky.Sniper.Services
             d.HighestBidAmount = 900;
             service.TestNewAuction(a);
             service.TestNewAuction(b);
+            // lbins are only seceted with median volume
+            AddVolume(b);
             service.TestNewAuction(c);
             service.FinishedUpdate();
             service.TestNewAuction(d);
