@@ -99,7 +99,7 @@ public class PartialCalcService
 
     public void AddSell(SaveAuction auction)
     {
-        if(!IsPrimary)
+        if (!IsPrimary)
             return;
         var item = new ItemBreakDown(auction, mayorService.GetMayor(auction.End));
         var attribs = AttributeLookups.GetOrAdd(auction.Tag, tag => new());
@@ -219,11 +219,7 @@ public class PartialCalcService
                     }
                     if (key == "heldItem")
                     {
-                        var client = new RestSharp.RestClient("https://sky.coflnet.com/api");
-                        var request = new RestSharp.RestRequest($"item/price/{value}");
-                        var response = client.Execute(request);
-                        // use median from {"min":0,"median":0,"mean":0.0,"mode":0,"volume":0.0,"max":0}
-                        var apiPrice = JsonConvert.DeserializeObject<Dictionary<string, double>>(response.Content)!["median"];
+                        var apiPrice = Lookups.GetValueOrDefault(value, new()).Lookup.GetValueOrDefault(new(), new() { Price = 10 }).Price;
                         if (apiPrice > 0)
                         {
                             Lookups[key] = new PriceLookup() { Lookup = new(new Dictionary<AuctionKey, ReferenceAuctions>() { { new(), new() { Price = (long)apiPrice } } }) };
@@ -294,7 +290,7 @@ public class PartialCalcService
 
     public async Task CapAtCraftCost()
     {
-        if(!IsPrimary)
+        if (!IsPrimary)
             return;
         foreach (var item in AttributeLookups)
         {
@@ -455,8 +451,8 @@ public class PartialCalcService
         return new AuctionKey()
         {
             Tier = Enum.Parse<Tier>(item.Flatten?.GetValueOrDefault("tier")?.ToString() ?? "COMMON"),
-            Enchants = new(new List<Models.Enchantment>()),
-            Modifiers = new(new List<KeyValuePair<string,string>>()),
+            Enchants = new(new List<Models.Enchant>()),
+            Modifiers = new(new List<KeyValuePair<string, string>>()),
             Reforge = ItemReferences.Reforge.Any,
             Count = 0 // because default for auctions
         };

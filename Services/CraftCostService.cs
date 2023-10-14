@@ -29,7 +29,18 @@ public class CraftCostService : BackgroundService, ICraftCostService
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            var all = await craftsApi.CraftsAllGetAsync();
+            List<Crafts.Client.Model.ProfitableCraft> all = null;
+            try
+            {
+                 all = await craftsApi.CraftsAllGetAsync();
+            }
+            catch (System.Exception e)
+            {
+                logger.LogError(e, "Error while fetching crafts");
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                continue;
+            }
+            
             if(all == null)
             {
                 logger.LogError("Crafts api returned null");

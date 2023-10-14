@@ -49,7 +49,7 @@ public class AuctionkeyTests
     public void DifferentEnchantsDecrease()
     {
         var key = new AuctionKey();
-        var keyB = new AuctionKey() { Enchants = new List<Enchantment>() { new Enchantment() { Lvl = 1, Type = Core.Enchantment.EnchantmentType.angler } }.AsReadOnly() };
+        var keyB = new AuctionKey() { Enchants = new List<Enchant>() { new Enchant() { Lvl = 1, Type = Core.Enchantment.EnchantmentType.angler } }.AsReadOnly() };
         // by default reforge and tier match
         Assert.Greater(key.Similarity(key), keyB.Similarity(key), "extra enchants should decrease");
     }
@@ -72,7 +72,7 @@ public class AuctionkeyTests
         var key = new AuctionKey()
         {
             Reforge = ItemReferences.Reforge.Any,
-            Enchants = new List<Enchantment>() { new() { Type = Core.Enchantment.EnchantmentType.execute, Lvl = 8 } }.AsReadOnly(),
+            Enchants = new List<Enchant>() { new() { Type = Core.Enchantment.EnchantmentType.execute, Lvl = 8 } }.AsReadOnly(),
             Modifiers = new(new List<KeyValuePair<string, string>>())
         };
         System.Console.WriteLine(key);
@@ -292,7 +292,7 @@ public class AuctionkeyTests
         var close = Create();
         close.Tier = Tier.SPECIAL;
         var far = Create();
-        far = far.WithEnchants(new List<Enchantment>() { new () { Type = Core.Enchantment.EnchantmentType.efficiency, Lvl = 10 } });
+        far = far.WithEnchants(new List<Enchant>() { new () { Type = Core.Enchantment.EnchantmentType.efficiency, Lvl = 10 } });
 
         var simValue = clean.Similarity(close);
         System.Console.WriteLine(simValue);
@@ -306,7 +306,7 @@ public class AuctionkeyTests
 
     static AuctionKey CreateWithEnchant(Core.Enchantment.EnchantmentType type, byte level)
     {
-        var key = new AuctionKey(new(){new Enchantment(){
+        var key = new AuctionKey(new(){new Enchant(){
                     Type = type,
                     Lvl = level
                 }}, ItemReferences.Reforge.Any, null, Tier.EPIC, 1);
@@ -343,12 +343,12 @@ public class AuctionkeyTests
     [Test]
     public void SameValuableEnchantIsCloser()
     {
-        var differentEnchants = new List<Enchantment>(){
-                new Enchantment(){
+        var differentEnchants = new List<Enchant>(){
+                new Enchant(){
                     Type = Core.Enchantment.EnchantmentType.luck,
                     Lvl = 6
                 },
-                new Enchantment(){
+                new Enchant(){
                     Type = Core.Enchantment.EnchantmentType.critical,
                     Lvl = 6
                 }

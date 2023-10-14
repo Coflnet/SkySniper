@@ -2,7 +2,7 @@ using MessagePack;
 
 namespace Coflnet.Sky.Sniper.Models;
 [MessagePackObject]
-public struct Enchantment
+public struct Enchant
 {
     [Key(0)]
     public Core.Enchantment.EnchantmentType Type;
@@ -11,7 +11,7 @@ public struct Enchantment
 
     public override bool Equals(object obj)
     {
-        return obj is Enchantment ench
+        return obj is Enchant ench
             && ench.Lvl == Lvl
             && ench.Type == Type;
     }

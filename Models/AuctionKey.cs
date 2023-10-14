@@ -17,7 +17,7 @@ namespace Coflnet.Sky.Sniper.Models
     public class AuctionKey
     {
         [Key(0)]
-        public ReadOnlyCollection<Enchantment> Enchants { get; init; } = new(new List<Enchantment>());
+        public ReadOnlyCollection<Enchant> Enchants { get; init; } = new(new List<Enchant>());
         [Key(1)]
         public ItemReferences.Reforge Reforge;
         [Key(2)]
@@ -29,7 +29,7 @@ namespace Coflnet.Sky.Sniper.Models
 
         public static ReadOnlyCollection<KeyValuePair<string, string>> EmptyModifiers = new(new List<KeyValuePair<string, string>>());
 
-        public AuctionKey WithEnchants(IEnumerable<Enchantment> enchants)
+        public AuctionKey WithEnchants(IEnumerable<Enchant> enchants)
         {
             return new AuctionKey(this)
             {
@@ -80,7 +80,7 @@ namespace Coflnet.Sky.Sniper.Models
             return sum;
         }
 
-        private int EnchantSimilarity(IEnumerable<Enchantment> enchantsToCompare, AuctionKey key)
+        private int EnchantSimilarity(IEnumerable<Enchant> enchantsToCompare, AuctionKey key)
         {
             return enchantsToCompare.Sum(ench =>
             {
@@ -151,7 +151,7 @@ namespace Coflnet.Sky.Sniper.Models
                    Count == key.Count;
         }
 
-        public AuctionKey(List<Enchantment> enchants, ItemReferences.Reforge reforge, List<KeyValuePair<string, string>> modifiers, Tier tier, byte count)
+        public AuctionKey(List<Enchant> enchants, ItemReferences.Reforge reforge, List<KeyValuePair<string, string>> modifiers, Tier tier, byte count)
         {
             Enchants = enchants?.AsReadOnly();
             Reforge = reforge;
@@ -162,7 +162,7 @@ namespace Coflnet.Sky.Sniper.Models
 
         public AuctionKey(AuctionKey key)
         {
-            Enchants = key.Enchants?.Select(e => new Enchantment() { Lvl = e.Lvl, Type = e.Type }).ToList().AsReadOnly();
+            Enchants = key.Enchants?.Select(e => new Enchant() { Lvl = e.Lvl, Type = e.Type }).ToList().AsReadOnly();
             Reforge = key.Reforge;
             Modifiers = key.Modifiers?.Select(m => new KeyValuePair<string, string>(m.Key, m.Value)).ToList().AsReadOnly();
             Tier = key.Tier;

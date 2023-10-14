@@ -287,7 +287,7 @@ namespace Coflnet.Sky.Sniper.Services
             var refPrice = new ReferencePrice[] { new() { AuctionId = 1, Price = 1000, Day = SniperService.GetDay() } };
             var keyWithEnch = new AuctionKey()
             {
-                Enchants = new(new List<Models.Enchantment>() {
+                Enchants = new(new List<Models.Enchant>() {
                 new() { Type = Core.Enchantment.EnchantmentType.ultimate_legion, Lvl = 5 } })
             };
             dict.TryAdd(new AuctionKey(), new() { References = new(refPrice) });

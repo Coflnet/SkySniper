@@ -29,6 +29,7 @@ namespace Coflnet.Sky.Sniper.Services
 
         private Counter sellClosestSearch = Metrics.CreateCounter("sky_sniper_sell_closest_search", "Number of searches for closest sell");
         private Counter closestMedianBruteCounter = Metrics.CreateCounter("sky_sniper_closest_median_brute", "Number of brute force searches for closest median");
+        private Counter closestLbinBruteCounter = Metrics.CreateCounter("sky_sniper_closest_lbin_brute", "Number of brute force searches for closest median");
 
         public event Action<LowPricedAuction> FoundSnipe;
         public void MockFoundFlip(LowPricedAuction auction)
@@ -316,7 +317,9 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (result.Lbin.Price == default && l.Count > 0)
                 {
-                    var closest = l.Where(l => l.Key != null && l.Value?.Lbin.Price > 0).OrderByDescending(m => itemKey.Similarity(m.Key) + Math.Min(m.Value.Volume, 2)).FirstOrDefault();
+                    closestLbinBruteCounter.Inc();
+                    var closest = l.Where(l => l.Key != null && l.Value?.Price > 0 && l.Value?.Lbin.Price > 0)
+                        .OrderByDescending(m => itemKey.Similarity(m.Key) + Math.Min(m.Value.Volume, 2)).FirstOrDefault();
                     if (closest.Key != default)
                     {
                         result.Lbin = closest.Value.Lbin;
@@ -532,7 +535,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 if (item.Enchants?.Count == 0)
                     return;
-                var keyWithoutEnchants = new AuctionKey(item) { Enchants = new(new Models.Enchantment[0]) };
+                var keyWithoutEnchants = new AuctionKey(item) { Enchants = new(new Models.Enchant[0]) };
                 var without = value.Lookup.GetValueOrDefault(keyWithoutEnchants);
                 var with = value.Lookup.GetValueOrDefault(item);
                 if (without == null || with == null)
@@ -614,7 +617,7 @@ ORDER BY l.`AuctionId`  DESC;
                 //var key = KeyFromSaveAuction(auction);
                 var key = new AuctionKey(keyCombo.Item2)
                 {
-                    Enchants = new(new List<Models.Enchantment>())
+                    Enchants = new(new List<Models.Enchant>())
                 };
                 var enchantPrice = GetPriceSumForEnchants(keyCombo.Item2.Enchants);
                 if (!Lookups.GetOrAdd(keyCombo.tag, new PriceLookup()).Lookup.TryGetValue(key, out var clean))
@@ -717,7 +720,7 @@ ORDER BY l.`AuctionId`  DESC;
         public class RankElem
         {
             public long Value { get; set; }
-            public Models.Enchantment Enchant { get; set; }
+            public Models.Enchant Enchant { get; set; }
             public KeyValuePair<string, string> Modifier { get; set; }
 
 
@@ -726,7 +729,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return $"{Enchant} {Modifier} {Value}";
             }
 
-            public RankElem(Models.Enchantment enchant, long value)
+            public RankElem(Models.Enchant enchant, long value)
             {
                 Enchant = enchant;
                 Value = value;
@@ -740,7 +743,7 @@ ORDER BY l.`AuctionId`  DESC;
         }
         public AuctionKeyWithValue KeyFromSaveAuction(SaveAuction auction, int dropLevel = 0)
         {
-            var enchants = new List<Models.Enchantment>();
+            var enchants = new List<Models.Enchant>();
             var modifiers = new List<KeyValuePair<string, string>>();
 
             var shouldIncludeReforge = Coflnet.Sky.Core.Constants.RelevantReforges.Contains(auction.Reforge) && dropLevel < 3;
@@ -750,7 +753,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 enchants = auction.Enchantments
                     ?.Where(e => MinEnchantMap.TryGetValue(e.Type, out byte value) && e.Level >= value)
-                    .Select(e => new Models.Enchantment() { Lvl = e.Level, Type = e.Type }).ToList();
+                    .Select(e => new Models.Enchant() { Lvl = e.Level, Type = e.Type }).ToList();
 
                 modifiers = auction.FlatenedNBT?.Where(n =>
                                        IncludeKeys.Contains(n.Key)
@@ -779,7 +782,7 @@ ORDER BY l.`AuctionId`  DESC;
                             .ToList();
                 enchants = auction.Enchantments
                     ?.Where(e => Coflnet.Sky.Core.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
-                            .Select(e => new Models.Enchantment()
+                            .Select(e => new Models.Enchant()
                             {
                                 Lvl = e.Level,
                                 Type = e.Type
@@ -787,7 +790,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (enchants?.Count == 0)
                 {
                     var enchant = Constants.SelectBest(auction.Enchantments);
-                    enchants = new List<Models.Enchantment>() { new Models.Enchantment() { Lvl = enchant.Level, Type = enchant.Type
+                    enchants = new List<Models.Enchant>() { new Models.Enchant() { Lvl = enchant.Level, Type = enchant.Type
                         } };
                 }
             }
@@ -795,20 +798,20 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var enchant = Constants.SelectBest(auction.Enchantments);
                 if (enchant == default)
-                    enchants = new List<Models.Enchantment>();
+                    enchants = new List<Models.Enchant>();
                 else
-                    enchants = new List<Models.Enchantment>() { new Models.Enchantment() { Lvl = enchant.Level, Type = enchant.Type } };
+                    enchants = new List<Models.Enchant>() { new Models.Enchant() { Lvl = enchant.Level, Type = enchant.Type } };
                 modifiers = AssignEmptyModifiers(auction);
             }
             else
             {
                 //key.Modifiers = new List<KeyValuePair<string, string>>();
-                enchants = new List<Models.Enchantment>();
+                enchants = new List<Models.Enchant>();
                 modifiers = AssignEmptyModifiers(auction);
             }
 
             if (enchants == null)
-                enchants = new List<Models.Enchantment>();
+                enchants = new List<Models.Enchant>();
             var tier = auction.Tier;
             if (auction.Tag == "ENCHANTED_BOOK")
             {
@@ -843,7 +846,7 @@ ORDER BY l.`AuctionId`  DESC;
         /// <param name="enchants"></param>
         /// <param name="modifiers"></param>
         /// <returns>The coin amount substracted</returns>
-        public (long, bool removedRarity) CapKeyLength(List<Models.Enchantment> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction)
+        public (long, bool removedRarity) CapKeyLength(List<Models.Enchant> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction)
         {
             var valuePerEnchant = enchants?.Select(item => new RankElem(item, mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices)));
 
@@ -928,7 +931,7 @@ ORDER BY l.`AuctionId`  DESC;
             return (valueSubstracted, removedRarity);
         }
 
-        private static List<Models.Enchantment> RemoveNoEffectEnchants(SaveAuction auction, List<Models.Enchantment> ench)
+        private static List<Models.Enchant> RemoveNoEffectEnchants(SaveAuction auction, List<Models.Enchant> ench)
         {
             if (auction.Tag == null)
                 return ench;
@@ -944,7 +947,7 @@ ORDER BY l.`AuctionId`  DESC;
             return ench;
         }
 
-        private static List<Models.Enchantment> RemoveEnchantFromKey(List<Models.Enchantment> enchList, Core.Enchantment.EnchantmentType ench, int maxLevel = 10)
+        private static List<Models.Enchant> RemoveEnchantFromKey(List<Models.Enchant> enchList, Core.Enchantment.EnchantmentType ench, int maxLevel = 10)
         {
             if (enchList.Any(e => e.Type == ench))
                 return enchList.Where(e => e.Type != ench || e.Lvl > maxLevel).ToList();
@@ -1429,7 +1432,7 @@ ORDER BY l.`AuctionId`  DESC;
             return 0;
         }
 
-        private long GetPriceSumForEnchants(IEnumerable<Models.Enchantment> missingEnchants)
+        private long GetPriceSumForEnchants(IEnumerable<Models.Enchant> missingEnchants)
         {
             long toSubstract = 0;
             foreach (var item in missingEnchants)
