@@ -581,6 +581,8 @@ ORDER BY l.`AuctionId`  DESC;
         public void UpdateMedian(ReferenceAuctions bucket, (string tag, AuctionKey) keyCombo = default)
         {
             var size = bucket.References.Count;
+            if(size < 4)
+                return; // can't have enough volume
             var deduplicated = bucket.References.Reverse()
                 .OrderByDescending(b => b.Day)
                 .GroupBy(a => a.Seller)
