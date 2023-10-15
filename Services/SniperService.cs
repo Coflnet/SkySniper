@@ -171,6 +171,7 @@ namespace Coflnet.Sky.Sniper.Services
             {"drill_part_fuel_tank", String.Empty},
             {"drill_part_upgrade_module", String.Empty},
             {"skin", String.Empty},
+            {"dye_item", String.Empty},
             {"petItem", "PET_ITEM_"}
         };
 
@@ -301,7 +302,7 @@ ORDER BY l.`AuctionId`  DESC;
                         AssignMedian(result, itemKey, bucket);
                     }
                 }
-                if (result.Median == default)
+                if (result.Median == default && false)
                 {
                     closestMedianBruteCounter.Inc();
                     foreach (var c in FindClosest(l, itemKey))
@@ -315,7 +316,7 @@ ORDER BY l.`AuctionId`  DESC;
                             break;
                     }
                 }
-                if (result.Lbin.Price == default && l.Count > 0)
+                if (result.Lbin.Price == default && l.Count > 0 && false)
                 {
                     closestLbinBruteCounter.Inc();
                     var closest = l.Where(l => l.Key != null && l.Value?.Price > 0 && l.Value?.Lbin.Price > 0)
