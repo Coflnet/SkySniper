@@ -26,6 +26,8 @@ namespace Coflnet.Sky.Sniper.Services
         private PropertyMapper mapper = new();
         private (string, int)[] EmptyArray = new (string, int)[0];
         private Dictionary<string, double> BazaarPrices = new();
+        private ConcurrentDictionary<AuctionKey, (PriceEstimate result, DateTime addedAt)> ClosetLbinMapLookup = new();
+        private ConcurrentDictionary<AuctionKey, (PriceEstimate result, DateTime addedAt)> ClosetMedianMapLookup = new();
 
         private Counter sellClosestSearch = Metrics.CreateCounter("sky_sniper_sell_closest_search", "Number of searches for closest sell");
         private Counter closestMedianBruteCounter = Metrics.CreateCounter("sky_sniper_closest_median_brute", "Number of brute force searches for closest median");
@@ -163,6 +165,15 @@ namespace Coflnet.Sky.Sniper.Services
                 }
             }
             Console.WriteLine($"Finished processing {count} lbin updates");
+            var removeBefore = DateTime.UtcNow.AddHours(-1);
+            foreach (var item in ClosetLbinMapLookup.Where(c => c.Value.addedAt < removeBefore).ToList())
+            {
+                ClosetLbinMapLookup.TryRemove(item.Key, out _);
+            }
+            foreach (var item in ClosetMedianMapLookup.Where(c => c.Value.addedAt < removeBefore).ToList())
+            {
+                ClosetMedianMapLookup.TryRemove(item.Key, out _);
+            }
         }
 
         private readonly Dictionary<string, string> ModifierItemPrefixes = new()
@@ -285,24 +296,29 @@ ORDER BY l.`AuctionId`  DESC;
             var tagGroup = GetAuctionGroupTag(auction);
 
             var result = new PriceEstimate();
-            if (Lookups.TryGetValue(tagGroup.Item1, out PriceLookup lookup))
+            if (!Lookups.TryGetValue(tagGroup.Item1, out PriceLookup lookup))
             {
-                var l = lookup.Lookup;
-                var itemKey = KeyFromSaveAuction(auction);
-                result.ItemKey = itemKey.ToString();
-                if (l.TryGetValue(itemKey, out ReferenceAuctions bucket))
+                return result;
+            }
+            var l = lookup.Lookup;
+            var itemKey = KeyFromSaveAuction(auction);
+            result.ItemKey = itemKey.ToString();
+            if (l.TryGetValue(itemKey, out ReferenceAuctions bucket))
+            {
+                if (result.Lbin.AuctionId == default && bucket.Lbin.AuctionId != default)
                 {
-                    if (result.Lbin.AuctionId == default && bucket.Lbin.AuctionId != default)
-                    {
-                        result.Lbin = bucket.Lbin;
-                        result.LbinKey = itemKey.ToString();
-                    }
-                    if (result.Median == default && bucket.Price != default)
-                    {
-                        AssignMedian(result, itemKey, bucket);
-                    }
+                    result.Lbin = bucket.Lbin;
+                    result.LbinKey = itemKey.ToString();
                 }
-                if (result.Median == default && false)
+                if (result.Median == default && bucket.Price != default)
+                {
+                    AssignMedian(result, itemKey, bucket);
+                }
+            }
+            if (result.Median == default)
+            {
+                var now = DateTime.UtcNow;
+                var res = ClosetMedianMapLookup.GetOrAdd(itemKey, a =>
                 {
                     closestMedianBruteCounter.Inc();
                     foreach (var c in FindClosest(l, itemKey))
@@ -315,8 +331,19 @@ ORDER BY l.`AuctionId`  DESC;
                         if (result.Median > 0)
                             break;
                     }
+                    return (result, now);
+                });
+                if (res.addedAt != now)
+                {
+                    result.Median = res.result.Median;
+                    result.MedianKey = res.result.MedianKey;
+                    result.Volume = res.result.Volume;
                 }
-                if (result.Lbin.Price == default && l.Count > 0 && false)
+            }
+            if (result.Lbin.Price == default && l.Count > 0)
+            {
+                var now = DateTime.UtcNow;
+                var res = ClosetLbinMapLookup.GetOrAdd(itemKey, a =>
                 {
                     closestLbinBruteCounter.Inc();
                     var closest = l.Where(l => l.Key != null && l.Value?.Price > 0 && l.Value?.Lbin.Price > 0)
@@ -326,13 +353,19 @@ ORDER BY l.`AuctionId`  DESC;
                         result.Lbin = closest.Value.Lbin;
                         result.LbinKey = closest.Key.ToString();
                     }
-                }
-                // correct for combined items
-                if (tagGroup.Item2 != 0)
+                    return (result, now);
+                });
+                if (res.addedAt != now)
                 {
-                    result.Median -= tagGroup.Item2;
-                    result.MedianKey += $"-dif:{tagGroup.Item2}";
+                    result.Lbin = res.result.Lbin;
+                    result.LbinKey = res.result.LbinKey;
                 }
+            }
+            // correct for combined items
+            if (tagGroup.Item2 != 0)
+            {
+                result.Median -= tagGroup.Item2;
+                result.MedianKey += $"-dif:{tagGroup.Item2}";
             }
             return result;
         }
@@ -585,7 +618,7 @@ ORDER BY l.`AuctionId`  DESC;
         public void UpdateMedian(ReferenceAuctions bucket, (string tag, AuctionKey) keyCombo = default)
         {
             var size = bucket.References.Count;
-            if(size < 4)
+            if (size < 4)
                 return; // can't have enough volume
             var deduplicated = bucket.References.Reverse()
                 .OrderByDescending(b => b.Day)

@@ -455,7 +455,7 @@ namespace Coflnet.Sky.Sniper.Services
 
             Assert.AreEqual(900, price.Lbin.Price);
         }
-        //[Test]
+        [Test]
         public void AdjustsMedian()
         {
             highestValAuction.FlatenedNBT = new();
@@ -779,7 +779,7 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual("2 (60000000)", estimate.AdditionalProps["countDiff"]);
         }
 
-        //[Test] disabled closest
+        [Test]
         public void LbinSimilarity()
         {
             highestValAuction.StartingBid = 5;
@@ -811,7 +811,7 @@ namespace Coflnet.Sky.Sniper.Services
 
             Assert.AreEqual(1000, price.Lbin.Price);
         }
-        //[Test]
+        [Test]
         public void AdjustsForMissingEnchant()
         {
             highestValAuction.FlatenedNBT = new();
@@ -844,7 +844,7 @@ namespace Coflnet.Sky.Sniper.Services
             });
         }
 
-        //[Test] disabled closest
+        [Test]
         public void NotAdjustsForNonMissingEnchant()
         {
             highestValAuction.FlatenedNBT = new();
@@ -1009,7 +1009,7 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(0, found.Count, "should not use raw rune");
         }
 
-        //[Test]
+        [Test]
         public void AttributeCombination()
         {
             highestValAuction.FlatenedNBT = new() { { "mana_pool", "7" } };
@@ -1056,7 +1056,7 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(40_000_000 - 8 * 20_000, price.Median);
         }
 
-        //[Test]
+        [Test]
         public void AttributeHigherThanRef()
         {
             highestValAuction.FlatenedNBT = new() { { "mana_pool", "8" } };
