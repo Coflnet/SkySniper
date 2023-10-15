@@ -87,6 +87,22 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(810, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
         }
 
+        
+        /// <summary>
+        /// Checks that sold auction is removed from lbin list
+        /// </summary>
+        [Test]
+        public void RemoveSoldFromLbin()
+        {
+            var sell = Dupplicate(highestValAuction);
+            sell.End = DateTime.UtcNow + TimeSpan.FromDays(10);
+            service.TestNewAuction(sell);
+            service.FinishedUpdate();
+            Assert.AreEqual(1, service.Lookups[sell.Tag].Lookup.First().Value.Lbins.Count);
+            sell.End = DateTime.UtcNow;
+            service.AddSoldItem(sell);
+            Assert.AreEqual(0, service.Lookups[sell.Tag].Lookup.First().Value.Lbins.Count);
+        }
         /// <summary>
         /// Least valuable entries are removed first until only 5 are left
         /// </summary>

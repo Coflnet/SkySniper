@@ -606,7 +606,7 @@ ORDER BY l.`AuctionId`  DESC;
             var reference = CreateReferenceFromAuction(auction, valueSubstract);
             // move reference to sold
             bucket.References.Enqueue(reference);
-            bucket.Lbins.Remove(reference);
+            bucket.Lbins.RemoveAll(l => l.AuctionId == auction.UId);
             CapBucketSize(bucket);
             if (!preventMedianUpdate)
             {
