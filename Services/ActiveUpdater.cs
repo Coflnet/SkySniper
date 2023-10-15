@@ -56,8 +56,8 @@ namespace Coflnet.Sky.Sniper.Services
                     {
                         if (!completeLookup.ContainsKey(binAuction.AuctionId))
                         {
-                            lookup.Value.Lbins.Remove(binAuction);
-                            Console.WriteLine("Removed inactive " + AuctionService.Instance.GetUuid(binAuction.AuctionId));
+                            int removed = lookup.Value.Lbins.RemoveAll(l => l.AuctionId == binAuction.AuctionId);
+                            Console.WriteLine("Removed inactive " + AuctionService.Instance.GetUuid(binAuction.AuctionId) + " " + removed);
                         }
                     }
                     lookup.Value.Lbins.Sort(Models.ReferencePrice.Compare);
