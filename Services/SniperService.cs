@@ -854,11 +854,6 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (removedRarity)
                 tier--;
-            if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false)
-            {
-                // Jasper0 slot can't be accessed on starred (Fragged) items
-                modifiers?.RemoveAll(m => m.Key == "JASPER_0");
-            }
             enchants = RemoveNoEffectEnchants(auction, enchants);
 
             return new AuctionKeyWithValue()
@@ -884,6 +879,11 @@ ORDER BY l.`AuctionId`  DESC;
         {
             var valuePerEnchant = enchants?.Select(item => new RankElem(item, mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices)));
 
+            if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false)
+            {
+                // Jasper0 slot can't be accessed on starred (Fragged) items
+                modifiers?.RemoveAll(m => m.Key == "JASPER_0");
+            }
             var gems = modifiers.Where(m => m.Value == "PERFECT").ToList();
             long valueSubstracted = 0;
             foreach (var item in gems)
