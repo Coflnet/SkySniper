@@ -26,8 +26,8 @@ namespace Coflnet.Sky.Sniper.Services
         private PropertyMapper mapper = new();
         private (string, int)[] EmptyArray = new (string, int)[0];
         private Dictionary<string, double> BazaarPrices = new();
-        private ConcurrentDictionary<AuctionKey, (PriceEstimate result, DateTime addedAt)> ClosetLbinMapLookup = new();
-        private ConcurrentDictionary<AuctionKey, (PriceEstimate result, DateTime addedAt)> ClosetMedianMapLookup = new();
+        private ConcurrentDictionary<(string, AuctionKey), (PriceEstimate result, DateTime addedAt)> ClosetLbinMapLookup = new();
+        private ConcurrentDictionary<(string, AuctionKey), (PriceEstimate result, DateTime addedAt)> ClosetMedianMapLookup = new();
 
         private Counter sellClosestSearch = Metrics.CreateCounter("sky_sniper_sell_closest_search", "Number of searches for closest sell");
         private Counter closestMedianBruteCounter = Metrics.CreateCounter("sky_sniper_closest_median_brute", "Number of brute force searches for closest median");
@@ -318,7 +318,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (result.Median == default)
             {
                 var now = DateTime.UtcNow;
-                var res = ClosetMedianMapLookup.GetOrAdd(itemKey, a =>
+                var res = ClosetMedianMapLookup.GetOrAdd((auction.Tag, itemKey), a =>
                 {
                     closestMedianBruteCounter.Inc();
                     foreach (var c in FindClosest(l, itemKey))
@@ -343,7 +343,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (result.Lbin.Price == default && l.Count > 0)
             {
                 var now = DateTime.UtcNow;
-                var res = ClosetLbinMapLookup.GetOrAdd(itemKey, a =>
+                var res = ClosetLbinMapLookup.GetOrAdd((auction.Tag, itemKey), a =>
                 {
                     closestLbinBruteCounter.Inc();
                     var closest = l.Where(l => l.Key != null && l.Value?.Price > 0 && l.Value?.Lbin.Price > 0)
