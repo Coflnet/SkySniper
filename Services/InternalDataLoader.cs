@@ -388,7 +388,8 @@ namespace Coflnet.Sky.Sniper.Services
                     Console.WriteLine(e.StackTrace);
                 }
             });
-            partialCalcService.CapAtCraftCost();
+            if (v > 0.01 && sold.Count > 1000)
+                partialCalcService.CapAtCraftCost();
         }
 
         private void UpdateAllMedian()
