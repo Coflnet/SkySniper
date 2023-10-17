@@ -801,8 +801,8 @@ ORDER BY l.`AuctionId`  DESC;
                                 .Where(i => i.Key != Ignore.Key).ToList();
                 if (auction.ItemCreatedAt < UnlockedIntroduction
                     && auction.FlatenedNBT.Any(v => GemPurities.Contains(v.Value))
-                    // gauntlets are always unlocked
-                    && auction.Tag != "GEMSTONE_GAUNTLET")
+                    // items with slots always unlocked
+                    && auction.Tag != "GEMSTONE_GAUNTLET" && auction.Tag != "ASPECT_OF_THE_VOID" && auction.Tag != "ASPECT_OF_THE_END")
                     modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", "all"));
 
                 (valueSubstracted, removedRarity) = CapKeyLength(enchants, modifiers, auction);
