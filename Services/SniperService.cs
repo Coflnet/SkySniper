@@ -116,7 +116,8 @@ namespace Coflnet.Sky.Sniper.Services
             {"mana_regeneration", 2},
             {"mending", 3},
             {"dominance", 3},
-            {"magic_find", 2}
+            {"magic_find", 2},
+            {"veteran", 5}
             //{"lifeline", 3} to low volume
             // life recovery 3
         };
