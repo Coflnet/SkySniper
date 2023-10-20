@@ -87,7 +87,7 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(810, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
         }
 
-        
+
         /// <summary>
         /// Checks that sold auction is removed from lbin list
         /// </summary>
@@ -606,11 +606,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(reforge);
             SetBazaarPrice("MIDAS_JEWEL", 4_000_000);
 
-            var toTest = Dupplicate(highestValAuction);
-            service.FinishedUpdate();
-            service.State = SniperState.Ready;
-            service.TestNewAuction(toTest);
-            service.FinishedUpdate();
+            TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             Assert.AreEqual(2500000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
@@ -626,11 +622,7 @@ namespace Coflnet.Sky.Sniper.Services
             withRegen.FlatenedNBT.Add("mana_regeneration", "1");
             AddVolume(withRegen);
 
-            var toTest = Dupplicate(highestValAuction);
-            service.FinishedUpdate();
-            service.State = SniperState.Ready;
-            service.TestNewAuction(toTest);
-            service.FinishedUpdate();
+            TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             // 3600000 6m for mana_regeneration, 10% for stonks
@@ -646,11 +638,7 @@ namespace Coflnet.Sky.Sniper.Services
             withRegen.FlatenedNBT.Add("mana_regeneration", "5");
             AddVolume(withRegen);
 
-            var toTest = Dupplicate(highestValAuction);
-            service.FinishedUpdate();
-            service.State = SniperState.Ready;
-            service.TestNewAuction(toTest);
-            service.FinishedUpdate();
+            TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             Assert.AreEqual(92160, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
@@ -664,16 +652,46 @@ namespace Coflnet.Sky.Sniper.Services
             withoutCandy.HighestBidAmount = 10_000_000;
             withoutCandy.FlatenedNBT["candyUsed"] = "0";
             AddVolume(withoutCandy);
-
-            var toTest = Dupplicate(highestValAuction);
-            service.FinishedUpdate();
-            service.State = SniperState.Ready;
-            service.TestNewAuction(toTest);
-            service.FinishedUpdate();
+            
+            TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             Assert.AreEqual(8100000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
             Assert.AreEqual("candyUsed:0 (1000000)", estimate.AdditionalProps["missingModifiers"]);
+        }
+
+        private void TestNewAuction(SaveAuction a)
+        {
+            var toTest = Dupplicate(a);
+            service.FinishedUpdate();
+            service.State = SniperState.Ready;
+            service.TestNewAuction(toTest);
+            service.FinishedUpdate();
+        }
+
+        [Test]
+        public void StonksExpDifference()
+        {
+            firstAuction.FlatenedNBT = new() { { "candyUsed", "0" }, { "exp", "5000000" } };
+            firstAuction.Count = 1;
+            var higherExp = Dupplicate(firstAuction);
+            higherExp.FlatenedNBT["exp"] = "9000000";
+            higherExp.HighestBidAmount = 10_000_000;
+            AddVolume(higherExp);
+            AddVolume(higherExp);
+            var maxExp = Dupplicate(higherExp);
+            maxExp.FlatenedNBT["exp"] = "100000000";
+            maxExp.HighestBidAmount = 20_000_000;
+            AddVolume(maxExp);
+            var noExp = Dupplicate(firstAuction);
+            noExp.FlatenedNBT["exp"] = "0";
+            noExp.HighestBidAmount = 5_000_000;
+            AddVolume(noExp);
+            
+            TestNewAuction(firstAuction);
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            Assert.Greater(7000000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
         }
         [Test]
         public void TalismanEnrichmentCorrection()
@@ -702,11 +720,7 @@ namespace Coflnet.Sky.Sniper.Services
             withoutKills.FlatenedNBT["zombie_kills"] = "0";
             AddVolume(withoutKills);
 
-            var toTest = Dupplicate(highestValAuction);
-            service.FinishedUpdate();
-            service.State = SniperState.Ready;
-            service.TestNewAuction(toTest);
-            service.FinishedUpdate();
+            TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             Assert.AreEqual(9450000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
@@ -721,11 +735,7 @@ namespace Coflnet.Sky.Sniper.Services
             withoutKills.FlatenedNBT["zombie_kills"] = "25000";
             AddVolume(withoutKills);
 
-            var toTest = Dupplicate(highestValAuction);
-            service.FinishedUpdate();
-            service.State = SniperState.Ready;
-            service.TestNewAuction(toTest);
-            service.FinishedUpdate();
+            TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             Assert.AreEqual(7200000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
@@ -741,11 +751,7 @@ namespace Coflnet.Sky.Sniper.Services
             withoutKills.FlatenedNBT["heldItem"] = itemId;
             AddVolume(withoutKills);
             SetBazaarPrice(itemId, 4_000_000);
-            var toTest = Dupplicate(highestValAuction);
-            service.FinishedUpdate();
-            service.State = SniperState.Ready;
-            service.TestNewAuction(toTest);
-            service.FinishedUpdate();
+            TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             Assert.AreEqual(5400000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));

@@ -1399,6 +1399,12 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 toSubstract = GetPriceSumForModifiers(missingModifiers, key.Modifiers, auction);
                 toSubstract += AdjustForAttributes(closest.Value.Price, key, missingModifiers);
+                var fromExp = GetValueDifferenceForExp(auction, closest.Key, l);
+                if(fromExp != 0)
+                {
+                    props.Add("fromExp", fromExp.ToString());
+                }
+                toSubstract -= fromExp;
                 if (missingModifiers.Any(m => m.Key == "candyUsed" && m.Value == "0"))
                     toSubstract += (long)(closest.Value.Price * 0.1); // 10% for pet candy
                 var killModifier = missingModifiers.FirstOrDefault(m => m.Key.EndsWith("kills"));
@@ -1588,7 +1594,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private static long GetValueDifferenceForExp(SaveAuction auction, AuctionKeyWithValue key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
+        private static long GetValueDifferenceForExp(SaveAuction auction, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
         {
             // determine extra expvalue
             if (auction.FlatenedNBT.TryGetValue("exp", out var expString))
@@ -1606,7 +1612,8 @@ ORDER BY l.`AuctionId`  DESC;
                     var accountedFor = double.Parse(key.Modifiers.Where(m => m.Key == "exp").Select(v => v.Value).FirstOrDefault("0"));
                     var accountedMiddle = accountedFor + Math.Min(0.5, accountedFor / 2);
                     var accountedExp = maxExp.Item2 / 7 * accountedMiddle;
-                    var expValue = (long)((lvl100Price - lvl1Price) / (double)(maxExp.Item2 - 1) * (exp - 1 - accountedExp));
+                    var perExp = (double)((lvl100Price - lvl1Price) / (double)(maxExp.Item2 - 1));
+                    var expValue = (long)(perExp * (exp - 1 - accountedExp));
                     return expValue;
                 }
 
