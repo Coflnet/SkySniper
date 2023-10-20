@@ -287,8 +287,8 @@ namespace Coflnet.Sky.Sniper.Services
             // ready if more than 20% loaded
             if (i >= differential / 5)
             {
-                sniper.State = SniperState.Ready;
                 UpdateAllMedian();
+                sniper.State = SniperState.Ready;
                 await Task.Delay(500);
             }
         }

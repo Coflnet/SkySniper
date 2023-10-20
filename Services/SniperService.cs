@@ -896,6 +896,10 @@ ORDER BY l.`AuctionId`  DESC;
                     modifiers.Remove(item);
                 }
             }
+            if (gems.Count == 5)
+            {
+                modifiers.Add(new("pgems", "5"));
+            }
 
             var valuePerModifier = modifiers?.Select(mod =>
             {
@@ -938,6 +942,10 @@ ORDER BY l.`AuctionId`  DESC;
                         _ => 15_000_000,
                     };
                     sum += val;
+                }
+                if(mod.Key == "pgems")
+                {
+                    sum += 100_000_000;
                 }
 
                 return new RankElem(mod, sum);

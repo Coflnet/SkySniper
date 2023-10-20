@@ -1119,6 +1119,23 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void MarkifAll5Gems()
+        {
+            highestValAuction.FlatenedNBT = new Dictionary<string, string>()
+            {
+                {"rarity_upgrades","1"},
+                {"JADE_0","PERFECT"},
+                {"AMBER_0","PERFECT"},
+                {"SAPPHIRE_0","PERFECT"},
+                {"TOPAZ_0","PERFECT"},
+                {"AMETHYST_0","PERFECT"},
+                {"uid","7c2447a6ad9d"}
+            };
+            var key = service.KeyFromSaveAuction(highestValAuction);
+            Assert.AreEqual("5", key.Modifiers.Where(x => x.Key == "pgems").First().Value);
+        }
+
+        [Test]
         public void CleanAndEnchantLower()
         {
             highestValAuction.Enchantments = new List<Core.Enchantment>(){
