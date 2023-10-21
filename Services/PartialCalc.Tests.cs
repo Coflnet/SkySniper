@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Coflnet.Sky.Core;
 using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
@@ -180,7 +181,7 @@ public class PartialCalcTests
     }
 
     [Test]
-    public void CapTier()
+    public async Task CapTier()
     {
         var item = new Item()
         {
@@ -203,14 +204,14 @@ public class PartialCalcTests
             Tier = Tier.LEGENDARY,
             HighestBidAmount = 600000
         }, 100);
-        Service.CapAtCraftCost();
+        await Service.CapAtCraftCost();
         var result = Service.GetPrice(item, true);
         Console.WriteLine(string.Join("\n", result.BreakDown));
         Assert.Greater(600000, result.Price);
     }
 
     [Test]
-    public void CapEnchatAtCraftCost()
+    public async Task CapEnchatAtCraftCost()
     {
         var item = new Item()
         {
@@ -238,10 +239,43 @@ public class PartialCalcTests
         }, 100);
         craftcost.Values["ENCHANTMENT_IMPALING_5"] = 1500;
 
-        Service.CapAtCraftCost();
+        await Service.CapAtCraftCost();
         var result = Service.GetPrice(item, true);
         Console.WriteLine(string.Join("\n", result.BreakDown));
         Assert.AreEqual("ench.impaling 3: 787.5", result.BreakDown[1].Replace(",", "."));
+    }
+
+    [Test]
+    public async Task CapIfEnchantTableEnchant()
+    {
+        var item = new Item()
+        {
+            Tag = "HYPERION",
+            ExtraAttributes = new()
+            {
+                { "tier", "EPIC" }
+            },
+            Enchantments = new()
+            {
+                { "cleave", 5 }
+            }
+        };
+        Service.SetLearningRate(0.1);
+        AddSell(new SaveAuction()
+        {
+            Tag = "HYPERION",
+            Tier = Tier.EPIC,
+            HighestBidAmount = 800_000_000,
+            Enchantments = new()
+            {
+                new Core.Enchantment(Core.Enchantment.EnchantmentType.cleave, 5)
+            }
+        }, 100);
+        await Service.CapAtCraftCost();
+        var result = Service.GetPrice(item, true);
+        Console.WriteLine(string.Join("\n", result.BreakDown));
+        // capped at 50k - no enchant from ench table is worth more than that
+        Assert.AreEqual("ench.cleave 5: 50000.0", result.BreakDown[1].Replace(",", "."));
     }
 
     private void AddSell(SaveAuction sell, int volume = 1)

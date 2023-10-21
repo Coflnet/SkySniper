@@ -24,6 +24,7 @@ public class PartialCalcService
     private double adjustRate = 0.01;
     private SniperService sniper;
     public bool IsPrimary { get; set; }
+    private Dictionary<string, int> EnchTableLookup = new();
 
     public IEnumerable<string> ItemKeys => Lookups.Keys;
 
@@ -35,6 +36,11 @@ public class PartialCalcService
         this.mayorService = mayorService;
         this.persitanceManager = persitanceManager;
         this.logger = logger;
+
+        foreach (var item in Constants.MaxEnchantmentTableLevel)
+        {
+            EnchTableLookup["ench." + item.Key.ToString().ToLower()] = item.Value;
+        }
     }
 
     public Dictionary<string, Dictionary<string, double>> GetAttributeCosts(string tag)
@@ -309,6 +315,9 @@ public class PartialCalcService
                     }
                     else if (attrib.Key.StartsWith("ench.") || Constants.AttributeKeys.Contains(attrib.Key))
                     {
+                        if (EnchTableLookup.TryGetValue(attrib.Key, out var maxLvl))
+                            value = Math.Min(50_000, val.Value);
+
                         value = CapAtExponetialGrowth(attrib, val, value);
                     }
                     else if (attrib.Key == "tier")

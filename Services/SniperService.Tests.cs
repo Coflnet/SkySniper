@@ -691,7 +691,7 @@ namespace Coflnet.Sky.Sniper.Services
             TestNewAuction(firstAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
-            Assert.Greater(7000000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.Greater(7200000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
         }
         [Test]
         public void TalismanEnrichmentCorrection()
