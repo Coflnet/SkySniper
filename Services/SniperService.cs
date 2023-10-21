@@ -1674,6 +1674,11 @@ ORDER BY l.`AuctionId`  DESC;
                     refernces.Price = (long)item.SellSummary.First().PricePerUnit;
                     BazaarPrices[item.ProductId] = refernces.Price;
                 }
+                else if (item.BuySummery.Any())
+                {
+                    refernces.Price = (long)item.BuySummery.OrderBy(s => s.PricePerUnit).First().PricePerUnit;
+                    BazaarPrices[item.ProductId] = refernces.Price;
+                }
             }
             Console.WriteLine($"Updated bazaar {Lookups.Count} items");
         }

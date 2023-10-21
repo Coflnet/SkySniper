@@ -110,7 +110,7 @@ namespace Coflnet.Sky.Sniper.Services
         public void CapKeySize()
         {
             SetBazaarPrice("ENCHANTMENT_MANA_VAMPIRE_6", 2_100_000);
-            SetBazaarPrice("ENCHANTMENT_GROWTH_6", 6_200_000);
+            SetBazaarPrice("ENCHANTMENT_GROWTH_6", 0, 6_200_000);
             SetBazaarPrice("ENCHANTMENT_SNIPE_4", 86_000_000);
             SetBazaarPrice("ENCHANTMENT_ULTIMATE_LEGION_1", 1_800_000);
             SetBazaarPrice("HOT_POTATO_BOOK", 80_000);
@@ -130,6 +130,7 @@ namespace Coflnet.Sky.Sniper.Services
                     {"upgrade_level", "5"}
                 }
             });
+            Assert.IsTrue(key.Enchants.Any(e => e.Type == Core.Enchantment.EnchantmentType.growth), "Growth should be in key even if there are no buy orders on bazaar");
             Assert.IsTrue(!key.Enchants.Any(e => e.Type == Core.Enchantment.EnchantmentType.ultimate_legion));
         }
 
@@ -869,16 +870,20 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual("sharpness=7 Any  UNKNOWN 0-sharpness7", price.MedianKey);
         }
 
-        private void SetBazaarPrice(string tag, int value)
+        private void SetBazaarPrice(string tag, int value, int buyValue = 0)
         {
+            var sellOrder = new List<SellOrder>();
+            if(value > 0)
+                sellOrder.Add(new SellOrder(){PricePerUnit = value});
             service.UpdateBazaar(new()
             {
                 Products = new(){
                 new (){
                     ProductId =  tag,
-                    SellSummary = new(){
+                    SellSummary = sellOrder,
+                    BuySummery = new(){
                         new (){
-                            PricePerUnit = value
+                            PricePerUnit = buyValue
                         }
                     }
                 }
