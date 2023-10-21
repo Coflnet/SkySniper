@@ -1798,7 +1798,7 @@ ORDER BY l.`AuctionId`  DESC;
             return dict;
         }
 
-        internal async System.Threading.Tasks.Task Init()
+        public async System.Threading.Tasks.Task Init()
         {
             await itemService.GetItemsAsync();
         }
