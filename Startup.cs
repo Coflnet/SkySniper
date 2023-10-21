@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Coflnet.Sky.Core;
+using Coflnet.Sky.Core.Services;
 using Coflnet.Sky.Crafts.Client.Api;
 using Coflnet.Sky.Sniper.Services;
 using Microsoft.AspNetCore.Builder;
@@ -65,6 +66,8 @@ namespace Coflnet.Sky.Sniper
             services.AddSingleton<ActiveUpdater>();
             services.AddSingleton<PartialCalcService>();
             services.AddSingleton<Kafka.KafkaCreator>();
+            services.AddSingleton<HypixelItemService>();
+            services.AddSingleton<System.Net.Http.HttpClient>();
             services.AddJaeger(Configuration);
         }
 
