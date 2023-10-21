@@ -5,6 +5,7 @@ using System.Linq;
 using Coflnet.Sky.Sniper.Models;
 using Coflnet.Sky.Core;
 using Prometheus;
+using Coflnet.Sky.Core.Services;
 
 namespace Coflnet.Sky.Sniper.Services
 {
@@ -186,7 +187,7 @@ namespace Coflnet.Sky.Sniper.Services
             {"dye_item", String.Empty},
             {"petItem", "PET_ITEM_"}
         };
-
+        private readonly HypixelItemService itemService;
         private Dictionary<Core.Enchantment.EnchantmentType, byte> MinEnchantMap = new();
 
         /** NOTES
@@ -239,7 +240,7 @@ ORDER BY l.`AuctionId`  DESC;
         public static KeyValuePair<string, string> Ignore { get; } = new KeyValuePair<string, string>(string.Empty, string.Empty);
 
 
-        public SniperService()
+        public SniperService(HypixelItemService itemService)
         {
 
             this.FoundSnipe += la =>
@@ -286,6 +287,8 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 MinEnchantMap[item.Type] = item.Level;
             }
+
+            this.itemService = itemService;
         }
 
         public PriceEstimate GetPrice(SaveAuction auction)
@@ -801,10 +804,12 @@ ORDER BY l.`AuctionId`  DESC;
                                 .Select(i => NormalizeData(i, auction.Tag, auction.FlatenedNBT))
                                 .Where(i => i.Key != Ignore.Key).ToList();
                 if (auction.ItemCreatedAt < UnlockedIntroduction
-                    && auction.FlatenedNBT.Any(v => GemPurities.Contains(v.Value))
-                    // items with slots always unlocked
-                    && auction.Tag != "GEMSTONE_GAUNTLET" && auction.Tag != "ASPECT_OF_THE_VOID" && auction.Tag != "ASPECT_OF_THE_END")
-                    modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", "all"));
+                    && auction.FlatenedNBT.Any(v => GemPurities.Contains(v.Value)))
+                {
+                    var allUnlockable = itemService.GetUnlockableSlots(auction.Tag).ToList();
+                    if (allUnlockable.Count > 0)
+                        modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", string.Join(",", allUnlockable)));
+                }
 
                 (valueSubstracted, removedRarity) = CapKeyLength(enchants, modifiers, auction);
             }
@@ -943,7 +948,7 @@ ORDER BY l.`AuctionId`  DESC;
                     };
                     sum += val;
                 }
-                if(mod.Key == "pgems")
+                if (mod.Key == "pgems")
                 {
                     sum += 100_000_000;
                 }
@@ -1400,7 +1405,7 @@ ORDER BY l.`AuctionId`  DESC;
                 toSubstract = GetPriceSumForModifiers(missingModifiers, key.Modifiers, auction);
                 toSubstract += AdjustForAttributes(closest.Value.Price, key, missingModifiers);
                 var fromExp = GetValueDifferenceForExp(auction, closest.Key, l);
-                if(fromExp != 0)
+                if (fromExp != 0)
                 {
                     props.Add("fromExp", fromExp.ToString());
                 }
@@ -1786,6 +1791,11 @@ ORDER BY l.`AuctionId`  DESC;
             if (extraValue != 0)
                 dict["extraValue"] = extraValue.ToString();
             return dict;
+        }
+
+        internal async System.Threading.Tasks.Task Init()
+        {
+            await itemService.GetItemsAsync();
         }
     }
 }

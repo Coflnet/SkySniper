@@ -55,7 +55,7 @@ namespace Coflnet.Sky.Sniper.Services
 
             };
             SniperService.MIN_TARGET = 0;
-            service = new SniperService();
+            service = new SniperService(new(null, null));
 
             found = new List<LowPricedAuction>();
             service.FoundSnipe += found.Add;
@@ -131,6 +131,26 @@ namespace Coflnet.Sky.Sniper.Services
                 }
             });
             Assert.IsTrue(!key.Enchants.Any(e => e.Type == Core.Enchantment.EnchantmentType.ultimate_legion));
+        }
+
+        [Test]
+        public async Task UnlockedAllOnlyForUnlockable()
+        {
+            await service.Init();
+            var a = new SaveAuction()
+            {
+                Tag = "SLUG_BOOTS",
+                FlatenedNBT = new(){
+                    {"jasper", "FINE"}
+                },
+                ItemCreatedAt = new DateTime(2020, 1, 1)
+            };
+            var key = service.KeyFromSaveAuction(a);
+            Assert.AreEqual(0, key.Modifiers.Count);
+            a.Tag = "DIVAN_CHESTPLATE";
+            key = service.KeyFromSaveAuction(a);
+            Assert.AreEqual(1, key.Modifiers.Count, JsonConvert.SerializeObject(key.Modifiers, Formatting.Indented));
+            Assert.AreEqual("AMBER_0,AMBER_1,JADE_0,JADE_1,TOPAZ_0", key.Modifiers.First().Value);
         }
 
         /// <summary>
@@ -652,7 +672,7 @@ namespace Coflnet.Sky.Sniper.Services
             withoutCandy.HighestBidAmount = 10_000_000;
             withoutCandy.FlatenedNBT["candyUsed"] = "0";
             AddVolume(withoutCandy);
-            
+
             TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
@@ -687,7 +707,7 @@ namespace Coflnet.Sky.Sniper.Services
             noExp.FlatenedNBT["exp"] = "0";
             noExp.HighestBidAmount = 5_000_000;
             AddVolume(noExp);
-            
+
             TestNewAuction(firstAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));

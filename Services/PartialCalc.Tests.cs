@@ -31,7 +31,7 @@ public class PartialCalcTests
     [SetUp]
     public void Setup()
     {
-        sniper = new SniperService();
+        sniper = new SniperService(null);
         craftcost = new CraftcostMock();
         Service = new PartialCalcService(sniper, craftcost, new MayorMock(), new MockPersistenceManager(), NullLogger<PartialCalcService>.Instance);
         AddSell(new SaveAuction()

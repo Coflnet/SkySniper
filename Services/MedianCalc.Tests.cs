@@ -9,7 +9,7 @@ public class MedianCalcTests
     [Test]
     public void LargeData()
     {
-        var service = new SniperService();
+        var service = new SniperService(null);
         var bucket = new ReferenceAuctions();
         bucket.References = new ConcurrentQueue<ReferencePrice>();
         var sample = JsonConvert.DeserializeObject<ReferencePrice[]>(SampleJson);

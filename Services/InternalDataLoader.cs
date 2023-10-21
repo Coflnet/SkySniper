@@ -87,6 +87,7 @@ namespace Coflnet.Sky.Sniper.Services
                 Console.WriteLine("saved");
 
             });
+            await sniper.Init();
 
             var result = await Task.WhenAny(newAuctions, soldAuctions,
                 Task.WhenAll(ActiveUpdater(stoppingToken),

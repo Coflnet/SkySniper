@@ -12,6 +12,12 @@ namespace Coflnet.Sky.Sniper.Models;
 
 public class AuctionkeyTests
 {
+    private SniperService service = null!;
+    [SetUp]
+    public void Setup()
+    {
+        service = new SniperService(null);
+    }
     [Test]
     public void DifferentModifiersDecrease()
     {
@@ -61,7 +67,7 @@ public class AuctionkeyTests
         var b = Services.SniperServiceTests.Dupplicate(auctionA);
         b.FlatenedNBT.Add("rarity_upgrades", "1");
         b.Tier = Tier.MYTHIC;
-        var sniperService = new SniperService();
+        var sniperService = new SniperService(null);
         var keyA = sniperService.KeyFromSaveAuction(auctionA);
         var keyB = sniperService.KeyFromSaveAuction(b);
         Assert.Less(keyA.Similarity(keyB), keyA.Similarity(keyA));
@@ -83,7 +89,6 @@ public class AuctionkeyTests
                  new() { Level = 8, Type = Core.Enchantment.EnchantmentType.execute }
              }
         };
-        var service = new SniperService();
         // by default reforge and tier match
         Assert.AreEqual(key, service.KeyFromSaveAuction(auction));
     }
@@ -108,7 +113,6 @@ public class AuctionkeyTests
             FlatenedNBT = new() { { "rarity_upgrades", "1" } },
             Tier = Tier.MYTHIC
         };
-        var service = new SniperService();
         var originkey = service.KeyFromSaveAuction(baseAuction);
         var targetKey = service.KeyFromSaveAuction(targetAuction);
         var badKey = service.KeyFromSaveAuction(badAuction);
@@ -137,7 +141,6 @@ public class AuctionkeyTests
     [TestCase("SWORD", EnchantmentType.ender_slayer, 7, false)]
     public void EnderSlayer6IgnoredOnEverythingExceptKatana(string tag, Core.Enchantment.EnchantmentType type, byte level, bool shouldIgnore)
     {
-        var service = new SniperService();
         var auction = new SaveAuction()
         {
             Tag = tag,
@@ -155,7 +158,6 @@ public class AuctionkeyTests
     [TestCase(5)]
     public void CheckTierBoostNotDropped(int level)
     {
-        var service = new SniperService();
         var auction = new SaveAuction()
         {
             Tag = "PET_SCATHA",
@@ -172,7 +174,6 @@ public class AuctionkeyTests
     [TestCase(2, 1)]
     public void NormalizedCandy(int amount, int target)
     {
-        var service = new SniperService();
         var auction = new SaveAuction()
         {
             Tag = "PET_SCATHA",
@@ -187,7 +188,6 @@ public class AuctionkeyTests
     [Test]
     public void CheckFishingSpeedAttributeInclude()
     {
-        var service = new SniperService();
         var auction = new SaveAuction()
         {
             Tag = "FISHING_ROD",
@@ -200,7 +200,6 @@ public class AuctionkeyTests
     [Test]
     public void LowLevelPetDifference()
     {
-        var service = new SniperService();
         var auctionHigh = new SaveAuction()
         {
             Tag = "PET_SCATHA",
@@ -221,7 +220,6 @@ public class AuctionkeyTests
     [Test]
     public void HigherEditionIsCloser()
     {
-        var service = new SniperService();
         var auction = new SaveAuction()
         {
             Tag = "PET_SCATHA",
@@ -292,7 +290,7 @@ public class AuctionkeyTests
         var close = Create();
         close.Tier = Tier.SPECIAL;
         var far = Create();
-        far = far.WithEnchants(new List<Enchant>() { new () { Type = Core.Enchantment.EnchantmentType.efficiency, Lvl = 10 } });
+        far = far.WithEnchants(new List<Enchant>() { new() { Type = Core.Enchantment.EnchantmentType.efficiency, Lvl = 10 } });
 
         var simValue = clean.Similarity(close);
         System.Console.WriteLine(simValue);
@@ -355,12 +353,12 @@ public class AuctionkeyTests
             };
 
         var baseKey = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 5);
-     //   baseKey.Enchants.AddRange(differentEnchants); TODO REMOVE
+        //   baseKey.Enchants.AddRange(differentEnchants); TODO REMOVE
 
         var closer = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 5);
 
         var lvl2 = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_duplex, 5);
-     //   lvl2.Enchants.AddRange(differentEnchants);
+        //   lvl2.Enchants.AddRange(differentEnchants);
 
         var simValue = baseKey.Similarity(closer);
         System.Console.WriteLine(simValue);
@@ -377,7 +375,6 @@ public class AuctionkeyTests
             FlatenedNBT = new() { { "dominance", "2" },
                                 {"mending", "2"} },
         };
-        var service = new SniperService();
         var key = service.KeyFromSaveAuction(auction);
         Assert.AreEqual(2, key.Modifiers.Count);
         Assert.IsTrue(key.Modifiers.Any(x => x.Key == "dominance" && x.Value == "2"));
@@ -392,7 +389,6 @@ public class AuctionkeyTests
             FlatenedNBT = new() { { "lifeline", "1" },
                                 {"mana_pool", "2"} },
         };
-        var service = new SniperService();
         var key = service.KeyFromSaveAuction(auction);
         Assert.AreEqual(1, key.Modifiers.Count);
         auction.Tag = "TERROR_LEGGINGS";
@@ -410,7 +406,6 @@ public class AuctionkeyTests
             Tier = Tier.MYTHIC,
             Tag = "DEMONLORD_GAUNTLET"
         };
-        var service = new SniperService();
         var key = service.KeyFromSaveAuction(auction);
         Assert.AreEqual(0, key.Enchants.Count);
     }
@@ -423,7 +418,6 @@ public class AuctionkeyTests
             Enchantments = new() { new(Core.Enchantment.EnchantmentType.efficiency, 10) },
             Tag = "DEMONLORD_GAUNTLET"
         };
-        var service = new SniperService();
         var key = service.KeyFromSaveAuction(auction);
         Assert.AreEqual(1, key.Enchants.Count);
     }
@@ -436,7 +430,6 @@ public class AuctionkeyTests
             Enchantments = new() { new(Core.Enchantment.EnchantmentType.power, 6) },
             Tag = "DEMONLORD_GAUNTLET"
         };
-        var service = new SniperService();
         var key = service.KeyFromSaveAuction(auction);
         Assert.AreEqual(0, key.Enchants.Count);
     }
@@ -492,7 +485,6 @@ public class AuctionkeyTests
         var comparedTo = Services.SniperServiceTests.Dupplicate(baseAuction);
         comparedTo.Enchantments = new List<Core.Enchantment>() { new(Core.Enchantment.EnchantmentType.ultimate_legion, 5) };
         comparedTo.HighestBidAmount = 1_000_000;
-        var service = new SniperService();
         service.AddSoldItem(Services.SniperServiceTests.Dupplicate(comparedTo));
         service.AddSoldItem(Services.SniperServiceTests.Dupplicate(comparedTo));
         service.AddSoldItem(Services.SniperServiceTests.Dupplicate(comparedTo));
