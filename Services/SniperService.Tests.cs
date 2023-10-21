@@ -634,21 +634,25 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual("Gilded -> None (6500000)", estimate.AdditionalProps["reforge"]);
         }
 
+        /// <summary>
+        /// The difference between godrolls and non godrolls is ~96%
+        /// changed for https://github.com/Coflnet/SkySniper/issues/62
+        /// </summary>
         [Test]
-        public void StonksAttributeDifference()
+        public void StonksGodRollAttributeDifference()
         {
             highestValAuction.FlatenedNBT = new() { { "mana_pool", "1" } };
             var withRegen = Dupplicate(highestValAuction);
-            withRegen.HighestBidAmount = 10_000_000;
+            withRegen.HighestBidAmount = 100_000_000;
             withRegen.FlatenedNBT.Add("mana_regeneration", "1");
             AddVolume(withRegen);
 
             TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
-            // 3600000 6m for mana_regeneration, 10% for stonks
+            // 96m for missing mana_regeneration (godroll), 10% for stonks
             Assert.AreEqual(3600000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
-            Assert.AreEqual("mana_regeneration:1 (6000000)", estimate.AdditionalProps["missingModifiers"]);
+            Assert.AreEqual("mana_regeneration:1 (96000000)", estimate.AdditionalProps["missingModifiers"]);
         }
         [Test]
         public void StonksBigAttributeDifference()
@@ -656,14 +660,14 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.FlatenedNBT = new() { { "mana_pool", "1" } };
             var withRegen = Dupplicate(highestValAuction);
             withRegen.HighestBidAmount = 10_000_000;
-            withRegen.FlatenedNBT.Add("mana_regeneration", "5");
+            withRegen.FlatenedNBT.Add("veteran", "5");
             AddVolume(withRegen);
 
             TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             Assert.AreEqual(92160, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
-            Assert.AreEqual("mana_regeneration:5 (9897600)", estimate.AdditionalProps["missingModifiers"]);
+            Assert.AreEqual("veteran:5 (9897600)", estimate.AdditionalProps["missingModifiers"]);
         }
         [Test]
         public void StonksPetCandyReduction()

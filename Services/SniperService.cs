@@ -1468,8 +1468,13 @@ ORDER BY l.`AuctionId`  DESC;
                     Console.WriteLine($"Adjusting target price due to attribute diff {biggestDifference} {medPrice} {Math.Pow(1.1, -biggestDifference)}");
                     return -(long)(medPrice * (Math.Pow(1.5, Math.Abs(biggestDifference)) - 1));
                 }
-                //if (biggestDifference > 0)
-                return (long)(medPrice - Math.Pow(0.4, biggestDifference) * medPrice);
+                var keyhasCombo = AttributeComboLookup.TryGetValue(missingAttributes.Select(m => m.Key).First(), out var combo) && key.Modifiers.Any(m=>combo.Contains(m.Key));
+                var defaultDifference = (medPrice - Math.Pow(0.4, biggestDifference) * medPrice);
+                if(keyhasCombo)
+                {
+                    defaultDifference *= 1.6;
+                }
+                return (long)defaultDifference;
 
             }
 
