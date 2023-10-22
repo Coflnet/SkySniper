@@ -1468,9 +1468,9 @@ ORDER BY l.`AuctionId`  DESC;
                     Console.WriteLine($"Adjusting target price due to attribute diff {biggestDifference} {medPrice} {Math.Pow(1.1, -biggestDifference)}");
                     return -(long)(medPrice * (Math.Pow(1.5, Math.Abs(biggestDifference)) - 1));
                 }
-                var keyhasCombo = AttributeComboLookup.TryGetValue(missingAttributes.Select(m => m.Key).First(), out var combo) && key.Modifiers.Any(m=>combo.Contains(m.Key));
+                var keyhasCombo = AttributeComboLookup.TryGetValue(missingAttributes.Select(m => m.Key).First(), out var combo) && key.Modifiers.Any(m => combo.Contains(m.Key));
                 var defaultDifference = (medPrice - Math.Pow(0.4, biggestDifference) * medPrice);
-                if(keyhasCombo)
+                if (keyhasCombo)
                 {
                     defaultDifference *= 1.6;
                 }
@@ -1677,15 +1677,53 @@ ORDER BY l.`AuctionId`  DESC;
                 if (item.SellSummary.Any())
                 {
                     refernces.Price = (long)item.SellSummary.First().PricePerUnit;
-                    BazaarPrices[item.ProductId] = refernces.Price;
                 }
                 else if (item.BuySummery.Any())
                 {
                     refernces.Price = (long)item.BuySummery.OrderBy(s => s.PricePerUnit).First().PricePerUnit;
+                }
+
+                // make sure higher enchants are higher value
+                if (item.ProductId.StartsWith("ENCHANTMENT"))
+                {
+                    MakePriceAtLeast90PercentHigherthanLowerLevel(item, refernces);
+                }
+
+                if (refernces.Price > 0)
                     BazaarPrices[item.ProductId] = refernces.Price;
+            }
+            // make sure higher enchants are higher value
+            foreach (var item in Lookups)
+            {
+                var lookup = item.Value;
+                var key = item.Key;
+                var refernces = lookup.Lookup.GetOrAdd(defaultKey, _ => new());
+                if (refernces.Price == 0)
+                    continue;
+                var higherEnchants = HigherValueKeys(defaultKey, lookup.Lookup, refernces.Price);
+                foreach (var higherEnchant in higherEnchants)
+                {
+                    if (lookup.Lookup.TryGetValue(higherEnchant, out var higherEnchantReference))
+                    {
+                        if (higherEnchantReference.Price == 0)
+                            higherEnchantReference.Price = refernces.Price + 1;
+                    }
                 }
             }
             Console.WriteLine($"Updated bazaar {Lookups.Count} items");
+
+            void MakePriceAtLeast90PercentHigherthanLowerLevel(dev.ProductInfo item, ReferenceAuctions refernces)
+            {
+                var currentLevel = int.Parse(item.ProductId.Split("_").Last());
+                if (currentLevel > 1)
+                {
+                    var lowerLevelId = item.ProductId.Replace($"_{currentLevel}", $"_{currentLevel - 1}");
+                    if (BazaarPrices.TryGetValue(lowerLevelId, out var lowerValue))
+                    {
+                        refernces.Price = (long)Math.Max(refernces.Price, lowerValue * 1.9);
+                    }
+                }
+            }
         }
 
         private bool PotentialSnipe(SaveAuction auction, double lbinPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue)

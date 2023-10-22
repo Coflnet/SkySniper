@@ -695,6 +695,17 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void HigherEnchantTierAreWorthMoreThanLowerBazaar()
+        {
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_1", 80_000_000,78_000_000);
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_2", 40, 3);
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_3", 50, 3);
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_4", 60, 3);
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_5", 0, 3);
+            Assert.AreEqual(1_042_568_000, service.Lookups["ENCHANTMENT_ULTIMATE_FATAL_TEMPO_5"].Lookup.First().Value.Price);
+        }
+
+        [Test]
         public void StonksExpDifference()
         {
             firstAuction.FlatenedNBT = new() { { "candyUsed", "0" }, { "exp", "5000000" } };
