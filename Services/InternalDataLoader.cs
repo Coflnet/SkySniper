@@ -286,7 +286,7 @@ namespace Coflnet.Sky.Sniper.Services
             });
             logger.LogInformation($"Loaded {i}/{differential}th of sell history");
             // ready if more than 20% loaded
-            if (i >= differential / 5)
+            if (i > differential / 5)
             {
                 UpdateAllMedian();
                 sniper.State = SniperState.Ready;
@@ -513,7 +513,7 @@ namespace Coflnet.Sky.Sniper.Services
             }
             Console.WriteLine("loaded lookup");
             if (sniper.Lookups.FirstOrDefault().Value?.Lookup?.Select(l => l.Value.References.Count()).FirstOrDefault() > 0)
-                sniper.State = SniperState.Ready;
+                sniper.State = SniperState.LadingLookup;
             await Kafka.KafkaConsumer.ConsumeBatch<SaveAuction>(ConsumerConfig, new string[] { config["TOPICS:SOLD_AUCTION"] }, async batch =>
             {
                 foreach (var a in batch)
