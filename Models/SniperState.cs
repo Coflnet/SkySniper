@@ -3,5 +3,6 @@ public enum SniperState
 {
     LoadingLbin,
     LadingLookup,
-    Ready
+    Ready,
+    FullyLoaded
 }

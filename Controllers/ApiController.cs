@@ -33,7 +33,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         [Route("/ready")]
         public ActionResult IsReady()
         {
-            if (service.State == SniperState.Ready)
+            if (service.State >= SniperState.Ready)
                 return Ok();
             else
                 return StatusCode(503);

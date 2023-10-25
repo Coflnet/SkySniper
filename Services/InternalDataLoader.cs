@@ -128,7 +128,7 @@ namespace Coflnet.Sky.Sniper.Services
 
         private async Task ConsumeNewAuctions(CancellationToken stoppingToken)
         {
-            while (sniper.State != SniperState.Ready)
+            while (sniper.State < SniperState.Ready)
                 await Task.Delay(1000);
             while (!stoppingToken.IsCancellationRequested)
                 try
@@ -257,6 +257,7 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 await LoadOnepass(maxId, batchSize, allStart, differential, i, stoppinToken);
             }
+            sniper.State = SniperState.FullyLoaded;
         }
 
         private async Task LoadOnepass(int maxId, int batchSize, int allStart, int differential, int i, CancellationToken stoppinToken)

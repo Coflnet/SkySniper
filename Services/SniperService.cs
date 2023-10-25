@@ -1347,7 +1347,7 @@ ORDER BY l.`AuctionId`  DESC;
                         return; // found a snipe, no need to check other lower value buckets
                 }
             }
-            if (shouldTryToFindClosest && triggerEvents && this.State == SniperState.Ready)
+            if (shouldTryToFindClosest && triggerEvents && this.State >= SniperState.Ready)
             {
                 TryFindClosestRisky(auction, l, ref lbinPrice, ref medPrice);
             }
@@ -1793,7 +1793,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (targetPrice < auction.StartingBid - 2000)
                 return false; // not profitable
             var refAge = (GetDay() - bucket.OldestRef);
-            if (refAge > 60)
+            if (refAge > 60 || State < SniperState.FullyLoaded && refAge > 5)
                 return false; // too old
             props["refAge"] = refAge.ToString();
             if (auction.Tag.StartsWith("PET_") && auction.FlatenedNBT.Any(f => f.Value == "PET_ITEM_TIER_BOOST") && !props["key"].Contains(TierBoostShorthand))
