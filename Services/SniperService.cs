@@ -19,20 +19,20 @@ namespace Coflnet.Sky.Sniper.Services
         public static int MIN_TARGET = 200_000;
         public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>(3, 2000);
 
-        private ConcurrentQueue<LogEntry> Logs = new ConcurrentQueue<LogEntry>();
-        private ConcurrentQueue<(SaveAuction, ReferenceAuctions)> LbinUpdates = new();
-        private ConcurrentQueue<string> RecentSnipeUids = new();
-        private AuctionKey defaultKey = new AuctionKey();
+        private readonly ConcurrentQueue<LogEntry> Logs = new ConcurrentQueue<LogEntry>();
+        private readonly ConcurrentQueue<(SaveAuction, ReferenceAuctions)> LbinUpdates = new();
+        private readonly ConcurrentQueue<string> RecentSnipeUids = new();
+        private readonly AuctionKey defaultKey = new AuctionKey();
         public SniperState State { get; set; } = SniperState.LoadingLbin;
-        private PropertyMapper mapper = new();
-        private (string, int)[] EmptyArray = new (string, int)[0];
-        private Dictionary<string, double> BazaarPrices = new();
-        private ConcurrentDictionary<(string, AuctionKey), (PriceEstimate result, DateTime addedAt)> ClosetLbinMapLookup = new();
-        private ConcurrentDictionary<(string, AuctionKey), (PriceEstimate result, DateTime addedAt)> ClosetMedianMapLookup = new();
+        private readonly PropertyMapper mapper = new();
+        private readonly (string, int)[] EmptyArray = new (string, int)[0];
+        private readonly Dictionary<string, double> BazaarPrices = new();
+        private readonly ConcurrentDictionary<(string, AuctionKey), (PriceEstimate result, DateTime addedAt)> ClosetLbinMapLookup = new();
+        private readonly ConcurrentDictionary<(string, AuctionKey), (PriceEstimate result, DateTime addedAt)> ClosetMedianMapLookup = new();
 
-        private Counter sellClosestSearch = Metrics.CreateCounter("sky_sniper_sell_closest_search", "Number of searches for closest sell");
-        private Counter closestMedianBruteCounter = Metrics.CreateCounter("sky_sniper_closest_median_brute", "Number of brute force searches for closest median");
-        private Counter closestLbinBruteCounter = Metrics.CreateCounter("sky_sniper_closest_lbin_brute", "Number of brute force searches for closest median");
+        private readonly Counter sellClosestSearch = Metrics.CreateCounter("sky_sniper_sell_closest_search", "Number of searches for closest sell");
+        private readonly Counter closestMedianBruteCounter = Metrics.CreateCounter("sky_sniper_closest_median_brute", "Number of brute force searches for closest median");
+        private readonly Counter closestLbinBruteCounter = Metrics.CreateCounter("sky_sniper_closest_lbin_brute", "Number of brute force searches for closest median");
 
         public event Action<LowPricedAuction> FoundSnipe;
         public void MockFoundFlip(LowPricedAuction auction)
@@ -167,11 +167,12 @@ namespace Coflnet.Sky.Sniper.Services
                 }
             }
             Console.WriteLine($"Finished processing {count} lbin updates");
-            var removeBefore = DateTime.UtcNow.AddHours(-1);
+            var removeBefore = DateTime.UtcNow.AddHours(-0.5);
             foreach (var item in ClosetLbinMapLookup.Where(c => c.Value.addedAt < removeBefore).ToList())
             {
                 ClosetLbinMapLookup.TryRemove(item.Key, out _);
             }
+            removeBefore = DateTime.UtcNow.AddHours(-1);
             foreach (var item in ClosetMedianMapLookup.Where(c => c.Value.addedAt < removeBefore).ToList())
             {
                 ClosetMedianMapLookup.TryRemove(item.Key, out _);
@@ -188,7 +189,7 @@ namespace Coflnet.Sky.Sniper.Services
             {"petItem", "PET_ITEM_"}
         };
         private readonly HypixelItemService itemService;
-        private Dictionary<Core.Enchantment.EnchantmentType, byte> MinEnchantMap = new();
+        private readonly Dictionary<Core.Enchantment.EnchantmentType, byte> MinEnchantMap = new();
 
         /** NOTES
 yogsKilled - needs further be looked into
@@ -283,7 +284,7 @@ ORDER BY l.`AuctionId`  DESC;
                 MinEnchantMap[enchant] = 6;
             }
 
-            foreach (var item in Coflnet.Sky.Core.Constants.RelevantEnchants)
+            foreach (var item in Constants.RelevantEnchants)
             {
                 MinEnchantMap[item.Type] = item.Level;
             }
@@ -751,10 +752,10 @@ ORDER BY l.`AuctionId`  DESC;
             return l.TryGetValue(KeyFromSaveAuction(auction, 3), out bucket);
         }
 
-        private static System.Collections.ObjectModel.ReadOnlyCollection<KeyValuePair<string, string>> EmptyModifiers = new(new List<KeyValuePair<string, string>>());
-        private static System.Collections.ObjectModel.ReadOnlyCollection<KeyValuePair<string, string>> EmptyPetModifiers = new(new List<KeyValuePair<string, string>>() { new("candyUsed", "0"), new("exp", "0") });
-        private static DateTime UnlockedIntroduction = new DateTime(2021, 9, 4);
-        private static List<string> GemPurities = new() { "PERFECT", "FLAWLESS", "FINE", "ROUGH" };
+        private static readonly System.Collections.ObjectModel.ReadOnlyCollection<KeyValuePair<string, string>> EmptyModifiers = new(new List<KeyValuePair<string, string>>());
+        private static readonly System.Collections.ObjectModel.ReadOnlyCollection<KeyValuePair<string, string>> EmptyPetModifiers = new(new List<KeyValuePair<string, string>>() { new("candyUsed", "0"), new("exp", "0") });
+        private static readonly DateTime UnlockedIntroduction = new DateTime(2021, 9, 4);
+        private static readonly List<string> GemPurities = new() { "PERFECT", "FLAWLESS", "FINE", "ROUGH" };
         public class RankElem
         {
             public long Value { get; set; }
@@ -784,7 +785,7 @@ ORDER BY l.`AuctionId`  DESC;
             var enchants = new List<Models.Enchant>();
             var modifiers = new List<KeyValuePair<string, string>>();
 
-            var shouldIncludeReforge = Coflnet.Sky.Core.Constants.RelevantReforges.Contains(auction.Reforge) && dropLevel < 3;
+            var shouldIncludeReforge = Constants.RelevantReforges.Contains(auction.Reforge) && dropLevel < 3;
             long valueSubstracted = 0;
             bool removedRarity = false;
             if (dropLevel == 0)
@@ -821,7 +822,7 @@ ORDER BY l.`AuctionId`  DESC;
                                 .Where(i => i.Key != Ignore.Key)
                             .ToList();
                 enchants = auction.Enchantments
-                    ?.Where(e => Coflnet.Sky.Core.Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
+                    ?.Where(e => Constants.RelevantEnchants.Where(el => el.Type == e.Type && el.Level <= e.Level).Any())
                             .Select(e => new Models.Enchant()
                             {
                                 Lvl = e.Level,
@@ -984,14 +985,14 @@ ORDER BY l.`AuctionId`  DESC;
             if (auction.Tag == null)
                 return ench;
             if (auction.Tag.Contains("GAUNTLET") || auction.Tag.Contains("DRILL"))
-                ench = RemoveEnchantFromKey(ench, Core.Enchantment.EnchantmentType.ultimate_wise);
+                ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.ultimate_wise);
             if (auction.Tag.StartsWith("DIVAN_"))
             {
-                ench = RemoveEnchantFromKey(ench, Core.Enchantment.EnchantmentType.ultimate_legion);
-                ench = RemoveEnchantFromKey(ench, Core.Enchantment.EnchantmentType.ultimate_wisdom);
+                ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.ultimate_legion);
+                ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.ultimate_wisdom);
             }
             if (!auction.Tag.EndsWith("KATANA"))
-                ench = RemoveEnchantFromKey(ench, Core.Enchantment.EnchantmentType.ender_slayer, 6);
+                ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.ender_slayer, 6);
             return ench;
         }
 
@@ -1206,16 +1207,16 @@ ORDER BY l.`AuctionId`  DESC;
                     yield return item;
                 }
             }
-            var compactEnch = baseKey.Enchants.FirstOrDefault(e => e.Type == Core.Enchantment.EnchantmentType.compact && e.Lvl >= 5);
+            var compactEnch = baseKey.Enchants.FirstOrDefault(e => e.Type == Enchantment.EnchantmentType.compact && e.Lvl >= 5);
             if (compactEnch.Lvl != default)
             {
                 for (int i = compactEnch.Lvl + 1; i < 10; i++)
                 {
                     yield return new AuctionKey(baseKey)
                     {
-                        Enchants = baseKey.Enchants.Where(e => e.Type != Core.Enchantment.EnchantmentType.compact).Append(new()
+                        Enchants = baseKey.Enchants.Where(e => e.Type != Enchantment.EnchantmentType.compact).Append(new()
                         {
-                            Type = Core.Enchantment.EnchantmentType.compact,
+                            Type = Enchantment.EnchantmentType.compact,
                             Lvl = (byte)i
                         }).OrderBy(e => e.Type).ToList().AsReadOnly()
                     };

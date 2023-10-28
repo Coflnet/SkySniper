@@ -17,7 +17,7 @@ public class CraftCostService : BackgroundService, ICraftCostService
 {
     private readonly ICraftsApi craftsApi;
     private readonly ILogger<CraftCostService> logger;
-    private Dictionary<string, double> costs = new Dictionary<string, double>();
+    private readonly Dictionary<string, double> costs = new Dictionary<string, double>();
 
     public CraftCostService(ICraftsApi craftsApi, ILogger<CraftCostService> logger)
     {

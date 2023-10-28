@@ -18,25 +18,25 @@ namespace Coflnet.Sky.Sniper.Services
 {
     public class InternalDataLoader : BackgroundService
     {
-        SniperService sniper;
-        private IConfiguration config;
-        private IPersitanceManager persitance;
-        private string LowPricedAuctionTopic;
-        private ActivitySource activitySource;
-        private ActiveUpdater activeUpdater;
-        private Kafka.KafkaCreator kafkaCreator;
-        private PartialCalcService partialCalcService;
-        private IMayorService mayorService;
+        readonly SniperService sniper;
+        private readonly IConfiguration config;
+        private readonly IPersitanceManager persitance;
+        private readonly string LowPricedAuctionTopic;
+        private readonly ActivitySource activitySource;
+        private readonly ActiveUpdater activeUpdater;
+        private readonly Kafka.KafkaCreator kafkaCreator;
+        private readonly PartialCalcService partialCalcService;
+        private readonly IMayorService mayorService;
         public event Action<LowPricedAuction> FoundPartialFlip;
 
-        private ILogger<InternalDataLoader> logger;
+        private readonly ILogger<InternalDataLoader> logger;
         private IProducer<string, LowPricedAuction> FlipProducer;
 
-        Prometheus.Counter foundFlipCount = Prometheus.Metrics
+        readonly Prometheus.Counter foundFlipCount = Prometheus.Metrics
                     .CreateCounter("sky_sniper_found_flips", "Number of flips found");
-        Prometheus.Counter auctionsReceived = Prometheus.Metrics
+        readonly Prometheus.Counter auctionsReceived = Prometheus.Metrics
                     .CreateCounter("sky_sniper_auction_received", "Number of auctions received");
-        Prometheus.Counter soldReceived = Prometheus.Metrics
+        readonly Prometheus.Counter soldReceived = Prometheus.Metrics
                     .CreateCounter("sky_sniper_sold_received", "Number of sold auctions received");
 
         public InternalDataLoader(
@@ -134,7 +134,7 @@ namespace Coflnet.Sky.Sniper.Services
                 try
                 {
                     logger.LogInformation("consuming new ");
-                    await Kafka.KafkaConsumer.ConsumeBatch<SaveAuction>(ConsumerConfig, new string[] { config["TOPICS:NEW_AUCTION"] }, auctions =>
+                    await KafkaConsumer.ConsumeBatch<SaveAuction>(ConsumerConfig, new string[] { config["TOPICS:NEW_AUCTION"] }, auctions =>
                     {
                         foreach (var a in auctions)
                         {
@@ -455,7 +455,7 @@ namespace Coflnet.Sky.Sniper.Services
         private async Task ActiveUpdater(CancellationToken stoppingToken)
         {
             await RunTilStopped(
-                Kafka.KafkaConsumer.Consume<AhStateSumary>(config, config["TOPICS:AH_SUMARY"], activeUpdater.ProcessSumary, stoppingToken, ConsumerConfig.GroupId, AutoOffsetReset.Latest)
+                KafkaConsumer.Consume<AhStateSumary>(config, config["TOPICS:AH_SUMARY"], activeUpdater.ProcessSumary, stoppingToken, ConsumerConfig.GroupId, AutoOffsetReset.Latest)
             , stoppingToken);
         }
 
@@ -463,7 +463,7 @@ namespace Coflnet.Sky.Sniper.Services
         {
             Console.WriteLine("starting bazaar");
             await RunTilStopped(
-                Coflnet.Kafka.KafkaConsumer.ConsumeBatch<dev.BazaarPull>(ConsumerConfig, new string[] { config["TOPICS:BAZAAR"] }, batch =>
+                KafkaConsumer.ConsumeBatch<dev.BazaarPull>(ConsumerConfig, new string[] { config["TOPICS:BAZAAR"] }, batch =>
                 {
                     foreach (var item in batch)
                     {
@@ -477,7 +477,7 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         private ConsumerConfig ConsumerConfig =>
-            new ConsumerConfig(KafkaCreator.GetClientConfig(config))
+            new (KafkaCreator.GetClientConfig(config))
             {
                 SessionTimeoutMs = 9_000,
                 AutoOffsetReset = AutoOffsetReset.Latest,
@@ -515,7 +515,7 @@ namespace Coflnet.Sky.Sniper.Services
             Console.WriteLine("loaded lookup");
             if (sniper.Lookups.FirstOrDefault().Value?.Lookup?.Select(l => l.Value.References.Count()).FirstOrDefault() > 0)
                 sniper.State = SniperState.LadingLookup;
-            await Kafka.KafkaConsumer.ConsumeBatch<SaveAuction>(ConsumerConfig, new string[] { config["TOPICS:SOLD_AUCTION"] }, async batch =>
+            await KafkaConsumer.ConsumeBatch<SaveAuction>(ConsumerConfig, new string[] { config["TOPICS:SOLD_AUCTION"] }, async batch =>
             {
                 foreach (var a in batch)
                 {

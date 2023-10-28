@@ -17,9 +17,9 @@ namespace Coflnet.Sky.Sniper.Services
     public class S3PersistanceManager : IPersitanceManager
     {
         private const string PartialObjectStoreKey = "partialsMidJuly";
-        private IConfiguration config;
-        private ILogger<S3PersistanceManager> logger;
-        private AmazonS3Client s3Client;
+        private readonly IConfiguration config;
+        private readonly ILogger<S3PersistanceManager> logger;
+        private readonly AmazonS3Client s3Client;
 
         public S3PersistanceManager(IConfiguration config, ILogger<S3PersistanceManager> logger)
         {

@@ -16,9 +16,9 @@ public interface IMayorService
 
 public class MayorService : BackgroundService, IMayorService
 {
-    private Dictionary<int, string> YearToMayorName = new();
-    private Mayor.Client.Api.IMayorApi mayorApi;
-    private IElectionPeriodsApi electionPeriodsApi;
+    private readonly Dictionary<int, string> YearToMayorName = new();
+    private readonly Mayor.Client.Api.IMayorApi mayorApi;
+    private readonly IElectionPeriodsApi electionPeriodsApi;
     private readonly ILogger<MayorService> logger;
 
     public MayorService(IMayorApi mayorApi, IElectionPeriodsApi electionPeriodsApi, ILogger<MayorService> logger)
@@ -60,7 +60,7 @@ public class MayorService : BackgroundService, IMayorService
         {
             try
             {
-                mayors = await electionPeriodsApi.ElectionPeriodRangeGetAsync(0, System.DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                mayors = await electionPeriodsApi.ElectionPeriodRangeGetAsync(0, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
             }
             catch (System.Exception)
             {

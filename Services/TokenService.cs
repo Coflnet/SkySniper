@@ -16,10 +16,10 @@ public interface ITokenService
 
 public class TokenService : ITokenService
 {
-    private string secret;
-    private string previousSecret;
+    private readonly string secret;
+    private readonly string previousSecret;
 
-    private ConcurrentDictionary<long, int> tokenUsages = new ();
+    private readonly ConcurrentDictionary<long, int> tokenUsages = new ();
 
 
     public TokenService(IConfiguration config)

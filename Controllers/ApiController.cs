@@ -18,8 +18,8 @@ namespace Coflnet.Sky.Sniper.Controllers
     public class SniperController : ControllerBase
     {
         private readonly ILogger<SniperController> _logger;
-        private SniperService service;
-        private ITokenService tokenService;
+        private readonly SniperService service;
+        private readonly ITokenService tokenService;
 
         public SniperController(ILogger<SniperController> logger, SniperService service, ITokenService tokenService)
         {
@@ -129,7 +129,7 @@ namespace Coflnet.Sky.Sniper.Controllers
             {
                 try
                 {
-                    Console.WriteLine("a: " + Newtonsoft.Json.JsonConvert.SerializeObject(a));
+                    Console.WriteLine("a: " + JsonConvert.SerializeObject(a));
                     return service.GetPrice(a);
                 }
                 catch (Exception e)

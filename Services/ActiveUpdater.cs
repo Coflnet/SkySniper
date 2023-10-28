@@ -9,9 +9,9 @@ namespace Coflnet.Sky.Sniper.Services
 {
     public class ActiveUpdater
     {
-        private Queue<AhStateSumary> RecentUpdates = new Queue<AhStateSumary>();
-        private ActivitySource activitySource;
-        private SniperService sniper;
+        private readonly Queue<AhStateSumary> RecentUpdates = new Queue<AhStateSumary>();
+        private readonly ActivitySource activitySource;
+        private readonly SniperService sniper;
         public ActiveUpdater(SniperService sniper, ActivitySource activitySource)
         {
             this.sniper = sniper;

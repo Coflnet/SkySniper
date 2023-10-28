@@ -12,9 +12,9 @@ namespace Coflnet.Sky.Sniper.Controllers;
 [Route("api/[controller]")]
 public class PartialController
 {
-    private InternalDataLoader inter;
-    private PartialCalcService partialCalcService;
-    private RetrainService retrainService;
+    private readonly InternalDataLoader inter;
+    private readonly PartialCalcService partialCalcService;
+    private readonly RetrainService retrainService;
 
     public PartialController(InternalDataLoader inter, PartialCalcService partialCalcService, RetrainService retrainService)
     {

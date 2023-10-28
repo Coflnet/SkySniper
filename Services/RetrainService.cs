@@ -11,13 +11,13 @@ namespace Coflnet.Sky.Sniper.Services;
 
 public class RetrainService : BackgroundService
 {
-    private PartialCalcService partialCalcService;
-    private InternalDataLoader internalDataLoader;
-    private IConnectionMultiplexer redis;
-    private ILogger<RetrainService> logger;
-    string streamName = "retrain";
-    string groupName = "retrain";
-    private Dictionary<string, DateTime> lastRetrain = new();
+    private readonly PartialCalcService partialCalcService;
+    private readonly InternalDataLoader internalDataLoader;
+    private readonly IConnectionMultiplexer redis;
+    private readonly ILogger<RetrainService> logger;
+    readonly string streamName = "retrain";
+    readonly string groupName = "retrain";
+    private readonly Dictionary<string, DateTime> lastRetrain = new();
 
     public RetrainService(PartialCalcService partialCalcService, InternalDataLoader internalDataLoader, IConnectionMultiplexer redis, ILogger<RetrainService> logger)
     {

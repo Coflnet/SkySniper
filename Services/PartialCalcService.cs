@@ -14,17 +14,17 @@ namespace Coflnet.Sky.Sniper.Services;
 #nullable enable
 public class PartialCalcService
 {
-    private ConcurrentDictionary<string, PriceLookup> Lookups;
+    private readonly ConcurrentDictionary<string, PriceLookup> Lookups;
     private ConcurrentDictionary<string, AttributeLookup> AttributeLookups = new();
-    private PropertyMapper Mapper = new();
-    private ICraftCostService CraftCostService = null!;
-    private IMayorService mayorService = null!;
-    private IPersitanceManager persitanceManager = null!;
-    private ILogger<PartialCalcService> logger = null!;
+    private readonly PropertyMapper Mapper = new();
+    private readonly ICraftCostService CraftCostService = null!;
+    private readonly IMayorService mayorService = null!;
+    private readonly IPersitanceManager persitanceManager = null!;
+    private readonly ILogger<PartialCalcService> logger = null!;
     private double adjustRate = 0.01;
-    private SniperService sniper;
+    private readonly SniperService sniper;
     public bool IsPrimary { get; set; }
-    private Dictionary<string, int> EnchTableLookup = new();
+    private readonly Dictionary<string, int> EnchTableLookup = new();
 
     public IEnumerable<string> ItemKeys => Lookups.Keys;
 

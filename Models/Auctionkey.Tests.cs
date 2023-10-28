@@ -55,7 +55,7 @@ public class AuctionkeyTests
     public void DifferentEnchantsDecrease()
     {
         var key = new AuctionKey();
-        var keyB = new AuctionKey() { Enchants = new List<Enchant>() { new Enchant() { Lvl = 1, Type = Core.Enchantment.EnchantmentType.angler } }.AsReadOnly() };
+        var keyB = new AuctionKey() { Enchants = new List<Enchant>() { new Enchant() { Lvl = 1, Type = EnchantmentType.angler } }.AsReadOnly() };
         // by default reforge and tier match
         Assert.Greater(key.Similarity(key), keyB.Similarity(key), "extra enchants should decrease");
     }
@@ -64,7 +64,7 @@ public class AuctionkeyTests
     {
         // the issue likely has something to do with enrichments, TODO: add enrichments
         var auctionA = new SaveAuction() { FlatenedNBT = new(), Tag = "CANDY_RELIC", Tier = Tier.LEGENDARY };
-        var b = Services.SniperServiceTests.Dupplicate(auctionA);
+        var b = SniperServiceTests.Dupplicate(auctionA);
         b.FlatenedNBT.Add("rarity_upgrades", "1");
         b.Tier = Tier.MYTHIC;
         var sniperService = new SniperService(null);
@@ -78,15 +78,15 @@ public class AuctionkeyTests
         var key = new AuctionKey()
         {
             Reforge = ItemReferences.Reforge.Any,
-            Enchants = new List<Enchant>() { new() { Type = Core.Enchantment.EnchantmentType.execute, Lvl = 8 } }.AsReadOnly(),
+            Enchants = new List<Enchant>() { new() { Type = EnchantmentType.execute, Lvl = 8 } }.AsReadOnly(),
             Modifiers = new(new List<KeyValuePair<string, string>>())
         };
         System.Console.WriteLine(key);
         var auction = new SaveAuction()
         {
             Enchantments = new() {
-                new() { Level = 6, Type = Core.Enchantment.EnchantmentType.luck },
-                 new() { Level = 8, Type = Core.Enchantment.EnchantmentType.execute }
+                new() { Level = 6, Type = EnchantmentType.luck },
+                 new() { Level = 8, Type = EnchantmentType.execute }
              }
         };
         // by default reforge and tier match
@@ -97,19 +97,19 @@ public class AuctionkeyTests
     {
         var baseAuction = new SaveAuction()
         {
-            Enchantments = new() { new(Core.Enchantment.EnchantmentType.ultimate_legion, 5) },
+            Enchantments = new() { new(EnchantmentType.ultimate_legion, 5) },
             FlatenedNBT = new() { { "rarity_upgrades", "1" }, { "unlocked_slots", "UNIVERSAL_0" } },
             Tier = Tier.MYTHIC
         };
         var targetAuction = new SaveAuction()
         {
-            Enchantments = new() { new(Core.Enchantment.EnchantmentType.ultimate_legion, 5) },
+            Enchantments = new() { new(EnchantmentType.ultimate_legion, 5) },
             FlatenedNBT = new() { { "rarity_upgrades", "1" } },
             Tier = Tier.MYTHIC
         };
         var badAuction = new SaveAuction()
         {
-            Enchantments = new() { new(Core.Enchantment.EnchantmentType.growth, 5) },
+            Enchantments = new() { new(EnchantmentType.growth, 5) },
             FlatenedNBT = new() { { "rarity_upgrades", "1" } },
             Tier = Tier.MYTHIC
         };
@@ -290,7 +290,7 @@ public class AuctionkeyTests
         var close = Create();
         close.Tier = Tier.SPECIAL;
         var far = Create();
-        far = far.WithEnchants(new List<Enchant>() { new() { Type = Core.Enchantment.EnchantmentType.efficiency, Lvl = 10 } });
+        far = far.WithEnchants(new List<Enchant>() { new() { Type = EnchantmentType.efficiency, Lvl = 10 } });
 
         var simValue = clean.Similarity(close);
         System.Console.WriteLine(simValue);
@@ -314,10 +314,10 @@ public class AuctionkeyTests
     [Test]
     public void SameEnchantIsCloser()
     {
-        var baseKey = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 5);
+        var baseKey = CreateWithEnchant(EnchantmentType.ultimate_legion, 5);
 
-        var closer = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 4);
-        var lvl2 = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_duplex, 4);
+        var closer = CreateWithEnchant(EnchantmentType.ultimate_legion, 4);
+        var lvl2 = CreateWithEnchant(EnchantmentType.ultimate_duplex, 4);
 
         var simValue = baseKey.Similarity(closer);
         System.Console.WriteLine(simValue);
@@ -327,10 +327,10 @@ public class AuctionkeyTests
     [Test]
     public void LowerEnchantIsCloser()
     {
-        var baseKey = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 5);
+        var baseKey = CreateWithEnchant(EnchantmentType.ultimate_legion, 5);
 
-        var closer = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 4);
-        var lvl2 = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 6);
+        var closer = CreateWithEnchant(EnchantmentType.ultimate_legion, 4);
+        var lvl2 = CreateWithEnchant(EnchantmentType.ultimate_legion, 6);
 
         var simValue = baseKey.Similarity(closer);
         System.Console.WriteLine(simValue);
@@ -343,21 +343,21 @@ public class AuctionkeyTests
     {
         var differentEnchants = new List<Enchant>(){
                 new Enchant(){
-                    Type = Core.Enchantment.EnchantmentType.luck,
+                    Type = EnchantmentType.luck,
                     Lvl = 6
                 },
                 new Enchant(){
-                    Type = Core.Enchantment.EnchantmentType.critical,
+                    Type = EnchantmentType.critical,
                     Lvl = 6
                 }
             };
 
-        var baseKey = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 5);
+        var baseKey = CreateWithEnchant(EnchantmentType.ultimate_legion, 5);
         //   baseKey.Enchants.AddRange(differentEnchants); TODO REMOVE
 
-        var closer = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_legion, 5);
+        var closer = CreateWithEnchant(EnchantmentType.ultimate_legion, 5);
 
-        var lvl2 = CreateWithEnchant(Core.Enchantment.EnchantmentType.ultimate_duplex, 5);
+        var lvl2 = CreateWithEnchant(EnchantmentType.ultimate_duplex, 5);
         //   lvl2.Enchants.AddRange(differentEnchants);
 
         var simValue = baseKey.Similarity(closer);
@@ -401,7 +401,7 @@ public class AuctionkeyTests
     {
         var auction = new SaveAuction()
         {
-            Enchantments = new() { new(Core.Enchantment.EnchantmentType.ultimate_wise, 5) },
+            Enchantments = new() { new(EnchantmentType.ultimate_wise, 5) },
             FlatenedNBT = new() { { "rarity_upgrades", "1" } },
             Tier = Tier.MYTHIC,
             Tag = "DEMONLORD_GAUNTLET"
@@ -415,7 +415,7 @@ public class AuctionkeyTests
     {
         var auction = new SaveAuction()
         {
-            Enchantments = new() { new(Core.Enchantment.EnchantmentType.efficiency, 10) },
+            Enchantments = new() { new(EnchantmentType.efficiency, 10) },
             Tag = "DEMONLORD_GAUNTLET"
         };
         var key = service.KeyFromSaveAuction(auction);
@@ -427,7 +427,7 @@ public class AuctionkeyTests
     {
         var auction = new SaveAuction()
         {
-            Enchantments = new() { new(Core.Enchantment.EnchantmentType.power, 6) },
+            Enchantments = new() { new(EnchantmentType.power, 6) },
             Tag = "DEMONLORD_GAUNTLET"
         };
         var key = service.KeyFromSaveAuction(auction);
@@ -452,26 +452,26 @@ public class AuctionkeyTests
         var baseAuction = new SaveAuction()
         {
             Enchantments = new() {
-                    new(Core.Enchantment.EnchantmentType.impaling, 3),
-                    new(Core.Enchantment.EnchantmentType.luck, 6),
-                    new(Core.Enchantment.EnchantmentType.critical, 6),
-                    new(Core.Enchantment.EnchantmentType.cleave, 5),
-                    new(Core.Enchantment.EnchantmentType.looting, 4),
-                    new(Core.Enchantment.EnchantmentType.smite, 7),
-                    new(Core.Enchantment.EnchantmentType.ender_slayer, 6),
-                    new(Core.Enchantment.EnchantmentType.scavenger, 4),
-                    new(Core.Enchantment.EnchantmentType.experience, 4),
-                    new(Core.Enchantment.EnchantmentType.vampirism, 6),
-                    new(Core.Enchantment.EnchantmentType.fire_aspect, 2),
-                    new(Core.Enchantment.EnchantmentType.life_steal, 4),
-                    new(Core.Enchantment.EnchantmentType.giant_killer, 6),
-                    new(Core.Enchantment.EnchantmentType.first_strike, 4),
-                    new(Core.Enchantment.EnchantmentType.thunderlord, 6),
-                    new(Core.Enchantment.EnchantmentType.ultimate_wise, 5),
-                    new(Core.Enchantment.EnchantmentType.cubism, 5),
-                    new(Core.Enchantment.EnchantmentType.champion, 4),
-                    new(Core.Enchantment.EnchantmentType.lethality, 6),
-                    new(Core.Enchantment.EnchantmentType.PROSECUTE, 5),
+                    new(EnchantmentType.impaling, 3),
+                    new(EnchantmentType.luck, 6),
+                    new(EnchantmentType.critical, 6),
+                    new(EnchantmentType.cleave, 5),
+                    new(EnchantmentType.looting, 4),
+                    new(EnchantmentType.smite, 7),
+                    new(EnchantmentType.ender_slayer, 6),
+                    new(EnchantmentType.scavenger, 4),
+                    new(EnchantmentType.experience, 4),
+                    new(EnchantmentType.vampirism, 6),
+                    new(EnchantmentType.fire_aspect, 2),
+                    new(EnchantmentType.life_steal, 4),
+                    new(EnchantmentType.giant_killer, 6),
+                    new(EnchantmentType.first_strike, 4),
+                    new(EnchantmentType.thunderlord, 6),
+                    new(EnchantmentType.ultimate_wise, 5),
+                    new(EnchantmentType.cubism, 5),
+                    new(EnchantmentType.champion, 4),
+                    new(EnchantmentType.lethality, 6),
+                    new(EnchantmentType.PROSECUTE, 5),
                 },
             FlatenedNBT = new() { { "rarity_upgrades", "1" },
                 { "hpc", "15" },
@@ -482,20 +482,20 @@ public class AuctionkeyTests
             Reforge = ItemReferences.Reforge.withered,
             Tag = "HYPERION"
         };
-        var comparedTo = Services.SniperServiceTests.Dupplicate(baseAuction);
-        comparedTo.Enchantments = new List<Core.Enchantment>() { new(Core.Enchantment.EnchantmentType.ultimate_legion, 5) };
+        var comparedTo = SniperServiceTests.Dupplicate(baseAuction);
+        comparedTo.Enchantments = new List<Core.Enchantment>() { new(EnchantmentType.ultimate_legion, 5) };
         comparedTo.HighestBidAmount = 1_000_000;
-        service.AddSoldItem(Services.SniperServiceTests.Dupplicate(comparedTo));
-        service.AddSoldItem(Services.SniperServiceTests.Dupplicate(comparedTo));
-        service.AddSoldItem(Services.SniperServiceTests.Dupplicate(comparedTo));
-        service.AddSoldItem(Services.SniperServiceTests.Dupplicate(comparedTo));
+        service.AddSoldItem(SniperServiceTests.Dupplicate(comparedTo));
+        service.AddSoldItem(SniperServiceTests.Dupplicate(comparedTo));
+        service.AddSoldItem(SniperServiceTests.Dupplicate(comparedTo));
+        service.AddSoldItem(SniperServiceTests.Dupplicate(comparedTo));
         service.FinishedUpdate();
         LowPricedAuction flip = null;
         service.FoundSnipe += (f) =>
         {
             flip = f;
         };
-        var toExpensive = Services.SniperServiceTests.Dupplicate(baseAuction);
+        var toExpensive = SniperServiceTests.Dupplicate(baseAuction);
         toExpensive.StartingBid = 890_000;
         service.TestNewAuction(toExpensive);
         // Non exact matches have to have higher profit

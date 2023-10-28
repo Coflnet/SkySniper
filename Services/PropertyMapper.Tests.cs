@@ -4,7 +4,7 @@ using NUnit.Framework;
 namespace Coflnet.Sky.Sniper.Services;
 public class PropertyMapperTests
 {
-    private PropertyMapper mapper = new();
+    private readonly PropertyMapper mapper = new();
     [Test]
     public void MasterStarsIngredients()
     {

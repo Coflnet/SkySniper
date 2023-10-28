@@ -92,7 +92,7 @@ public class PartialCalcTests
             FlatenedNBT = new(),
             Enchantments = new()
             {
-                new Core.Enchantment(Core.Enchantment.EnchantmentType.ultimate_legion, 5)
+                new Core.Enchantment(Enchantment.EnchantmentType.ultimate_legion, 5)
             }
         }, 100);
         var result = Service.GetPrice(item);
@@ -233,8 +233,8 @@ public class PartialCalcTests
             HighestBidAmount = 800_000_000,
             Enchantments = new()
             {
-                new Core.Enchantment(Core.Enchantment.EnchantmentType.impaling, 3),
-                new Core.Enchantment(Core.Enchantment.EnchantmentType.aiming, 2)
+                new Core.Enchantment(Enchantment.EnchantmentType.impaling, 3),
+                new Core.Enchantment(Enchantment.EnchantmentType.aiming, 2)
             }
         }, 100);
         craftcost.Values["ENCHANTMENT_IMPALING_5"] = 1500;
@@ -268,7 +268,7 @@ public class PartialCalcTests
             HighestBidAmount = 800_000_000,
             Enchantments = new()
             {
-                new Core.Enchantment(Core.Enchantment.EnchantmentType.cleave, 5)
+                new Core.Enchantment(Enchantment.EnchantmentType.cleave, 5)
             }
         }, 100);
         await Service.CapAtCraftCost();
