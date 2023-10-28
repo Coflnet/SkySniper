@@ -323,14 +323,18 @@ ORDER BY l.`AuctionId`  DESC;
             if (result.Median == default)
             {
                 var now = DateTime.UtcNow;
-                var res = ClosetMedianMapLookup.GetOrAdd((auction.Tag, itemKey), a =>
+                var res = ClosetMedianMapLookup.GetOrAdd(((string, AuctionKey))(auction.Tag, itemKey), a =>
                 {
                     closestMedianBruteCounter.Inc();
                     foreach (var c in FindClosest(l, itemKey))
                     {
                         AssignMedian(result, c.Key, c.Value);
-                        AdjustMedianForModifiers(result, itemKey, c, auction);
-                        AdjustForMissingEnchants(result, itemKey, c);
+                        GetDifferenceSum(auction, result, itemKey, c, out var diffExp, out var changeAmount);
+                        if (changeAmount != 0)
+                        {
+                            result.Median -= changeAmount;
+                            result.MedianKey += diffExp;
+                        }
                         if (Random.Shared.NextDouble() < 0.05)
                             Console.WriteLine($"no match found for {auction.Tag} {itemKey} options: {l.Count} {c.Key}");
                         if (result.Median > 0)
@@ -357,6 +361,19 @@ ORDER BY l.`AuctionId`  DESC;
                     {
                         result.Lbin = closest.Value.Lbin;
                         result.LbinKey = closest.Key.ToString();
+
+                        GetDifferenceSum(auction, result, itemKey, closest, out var diffExp, out var changeAmount);
+                        if (changeAmount != 0)
+                        {
+                            result.Lbin = new ReferencePrice()
+                            {
+                                AuctionId = result.Lbin.AuctionId,
+                                Day = result.Lbin.Day,
+                                Price = result.Lbin.Price - changeAmount,
+                                Seller = result.Lbin.Seller
+                            };
+                            result.LbinKey += diffExp;
+                        }
                     }
                     return (result, now);
                 });
@@ -375,7 +392,15 @@ ORDER BY l.`AuctionId`  DESC;
             return result;
         }
 
-        private void AdjustForMissingEnchants(PriceEstimate result, AuctionKey itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> closest)
+        private void GetDifferenceSum(SaveAuction auction, PriceEstimate result, AuctionKeyWithValue itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> c, out string diffExp, out long changeAmount)
+        {
+            (var modVal, var modExp) = AdjustMedianForModifiers(result, itemKey, c, auction);
+            (var enchal, var enchExp) = AdjustForMissingEnchants(result, itemKey, c);
+            diffExp = modExp + enchExp;
+            changeAmount = modVal + enchal;
+        }
+
+        private (long substract, string add) AdjustForMissingEnchants(PriceEstimate result, AuctionKey itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> closest)
         {
             // closest should be bigger 
             var missingEnchants = closest.Key.Enchants.Where(m => !itemKey.Enchants.Any(e => e.Type == m.Type && e.Lvl >= m.Lvl)).ToList();
@@ -384,13 +409,13 @@ ORDER BY l.`AuctionId`  DESC;
                 var enchCost = GetPriceSumForEnchants(missingEnchants);
                 if (enchCost > 0)
                 {
-                    result.Median -= enchCost;
-                    result.MedianKey += $"-{string.Join(",", missingEnchants.Select(m => $"{m.Type}{m.Lvl}"))}";
+                    return (enchCost, $"-{string.Join(",", missingEnchants.Select(m => $"{m.Type}{m.Lvl}"))}");
                 }
             }
+            return (0, string.Empty);
         }
 
-        private void AdjustMedianForModifiers(PriceEstimate result, AuctionKey itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> closest, SaveAuction auction)
+        private (long sub, string exp) AdjustMedianForModifiers(PriceEstimate result, AuctionKey itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> closest, SaveAuction auction)
         {
             var missingModifiers = closest.Key.Modifiers.Where(m => !itemKey.Modifiers.Contains(m)).ToList();
             if (missingModifiers.Count > 0)
@@ -399,10 +424,10 @@ ORDER BY l.`AuctionId`  DESC;
                 median += AdjustForAttributes(result.Median, itemKey, missingModifiers);
                 if (median != 0)
                 {
-                    result.Median -= median;
-                    result.MedianKey += $"- {string.Join(",", missingModifiers.Select(m => m.Value))}";
+                    return (median, $"- {string.Join(",", missingModifiers.Select(m => m.Value))}");
                 }
             }
+            return (0, string.Empty);
         }
 
         private long GetPriceSumForModifiers(List<KeyValuePair<string, string>> missingModifiers, IEnumerable<KeyValuePair<string, string>> modifiers, SaveAuction auction)

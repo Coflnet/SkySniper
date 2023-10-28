@@ -884,6 +884,25 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(51000000, price.Median);
             Assert.AreEqual("sharpness=7 Any  UNKNOWN 0-sharpness7", price.MedianKey);
         }
+        [Test]
+        public void AdjustForDifferentPetItemInLbin()
+        {
+            highestValAuction.FlatenedNBT = new();
+            var withSkin = Dupplicate(highestValAuction);
+            withSkin.HighestBidAmount = 150_000_000;
+            withSkin.FlatenedNBT.Add("heldItem", "PET_ITEM_QUICK_CLAW");
+            AddVolume(withSkin);
+            var lbin = Dupplicate(withSkin);
+            // random value to make sure its not a sideeffect
+            var random = Random.Shared.Next(1, 10000);
+            lbin.StartingBid = 140_000_000 + random;
+            lbin.HighestBidAmount = 0;
+            service.TestNewAuction(lbin);
+            service.FinishedUpdate();
+            SetBazaarPrice("PET_ITEM_QUICK_CLAW", 99_000_000);
+            var price = service.GetPrice(highestValAuction);
+            Assert.AreEqual(41_000_000 + random, price.Lbin.Price, JsonConvert.SerializeObject(price));
+        }
 
         private void SetBazaarPrice(string tag, int value, int buyValue = 0)
         {
