@@ -13,6 +13,7 @@ public class PartialCalcTests
     private PartialCalcService Service = null!;
     private SniperService sniper = null!;
     private CraftcostMock craftcost = null!;
+    private Core.Services.HypixelItemService itemService = null!;
     private class CraftcostMock : ICraftCostService
     {
         public Dictionary<string, double> Values = new();
@@ -31,9 +32,17 @@ public class PartialCalcTests
     [SetUp]
     public void Setup()
     {
-        sniper = new SniperService(null);
         craftcost = new CraftcostMock();
-        Service = new PartialCalcService(sniper, craftcost, new MayorMock(), new MockPersistenceManager(), NullLogger<PartialCalcService>.Instance);
+        itemService = new Core.Services.HypixelItemService(null, NullLogger<Core.Services.HypixelItemService>.Instance);
+
+        sniper = new SniperService(itemService);
+        Service = new PartialCalcService(
+            sniper,
+            craftcost,
+            new MayorMock(),
+            new MockPersistenceManager(),
+            NullLogger<PartialCalcService>.Instance,
+            itemService);
         AddSell(new SaveAuction()
         {
             Tag = "CLEAN",
@@ -276,6 +285,51 @@ public class PartialCalcTests
         Console.WriteLine(string.Join("\n", result.BreakDown));
         // capped at 50k - no enchant from ench table is worth more than that
         Assert.AreEqual("ench.cleave 5: 50000.0", result.BreakDown[1].Replace(",", "."));
+    }
+
+    [Test]
+    public async Task CapLevel5Star()
+    {
+        var item = new Item()
+        {
+            Tag = "HYPERION",
+            ExtraAttributes = new()
+            {
+                { "tier", "EPIC" },
+                { "upgrade_level", "5" }
+            }
+        };
+        Service.SetLearningRate(0.1);
+        AddSell(new SaveAuction()
+        {
+            Tag = "HYPERION",
+            Tier = Tier.EPIC,
+            HighestBidAmount = 800_000_000,
+            FlatenedNBT = new()
+            {
+                { "upgrade_level", "5" }
+            }
+        }, 100);
+        await itemService.GetItemsAsync();
+        sniper.UpdateBazaar(new()
+        {
+            Products = new(){
+                new   (){
+                    ProductId = "ESSENCE_WITHER",
+                    BuySummery = new (){
+                        new (){
+                            PricePerUnit = 2345,
+                        }
+                    },
+                    SellSummary = new()
+                }
+            }
+        });
+        await Service.CapAtCraftCost();
+        var result = Service.GetPrice(item, true);
+        Console.WriteLine(string.Join("\n", result.BreakDown));
+        // capped at sum of essence cost
+        Assert.AreEqual("upgrade_level 5: 7855750.0", result.BreakDown[1].Replace(",", "."));
     }
 
     private void AddSell(SaveAuction sell, int volume = 1)

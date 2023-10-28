@@ -805,6 +805,19 @@ ORDER BY l.`AuctionId`  DESC;
                 Value = value;
             }
         }
+        public long EstStarCost(string item, int tier)
+        {
+            var items = itemService.GetStarIngredients(item, tier);
+            var sum = 0;
+            foreach (var ingred in items)
+            {
+                if (BazaarPrices.TryGetValue(ingred.itemId, out var cost))               
+                    sum += (int)cost * ingred.amount;
+                else
+                    sum += 1_000_000;
+            }
+            return sum;
+        }
         public AuctionKeyWithValue KeyFromSaveAuction(SaveAuction auction, int dropLevel = 0)
         {
             var enchants = new List<Models.Enchant>();
@@ -947,21 +960,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (mod.Key == "upgrade_level")
                 {
-                    var val = mod.Value switch
-                    {
-                        "2" => 300,
-                        "3" => 500,
-                        "4" => 900,
-                        "5" => 1500,
-                        _ => 150,
-                    };
-                    if (BazaarPrices.TryGetValue("ESSENCE_WITHER", out var price))
-                    {
-                        sum += (long)price * val;
-                        // halfe for low value items as stars are also worht less
-                        if (auction.StartingBid < 50_000_000)
-                            sum /= 2;
-                    }
+                    sum += EstStarCost(auction.Tag, int.Parse(mod.Value));
                 }
                 if (mod.Key == "unlocked_slots")
                 {

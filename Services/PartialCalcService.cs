@@ -25,10 +25,17 @@ public class PartialCalcService
     private readonly SniperService sniper;
     public bool IsPrimary { get; set; }
     private readonly Dictionary<string, int> EnchTableLookup = new();
+    private Core.Services.HypixelItemService itemService;
 
     public IEnumerable<string> ItemKeys => Lookups.Keys;
 
-    public PartialCalcService(SniperService sniper, ICraftCostService craftCostService, IMayorService mayorService, IPersitanceManager persitanceManager, ILogger<PartialCalcService> logger)
+    public PartialCalcService(
+        SniperService sniper,
+        ICraftCostService craftCostService,
+        IMayorService mayorService,
+        IPersitanceManager persitanceManager,
+        ILogger<PartialCalcService> logger,
+        Core.Services.HypixelItemService itemService)
     {
         Lookups = sniper.Lookups;
         this.sniper = sniper;
@@ -41,6 +48,8 @@ public class PartialCalcService
         {
             EnchTableLookup["ench." + item.Key.ToString().ToLower()] = item.Value;
         }
+
+        this.itemService = itemService;
     }
 
     public Dictionary<string, Dictionary<string, double>> GetAttributeCosts(string tag)
@@ -319,6 +328,11 @@ public class PartialCalcService
                             value = Math.Min(50_000, val.Value);
 
                         value = CapAtExponetialGrowth(attrib, val, value);
+                    }
+                    else if (attrib.Key == "upgrade_level")
+                    {
+                        var sum = sniper.EstStarCost(item.Key, int.Parse(val.Key));
+                        value = Math.Min(sum, val.Value);
                     }
                     else if (attrib.Key == "tier")
                     {
