@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using Coflnet.Sky.Core;
+using Coflnet.Sky.Core.Services;
 using Coflnet.Sky.Sniper.Services;
 using MessagePack;
 using Newtonsoft.Json;
@@ -13,10 +15,12 @@ namespace Coflnet.Sky.Sniper.Models;
 public class AuctionkeyTests
 {
     private SniperService service = null!;
+    private HypixelItemService itemService = null!;
     [SetUp]
     public void Setup()
     {
-        service = new SniperService(null);
+        itemService = new HypixelItemService(null, null);
+        service = new SniperService(itemService);
     }
     [Test]
     public void DifferentModifiersDecrease()
@@ -93,8 +97,9 @@ public class AuctionkeyTests
         Assert.AreEqual(key, service.KeyFromSaveAuction(auction));
     }
     [Test]
-    public void UnlockedSlotsVsLegianSimilarity()
+    public async Task UnlockedSlotsVsLegianSimilarity()
     {
+        await itemService.GetItemsAsync();
         var baseAuction = new SaveAuction()
         {
             Enchantments = new() { new(EnchantmentType.ultimate_legion, 5) },

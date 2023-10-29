@@ -682,7 +682,7 @@ ORDER BY l.`AuctionId`  DESC;
                     Enchants = new(new List<Enchant>())
                 };
                 var enchantPrice = GetPriceSumForEnchants(keyCombo.Item2.Enchants);
-                if(enchantPrice< 0)
+                if (enchantPrice < 0)
                     enchantPrice = 0;
                 if (!Lookups.GetOrAdd(keyCombo.tag, new PriceLookup()).Lookup.TryGetValue(key, out var clean))
                 {
@@ -811,7 +811,7 @@ ORDER BY l.`AuctionId`  DESC;
             var sum = 0;
             foreach (var ingred in items)
             {
-                if (BazaarPrices.TryGetValue(ingred.itemId, out var cost))               
+                if (BazaarPrices.TryGetValue(ingred.itemId, out var cost))
                     sum += (int)cost * ingred.amount;
                 else
                     sum += 1_000_000;
@@ -964,14 +964,14 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (mod.Key == "unlocked_slots")
                 {
-                    // thats a guess
-                    var val = mod.Value.Count(x => x == ',') switch
+                    var costs = itemService.GetSlotCostSync(auction.Tag, new(), mod.Value.Split(',').ToList());
+                    foreach (var cost in costs)
                     {
-                        1 => 5_000_000,
-                        2 => 13_000_000,
-                        _ => 15_000_000,
-                    };
-                    sum += val;
+                        if (cost.Type.ToLower() == "item")
+                            sum += GetPriceForItem(cost.ItemId);
+                        else
+                            sum += cost.Coins;
+                    }
                 }
                 if (mod.Key == "pgems")
                 {
@@ -988,18 +988,21 @@ ORDER BY l.`AuctionId`  DESC;
             else if (valuePerModifier != null)
                 combined = valuePerModifier.OrderByDescending(i => i.Value).ToList();
             bool removedRarity = false;
-            foreach (var item in combined.Skip(5).Where(c => c.Value > 0))
+            foreach (var item in combined.Skip(5).Where(c => c.Value > 0).Concat(combined.Where(c => c.Value > 0 && c.Value < 500_000)))
             {
                 // remove all but the top 5
                 if (item.Enchant.Type != 0)
-                    enchants.Remove(item.Enchant);
+                {
+                    if (enchants.Remove(item.Enchant))
+                        valueSubstracted += item.Value;
+                }
                 else
                 {
-                    modifiers.Remove(item.Modifier);
+                    if (modifiers.Remove(item.Modifier))
+                        valueSubstracted += item.Value;
                     if (item.Modifier.Key == "rarity_upgrades")
                         removedRarity = true;
                 }
-                valueSubstracted += item.Value;
             }
             return (valueSubstracted, removedRarity);
         }

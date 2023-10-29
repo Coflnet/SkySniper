@@ -153,6 +153,21 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(1, key.Modifiers.Count, JsonConvert.SerializeObject(key.Modifiers, Formatting.Indented));
             Assert.AreEqual("AMBER_0,AMBER_1,JADE_0,JADE_1,TOPAZ_0", key.Modifiers.First().Value);
         }
+        [Test]
+        public async Task DropUnlockedSlotsIfBelow500k()
+        {
+            await service.Init();
+            var a = new SaveAuction()
+            {
+                Tag = "ATOMSPLIT_KATANA",
+                FlatenedNBT = new(){
+                    {"unlocked_slots", "JASPER_0,SAPPHIRE_0"}
+                },
+                ItemCreatedAt = new DateTime(2022, 1, 1)
+            };
+            var key = service.KeyFromSaveAuction(a);
+            Assert.AreEqual(0, key.Modifiers.Count, JsonConvert.SerializeObject(key.Modifiers, Formatting.Indented));
+        }
 
         /// <summary>
         /// Gems are excluded from keys because they don't need comparison
@@ -536,9 +551,10 @@ namespace Coflnet.Sky.Sniper.Services
         public void AdjustsMedian()
         {
             highestValAuction.FlatenedNBT = new();
+            highestValAuction.HighestBidAmount = 10_000_000;
             var part = Dupplicate(highestValAuction);
             part.Tag = "COMPONENT";
-            part.HighestBidAmount = 100;
+            part.HighestBidAmount = 1_000_000;
             AddVolume(part);
 
             var drill = Dupplicate(highestValAuction);
@@ -548,7 +564,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.FinishedUpdate();
             drill.FlatenedNBT = new();
             var estimate = service.GetPrice(drill);
-            Assert.AreEqual(900, estimate.Median, "1000 base - 100 component");
+            Assert.AreEqual(9_000_000, estimate.Median, "10m base - 1m component");
             Assert.AreEqual(" Any [drill_part_engine, component] UNKNOWN 0- component", estimate.MedianKey);
 
         }
