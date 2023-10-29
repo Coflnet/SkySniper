@@ -418,7 +418,7 @@ namespace Coflnet.Sky.Sniper.Services
         public void UpdatesOldestRefWithMedian()
         {
             var bucket = new ReferenceAuctions();
-            var end = new System.DateTime(2023, 1, 1);
+            var end = DateTime.UtcNow;
             var auction = new SaveAuction
             {
                 Tag = "1",
@@ -444,7 +444,7 @@ namespace Coflnet.Sky.Sniper.Services
         public void UpdateMedianWithShortTermOnDrop()
         {
             var bucket = new ReferenceAuctions();
-            var end = new System.DateTime(2023, 1, 1);
+            var end = DateTime.UtcNow;
             var auction = new SaveAuction
             {
                 Tag = "1",

@@ -13,9 +13,17 @@ public class MedianCalcTests
         var bucket = new ReferenceAuctions();
         bucket.References = new ConcurrentQueue<ReferencePrice>();
         var sample = JsonConvert.DeserializeObject<ReferencePrice[]>(SampleJson);
+        var dayDiff = SniperService.GetDay() - sample[0].Day;
         foreach (var item in sample)
         {
-            bucket.References.Enqueue(item);
+            var adopted = new ReferencePrice()
+            {
+                AuctionId = item.AuctionId,
+                Day = (short)(item.Day + dayDiff),
+                Price = item.Price,
+                Seller = item.Seller
+            };
+            bucket.References.Enqueue(adopted);
         }
         service.UpdateMedian(bucket);
         Assert.AreEqual(54900000, bucket.Price);
