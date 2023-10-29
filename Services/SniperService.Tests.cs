@@ -259,7 +259,7 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void HigherValueCheckOnFallback()
         {
-            highestValAuction.FlatenedNBT = new ();
+            highestValAuction.FlatenedNBT = new();
             highestValAuction.Enchantments = new List<Core.Enchantment>();
             highestValAuction.Tag = "CRYPT_DREADLORD_SWORD";
             highestValAuction.HighestBidAmount = 4000000;
@@ -277,7 +277,7 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void CapValueAtHigheEnchantPrice()
         {
-            highestValAuction.Enchantments = new (){
+            highestValAuction.Enchantments = new(){
                 new Enchantment(Enchantment.EnchantmentType.sharpness, 7),
             };
             highestValAuction.HighestBidAmount = 1000000;
@@ -572,6 +572,26 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual("sharpness_7 (49000000)", estimate.AdditionalProps["missingEnchants"]);
         }
         [Test]
+        public void PartiallyAddsEnchants()
+        {
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.Enchantments = new List<Enchantment>(){
+                new Core.Enchantment(Enchantment.EnchantmentType.sharpness,7),
+                new Core.Enchantment(Enchantment.EnchantmentType.critical,7)
+            };
+            var lessEnchants = Dupplicate(highestValAuction);
+            lessEnchants.HighestBidAmount = 100_000_000;
+            lessEnchants.Enchantments = new();
+            AddVolume(lessEnchants);
+            SetBazaarPrice("ENCHANTMENT_SHARPNESS_7", 49_000_000);
+            SetBazaarPrice("ENCHANTMENT_CRITICAL_7", 60_000_000);
+            SimulateNewAuction(highestValAuction);
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            Assert.AreEqual(135000000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.AreEqual("critical_7,sharpness_7 (-50000000)", estimate.AdditionalProps["additionalEnchants"]);
+        }
+        [Test]
         public void SubstractsEnchantsCrafted()
         {
             highestValAuction.FlatenedNBT = new();
@@ -737,7 +757,7 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void HigherEnchantTierAreWorthMoreThanLowerBazaar()
         {
-            SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_1", 80_000_000,78_000_000);
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_1", 80_000_000, 78_000_000);
             SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_2", 40, 3);
             SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_3", 50, 3);
             SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_4", 60, 3);
@@ -947,8 +967,8 @@ namespace Coflnet.Sky.Sniper.Services
         private void SetBazaarPrice(string tag, int value, int buyValue = 0)
         {
             var sellOrder = new List<SellOrder>();
-            if(value > 0)
-                sellOrder.Add(new SellOrder(){PricePerUnit = value});
+            if (value > 0)
+                sellOrder.Add(new SellOrder() { PricePerUnit = value });
             service.UpdateBazaar(new()
             {
                 Products = new(){

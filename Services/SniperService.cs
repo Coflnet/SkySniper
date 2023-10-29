@@ -1458,6 +1458,12 @@ ORDER BY l.`AuctionId`  DESC;
                 toSubstract += GetPriceSumForEnchants(missingEnchants);
                 props.Add("missingEnchants", string.Join(",", missingEnchants.Select(e => $"{e.Type}_{e.Lvl}")) + $" ({toSubstract})");
             }
+            var additionalEnchants = key.Enchants.Where(e => !closest.Key.Enchants.Contains(e)).ToList();
+            if (additionalEnchants.Count > 0)
+            {
+                toSubstract -= Math.Min(GetPriceSumForEnchants(additionalEnchants) / 2, closest.Value.Price / 2);
+                props.Add("additionalEnchants", string.Join(",", additionalEnchants.Select(e => $"{e.Type}_{e.Lvl}")) + $" ({toSubstract})");
+            }
             var targetPrice = (long)((closest.Value.Price - toSubstract) * 0.9);
             // adjust due to count
             if (closest.Key.Count != auction.Count)
@@ -1668,6 +1674,7 @@ ORDER BY l.`AuctionId`  DESC;
         /// <returns></returns>
         private long CheckHigherValueKeyForLowerPrice(ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long medianPrice)
         {
+            // this check could be preloaded to calculating the median
             var higherValueLowerPrice = HigherValueKeys(key, l, medianPrice).Select(k =>
             {
                 if (l.TryGetValue(k, out ReferenceAuctions altBucket))
