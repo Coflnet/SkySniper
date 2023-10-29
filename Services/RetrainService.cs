@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
@@ -15,11 +16,17 @@ public class RetrainService : BackgroundService
     private readonly InternalDataLoader internalDataLoader;
     private readonly IConnectionMultiplexer redis;
     private readonly ILogger<RetrainService> logger;
+    private readonly IConfiguration configuration;
     readonly string streamName = "retrain";
     readonly string groupName = "retrain";
     private readonly Dictionary<string, DateTime> lastRetrain = new();
 
-    public RetrainService(PartialCalcService partialCalcService, InternalDataLoader internalDataLoader, IConnectionMultiplexer redis, ILogger<RetrainService> logger)
+    public RetrainService(
+        PartialCalcService partialCalcService,
+        InternalDataLoader internalDataLoader,
+        IConnectionMultiplexer redis,
+        ILogger<RetrainService> logger,
+        IConfiguration configuration)
     {
         this.partialCalcService = partialCalcService;
         this.internalDataLoader = internalDataLoader;
@@ -32,6 +39,7 @@ public class RetrainService : BackgroundService
                 return;
             SheduleRetrain(flip.Auction.Tag);
         };
+        this.configuration = configuration;
     }
 
     public void SheduleRetrain(string tag)
@@ -68,42 +76,33 @@ public class RetrainService : BackgroundService
             logger.LogInformation("Loading retrained from " + value);
             _ = partialCalcService.Load();
         });
+        if(!bool.TryParse(configuration["IS_MANAGER"], out var enabled) || !enabled)
+        {
+            logger.LogInformation("Retrain disabled");
+            return;
+        }
         while (!stoppingToken.IsCancellationRequested)
         {
-            if (db.LockTake(streamName + "lock", token, TimeSpan.FromMinutes(10)))
+            logger.LogInformation("Optained retrain lock " + token);
+            try
             {
-                logger.LogInformation("Optained retrain lock " + token);
-                try
+                while (!stoppingToken.IsCancellationRequested)
                 {
-                    while (!stoppingToken.IsCancellationRequested)
-                    {
-                        partialCalcService.IsPrimary = true;
-                        await RetrainOne(db, stoppingToken);
-                        db.LockExtend(streamName + "lock", token, TimeSpan.FromMinutes(10));
-                        logger.LogInformation("Extended retrain lock");
-                    }
-                }
-                catch (System.Exception e)
-                {
-                    logger.LogError(e, "Failed to retrain");
-                }
-                finally
-                {
-                    db.LockRelease(streamName + "lock", token);
+                    await RetrainOne(db, stoppingToken);
+                    db.LockExtend(streamName + "lock", token, TimeSpan.FromMinutes(10));
+                    logger.LogInformation("Extended retrain lock");
                 }
             }
-            else
+            catch (System.Exception e)
             {
-                var lockInfo = await db.LockQueryAsync(streamName + "lock");
-                if (Random.Shared.NextDouble() < 0.05)
-                    logger.LogInformation("could not optain retrain lock - " + lockInfo);
-                if (lockInfo == token)
-                {
-                    db.LockRelease(streamName + "lock", token);
-                    logger.LogInformation("Released own retrain lock");
-                }
+                logger.LogError(e, "Failed to retrain");
             }
-            partialCalcService.IsPrimary = false;
+            finally
+            {
+                db.LockRelease(streamName + "lock", token);
+            }
+
+
             await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);
         }
     }
