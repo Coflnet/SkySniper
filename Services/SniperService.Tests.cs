@@ -249,6 +249,46 @@ namespace Coflnet.Sky.Sniper.Services
             service.TestNewAuction(anotherAuction);
             Assert.AreEqual(1000, found.Last().TargetPrice);
         }
+        /// <summary>
+        /// szenario: overvaluing of " Any Rare 1"
+        /// used as fallback from "Scavenger 5 Any Rare 1"
+        /// but is default for Dreadlord sword 
+        /// higher value https://sky.coflnet.com/auction/d78a9edcc29f4df3a7606340e20e9a85
+        /// false flip https://sky.coflnet.com/auction/2591040d79434d5698b8c5d3ae971061
+        /// </summary>
+        [Test]
+        public void HigherValueCheckOnFallback()
+        {
+            highestValAuction.FlatenedNBT = new ();
+            highestValAuction.Enchantments = new List<Core.Enchantment>();
+            highestValAuction.Tag = "CRYPT_DREADLORD_SWORD";
+            highestValAuction.HighestBidAmount = 4000000;
+            AddVolume(highestValAuction);
+            highestValAuction.Enchantments.Add(new Core.Enchantment(Enchantment.EnchantmentType.scavenger, 5));
+            var toTest = Dupplicate(highestValAuction);
+            highestValAuction.FlatenedNBT.Add("rarity_upgrades", "1");
+            highestValAuction.HighestBidAmount = 1000000;
+            AddVolume(highestValAuction);
+            // set to production amount
+            SniperService.MIN_TARGET = 200_000;
+            service.TestNewAuction(toTest);
+            Assert.AreEqual(1000000, found.Last().TargetPrice);
+        }
+        [Test]
+        public void CapValueAtHigheEnchantPrice()
+        {
+            highestValAuction.Enchantments = new (){
+                new Enchantment(Enchantment.EnchantmentType.sharpness, 7),
+            };
+            highestValAuction.HighestBidAmount = 1000000;
+            AddVolume(highestValAuction);
+            highestValAuction.Enchantments.Add(new Enchantment(Enchantment.EnchantmentType.critical, 6));
+            highestValAuction.HighestBidAmount = 50000000;
+            AddVolume(highestValAuction);
+            highestValAuction.HighestBidAmount = 5000;
+            service.TestNewAuction(highestValAuction);
+            Assert.AreEqual(1000000, found.Last().TargetPrice);
+        }
         [Test]
         public void FallbackOnNomatchLevel2()
         {

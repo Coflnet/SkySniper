@@ -42,7 +42,6 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly HashSet<string> IncludeKeys = new HashSet<string>()
         {
             "baseStatBoostPercentage", // has an effect on drops from dungeons, is filtered to only max level
-
             "dye_item",
             "backpack_color",
             "party_hat_color",
@@ -678,12 +677,13 @@ ORDER BY l.`AuctionId`  DESC;
             // get price of item without enchants and add enchant value 
             if (keyCombo != default)
             {
-                //var key = KeyFromSaveAuction(auction);
                 var key = new AuctionKey(keyCombo.Item2)
                 {
-                    Enchants = new(new List<Models.Enchant>())
+                    Enchants = new(new List<Enchant>())
                 };
                 var enchantPrice = GetPriceSumForEnchants(keyCombo.Item2.Enchants);
+                if(enchantPrice< 0)
+                    enchantPrice = 0;
                 if (!Lookups.GetOrAdd(keyCombo.tag, new PriceLookup()).Lookup.TryGetValue(key, out var clean))
                 {
                     sellClosestSearch.Inc();
@@ -1207,7 +1207,7 @@ ORDER BY l.`AuctionId`  DESC;
                     };
                 }
             }
-            if (baseKey.Count <= 1 && lbinPrice > MIN_TARGET * 20)
+            if (baseKey.Count <= 1 && lbinPrice > MIN_TARGET * 5)
             {
                 for (int i = (int)baseKey.Tier; i < (int)Tier.VERY_SPECIAL + 1; i++)
                 {
@@ -1221,6 +1221,7 @@ ORDER BY l.`AuctionId`  DESC;
                         Tier = (Tier)(i + 1)
                     };
                 }
+                // check against every other item with the same enchants and modifiers (and more) - which should be higher value
                 foreach (var item in l.Keys.Where(k => k != baseKey && baseKey.Modifiers
                     .All(m => k.Modifiers != null && k.Modifiers.Any(km => km.Key == m.Key && km.Value == m.Value))
                             && baseKey.Enchants
