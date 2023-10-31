@@ -26,25 +26,31 @@ public class AuctionkeyTests
     public void DifferentModifiersDecrease()
     {
         var key = new AuctionKey();
-        var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new KeyValuePair<string, string>("test", "test") }.AsReadOnly() };
+        var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new ("test", "test") }.AsReadOnly() };
         // by default reforge and tier match
         Assert.Greater(key.Similarity(key), keyB.Similarity(key));
     }
     [Test]
     public void SameModsMatch()
     {
-        var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new KeyValuePair<string, string>("test", "test") }.AsReadOnly() };
-        var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new KeyValuePair<string, string>("test", "test") }.AsReadOnly() };
+        var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new ("test", "test") }.AsReadOnly() };
+        var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new ("test", "test") }.AsReadOnly() };
         // by default reforge and tier match
         Assert.AreEqual(key.Similarity(key), keyB.Similarity(key));
     }
     [Test]
     public void SameModsDecreaseFurther()
     {
-        var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new KeyValuePair<string, string>("test", "testxy") }.AsReadOnly() };
-        var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new KeyValuePair<string, string>("test", "test") }.AsReadOnly() };
+        var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new ("mending", "1"),new ("veteran", "1") }.AsReadOnly() };
+        var further = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new ("dominance", "1"),new ("veteran", "1") }.AsReadOnly() };
+        var closer = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new ("mending", "4"),new ("veteran", "4") }.AsReadOnly() };
         // by default reforge and tier match
-        Assert.Greater(key.Similarity(key), keyB.Similarity(key));
+        Assert.Greater(key.Similarity(closer), key.Similarity(further));
+    }
+    [Test]
+    public void PreferMatchingKind()
+    {
+        var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new ("test", "test") }.AsReadOnly() };
     }
     [Test]
     public void NoModsNoError()

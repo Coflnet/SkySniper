@@ -37,6 +37,11 @@ namespace Coflnet.Sky.Sniper.Models
             };
         }
 
+        /// <summary>
+        /// The higher the better
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
         public int Similarity(AuctionKey key)
         {
             if (key == null)
@@ -103,11 +108,11 @@ namespace Coflnet.Sky.Sniper.Models
                 var match = key.Modifiers.Where(k => k.Key == m.Key).FirstOrDefault();
                 if (match.Key == null)
                     if (float.TryParse(m.Value, CultureInfo.InvariantCulture, out var parsed))
-                        return Math.Abs(parsed);
+                        return Math.Abs(parsed) * 8;
                     else if (m.Value == SniperService.TierBoostShorthand)
                         return 58; // tier boost is very valuable
                     else
-                        return 4 + m.Value.Length;
+                        return 5 + m.Value.Length;
                 if (float.TryParse(match.Value, CultureInfo.InvariantCulture, out var matchValue) && float.TryParse(m.Value, CultureInfo.InvariantCulture, out var value))
                     return Math.Abs(matchValue - value);
                 if (match.Value == m.Value)
