@@ -605,7 +605,7 @@ namespace Coflnet.Sky.Sniper.Services
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             Assert.AreEqual(135000000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
-            Assert.AreEqual("critical_7,sharpness_7 (-50000000)", estimate.AdditionalProps["additionalEnchants"]);
+            Assert.AreEqual("critical_7,sharpness_7 (50000000)", estimate.AdditionalProps["additionalEnchants"]);
         }
         [Test]
         public void SubstractsEnchantsCrafted()
@@ -1227,7 +1227,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.State = SniperState.Ready;
             service.FinishedUpdate();
             var price = service.GetPrice(highAttrib);
-            Assert.AreEqual(2250000, price.Median, price.MedianKey);
+            Assert.AreEqual(1210000, price.Median, price.MedianKey);
         }
 
         [Test]

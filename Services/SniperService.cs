@@ -1458,14 +1458,16 @@ ORDER BY l.`AuctionId`  DESC;
             var missingEnchants = closest.Key.Enchants.Where(m => !key.Enchants.Contains(m)).ToList();
             if (missingEnchants.Count > 0)
             {
-                toSubstract += GetPriceSumForEnchants(missingEnchants);
-                props.Add("missingEnchants", string.Join(",", missingEnchants.Select(e => $"{e.Type}_{e.Lvl}")) + $" ({toSubstract})");
+                var enchVal = GetPriceSumForEnchants(missingEnchants);
+                toSubstract += enchVal;
+                props.Add("missingEnchants", string.Join(",", missingEnchants.Select(e => $"{e.Type}_{e.Lvl}")) + $" ({enchVal})");
             }
             var additionalEnchants = key.Enchants.Where(e => !closest.Key.Enchants.Contains(e)).ToList();
             if (additionalEnchants.Count > 0)
             {
-                toSubstract -= Math.Min(GetPriceSumForEnchants(additionalEnchants) / 2, closest.Value.Price / 2);
-                props.Add("additionalEnchants", string.Join(",", additionalEnchants.Select(e => $"{e.Type}_{e.Lvl}")) + $" ({toSubstract})");
+                var enchantVal = Math.Min(GetPriceSumForEnchants(additionalEnchants) / 2, closest.Value.Price / 2);
+                toSubstract -= enchantVal;
+                props.Add("additionalEnchants", string.Join(",", additionalEnchants.Select(e => $"{e.Type}_{e.Lvl}")) + $" ({enchantVal})");
             }
             var targetPrice = (long)((closest.Value.Price - toSubstract) * 0.9);
             // adjust due to count
@@ -1500,8 +1502,8 @@ ORDER BY l.`AuctionId`  DESC;
                 if (biggestDifference < 0)
                 // conservatively adjust upwards
                 {
-                    Console.WriteLine($"Adjusting target price due to attribute diff {biggestDifference} {medPrice} {Math.Pow(1.1, -biggestDifference)}");
-                    return -(long)(medPrice * (Math.Pow(1.5, Math.Abs(biggestDifference)) - 1));
+                    Console.WriteLine($"Adjusting target price due to attribute diff on {biggestDifference} {medPrice} {Math.Pow(1.1, -biggestDifference)}");
+                    return -(long)(medPrice * (Math.Pow(1.1, Math.Abs(biggestDifference)) - 1));
                 }
                 var keyhasCombo = AttributeComboLookup.TryGetValue(missingAttributes.Select(m => m.Key).First(), out var combo) && key.Modifiers.Any(m => combo.Contains(m.Key));
                 var defaultDifference = (medPrice - Math.Pow(0.4, biggestDifference) * medPrice);
