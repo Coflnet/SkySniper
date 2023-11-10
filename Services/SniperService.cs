@@ -352,30 +352,9 @@ ORDER BY l.`AuctionId`  DESC;
             if (result.Lbin.Price == default && l.Count > 0)
             {
                 var now = DateTime.UtcNow;
-                var res = ClosetLbinMapLookup.GetOrAdd((auction.Tag, itemKey), a =>
+                var res = ClosetLbinMapLookup.GetOrAdd(((string, AuctionKey))(auction.Tag, itemKey), a =>
                 {
-                    closestLbinBruteCounter.Inc();
-                    var closest = l.Where(l => l.Key != null && l.Value?.Price > 0 && l.Value?.Lbin.Price > 0)
-                        .OrderByDescending(m => itemKey.Similarity(m.Key) + Math.Min(m.Value.Volume, 2)).FirstOrDefault();
-                    if (closest.Key != default)
-                    {
-                        result.Lbin = closest.Value.Lbin;
-                        result.LbinKey = closest.Key.ToString();
-
-                        GetDifferenceSum(auction, result, itemKey, closest, out var diffExp, out var changeAmount);
-                        if (changeAmount != 0)
-                        {
-                            result.Lbin = new ReferencePrice()
-                            {
-                                AuctionId = result.Lbin.AuctionId,
-                                Day = result.Lbin.Day,
-                                Price = result.Lbin.Price - changeAmount,
-                                Seller = result.Lbin.Seller
-                            };
-                            result.LbinKey += diffExp;
-                        }
-                    }
-                    return (result, now);
+                    return ClosestLbin(auction, result, l, itemKey, now);
                 });
                 if (res.addedAt != now)
                 {
@@ -390,6 +369,35 @@ ORDER BY l.`AuctionId`  DESC;
                 result.MedianKey += $"-dif:{tagGroup.Item2}";
             }
             return result;
+        }
+
+        private (PriceEstimate result, DateTime addedAt) ClosestLbin(SaveAuction auction, PriceEstimate result, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKeyWithValue itemKey, DateTime now)
+        {
+            closestLbinBruteCounter.Inc();
+            var closest = l.Where(l => l.Key != null && l.Value?.Price > 0 && l.Value?.Lbin.Price > 0)
+                .OrderByDescending(m => itemKey.Similarity(m.Key) + Math.Min(m.Value.Volume, 2)).FirstOrDefault();
+            if (closest.Key != default)
+            {
+                result.Lbin = closest.Value.Lbin;
+                result.LbinKey = closest.Key.ToString();
+
+                GetDifferenceSum(auction, result, itemKey, closest, out var diffExp, out var changeAmount);
+                if (changeAmount != 0)
+                {
+                    var lbinPrice = result.Lbin.Price - changeAmount;
+                    if (lbinPrice < 0)
+                        lbinPrice = result.Lbin.Price;
+                    result.Lbin = new ReferencePrice()
+                    {
+                        AuctionId = result.Lbin.AuctionId,
+                        Day = result.Lbin.Day,
+                        Price = lbinPrice,
+                        Seller = result.Lbin.Seller
+                    };
+                    result.LbinKey += diffExp;
+                }
+            }
+            return (result, now);
         }
 
         private void GetDifferenceSum(SaveAuction auction, PriceEstimate result, AuctionKeyWithValue itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> c, out string diffExp, out long changeAmount)
