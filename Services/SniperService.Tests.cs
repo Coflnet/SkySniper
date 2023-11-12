@@ -1227,7 +1227,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.State = SniperState.Ready;
             service.FinishedUpdate();
             var price = service.GetPrice(highAttrib);
-            Assert.AreEqual(1210000, price.Median, price.MedianKey);
+            Assert.AreEqual(2250000, price.Median, price.MedianKey);
         }
 
         [Test]

@@ -482,7 +482,7 @@ public class AuctionkeyTests
                     new(EnchantmentType.cubism, 5),
                     new(EnchantmentType.champion, 4),
                     new(EnchantmentType.lethality, 6),
-                    new(EnchantmentType.PROSECUTE, 5),
+                    new(EnchantmentType.prosecute, 5),
                 },
             FlatenedNBT = new() { { "rarity_upgrades", "1" },
                 { "hpc", "15" },
