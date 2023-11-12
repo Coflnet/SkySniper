@@ -68,7 +68,7 @@ public class RetrainService : BackgroundService
             await db.StreamCreateConsumerGroupAsync(streamName, groupName, "0-0", true);
         }
         var sub = redis.GetSubscriber();
-        sub.Subscribe("retrained", (channel, value) =>
+        sub.Subscribe(RedisChannel.Literal("retrained"), (channel, value) =>
         {
             // check if we are the one who retrained
             if (value == Environment.MachineName)
@@ -83,13 +83,11 @@ public class RetrainService : BackgroundService
         }
         while (!stoppingToken.IsCancellationRequested)
         {
-            logger.LogInformation("Optained retrain lock " + token);
             try
             {
                 while (!stoppingToken.IsCancellationRequested)
                 {
                     await RetrainOne(db, stoppingToken);
-                    db.LockExtend(streamName + "lock", token, TimeSpan.FromMinutes(10));
                     logger.LogInformation("Extended retrain lock");
                 }
             }
@@ -97,11 +95,6 @@ public class RetrainService : BackgroundService
             {
                 logger.LogError(e, "Failed to retrain");
             }
-            finally
-            {
-                db.LockRelease(streamName + "lock", token);
-            }
-
 
             await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);
         }
@@ -136,12 +129,9 @@ public class RetrainService : BackgroundService
             logger.LogError(e, "Failed to retrain " + tag);
         }
 
-        var lockInfo = await db.LockQueryAsync(streamName + "lock");
         await db.StreamAcknowledgeAsync(streamName, groupName, id);
-        if (lockInfo != Environment.MachineName)
-            return;
         await partialCalcService.Save();
-        await db.PublishAsync("retrained", Environment.MachineName);
+        await db.PublishAsync(RedisChannel.Literal("retrained"), Environment.MachineName);
         logger.LogInformation($"Saved retrain results for {tag}");
     }
 }
