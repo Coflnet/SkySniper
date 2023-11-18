@@ -71,12 +71,15 @@ namespace Coflnet.Sky.Sniper.Services
             sniper.FinishedUpdate();
 
 
-            if (RecentUpdates.Peek().Time >= DateTime.UtcNow - TimeSpan.FromMinutes(5) && RecentUpdates.Count < 10)
+            if (RecentUpdates.Peek().Time >= DateTime.UtcNow - TimeSpan.FromMinutes(5))
                 return;
             Console.WriteLine("Removing old update data");
-            var elem = RecentUpdates.Dequeue();
-            elem.ActiveAuctions.Clear();
-            elem.ActiveAuctions = null;
+            while (RecentUpdates.Count < 8)
+            {
+                var elem = RecentUpdates.Dequeue();
+                elem.ActiveAuctions.Clear();
+                elem.ActiveAuctions = null;
+            }
         }
     }
 }
