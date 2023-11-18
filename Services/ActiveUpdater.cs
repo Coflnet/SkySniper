@@ -23,6 +23,8 @@ namespace Coflnet.Sky.Sniper.Services
         bool skipNext = true;
         public async Task ProcessSumary(AhStateSumary sum)
         {
+            // copy the sumary to prevent it from being modified
+            sum = sum.Clone();
             Console.WriteLine("\n-->Consumed update sumary " + sum.Time);
             using var spancontext = activitySource.StartActivity("AhSumaryUpdate");
             if (sum.Time < DateTime.UtcNow - TimeSpan.FromMinutes(5))
@@ -69,7 +71,7 @@ namespace Coflnet.Sky.Sniper.Services
             sniper.FinishedUpdate();
 
 
-            if (RecentUpdates.Peek().Time >= DateTime.UtcNow - TimeSpan.FromMinutes(5))
+            if (RecentUpdates.Peek().Time >= DateTime.UtcNow - TimeSpan.FromMinutes(5) && RecentUpdates.Count < 10)
                 return;
             Console.WriteLine("Removing old update data");
             var elem = RecentUpdates.Dequeue();
