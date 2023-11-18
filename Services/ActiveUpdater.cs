@@ -64,11 +64,17 @@ namespace Coflnet.Sky.Sniper.Services
                 }
             }
 
-            if (RecentUpdates.Peek().Time < DateTime.UtcNow - TimeSpan.FromMinutes(5))
-                RecentUpdates.Dequeue();
 
             sniper.PrintLogQueue();
             sniper.FinishedUpdate();
+
+
+            if (RecentUpdates.Peek().Time >= DateTime.UtcNow - TimeSpan.FromMinutes(5))
+                return;
+            Console.WriteLine("Removing old update data");
+            var elem = RecentUpdates.Dequeue();
+            elem.ActiveAuctions.Clear();
+            elem.ActiveAuctions = null;
         }
     }
 }
