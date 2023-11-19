@@ -74,7 +74,7 @@ namespace Coflnet.Sky.Sniper.Services
             if (RecentUpdates.Peek().Time >= DateTime.UtcNow - TimeSpan.FromMinutes(5))
                 return;
             Console.WriteLine("Removing old update data");
-            while (RecentUpdates.Count < 8)
+            while (RecentUpdates.Count > 8)
             {
                 var elem = RecentUpdates.Dequeue();
                 elem.ActiveAuctions.Clear();
