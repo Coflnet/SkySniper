@@ -247,7 +247,7 @@ namespace Coflnet.Sky.Sniper.Services
                 maxId = await context.Auctions.MaxAsync(a => a.Id);
             }
 
-            var batchSize = 20_000;
+            var batchSize = 10_000;
             var totalSize = 15_000_000;
             var allStart = maxId - totalSize;
             var differential = 10;
@@ -324,7 +324,7 @@ namespace Coflnet.Sky.Sniper.Services
         {
             var batch = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
                         .Where(a => a.End > start && a.End < end && a.Bin && a.HighestBidAmount > 0 && id == a.ItemId)
-                        .Take(20_000)
+                        .Take(10_000)
                         .AsNoTracking()
                         .ToListAsync(stoppinToken);
             Console.WriteLine("applying aote");
