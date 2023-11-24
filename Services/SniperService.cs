@@ -165,6 +165,10 @@ namespace Coflnet.Sky.Sniper.Services
                     bucket.Lbins.Add(item);
                     bucket.Lbins.Sort(ReferencePrice.Compare);
                 }
+                if(bucket.Lbins.First().AuctionId == item.AuctionId)
+                {
+                    Console.WriteLine($"New lowest lbin {auction.Uuid} {auction.StartingBid}");
+                }
             }
             Console.WriteLine($"Finished processing {count} lbin updates");
             var removeBefore = DateTime.UtcNow.AddHours(-0.5);
@@ -1371,10 +1375,6 @@ ORDER BY l.`AuctionId`  DESC;
                         continue;
                     else
                         bucket = CreateAndAddBucket(auction);
-                }
-                if (bucket == null)
-                {
-                    Console.WriteLine("is null");
                 }
                 if (i == 0)
                     UpdateLbin(auction, bucket);
