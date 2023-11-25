@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Coflnet.Sky.Core;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace Coflnet.Sky.Sniper.Controllers
 {
@@ -270,6 +271,17 @@ namespace Coflnet.Sky.Sniper.Controllers
                 service.Move(tag, actual.r.AuctionId, actual.Key, key);
             }
             return result;
+        }
+
+        [Route("prices/clean")]
+        [HttpGet]
+        [ResponseCache(Duration = 1800, Location = ResponseCacheLocation.Any, NoStore = false)]
+        public Dictionary<string, long> CleanPrices()
+        {
+            return service.Lookups.Select(l => (l.Key, l.Value.Lookup
+                .Where(l => l.Value.Price > 0)
+                .OrderBy(l => l.Value.Price).Select(l => l.Value.Price).FirstOrDefault()))
+                .Where(l => l.Item2 > 0).ToDictionary(l => l.Key, l => l.Item2);
         }
 
         public class Result
