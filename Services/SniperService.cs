@@ -318,6 +318,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     result.Lbin = bucket.Lbin;
                     result.LbinKey = itemKey.ToString();
+                    result.SLbin = bucket.Lbins.Skip(1).FirstOrDefault();
                 }
                 if (result.Median == default && bucket.Price != default)
                 {
