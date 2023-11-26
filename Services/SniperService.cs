@@ -165,7 +165,7 @@ namespace Coflnet.Sky.Sniper.Services
                     bucket.Lbins.Add(item);
                     bucket.Lbins.Sort(ReferencePrice.Compare);
                 }
-                if(bucket.Lbins.First().AuctionId == item.AuctionId)
+                if (bucket.Lbins.First().AuctionId == item.AuctionId)
                 {
                     Console.WriteLine($"New lowest lbin {auction.Uuid} {auction.StartingBid}");
                 }
@@ -1662,8 +1662,6 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var maxExp = auction.Tag == "PET_GOLDEN_DRAGON" ? ("7", GoldenDragonMaxExp) : ("6", PetExpMaxlevel);
                 var exp = Math.Min((long)double.Parse(expString), maxExp.Item2);
-                if (exp > 11_600_000)
-                    return 0; // bad effect with so many exp
                 var lvl1Key = new AuctionKey(new(), ItemReferences.Reforge.Any, EmptyPetModifiers.ToList(), auction.Tier, 1);
                 var lvl100Key = new AuctionKey(new(), ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>>() { new("exp", maxExp.Item1) }, auction.Tier, 1);
                 if (l.TryGetValue(lvl1Key, out var lvl1Bucket) && l.TryGetValue(lvl100Key, out var lvl100Bucket))
@@ -1675,6 +1673,8 @@ ORDER BY l.`AuctionId`  DESC;
                     var accountedExp = maxExp.Item2 / 7 * accountedMiddle;
                     var perExp = (double)((lvl100Price - lvl1Price) / (double)(maxExp.Item2 - 1));
                     var expValue = (long)(perExp * (exp - 1 - accountedExp));
+                    if (exp > 11_600_000 && expValue > 0) // only block upwards price changes
+                        return 0; // bad effect with so many exp
                     return expValue;
                 }
 

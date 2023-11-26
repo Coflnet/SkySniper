@@ -287,7 +287,7 @@ namespace Coflnet.Sky.Sniper.Services
             // set to production amount
             SniperService.MIN_TARGET = 200_000;
             service.TestNewAuction(toTest);
-            Assert.AreEqual(1000000, found.Last().TargetPrice);
+            Assert.AreEqual(1000000, found.Last().TargetPrice, JsonConvert.SerializeObject(found));
         }
         [Test]
         public void CapValueAtHigheEnchantPrice()
@@ -1092,8 +1092,9 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(expectedPrice, flip.TargetPrice, "median should be adjusted for exp diff");
         }
 
-        [TestCase(31023190, 800000000)]
-        public void MedianAdjustForBucketExpDiffGoldenDrag(int exp, int expectedPrice)
+        [TestCase(31023190,31023190, 766632161,LowPricedAuction.FinderType.SNIPER_MEDIAN)] // is adusted downwards
+        [TestCase(31023190,355244041, 540000000, LowPricedAuction.FinderType.STONKS)]
+        public void MedianAdjustForBucketExpDiffGoldenDrag(int exp, int referncesExp, int expectedPrice, LowPricedAuction.FinderType finder)
         {
             highestValAuction.Count = 1;
             highestValAuction.Tag = "PET_GOLDEN_DRAGON";
@@ -1109,12 +1110,14 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(lowerExp);
             highestValAuction.HighestBidAmount = 800_000_000;
             var sample = Dupplicate(highestValAuction);
-            sample.FlatenedNBT["exp"] = exp.ToString();
+            sample.FlatenedNBT["exp"] = referncesExp.ToString();
             AddVolume(sample);
             AddVolume(sample);
             sample.HighestBidAmount = 5;
+            sample.FlatenedNBT["exp"] = exp.ToString();
+            service.State = SniperState.Ready;
             service.TestNewAuction(sample);
-            var flip = found.Where(a => a.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
+            var flip = found.Where(a => a.Finder == finder).FirstOrDefault();
             Assert.IsNotNull(flip, "flip should have been found");
             Assert.AreEqual(expectedPrice, flip.TargetPrice, "median should be adjusted for exp diff");
         }
