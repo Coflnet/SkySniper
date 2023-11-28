@@ -911,6 +911,9 @@ ORDER BY l.`AuctionId`  DESC;
                 // rarities don't matter for enchanted books and often used for scamming
                 tier = Tier.UNCOMMON;
             }
+            if(auction.Tag == "PANDORAS_BOX")
+                // pandoras box tier gets set based on the player
+                tier = Tier.COMMON;
             if (removedRarity)
                 tier--;
             enchants = RemoveNoEffectEnchants(auction, enchants);
