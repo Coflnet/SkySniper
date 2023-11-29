@@ -128,10 +128,34 @@ namespace Coflnet.Sky.Sniper.Services
                     {"hpc", "15"},
                     {"rarity_upgrades", "1"},
                     {"upgrade_level", "5"}
-                }
+                },
+                Reforge = ItemReferences.Reforge.Fabled,
             });
             Assert.IsTrue(key.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.growth), "Growth should be in key even if there are no buy orders on bazaar");
             Assert.IsTrue(!key.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.ultimate_legion));
+            Assert.AreEqual(ItemReferences.Reforge.Any, key.Reforge);
+        }
+        /// <summary>
+        /// Negative test to <see cref="CapKeySize"/>
+        /// </summary>
+        [Test]
+        public void DontRemoveBelowCap()
+        {
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_LEGION_1", 1_800_000);
+            SetBazaarPrice("HOT_POTATO_BOOK", 80_000);
+            SetBazaarPrice("FUMING_POTATO_BOOK", 1_100_000);
+            SetBazaarPrice("RECOMBOBULATOR_3000", 6_600_000);
+            var key = service.KeyFromSaveAuction(new SaveAuction()
+            {
+                Enchantments = new List<Core.Enchantment>(){
+                    new (Enchantment.EnchantmentType.ultimate_legion, 1)
+                },
+                FlatenedNBT = new(){
+                },
+                Reforge = ItemReferences.Reforge.Fabled,
+            });
+            Assert.IsTrue(key.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.ultimate_legion));
+            Assert.AreEqual(ItemReferences.Reforge.Fabled, key.Reforge);
         }
 
         [Test]

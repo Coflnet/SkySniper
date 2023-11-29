@@ -800,6 +800,7 @@ ORDER BY l.`AuctionId`  DESC;
             public long Value { get; set; }
             public Models.Enchant Enchant { get; set; }
             public KeyValuePair<string, string> Modifier { get; set; }
+            public ItemReferences.Reforge Reforge { get; set; }
 
 
             public override string ToString()
@@ -816,6 +817,12 @@ ORDER BY l.`AuctionId`  DESC;
             public RankElem(KeyValuePair<string, string> modifier, long value)
             {
                 Modifier = modifier;
+                Value = value;
+            }
+
+            public RankElem(ItemReferences.Reforge reforge, long value)
+            {
+                Reforge = reforge;
                 Value = value;
             }
         }
@@ -864,7 +871,7 @@ ORDER BY l.`AuctionId`  DESC;
                         modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", string.Join(",", allUnlockable)));
                 }
 
-                (valueSubstracted, removedRarity) = CapKeyLength(enchants, modifiers, auction);
+                (valueSubstracted, removedRarity, shouldIncludeReforge) = CapKeyLength(enchants, modifiers, auction);
             }
             else if (dropLevel == 1 || dropLevel == 2)
             {
@@ -911,7 +918,7 @@ ORDER BY l.`AuctionId`  DESC;
                 // rarities don't matter for enchanted books and often used for scamming
                 tier = Tier.UNCOMMON;
             }
-            if(auction.Tag == "PANDORAS_BOX")
+            if (auction.Tag == "PANDORAS_BOX")
                 // pandoras box tier gets set based on the player
                 tier = Tier.COMMON;
             if (removedRarity)
@@ -937,7 +944,7 @@ ORDER BY l.`AuctionId`  DESC;
         /// <param name="enchants"></param>
         /// <param name="modifiers"></param>
         /// <returns>The coin amount substracted</returns>
-        public (long, bool removedRarity) CapKeyLength(List<Models.Enchant> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction)
+        public (long, bool removedRarity, bool includeReforge) CapKeyLength(List<Models.Enchant> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction)
         {
             var valuePerEnchant = enchants?.Select(item => new RankElem(item, mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices)));
 
@@ -999,12 +1006,16 @@ ORDER BY l.`AuctionId`  DESC;
             }).ToList();
             IEnumerable<RankElem> combined = null;
             if (valuePerEnchant != null && valuePerModifier != null)
-                combined = valuePerEnchant.Concat(valuePerModifier).OrderByDescending(i => i.Value).ToList();
+                combined = valuePerEnchant.Concat(valuePerModifier);
             else if (valuePerEnchant != null)
-                combined = valuePerEnchant.OrderByDescending(i => i.Value).ToList();
+                combined = valuePerEnchant;
             else if (valuePerModifier != null)
-                combined = valuePerModifier.OrderByDescending(i => i.Value).ToList();
+                combined = valuePerModifier;
+
+
             bool removedRarity = false;
+            bool includeReforge = AddReforgeValue(auction, ref combined);
+            combined = combined.OrderByDescending(i => i.Value).ToList();
             foreach (var item in combined.Skip(5).Where(c => c.Value > 0).Concat(combined.Where(c => c.Value > 0 && c.Value < 500_000)))
             {
                 // remove all but the top 5
@@ -1012,6 +1023,10 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (enchants.Remove(item.Enchant))
                         valueSubstracted += item.Value;
+                }
+                else if (item.Reforge != ItemReferences.Reforge.None)
+                {
+                    includeReforge = false;
                 }
                 else
                 {
@@ -1021,7 +1036,20 @@ ORDER BY l.`AuctionId`  DESC;
                         removedRarity = true;
                 }
             }
-            return (valueSubstracted, removedRarity);
+            return (valueSubstracted, removedRarity, includeReforge);
+
+            bool AddReforgeValue(SaveAuction auction, ref IEnumerable<RankElem> combined)
+            {
+                bool includeReforge = Constants.RelevantReforges.Contains(auction.Reforge);
+                if (includeReforge)
+                {
+                    var reforgeCost = mapper.GetReforgeCost(auction.Reforge);
+                    var itemCost = GetPriceForItem(reforgeCost.Item1);
+                    combined = combined.Append(new RankElem(auction.Reforge, itemCost + reforgeCost.Item2));
+                }
+
+                return includeReforge;
+            }
         }
 
         private static List<Models.Enchant> RemoveNoEffectEnchants(SaveAuction auction, List<Models.Enchant> ench)
