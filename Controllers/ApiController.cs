@@ -11,6 +11,7 @@ using Coflnet.Sky.Core;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Coflnet.Sky.Sniper.Controllers
 {
@@ -278,10 +279,23 @@ namespace Coflnet.Sky.Sniper.Controllers
         [ResponseCache(Duration = 1800, Location = ResponseCacheLocation.Any, NoStore = false)]
         public Dictionary<string, long> CleanPrices()
         {
-            return service.Lookups.Select(l => (l.Key, l.Value.Lookup
-                .Where(l => l.Value.Price > 0)
-                .OrderBy(l => l.Value.Price).Select(l => l.Value.Price).FirstOrDefault()))
-                .Where(l => l.Item2 > 0).ToDictionary(l => l.Key, l => l.Item2);
+            return service.Lookups.SelectMany(l => l.Value.Lookup
+              //  .Where(l => l.Value.Price > 0)
+                .GroupBy(i =>
+                {
+                    if (l.Key.StartsWith("PET_") && !l.Key.StartsWith("PET_ITEM_")&& !l.Key.StartsWith("PET_SKIN_"))
+                        return $"{l.Key}_{i.Key.Tier}_{i.Key.Modifiers?.FirstOrDefault(m=>m.Key == "exp").Value switch
+                    {
+                        "7" => 100,
+                        "6" => 100,
+                        "5" => 90,
+                        _ => 0,
+                    } }";
+                    return l.Key;
+                })
+                .Select(g =>(g.Key, g.OrderBy(l => l.Value.Price).Select(l => l.Value.Price).FirstOrDefault())))
+               // .Where(l => l.Item2 > 0)
+                .ToDictionary(l => l.Key, l => l.Item2);
         }
 
         public class Result
