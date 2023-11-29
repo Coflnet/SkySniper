@@ -280,7 +280,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         public Dictionary<string, long> CleanPrices()
         {
             return service.Lookups.SelectMany(l => l.Value.Lookup
-              //  .Where(l => l.Value.Price > 0)
+                .Where(l => l.Value.Price > 0)
                 .GroupBy(i =>
                 {
                     if (l.Key.StartsWith("PET_") && !l.Key.StartsWith("PET_ITEM_")&& !l.Key.StartsWith("PET_SKIN_"))
@@ -294,7 +294,7 @@ namespace Coflnet.Sky.Sniper.Controllers
                     return l.Key;
                 })
                 .Select(g =>(g.Key, g.OrderBy(l => l.Value.Price).Select(l => l.Value.Price).FirstOrDefault())))
-               // .Where(l => l.Item2 > 0)
+                .Where(l => l.Item2 > 0)
                 .ToDictionary(l => l.Key, l => l.Item2);
         }
 
