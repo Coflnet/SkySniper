@@ -87,6 +87,7 @@ namespace Coflnet.Sky.Sniper.Services
             //"tuned_transmission", // aotv upgrade
             //"power_ability_scroll", // disabled as suggested by Coyu because comonly not worth 1m (up to 2m at most)
             "captured_player", // cake souls
+            "handles_found", // NECRON ladder
             "MUSIC", //rune
             "DRAGON", //rune
             "TIDAL", //rune
