@@ -410,8 +410,9 @@ ORDER BY l.`AuctionId`  DESC;
         {
             (var modVal, var modExp) = AdjustMedianForModifiers(result, itemKey, c, auction);
             (var enchal, var enchExp) = AdjustForMissingEnchants(result, itemKey, c);
+            var reforgediff =  GetReforgeValue(c.Key.Reforge) - GetReforgeValue(itemKey.Reforge);
             diffExp = modExp + enchExp;
-            changeAmount = modVal + enchal;
+            changeAmount = modVal + enchal + reforgediff;
         }
 
         private (long substract, string add) AdjustForMissingEnchants(PriceEstimate result, AuctionKey itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> closest)
@@ -1044,13 +1045,20 @@ ORDER BY l.`AuctionId`  DESC;
                 bool includeReforge = Constants.RelevantReforges.Contains(auction.Reforge);
                 if (includeReforge)
                 {
-                    var reforgeCost = mapper.GetReforgeCost(auction.Reforge);
-                    var itemCost = GetPriceForItem(reforgeCost.Item1);
-                    combined = combined.Append(new RankElem(auction.Reforge, itemCost + reforgeCost.Item2));
+                    long reforgeValue = GetReforgeValue(auction.Reforge);
+                    combined = combined.Append(new RankElem(auction.Reforge, reforgeValue));
                 }
 
                 return includeReforge;
             }
+        }
+
+        private long GetReforgeValue(ItemReferences.Reforge reforge)
+        {
+            var reforgeCost = mapper.GetReforgeCost(reforge);
+            var itemCost = GetPriceForItem(reforgeCost.Item1);
+            var reforgeValue = itemCost + reforgeCost.Item2;
+            return reforgeValue;
         }
 
         private static List<Models.Enchant> RemoveNoEffectEnchants(SaveAuction auction, List<Models.Enchant> ench)

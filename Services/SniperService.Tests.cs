@@ -728,10 +728,13 @@ namespace Coflnet.Sky.Sniper.Services
             SetBazaarPrice("MIDAS_JEWEL", 4_000_000);
 
             TestNewAuction(highestValAuction);
+            var price = service.GetPrice(highestValAuction);
+
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             Assert.AreEqual(2500000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
             Assert.AreEqual("Gilded -> None (6500000)", estimate.AdditionalProps["reforge"]);
+            Assert.AreEqual(1000000, price.Median);
         }
 
         /// <summary>
