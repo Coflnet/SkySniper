@@ -313,17 +313,23 @@ ORDER BY l.`AuctionId`  DESC;
             var l = lookup.Lookup;
             var itemKey = KeyFromSaveAuction(auction);
             result.ItemKey = itemKey.ToString();
+
+            // add back gem value
+            var gemVal = GetGemValue(auction, itemKey);
             if (l.TryGetValue(itemKey, out ReferenceAuctions bucket))
             {
                 if (result.Lbin.AuctionId == default && bucket.Lbin.AuctionId != default)
                 {
-                    result.Lbin = bucket.Lbin;
+                    result.Lbin = new(bucket.Lbin)
+                    {
+                        Price = bucket.Lbin.Price + gemVal
+                    };
                     result.LbinKey = itemKey.ToString();
                     result.SLbin = bucket.Lbins.Skip(1).FirstOrDefault();
                 }
                 if (result.Median == default && bucket.Price != default)
                 {
-                    AssignMedian(result, itemKey, bucket);
+                    AssignMedian(result, itemKey, bucket, gemVal);
                 }
             }
             if (result.Median == default)
@@ -334,7 +340,7 @@ ORDER BY l.`AuctionId`  DESC;
                     closestMedianBruteCounter.Inc();
                     foreach (var c in FindClosest(l, itemKey))
                     {
-                        AssignMedian(result, c.Key, c.Value);
+                        AssignMedian(result, c.Key, c.Value, gemVal);
                         GetDifferenceSum(auction, result, itemKey, c, out var diffExp, out var changeAmount);
                         if (changeAmount != 0)
                         {
@@ -410,7 +416,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             (var modVal, var modExp) = AdjustMedianForModifiers(result, itemKey, c, auction);
             (var enchal, var enchExp) = AdjustForMissingEnchants(result, itemKey, c);
-            var reforgediff =  GetReforgeValue(c.Key.Reforge) - GetReforgeValue(itemKey.Reforge);
+            var reforgediff = GetReforgeValue(c.Key.Reforge) - GetReforgeValue(itemKey.Reforge);
             diffExp = modExp + enchExp;
             changeAmount = modVal + enchal + reforgediff;
         }
@@ -507,9 +513,9 @@ ORDER BY l.`AuctionId`  DESC;
                             .OrderByDescending(m => itemKey.Similarity(m.Key) + (m.Value.OldestRef > minDay ? 0 : -10));
         }
 
-        private static void AssignMedian(PriceEstimate result, AuctionKey key, ReferenceAuctions bucket)
+        void AssignMedian(PriceEstimate result, AuctionKey key, ReferenceAuctions bucket, long gemVal)
         {
-            result.Median = bucket.Price;
+            result.Median = bucket.Price + gemVal;
             result.Volume = bucket.Volume;
             result.MedianKey = key.ToString();
         }
@@ -1618,16 +1624,14 @@ ORDER BY l.`AuctionId`  DESC;
             var gemValue = 0L;
             foreach (var item in auction.FlatenedNBT)
             {
-                if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false && item.Key.StartsWith("JASPER_0"))
-                {
-                    // Jasper0 slot can't be accessed on starred (Fragged) items
-                    continue;
-                }
-                /* */
                 if (item.Value != "PERFECT" && item.Value != "FLAWLESS")
                 {
                     continue;
                 }
+                if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false && item.Key.StartsWith("JASPER_0"))
+                    // Jasper0 slot can't be accessed on starred (Fragged) items
+                    continue;
+
                 var gemkey = mapper.GetItemKeyForGem(item, auction.FlatenedNBT);
                 if (item.Value == "PERFECT")
                     if (Lookups.TryGetValue(gemkey, out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))

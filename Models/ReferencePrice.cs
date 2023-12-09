@@ -21,6 +21,18 @@ namespace Coflnet.Sky.Sniper.Models
 
         public static ReferenceComparer Compare = new ReferenceComparer();
 
+        public ReferencePrice()
+        {
+        }
+
+        public ReferencePrice(ReferencePrice price)
+        {
+            AuctionId = price.AuctionId;
+            Price = price.Price;
+            Day = price.Day;
+            Seller = price.Seller;
+        }
+
         public override bool Equals(object obj)
         {
             return obj is ReferencePrice price &&
@@ -34,5 +46,7 @@ namespace Coflnet.Sky.Sniper.Models
         {
             return HashCode.Combine(AuctionId, Seller);
         }
+
+        
     }
 }

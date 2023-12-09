@@ -231,6 +231,24 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(2_000_000, actualPrice);
         }
 
+        [Test]
+        public void RemovedValueIsAddedBackInPrice()
+        {
+            SetBazaarPrice("PERFECT_AMBER_GEM", 8_000_000);
+            AddVolume(new SaveAuction()
+            {
+                Tag = "test",
+                FlatenedNBT = new() { { "AMBER_0", "PERFECT" } },
+                HighestBidAmount = 10_000_000
+            });
+            var actualPrice = service.GetPrice(new SaveAuction()
+            {
+                Tag = "test",
+                FlatenedNBT = new() { { "AMBER_0", "PERFECT" } }
+            });
+            Assert.AreEqual(9_500_000, actualPrice.Median);
+        }
+
         /// <summary>
         /// Same uuid with very high profit percent is probably a bait, so we ignore it after the first listing
         /// </summary>
