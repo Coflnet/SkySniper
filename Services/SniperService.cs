@@ -118,8 +118,8 @@ namespace Coflnet.Sky.Sniper.Services
             {"mending", 3},
             {"dominance", 3},
             {"magic_find", 2},
-            {"veteran", 4}
-            //{"lifeline", 3} to low volume
+            {"veteran", 4},
+            {"lifeline", 3} // low volume but valuable
             // life recovery 3
         };
 
