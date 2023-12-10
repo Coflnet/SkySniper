@@ -872,7 +872,9 @@ ORDER BY l.`AuctionId`  DESC;
                                 .Select(i => NormalizeData(i, auction.Tag, auction.FlatenedNBT))
                                 .Where(i => i.Key != Ignore.Key).ToList();
                 if (auction.ItemCreatedAt < UnlockedIntroduction
-                    && auction.FlatenedNBT.Any(v => GemPurities.Contains(v.Value)))
+                    && auction.FlatenedNBT.Any(v => GemPurities.Contains(v.Value))
+                    // safe guard for when the creation date is wrong 
+                    && !auction.FlatenedNBT.ContainsKey("unlocked_slots"))
                 {
                     var allUnlockable = itemService.GetUnlockableSlots(auction.Tag).ToList();
                     if (allUnlockable.Count > 0)
