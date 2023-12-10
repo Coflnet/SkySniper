@@ -150,7 +150,8 @@ namespace Coflnet.Sky.Sniper.Services
                 Enchantments = new List<Core.Enchantment>(){
                     new (Enchantment.EnchantmentType.ultimate_legion, 1)
                 },
-                FlatenedNBT = new(){
+                FlatenedNBT = new()
+                {
                 },
                 Reforge = ItemReferences.Reforge.Fabled,
             });
@@ -1047,6 +1048,48 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void UseSellOrdersIfBadBuyOrders()
+        {
+            service.UpdateBazaar(new()
+            {
+                Products = new(){
+                new (){
+                    ProductId =  "ENCHANTMENT_ULTIMATE_BOBBIN_TIME_3",
+                    QuickStatus = new(){
+                        BuyOrders = 10
+                    },
+                    BuySummery = new (){
+                        new (){
+                            PricePerUnit = 25_000_000,
+                            Amount = 3
+                        },
+                        new (){
+                            PricePerUnit = 25_000_002,
+                            Amount = 1
+                        },
+                        new (){
+                            PricePerUnit = 25_000_002,
+                            Amount = 1,
+                            Orders = 6
+                        }
+                    },
+                    SellSummary = new(){
+                        new (){
+                            PricePerUnit = 500_000,
+                            Amount = 4
+                        },
+                        new (){
+                            PricePerUnit = 400_000,
+                            Amount = 4
+                        }
+                    }
+                }
+            }
+            });
+            Assert.AreEqual(12_750_000, service.Lookups["ENCHANTMENT_ULTIMATE_BOBBIN_TIME_3"].Lookup.First().Value.Price);
+        }
+
+        [Test]
         public void NotAdjustsForNonMissingEnchant()
         {
             highestValAuction.FlatenedNBT = new();
@@ -1137,8 +1180,8 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(expectedPrice, flip.TargetPrice, "median should be adjusted for exp diff");
         }
 
-        [TestCase(31023190,31023190, 766632161,LowPricedAuction.FinderType.SNIPER_MEDIAN)] // is adusted downwards
-        [TestCase(31023190,355244041, 540000000, LowPricedAuction.FinderType.STONKS)]
+        [TestCase(31023190, 31023190, 766632161, LowPricedAuction.FinderType.SNIPER_MEDIAN)] // is adusted downwards
+        [TestCase(31023190, 355244041, 540000000, LowPricedAuction.FinderType.STONKS)]
         public void MedianAdjustForBucketExpDiffGoldenDrag(int exp, int referncesExp, int expectedPrice, LowPricedAuction.FinderType finder)
         {
             highestValAuction.Count = 1;

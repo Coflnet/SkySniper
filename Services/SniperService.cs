@@ -1772,7 +1772,13 @@ ORDER BY l.`AuctionId`  DESC;
                     Console.WriteLine($"Added {item.ProductId} to lookup");
                 }
                 var refernces = lookup.Lookup.GetOrAdd(defaultKey, _ => new());
-                if (item.SellSummary.Any())
+                if (item.SellSummary.Any() && item.BuySummery?.Count > 0 && item.QuickStatus?.BuyOrders >= 10)
+                {
+                    var sellPrice = item.SellSummary.First().PricePerUnit;
+                    var buyPrice = item.BuySummery.OrderBy(s => s.PricePerUnit).First().PricePerUnit;
+                    refernces.Price = (long)(sellPrice + buyPrice) / 2;
+                }
+                else if (item.SellSummary.Any())
                 {
                     refernces.Price = (long)item.SellSummary.First().PricePerUnit;
                 }
