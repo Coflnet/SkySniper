@@ -165,10 +165,10 @@ namespace Coflnet.Sky.Sniper.Services
                 {
                     bucket.Lbins.Add(item);
                     bucket.Lbins.Sort(ReferencePrice.Compare);
-                }
-                if (bucket.Lbins.First().AuctionId == item.AuctionId)
-                {
-                    Console.WriteLine($"New lowest lbin {auction.Uuid} {auction.StartingBid}");
+                    if (bucket.Lbins.First().AuctionId == item.AuctionId)
+                    {
+                        Console.WriteLine($"New lowest lbin {auction.Uuid} {auction.StartingBid}");
+                    }
                 }
             }
             Console.WriteLine($"Finished processing {count} lbin updates");
