@@ -123,7 +123,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         /// <returns></returns>
         [Route("price")]
         [HttpPost]
-        public IEnumerable<PriceEstimate> GetPrices(IEnumerable<SaveAuction> auctions)
+        public IEnumerable<PriceEstimate> GetPrices(IEnumerable<ApiSaveAuction> auctions)
         {
             if (auctions == null)
                 return new List<PriceEstimate>();
