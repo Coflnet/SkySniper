@@ -17,10 +17,7 @@ namespace Coflnet.Sky.Sniper.Services
             this.sniper = sniper;
             this.activitySource = activitySource;
         }
-        /// <summary>
-        /// Skip every second update to reduce load, first is skipped
-        /// </summary>
-        bool skipNext = true;
+
         public async Task ProcessSumary(AhStateSumary sum)
         {
             // copy the sumary to prevent it from being modified
@@ -33,11 +30,6 @@ namespace Coflnet.Sky.Sniper.Services
 
             if (RecentUpdates.Where(r => r != null).Min(r => r.Time) > DateTime.UtcNow - TimeSpan.FromMinutes(4) || RecentUpdates.Count < 5)
                 return;
-            skipNext = !skipNext;
-            if (skipNext)
-            {
-                return;
-            }
             var completeLookup = new Dictionary<long, long>();
             foreach (var sumary in RecentUpdates)
             {
