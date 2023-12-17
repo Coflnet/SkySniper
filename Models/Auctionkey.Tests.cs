@@ -131,6 +131,26 @@ public class AuctionkeyTests
         Assert.Greater(originkey.Similarity(targetKey), originkey.Similarity(badKey));
     }
 
+    /// <summary>
+    /// Slots only accessible when converting to another item are usually not worth it
+    /// and almost never reach high enough volume
+    /// </summary>
+    /// <returns></returns>
+    [Test]
+    public async Task RemovesUnaccessibleUnlockedSlots()
+    {
+        await itemService.GetItemsAsync();
+        var baseAuction = new SaveAuction()
+        {
+            Tag = "POWER_WITHER_CHESTPLATE",
+            Enchantments = new() { new(EnchantmentType.ultimate_legion, 5) },
+            FlatenedNBT = new() { { "unlocked_slots", "COMBAT_0,COMBAT_1,DEFENSIVE_0,JASPER_0,SAPPHIRE_0" } },
+            Tier = Tier.MYTHIC
+        };
+        var key = service.KeyFromSaveAuction(baseAuction);
+        Assert.AreEqual("COMBAT_0,JASPER_0", key.Modifiers.First().Value);
+    }
+
     [Test]
     public void HigherExpIsFurther()
     {

@@ -998,13 +998,19 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (mod.Key == "unlocked_slots")
                 {
-                    var costs = itemService.GetSlotCostSync(auction.Tag, new(), mod.Value.Split(',').ToList());
-                    foreach (var cost in costs)
+                    var present = mod.Value.Split(',').ToList();
+                    var costs = itemService.GetSlotCostSync(auction.Tag, new(), present);
+                    foreach (var cost in costs.Item1)
                     {
                         if (cost.Type.ToLower() == "item")
                             sum += GetPriceForItem(cost.ItemId);
                         else
                             sum += cost.Coins;
+                    }
+                    if (costs.unavailable.Count() > 0)
+                    {
+                        modifiers.RemoveAll(m => m.Key == "unlocked_slots");
+                        modifiers.Add(new(mod.Key, string.Join(",", present.Except(costs.unavailable))));
                     }
                 }
                 if (mod.Key == "pgems")
