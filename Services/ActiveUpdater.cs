@@ -24,11 +24,11 @@ namespace Coflnet.Sky.Sniper.Services
             sum = sum.Clone();
             Console.WriteLine("\n-->Consumed update sumary " + sum.Time);
             using var spancontext = activitySource.StartActivity("AhSumaryUpdate");
-            if (sum.Time < DateTime.UtcNow - TimeSpan.FromMinutes(5))
+            if (sum.Time < DateTime.UtcNow - TimeSpan.FromMinutes(3))
                 return;
             RecentUpdates.Enqueue(sum);
 
-            if (RecentUpdates.Where(r => r != null).Min(r => r.Time) > DateTime.UtcNow - TimeSpan.FromMinutes(4) || RecentUpdates.Count < 5)
+            if (RecentUpdates.Where(r => r != null).Min(r => r.Time) > DateTime.UtcNow - TimeSpan.FromMinutes(3) || RecentUpdates.Count < 4)
                 return;
             var completeLookup = new Dictionary<long, long>();
             foreach (var sumary in RecentUpdates)
@@ -63,10 +63,10 @@ namespace Coflnet.Sky.Sniper.Services
             sniper.FinishedUpdate();
 
 
-            if (RecentUpdates.Peek().Time >= DateTime.UtcNow - TimeSpan.FromMinutes(5))
+            if (RecentUpdates.Peek().Time >= DateTime.UtcNow - TimeSpan.FromMinutes(3))
                 return;
             Console.WriteLine("Removing old update data");
-            while (RecentUpdates.Count > 8)
+            while (RecentUpdates.Count > 4)
             {
                 var elem = RecentUpdates.Dequeue();
                 elem.ActiveAuctions.Clear();
