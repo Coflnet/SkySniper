@@ -160,6 +160,26 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void RemovePropsBelow5Percent()
+        {
+            SetBazaarPrice("ENCHANTMENT_MANA_VAMPIRE_6", 2_100_000);
+            SetBazaarPrice("ENCHANTMENT_SHARPNESS_6", 4_100_000);
+            SetBazaarPrice("TEST", 80_600_000);
+            var key = service.KeyFromSaveAuction(new SaveAuction()
+            {
+                Tag = "TEST",
+                Enchantments = new List<Enchantment>(){
+                    new (Enchantment.EnchantmentType.mana_vampire, 6),
+                    new (Enchantment.EnchantmentType.sharpness, 6),
+                },
+                FlatenedNBT = [],
+                Reforge = ItemReferences.Reforge.Fabled,
+            });
+            Assert.IsFalse(key.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.mana_vampire), "below 5% value is removed");
+            Assert.IsTrue(key.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.sharpness), "above 5% value is not removed");
+        }
+
+        [Test]
         public async Task UnlockedAllOnlyForUnlockable()
         {
             await service.Init();

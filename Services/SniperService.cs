@@ -957,6 +957,16 @@ ORDER BY l.`AuctionId`  DESC;
         public (long, bool removedRarity, bool includeReforge) CapKeyLength(List<Models.Enchant> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction)
         {
             var valuePerEnchant = enchants?.Select(item => new RankElem(item, mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices)));
+            var threshold = 500_000L;
+            if (auction.Tag != null && Lookups.TryGetValue(auction.Tag, out var lookups))
+            {
+                var relevant = lookups.Lookup.Values.Where(v => v.Price > threshold).ToList();
+                if (relevant.Count > 0)
+                {
+                    var firthPercentile = relevant.OrderBy(v => v.Price).Skip((int)(relevant.Count * 0.05)).First().Price;
+                    threshold = Math.Max(firthPercentile / 20, threshold);
+                }
+            }
 
             if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false)
             {
@@ -1032,7 +1042,7 @@ ORDER BY l.`AuctionId`  DESC;
             bool removedRarity = false;
             bool includeReforge = AddReforgeValue(auction, ref combined);
             combined = combined.OrderByDescending(i => i.Value).ToList();
-            foreach (var item in combined.Skip(5).Where(c => c.Value > 0).Concat(combined.Where(c => c.Value > 0 && c.Value < 500_000)))
+            foreach (var item in combined.Skip(5).Where(c => c.Value > 0).Concat(combined.Where(c => c.Value > 0 && c.Value < threshold)))
             {
                 // remove all but the top 5
                 if (item.Enchant.Type != 0)
