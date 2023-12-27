@@ -684,9 +684,17 @@ ORDER BY l.`AuctionId`  DESC;
                 return;
             }
             // short term protects against price drops after updates
-            List<ReferencePrice> shortTermList = GetShortTermBatch(deduplicated);
+            List<ReferencePrice> shortTermList = GetShortTermBatch(deduplicated).OrderByDescending(b => b.Day).ToList();
             var shortTermPrice = GetMedian(shortTermList);
-            bucket.OldestRef = shortTermList.OrderByDescending(s => s.Day).Take(4).Min(s => s.Day);
+            bucket.OldestRef = shortTermList.Take(4).Min(s => s.Day);
+            if (shortTermList.Count >= 3 && bucket.OldestRef - shortTermList.First().Day <= -5)
+            {
+                // probably derpy or weird price drop
+                if (bucket.OldestRef == shortTermList.Skip(1).First().Day)
+                    shortTermPrice = shortTermList.OrderBy(s => s.Price).First().Price;
+                else
+                    shortTermPrice = (shortTermList.OrderBy(s => s.Price).First().Price + shortTermPrice) / 2;
+            }
             // long term protects against market manipulation
             var longSpanPrice = GetMedian(deduplicated.Take(29).ToList());
             if (deduplicated.Count > 4 && deduplicated.All(d => d.Day >= GetDay()))
@@ -704,8 +712,12 @@ ORDER BY l.`AuctionId`  DESC;
                     Enchants = new(new List<Enchant>())
                 };
                 var enchantPrice = GetPriceSumForEnchants(keyCombo.Item2.Enchants);
-                if (enchantPrice < 0)
-                    enchantPrice = 0;
+                if (enchantPrice <= 0)
+                {
+                    // early return
+                    bucket.Price = medianPrice;
+                    return;
+                }
                 if (!Lookups.GetOrAdd(keyCombo.tag, new PriceLookup()).Lookup.TryGetValue(key, out var clean))
                 {
                     sellClosestSearch.Inc();

@@ -526,6 +526,42 @@ namespace Coflnet.Sky.Sniper.Services
             }
             Assert.AreEqual(2000, bucket.Price);
         }
+        [Test]
+        public void UpdateMedianWithShortTermAfterDerpy()
+        {
+            var bucket = new ReferenceAuctions();
+            AddSell(bucket, 39000000, 5);
+            AddSell(bucket, 38999000, 5);
+            AddSell(bucket, 37000000, 5);
+            AddSell(bucket, 35000000, 5);
+            AddSell(bucket, 31999000, 5);
+            AddSell(bucket, 32000000, 5);
+            AddSell(bucket, 29000000, 5);
+            AddSell(bucket, 30000000, 5);
+            AddSell(bucket, 31700000, 5);
+            AddSell(bucket, 33400000, 0);
+            Assert.AreEqual(30000000, bucket.Price);
+            AddSell(bucket, 18500000, 0);
+            Assert.AreEqual(25100000, bucket.Price);
+
+            void AddSell(ReferenceAuctions bucket, int amount, int daysAgo)
+            {
+                var end = DateTime.UtcNow - TimeSpan.FromDays(daysAgo);
+                var auction = new SaveAuction
+                {
+                    Tag = "1",
+                    FlatenedNBT = new() { { "rarity_upgrades", "1" } },
+                    StartingBid = amount,
+                    HighestBidAmount = amount,
+                    End = end
+                };
+                var lookup = new PriceLookup();
+                lookup.Lookup.TryAdd(new(), bucket);
+                service.Lookups.TryAdd("1", lookup);
+                service.AddAuctionToBucket(Dupplicate(auction), false, bucket);
+
+            }
+        }
 
         [TestCase(1, 0)]
         [TestCase(200, 1)]
