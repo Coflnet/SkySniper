@@ -18,6 +18,8 @@ namespace Coflnet.Sky.Sniper.Services
             this.activitySource = activitySource;
         }
 
+        private Task intermediateRefresh;
+
         public async Task ProcessSumary(AhStateSumary sum)
         {
             // copy the sumary to prevent it from being modified
@@ -62,6 +64,22 @@ namespace Coflnet.Sky.Sniper.Services
             sniper.PrintLogQueue();
             sniper.FinishedUpdate();
 
+            if (intermediateRefresh == null)
+                intermediateRefresh = Task.Run(async () =>
+                {
+                    // wait till shortly before next api refresh
+                    await Task.Delay(TimeSpan.FromSeconds(50));
+                    try
+                    {
+                        sniper.ProcessLbins();
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Intermediate refresh failed");
+                        Console.WriteLine(e);
+                    }
+                    intermediateRefresh = null;
+                });
 
             if (RecentUpdates.Peek().Time >= DateTime.UtcNow - TimeSpan.FromMinutes(3))
                 return;

@@ -153,6 +153,21 @@ namespace Coflnet.Sky.Sniper.Services
 
         public void FinishedUpdate()
         {
+            ProcessLbins();
+            var removeBefore = DateTime.UtcNow.AddHours(-0.5);
+            foreach (var item in ClosetLbinMapLookup.Where(c => c.Value.addedAt < removeBefore).ToList())
+            {
+                ClosetLbinMapLookup.TryRemove(item.Key, out _);
+            }
+            removeBefore = DateTime.UtcNow.AddHours(-1);
+            foreach (var item in ClosetMedianMapLookup.Where(c => c.Value.addedAt < removeBefore).ToList())
+            {
+                ClosetMedianMapLookup.TryRemove(item.Key, out _);
+            }
+        }
+
+        public void ProcessLbins()
+        {
             var count = LbinUpdates.Count;
             while (LbinUpdates.TryDequeue(out var update))
             {
@@ -172,16 +187,6 @@ namespace Coflnet.Sky.Sniper.Services
                 }
             }
             Console.WriteLine($"Finished processing {count} lbin updates");
-            var removeBefore = DateTime.UtcNow.AddHours(-0.5);
-            foreach (var item in ClosetLbinMapLookup.Where(c => c.Value.addedAt < removeBefore).ToList())
-            {
-                ClosetLbinMapLookup.TryRemove(item.Key, out _);
-            }
-            removeBefore = DateTime.UtcNow.AddHours(-1);
-            foreach (var item in ClosetMedianMapLookup.Where(c => c.Value.addedAt < removeBefore).ToList())
-            {
-                ClosetMedianMapLookup.TryRemove(item.Key, out _);
-            }
         }
 
         private readonly Dictionary<string, string> ModifierItemPrefixes = new()
