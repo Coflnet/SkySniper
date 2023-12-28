@@ -1037,7 +1037,9 @@ ORDER BY l.`AuctionId`  DESC;
                     if (costs.unavailable.Count() > 0)
                     {
                         modifiers.RemoveAll(m => m.Key == "unlocked_slots");
-                        modifiers.Add(new(mod.Key, string.Join(",", present.Except(costs.unavailable))));
+                        var remaining = present.Except(costs.unavailable);
+                        if (remaining.Count() > 0)
+                            modifiers.Add(new(mod.Key, string.Join(",", remaining)));
                     }
                 }
                 if (mod.Key == "pgems")
