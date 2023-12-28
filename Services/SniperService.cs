@@ -687,7 +687,8 @@ ORDER BY l.`AuctionId`  DESC;
             List<ReferencePrice> shortTermList = GetShortTermBatch(deduplicated).OrderByDescending(b => b.Day).ToList();
             var shortTermPrice = GetMedian(shortTermList);
             bucket.OldestRef = shortTermList.Take(4).Min(s => s.Day);
-            if (shortTermList.Count >= 3 && bucket.OldestRef - shortTermList.First().Day <= -5)
+            if (shortTermList.Count >= 3 && bucket.OldestRef - shortTermList.First().Day <= -5
+                && shortTermList.First().AuctionId != shortTermList.OrderByDescending(o => o.Price).First().AuctionId)
             {
                 // probably derpy or weird price drop
                 if (bucket.OldestRef == shortTermList.Skip(1).First().Day)

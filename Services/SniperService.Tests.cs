@@ -582,8 +582,8 @@ namespace Coflnet.Sky.Sniper.Services
             AddSell(bucket, 32000000, 5);
             AddSell(bucket, 29000000, 5);
             AddSell(bucket, 30000000, 5);
-            AddSell(bucket, 31700000, 5);
-            AddSell(bucket, 33400000, 0);
+            AddSell(bucket, 33400000, 5);
+            AddSell(bucket, 31700000, 0);
             Assert.AreEqual(30000000, bucket.Price);
             AddSell(bucket, 18500000, 0);
             Assert.AreEqual(25100000, bucket.Price);
@@ -604,6 +604,44 @@ namespace Coflnet.Sky.Sniper.Services
                 service.Lookups.TryAdd("1", lookup);
                 service.AddAuctionToBucket(Dupplicate(auction), false, bucket);
 
+            }
+        }
+
+        /// <summary>
+        /// for items where prices are commonly wrong dropping price aggressivle 
+        /// misses flips/shows wrong target price losing profit
+        /// </summary>
+        [Test]
+        public void DoNotDropPriceIfLastOneIsHighestShortTerm()
+        {
+            var bucket = new ReferenceAuctions();
+            AddSell(bucket, 1000000, 15);
+            AddSell(bucket, 1200000, 15);
+            AddSell(bucket, 79800000, 8);
+            AddSell(bucket, 69000000, 7);
+            AddSell(bucket, 78000000, 6);
+            AddSell(bucket, 79999999, 5);
+            AddSell(bucket, 290000, 5);
+            AddSell(bucket, 59420000, 5);
+            AddSell(bucket, 350000, 0);
+            AddSell(bucket, 65000000, 0);
+            Assert.AreEqual(59420000, bucket.Price, "The short term median should be used");
+
+            void AddSell(ReferenceAuctions bucket, int amount, int daysAgo)
+            {
+                var end = DateTime.UtcNow - TimeSpan.FromDays(daysAgo);
+                var auction = new SaveAuction
+                {
+                    Tag = "1",
+                    FlatenedNBT = new() { { "lifeline", "2" }, { "mana_pool", "1" } },
+                    StartingBid = amount,
+                    HighestBidAmount = amount,
+                    End = end
+                };
+                var lookup = new PriceLookup();
+                lookup.Lookup.TryAdd(new(), bucket);
+                service.Lookups.TryAdd("1", lookup);
+                service.AddAuctionToBucket(Dupplicate(auction), false, bucket);
             }
         }
 
