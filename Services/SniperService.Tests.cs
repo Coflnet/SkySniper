@@ -180,6 +180,50 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void RemoveModifierBelow5PercentOfValueIncludingSkin()
+        {
+            SetBazaarPrice("PET_SKIN_FOUR_SEASONS_GRIFFIN", 70_000_000);
+            SetBazaarPrice("PET_ITEM_LUCKY_CLOVER", 4_900_000);
+            AddVolume(new SaveAuction()
+            {
+                Tag = "PET_SKIN_FOUR_SEASONS_GRIFFIN",
+                FlatenedNBT = new() { },
+                HighestBidAmount = 70_000_000
+            });
+            AddPetReference(Tier.LEGENDARY, 50_000_000);
+            AddPetReference(Tier.COMMON, 6_000_000);
+            AddPetReference(Tier.UNCOMMON, 10_000_000);
+            AddPetReference(Tier.RARE, 12_000_000);
+            var key = service.KeyFromSaveAuction(new SaveAuction()
+            {
+                Tag = "PET_GRIFFIN",
+                FlatenedNBT = new(){
+                    {"skin", "PET_SKIN_FOUR_SEASONS_GRIFFIN"},
+                    {"heldItem", "PET_ITEM_LUCKY_CLOVER"},
+                    {"exp", "26000000"}
+                },
+                Tier = Tier.LEGENDARY,
+            });
+            Assert.IsFalse(key.Modifiers.Any(e => e.Key == SniperService.PetItemKey), "below 5% value is removed");
+            Assert.IsTrue(key.Modifiers.Any(e => e.Key == "skin"), "above 5% value is not removed");
+
+            void AddPetReference(Tier tier, int price)
+            {
+                AddVolume(new SaveAuction()
+                {
+                    Tag = "PET_GRIFFIN",
+                    FlatenedNBT = new(){
+                        {"skin", "FOUR_SEASONS_GRIFFIN"},
+                        {"candyUsed", "1"},
+                        {"exp", "0"}
+                    },
+                    Tier = tier,
+                    HighestBidAmount = price
+                });
+            }
+        }
+
+        [Test]
         public async Task UnlockedAllOnlyForUnlockable()
         {
             await service.Init();

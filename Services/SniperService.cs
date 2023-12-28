@@ -970,12 +970,16 @@ ORDER BY l.`AuctionId`  DESC;
         {
             var valuePerEnchant = enchants?.Select(item => new RankElem(item, mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices)));
             var threshold = 500_000L;
+            var underlyingItemValue = 0L;
             if (auction.Tag != null && Lookups.TryGetValue(auction.Tag, out var lookups))
             {
-                var relevant = lookups.Lookup.Values.Where(v => v.Price > threshold).ToList();
+                var generalRelevant = lookups.Lookup.Where(v => v.Value.Price > threshold).ToList();
+                var percise = generalRelevant.Where(v => v.Key.Tier == auction.Tier).ToList();
+                var relevant = percise.Count > 0 ? percise : generalRelevant;
                 if (relevant.Count > 0)
                 {
-                    var firthPercentile = relevant.OrderBy(v => v.Price).Skip((int)(relevant.Count * 0.05)).First().Price;
+                    var firthPercentile = relevant.OrderBy(v => v.Value.Price).Skip((int)(relevant.Count * 0.05)).First().Value.Price;
+                    underlyingItemValue = firthPercentile;
                     threshold = Math.Max(firthPercentile / 20, threshold);
                 }
             }
@@ -1050,6 +1054,8 @@ ORDER BY l.`AuctionId`  DESC;
             else if (valuePerModifier != null)
                 combined = valuePerModifier;
 
+            var modifierSum = underlyingItemValue + valuePerModifier?.Select(m => m.Value).DefaultIfEmpty(0).Sum() ?? 0;
+            threshold = Math.Max(threshold, modifierSum / 22);
 
             bool removedRarity = false;
             bool includeReforge = AddReforgeValue(auction, ref combined);
@@ -1171,8 +1177,8 @@ ORDER BY l.`AuctionId`  DESC;
                     "QUICK_CLAW" => "QUICK_CLAW",
                     "PET_ITEM_QUICK_CLAW" => "QUICK_CLAW",
                     "PET_ITEM_TIER_BOOST" => TierBoostShorthand,
-                    "PET_ITEM_LUCKY_CLOVER" => "LUCKY",
-                    "PET_ITEM_LUCKY_CLOVER_DROP" => "LUCKY",
+                    "PET_ITEM_LUCKY_CLOVER" => "LUCKY_CLOVER",
+                    "PET_ITEM_LUCKY_CLOVER_DROP" => "LUCKY_CLOVER",
                     "GREEN_BANDANA" => "GREEN_BANDANA",
                     "PET_ITEM_COMBAT_SKILL_BOOST_EPIC" => "COMBAT_SKILL_BOOST_EPIC",
                     "PET_ITEM_FISHING_SKILL_BOOST_EPIC" => "FISHING_SKILL_BOOST_EPIC",
