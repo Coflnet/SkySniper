@@ -477,6 +477,8 @@ ORDER BY l.`AuctionId`  DESC;
 
         private IEnumerable<(string tag, int amount)> GetItemKeysForModifier(IEnumerable<KeyValuePair<string, string>> modifiers, SaveAuction auction, KeyValuePair<string, string> m)
         {
+            if(m.Key == null)
+                return EmptyArray;
             if (ModifierItemPrefixes.TryGetValue(m.Key, out var prefix))
                 if (prefix == string.Empty)
                     return new (string, int)[] { (prefix + m.Value.ToUpper(), 1) };
@@ -1013,10 +1015,6 @@ ORDER BY l.`AuctionId`  DESC;
 
             var valuePerModifier = modifiers?.Select(mod =>
             {
-                if(mod.Key == null)
-                    return new RankElem(mod, 0);
-                //if (!mapper.TryGetIngredients(mod.Key, mod.Value, null, out var list))
-                //    return new RankElem(mod, 0);
                 var items = GetItemKeysForModifier(modifiers, auction, mod);
                 var sum = 0L;
                 foreach (var item in items)
