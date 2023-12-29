@@ -1013,6 +1013,8 @@ ORDER BY l.`AuctionId`  DESC;
 
             var valuePerModifier = modifiers?.Select(mod =>
             {
+                if(mod.Key == null)
+                    return new RankElem(mod, 0);
                 //if (!mapper.TryGetIngredients(mod.Key, mod.Value, null, out var list))
                 //    return new RankElem(mod, 0);
                 var items = GetItemKeysForModifier(modifiers, auction, mod);
