@@ -283,17 +283,22 @@ namespace Coflnet.Sky.Sniper.Controllers
                 .Where(l => l.Value.Price > 0)
                 .GroupBy(i =>
                 {
-                    if (l.Key.StartsWith("PET_") && !l.Key.StartsWith("PET_ITEM_")&& !l.Key.StartsWith("PET_SKIN_"))
-                        return $"{l.Key}_{i.Key.Tier}_{i.Key.Modifiers?.FirstOrDefault(m=>m.Key == "exp").Value switch
-                    {
-                        "7" => 100,
-                        "6" => 100,
-                        "5" => 90,
-                        _ => 0,
-                    } }";
+                    if (l.Key.StartsWith("PET_") && !l.Key.StartsWith("PET_ITEM_") && !l.Key.StartsWith("PET_SKIN_"))
+                        return $"{l.Key}_{i.Key.Tier}_{i.Key.Modifiers?.FirstOrDefault(m => m.Key == "exp").Value switch
+                        {
+                            "7" => 100,
+                            "6" => 100,
+                            "5" => 90,
+                            _ => 0,
+                        }}";
+                    if (l.Key.StartsWith("RUNE_"))
+                        return $"{l.Key}{(i.Key.Modifiers.Count > 0 ? $"_{i.Key.Modifiers.First().Value}" : "")}";
                     return l.Key;
                 })
-                .Select(g =>(g.Key, g.OrderBy(l => l.Value.Price).Select(l => l.Value.Price).FirstOrDefault())))
+                .Select(g => (g.Key, g.OrderBy(l => l.Value.Price / Math.Min(l.Value.Volume,1))
+                    .Select(l => l.Value.Price / (l.Key.Count == 0 ? 1 : l.Key.Count))
+                    .FirstOrDefault())
+                ))
                 .Where(l => l.Item2 > 0)
                 .ToDictionary(l => l.Key, l => l.Item2);
         }
