@@ -477,7 +477,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private IEnumerable<(string tag, int amount)> GetItemKeysForModifier(IEnumerable<KeyValuePair<string, string>> modifiers, SaveAuction auction, KeyValuePair<string, string> m)
         {
-            if(m.Key == null)
+            if (m.Key == null)
                 return EmptyArray;
             if (ModifierItemPrefixes.TryGetValue(m.Key, out var prefix))
                 if (prefix == string.Empty)
@@ -951,8 +951,15 @@ ORDER BY l.`AuctionId`  DESC;
             if (auction.Tag == "PANDORAS_BOX")
                 // pandoras box tier gets set based on the player
                 tier = Tier.COMMON;
-            if (removedRarity)
-                tier--;
+            if (removedRarity && tier < Tier.ULTIMATE)
+            {
+                if (tier == Tier.MYTHIC)
+                    tier = Tier.LEGENDARY;
+                else if (tier == Tier.DIVINE)
+                    tier = Tier.MYTHIC;
+                else
+                    tier--;
+            }
             enchants = RemoveNoEffectEnchants(auction, enchants);
 
             return new AuctionKeyWithValue()
@@ -1062,7 +1069,7 @@ ORDER BY l.`AuctionId`  DESC;
             else if (valuePerModifier != null)
                 combined = valuePerModifier;
 
-            var modifierSum = underlyingItemValue + valuePerModifier?.Select(m => m.Value).DefaultIfEmpty(0).Sum() ?? 0;
+            var modifierSum = underlyingItemValue + combined?.Select(m => m.Value).DefaultIfEmpty(0).Sum() ?? 0;
             threshold = Math.Max(threshold, modifierSum / 22);
 
             bool removedRarity = false;

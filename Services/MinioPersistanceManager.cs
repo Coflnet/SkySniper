@@ -46,7 +46,7 @@ namespace Coflnet.Sky.Sniper.Services
             logger.LogInformation("loaded item ids " + items.Count);
             await Parallel.ForEachAsync(items, new ParallelOptions()
             {
-                MaxDegreeOfParallelism = 5
+                MaxDegreeOfParallelism = 3
             }, async (itemTag, cancleToken) =>
             {
                 try
@@ -93,7 +93,7 @@ namespace Coflnet.Sky.Sniper.Services
             logger.LogInformation("saved list ");
             await Parallel.ForEachAsync(lookups, new ParallelOptions()
             {
-                MaxDegreeOfParallelism = 10
+                MaxDegreeOfParallelism = 2
             }, async (item, cancleToken) =>
             {
                 await SaveLookup(item.Key, item.Value);

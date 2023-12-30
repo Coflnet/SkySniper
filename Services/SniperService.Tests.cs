@@ -113,9 +113,10 @@ namespace Coflnet.Sky.Sniper.Services
             SetBazaarPrice("ENCHANTMENT_GROWTH_6", 0, 6_200_000);
             SetBazaarPrice("ENCHANTMENT_SNIPE_4", 86_000_000);
             SetBazaarPrice("ENCHANTMENT_ULTIMATE_LEGION_1", 1_800_000);
+            SetBazaarPrice("ENCHANTMENT_SHARPNESS_6", 1_800_000);
             SetBazaarPrice("HOT_POTATO_BOOK", 80_000);
             SetBazaarPrice("FUMING_POTATO_BOOK", 1_100_000);
-            SetBazaarPrice("RECOMBOBULATOR_3000", 6_600_000);
+            SetBazaarPrice("RECOMBOBULATOR_3000", 4_000_000);
             var key = service.KeyFromSaveAuction(new SaveAuction()
             {
                 Enchantments = new List<Core.Enchantment>(){
@@ -123,17 +124,21 @@ namespace Coflnet.Sky.Sniper.Services
                     new (Enchantment.EnchantmentType.snipe, 4),
                     new (Enchantment.EnchantmentType.growth, 6),
                     new (Enchantment.EnchantmentType.mana_vampire, 6),
+                    new (Enchantment.EnchantmentType.sharpness, 6),
                 },
                 FlatenedNBT = new(){
                     {"hpc", "15"},
                     {"rarity_upgrades", "1"},
                     {"upgrade_level", "5"}
                 },
+                Tier = Tier.MYTHIC,
                 Reforge = ItemReferences.Reforge.Fabled,
             });
+            Console.WriteLine(JsonConvert.SerializeObject(key, Formatting.Indented));
             Assert.IsTrue(key.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.growth), "Growth should be in key even if there are no buy orders on bazaar");
             Assert.IsTrue(!key.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.ultimate_legion));
             Assert.AreEqual(ItemReferences.Reforge.Any, key.Reforge);
+            Assert.AreEqual(Tier.LEGENDARY, key.Tier, "Recombobulator should drop the rarity");
         }
         /// <summary>
         /// Negative test to <see cref="CapKeySize"/>
