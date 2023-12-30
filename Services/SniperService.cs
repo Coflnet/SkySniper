@@ -711,10 +711,10 @@ ORDER BY l.`AuctionId`  DESC;
             }
             // long term protects against market manipulation
             var longSpanPrice = GetMedian(deduplicated.Take(29).ToList());
-            if (deduplicated.Count > 4 && deduplicated.All(d => d.Day >= GetDay()))
+            if (deduplicated.All(d => d.Day >= GetDay()))
             {
                 // all prices are from today, use 25th percentile instead
-                longSpanPrice = deduplicated.OrderBy(d => d.Price).Take((int)(deduplicated.Count() * 0.25)).Max(d => d.Price);
+                longSpanPrice = deduplicated.OrderBy(d => d.Price).Take((int)Math.Max(deduplicated.Count() * 0.25, 1)).Max(d => d.Price);
             }
             var medianPrice = Math.Min(shortTermPrice, longSpanPrice);
             bucket.HitsSinceCalculating = 0;
