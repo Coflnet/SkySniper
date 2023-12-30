@@ -504,6 +504,39 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void DroppsMonthOldRefernceAndSortsOnLoad()
+        {
+            var dict = new ConcurrentDictionary<AuctionKey, ReferenceAuctions>();
+            var refPrice = new ConcurrentQueue<ReferencePrice>();
+            service.Lookups["test"] = new();
+            service.Lookups["test"].Lookup[new AuctionKey()] = new ReferenceAuctions()
+            {
+                References = new(new List<ReferencePrice>() {
+                    new() { AuctionId = 1, Price = 1000, Day = (short)(SniperService.GetDay() - 41) },
+                    new() { AuctionId = 2, Price = 1000, Day = SniperService.GetDay()  }
+                    })
+            };
+            for (int i = 0; i < 10; i++)
+            {
+                refPrice.Enqueue(new()
+                {
+                    AuctionId = 100 - i,
+                    Price = 1000,
+                    Day = (short)(SniperService.GetDay() - 7 - i * 4)
+                });
+            }
+            dict.TryAdd(new AuctionKey(), new() { References = new(refPrice) });
+            service.AddLookupData("test", new()
+            {
+                Lookup = dict
+            });
+            var references = service.Lookups["test"].Lookup.First().Value.References;
+            Assert.AreEqual(7, references.Count);
+            Assert.AreEqual(2, references.Last().AuctionId);
+            Assert.AreEqual(95, references.First().AuctionId);
+        }
+
+        [Test]
         public void TakesClosestCake()
         {
             AuctionKey key = CreateKey(252, 4);

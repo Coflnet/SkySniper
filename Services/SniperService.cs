@@ -606,11 +606,17 @@ ORDER BY l.`AuctionId`  DESC;
                 var existingRef = existingBucket.References;
                 existingBucket.References = item.Value.References;
                 if (existingRef != null)
-                    foreach (var refPrice in existingRef)
+                {
+                    existingBucket.References = new(existingRef.Concat(item.Value.References).ToList()
+                        .DistinctBy(d => d.AuctionId)
+                        .OrderBy(r => r.Day));
+
+                    var today = GetDay();
+                    while (existingBucket.References.Count > 7 && existingBucket.References.TryPeek(out var r) && r.Day < today - 30)
                     {
-                        if (!existingBucket.References.Contains(refPrice))
-                            existingBucket.References.Enqueue(refPrice);
+                        existingBucket.References.TryDequeue(out _);
                     }
+                }
                 existingBucket.Price = item.Value.Price;
                 if (item.Value.Lbins == null)
                     item.Value.Lbins = new();
