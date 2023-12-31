@@ -52,7 +52,6 @@ namespace Coflnet.Sky.Sniper.Services
                 HighestBidAmount = 1000,
                 UId = 5,
                 AuctioneerId = "12c144"
-
             };
             SniperService.MIN_TARGET = 0;
             service = new SniperService(new(null, null));
@@ -967,6 +966,25 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             Assert.AreEqual(92160, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
             Assert.AreEqual("veteran:5 (9897600)", estimate.AdditionalProps["missingModifiers"]);
+        }
+        [Test]
+        public void StoresAttributeCost()
+        {
+            highestValAuction.FlatenedNBT = new() { { "mana_pool", "1" } };
+            var withRegen = Dupplicate(highestValAuction);
+            withRegen.HighestBidAmount = 10_000_000;
+            withRegen.FlatenedNBT.Add("veteran", "5");
+            AddVolume(withRegen);
+
+            TestNewAuction(highestValAuction);
+            var price = service.Lookups[highestValAuction.Tag].Lookup[new AuctionKey()
+            {
+                Modifiers = new(new List<KeyValuePair<string, string>>(){
+                    new("veteran","1"),
+                    new("virtual", string.Empty)
+                })
+            }].Price;
+            Assert.AreEqual(625000, price);
         }
         [Test]
         public void StonksPetCandyReduction()

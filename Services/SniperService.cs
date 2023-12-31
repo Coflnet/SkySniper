@@ -242,6 +242,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         public static HashSet<string> NeverDrop = new()
         {
+            "virtual", // virtual keys for calculations
             "exp", // this helps with closest match 
             "party_hat_color", // closest to clean would mix them up
             "ability_scroll", // most expensive attribues in the game
@@ -516,7 +517,7 @@ ORDER BY l.`AuctionId`  DESC;
         public static IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> FindClosest(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey, int maxAge = 8)
         {
             var minDay = GetDay() - maxAge;
-            return l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0)
+            return l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0 && !l.Key.Modifiers.Any(m=>m.Key == "virtual"))
                             .OrderByDescending(m => itemKey.Similarity(m.Key) + (m.Value.OldestRef > minDay ? 0 : -10));
         }
 
@@ -654,6 +655,36 @@ ORDER BY l.`AuctionId`  DESC;
         {
             (ReferenceAuctions bucket, var key) = GetBucketForAuction(auction);
             AddAuctionToBucket(auction, preventMedianUpdate, bucket, key.ValueSubstract);
+            try
+            {
+                var attributesOnAuction = auction.FlatenedNBT.Where(a => Constants.AttributeKeys.Contains(a.Key)).ToList();
+                if (attributesOnAuction.Count == 0)
+                    return;
+                if (key.Enchants.Count > 1 || key.Modifiers.Count > 3)
+                    return; // only add attributes for (almost) clean items, one allowed for things that drop with extra enchants
+                var groupTag = GetAuctionGroupTag(auction);
+                var itemGroupTag = groupTag.Item1;
+                foreach (var item in attributesOnAuction)
+                {
+                    var itemKey = new AuctionKey()
+                    {
+                        Modifiers = new(new List<KeyValuePair<string, string>>()
+                        {
+                            new(item.Key, "1"),
+                            new("virtual",string.Empty)
+                        })
+                    };
+                    var bucketForAttribute = GetOrAdd(itemKey, Lookups[itemGroupTag]);
+                    var level = int.Parse(item.Value);
+                    var power = Math.Pow(2, level - 1);
+                    var toSubstractForLvl1 = auction.HighestBidAmount - auction.HighestBidAmount / power;
+                    AddAuctionToBucket(auction, preventMedianUpdate, bucketForAttribute, (long)toSubstractForLvl1);
+                }
+            }
+            catch (System.Exception e)
+            {
+                dev.Logger.Instance.Error(e, $"Occured when trying to store attribue value");
+            }
         }
 
         /// <summary>
