@@ -294,7 +294,7 @@ namespace Coflnet.Sky.Sniper.Controllers
                     if (l.Key.StartsWith("RUNE_"))
                         return $"{l.Key}{(i.Key.Modifiers.Count > 0 ? $"_{i.Key.Modifiers.First().Value}" : "")}";
                     if (i.Key.Modifiers.Any(m => m.Key == "virtual"))
-                        return $"{l.Key}+{i.Key.Modifiers.First(m => m.Key != "virtual").Value}_1";
+                        return $"{l.Key}+{i.Key.Modifiers.First(m => m.Key != "virtual").Key};1";
                     var modifiers = i.Key.Modifiers?.Where(m => Constants.AttributeKeys.Contains(m.Key)).ToList();
                     if (modifiers.Count > 0)
                         return $"{l.Key}+{string.Join("_", modifiers.Select(m => m.Key))}";
