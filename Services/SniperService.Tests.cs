@@ -859,6 +859,37 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual((withSkin.HighestBidAmount - 25_000_000) * 0.9, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
             Assert.AreEqual("skin:SKELETON (25000000)", estimate.AdditionalProps["missingModifiers"]);
         }
+        [Test]
+        public void ChoosesActualRefereneForSubstraction()
+        {
+            service.Lookups["SKELETON"] = new(){
+                Lookup = new (new Dictionary<AuctionKey, ReferenceAuctions>(){
+                    {new AuctionKey(), new()},
+                    {new AuctionKey(){
+                        Reforge = ItemReferences.Reforge.Any,
+                        Count= 1,
+                        Tier = Tier.MYTHIC
+                    }, new(){
+                        Price = 25_000_000,
+                        References = new(new List<ReferencePrice>(){
+                            new(){Price = 25_000_000, AuctionId = 1, Day = 1}
+                        }),
+
+                    }},
+                })
+            };
+            
+            highestValAuction.FlatenedNBT = new() { { "skin", "DIFF" }, { "exp", "0" } };
+            var withSkin = Dupplicate(highestValAuction);
+            withSkin.HighestBidAmount = 60_000_000;
+            withSkin.FlatenedNBT["skin"] = "SKELETON";
+            AddVolume(withSkin);
+            SimulateNewAuction(highestValAuction);
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            Assert.AreEqual((withSkin.HighestBidAmount - 25_000_000) * 0.9, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.AreEqual("skin:SKELETON (25000000)", estimate.AdditionalProps["missingModifiers"]);
+        }
 
         private void SimulateNewAuction(SaveAuction x)
         {

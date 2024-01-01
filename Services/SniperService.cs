@@ -144,7 +144,7 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly KeyValuePair<List<string>, List<KeyValuePair<string, string>>>[] ItemSpecificAttribCombo = new KeyValuePair<List<string>, List<KeyValuePair<string, string>>>[]
         {
             new(new (){"TERROR_BOOTS", "TERROR_LEGGINGS", "TERROR_CHESTPLATE"}, new (){new("lifeline", "mana_pool")}),
-            new(new (){"MAGMA_LORD_BOOTS", "MAGMA_LORD_LEGGINGS", "MAGMA_LORD_CHESTPLATE", "MAGMA_LORD_HELMET"}, 
+            new(new (){"MAGMA_LORD_BOOTS", "MAGMA_LORD_LEGGINGS", "MAGMA_LORD_CHESTPLATE", "MAGMA_LORD_HELMET"},
                 new (){new("blazing_fortune", "mana_pool"), new("blazing_fortune", "fishing_experience"), new("blazing_fortune", "magic_find")}),
             new(new (){"AURORA_BOOTS", "AURORA_LEGGINGS", "AURORA_CHESTPLATE", "AURORA_HELMET", // not high but still noticable
                     "CRIMSON_BOOTS", "CRIMSON_LEGGINGS", "CRIMSON_CHESTPLATE", "CRIMSON_HELMET"}, new (){new("veteran", "mana_regeneration")})
@@ -469,7 +469,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 if (Lookups.TryGetValue(k.Item1, out var lookup))
                 {
-                    return lookup.Lookup.Values.FirstOrDefault();
+                    return lookup.Lookup.Values.Where(v => v.Price > 0).FirstOrDefault();
                 }
                 return null;
             }).Where(m => m != null).ToList();
@@ -518,7 +518,7 @@ ORDER BY l.`AuctionId`  DESC;
         public static IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> FindClosest(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey, int maxAge = 8)
         {
             var minDay = GetDay() - maxAge;
-            return l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0 && !l.Key.Modifiers.Any(m=>m.Key == "virtual"))
+            return l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0 && !l.Key.Modifiers.Any(m => m.Key == "virtual"))
                             .OrderByDescending(m => itemKey.Similarity(m.Key) + (m.Value.OldestRef > minDay ? 0 : -10));
         }
 
@@ -567,7 +567,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var value = loadedVal.Lookup.GetValueOrDefault(item);
                 if (value == null)
                     continue;
-                if (value.References.All(r => r.Day < GetDay() - 21))
+                if (value.References.Count == 0 || value.References.All(r => r.Day < GetDay() - 21))
                     loadedVal.Lookup.TryRemove(item, out _); // unimportant
             }
             var current = Lookups.AddOrUpdate(itemTag, loadedVal, (tag, value) =>
