@@ -862,8 +862,9 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void ChoosesActualRefereneForSubstraction()
         {
-            service.Lookups["SKELETON"] = new(){
-                Lookup = new (new Dictionary<AuctionKey, ReferenceAuctions>(){
+            service.Lookups["SKELETON"] = new()
+            {
+                Lookup = new(new Dictionary<AuctionKey, ReferenceAuctions>(){
                     {new AuctionKey(), new()},
                     {new AuctionKey(){
                         Reforge = ItemReferences.Reforge.Any,
@@ -878,7 +879,7 @@ namespace Coflnet.Sky.Sniper.Services
                     }},
                 })
             };
-            
+
             highestValAuction.FlatenedNBT = new() { { "skin", "DIFF" }, { "exp", "0" } };
             var withSkin = Dupplicate(highestValAuction);
             withSkin.HighestBidAmount = 60_000_000;
@@ -1527,7 +1528,22 @@ namespace Coflnet.Sky.Sniper.Services
             starred.StartingBid = 5;
             starred.Tag = "STARRED_SHADOW_FURY";
             var price = service.GetPrice(starred);
-            Assert.AreEqual(40_000_000 - 8 * 20_000, price.Median);
+            Assert.AreEqual(40_000_000 + 7 * 20_000, price.Median);
+        }
+
+        [Test]
+        public void RemovedFraggedValue()
+        {
+            highestValAuction.Tag = "STARRED_SHADOW_FURY";
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.HighestBidAmount = 40_000_000;
+            SetBazaarPrice("LIVID_FRAGMENT", 20_000);
+            AddVolume(highestValAuction);
+            var starred = Dupplicate(highestValAuction);
+            starred.StartingBid = 5;
+            starred.Tag = "SHADOW_FURY";
+            var price = service.GetPrice(starred);
+            Assert.AreEqual(40_000_000 - 7 * 20_000, price.Median);
         }
 
         [Test]

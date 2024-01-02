@@ -384,8 +384,8 @@ ORDER BY l.`AuctionId`  DESC;
             // correct for combined items
             if (tagGroup.Item2 != 0)
             {
-                result.Median -= tagGroup.Item2;
-                result.MedianKey += $"-dif:{tagGroup.Item2}";
+                result.Median += tagGroup.Item2;
+                result.MedianKey += $"+star:{tagGroup.Item2}";
             }
             return result;
         }
@@ -791,13 +791,15 @@ ORDER BY l.`AuctionId`  DESC;
 
         public (ReferenceAuctions auctions, AuctionKeyWithValue key) GetBucketForAuction(SaveAuction auction)
         {
-            var itemGroupTag = GetAuctionGroupTag(auction).Item1;
+            var group = GetAuctionGroupTag(auction);
+            var itemGroupTag = group.Item1;
             if (!Lookups.TryGetValue(itemGroupTag, out var lookup) || lookup == null)
             {
                 lookup = new PriceLookup();
                 Lookups[itemGroupTag] = lookup;
             }
             var key = KeyFromSaveAuction(auction);
+            key.ValueSubstract += group.Item2;
             return (GetOrAdd(key, lookup), key);
         }
 
@@ -1538,7 +1540,8 @@ ORDER BY l.`AuctionId`  DESC;
             if (itemGroupTag == "SCYLLA" || itemGroupTag == "VALKYRIE" || itemGroupTag == "NECRON_BLADE")
                 return ("HYPERION", GetPriceForItem("GIANT_FRAGMENT_LASER") * 8); // easily craftable from one into the other
             if (itemGroupTag.StartsWith("STARRED_"))
-                return (itemGroupTag.Substring(8), GetPriceForItem("LIVID_FRAGMENT") * 8);
+                // technically neds 8 for crafting but looses the value on craft so using 7
+                return (itemGroupTag.Substring(8), GetPriceForItem("LIVID_FRAGMENT") * 7);
             return (itemGroupTag, 0);
         }
 
