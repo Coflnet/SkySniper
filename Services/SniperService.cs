@@ -1984,15 +1984,16 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (targetPrice < MIN_TARGET)
                 return false; // to low
-            if (targetPrice < auction.StartingBid - 2000)
-                return false; // not profitable
             var refAge = (GetDay() - bucket.OldestRef);
             if (refAge > 60 || State < SniperState.FullyLoaded && refAge > 5)
                 return false; // too old
             props["refAge"] = refAge.ToString();
             if (auction.Tag.StartsWith("PET_") && auction.FlatenedNBT.Any(f => f.Value == "PET_ITEM_TIER_BOOST") && !props["key"].Contains(TierBoostShorthand))
                 throw new Exception("Tier boost missing " + props["key"] + " " + JSON.Stringify(auction));
-            var uid = auction.FlatenedNBT.Where(n => n.Key == "uid").FirstOrDefault().Value;
+            if(auction.FlatenedNBT.TryGetValue("uid", out var uid))
+            {
+                uid += type;
+            }
             var profitPercent = (targetPrice - auction.StartingBid) / (double)auction.StartingBid;
             if (RecentSnipeUids.Contains(uid) && profitPercent > 0.5)
             {
