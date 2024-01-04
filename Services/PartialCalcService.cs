@@ -108,7 +108,7 @@ public class PartialCalcService
         return 0;
         var key = DefaultForTier(item);
         if (!cleanItemLookup.Lookup.TryGetValue(key, out var cleanItem) || cleanItem.Price == 0)
-            cleanItem = SniperService.FindClosest(cleanItemLookup.Lookup, key, 200).FirstOrDefault().Value;
+            cleanItem = sniper.FindClosest(cleanItemLookup.Lookup, key, item.OriginalItem.Tag, 200).FirstOrDefault().Value;
         return cleanItem?.Price ?? 0;
     }
 

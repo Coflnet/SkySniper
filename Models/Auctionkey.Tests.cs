@@ -77,10 +77,32 @@ public class AuctionkeyTests
         var b = SniperServiceTests.Dupplicate(auctionA);
         b.FlatenedNBT.Add("rarity_upgrades", "1");
         b.Tier = Tier.MYTHIC;
-        var sniperService = new SniperService(null);
-        var keyA = sniperService.KeyFromSaveAuction(auctionA);
-        var keyB = sniperService.KeyFromSaveAuction(b);
+        var keyA = service.KeyFromSaveAuction(auctionA);
+        var keyB = service.KeyFromSaveAuction(b);
         Assert.Less(keyA.Similarity(keyB), keyA.Similarity(keyA));
+    }
+    [Test]
+    public void IncludesLavaShellNecklaceSpecialAttribs()
+    {
+        var auction = new SaveAuction()
+        {
+            Tag = "LAVA_SHELL_NECKLACE",
+            FlatenedNBT = new() { { "lifeline", "1" }, {"mana_regeneration", "1"} },
+        };
+        var key = service.KeyFromSaveAuction(auction);
+        Assert.AreEqual(1, key.Modifiers.Count);
+        Assert.IsTrue(key.Modifiers.Any(x => x.Key == "lifeline" && x.Value == "1"));
+    }
+    [Test]
+    public void IncludesLavaShellNecklaceSpecialAttribCombo()
+    {
+        var auction = new SaveAuction()
+        {
+            Tag = "LAVA_SHELL_NECKLACE",
+            FlatenedNBT = new() { { "lifeline", "1" }, {"mana_pool", "1"} },
+        };
+        var key = service.KeyFromSaveAuction(auction);
+        Assert.AreEqual(2, key.Modifiers.Count);
     }
     [Test]
     public void IgnoresBadEnchants()

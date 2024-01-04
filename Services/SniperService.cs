@@ -143,6 +143,7 @@ namespace Coflnet.Sky.Sniper.Services
 
         private readonly KeyValuePair<List<string>, List<KeyValuePair<string, string>>>[] ItemSpecificAttribCombo = new KeyValuePair<List<string>, List<KeyValuePair<string, string>>>[]
         {
+            new(new(){"LAVA_SHELL_NECKLACE"}, new (){new("lifeline", "mana_pool"), new("lifeline", "lifeline")}),
             new(new (){"TERROR_BOOTS", "TERROR_LEGGINGS", "TERROR_CHESTPLATE"}, new (){new("lifeline", "mana_pool")}),
             new(new (){"MAGMA_LORD_BOOTS", "MAGMA_LORD_LEGGINGS", "MAGMA_LORD_CHESTPLATE", "MAGMA_LORD_HELMET"},
                 new (){new("blazing_fortune", "mana_pool"), new("blazing_fortune", "fishing_experience"), new("blazing_fortune", "magic_find")}),
@@ -345,7 +346,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var res = ClosetMedianMapLookup.GetOrAdd(((string, AuctionKey))(auction.Tag, itemKey), a =>
                 {
                     closestMedianBruteCounter.Inc();
-                    foreach (var c in FindClosest(l, itemKey))
+                    foreach (var c in FindClosest(l, itemKey, auction.Tag))
                     {
                         AssignMedian(result, c.Key, c.Value, gemVal);
                         GetDifferenceSum(auction, result, itemKey, c, out var diffExp, out var changeAmount);
@@ -464,7 +465,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return 0;
             var values = missingModifiers.SelectMany(m =>
             {
-                return GetItemKeysForModifier(modifiers, auction, m);
+                return GetItemKeysForModifier(modifiers, auction.FlatenedNBT, auction.Tag, m);
             }).Where(m => m.Item1 != null).Select(k =>
             {
                 if (Lookups.TryGetValue(k.Item1, out var lookup))
@@ -477,7 +478,7 @@ ORDER BY l.`AuctionId`  DESC;
             return medianSumIngredients;
         }
 
-        private IEnumerable<(string tag, int amount)> GetItemKeysForModifier(IEnumerable<KeyValuePair<string, string>> modifiers, SaveAuction auction, KeyValuePair<string, string> m)
+        private IEnumerable<(string tag, int amount)> GetItemKeysForModifier(IEnumerable<KeyValuePair<string, string>> modifiers, Dictionary<string, string> flatNbt, string tag, KeyValuePair<string, string> m)
         {
             if (m.Key == null)
                 return EmptyArray;
@@ -487,14 +488,14 @@ ORDER BY l.`AuctionId`  DESC;
                 else
                     // some of the items actually don't have the prefix
                     return new (string, int)[] { (prefix + m.Value.ToUpper(), 1), (m.Value.ToUpper(), 1) };
-            if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false && m.Key.StartsWith("JASPER_0"))
+            if (tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false && m.Key.StartsWith("JASPER_0"))
             {
                 // Jasper0 slot can't be accessed on starred (Fragged) items
                 return EmptyArray;
             }
 
             if (m.Value == "PERFECT" || m.Value == "FLAWLESS")
-                return new (string, int)[] { (mapper.GetItemKeyForGem(m, auction.FlatenedNBT), 1) };
+                return new (string, int)[] { (mapper.GetItemKeyForGem(m, flatNbt ?? new()), 1) };
             if (mapper.TryGetIngredients(m.Key, m.Value, modifiers?.Where(mi => mi.Key == m.Key).Select(mi => mi.Value).FirstOrDefault(), out var ingredients))
             {
                 return ingredients.Select(i => (i, 1));
@@ -511,13 +512,14 @@ ORDER BY l.`AuctionId`  DESC;
             return 0;
         }
 
-        private static KeyValuePair<AuctionKey, ReferenceAuctions> FindClosestTo(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey)
+        private KeyValuePair<AuctionKey, ReferenceAuctions> FindClosestTo(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey, string itemTag)
         {
-            return FindClosest(l, itemKey).FirstOrDefault();
+            return FindClosest(l, itemKey, itemTag).FirstOrDefault();
         }
-        public static IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> FindClosest(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey, int maxAge = 8)
+        public IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> FindClosest(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey, string itemTag, int maxAge = 8)
         {
             var minDay = GetDay() - maxAge;
+            var values = ComparisonValue(itemKey.Enchants, itemKey.Modifiers.ToList(), itemTag, null);
             return l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0 && !l.Key.Modifiers.Any(m => m.Key == "virtual"))
                             .OrderByDescending(m => itemKey.Similarity(m.Key) + (m.Value.OldestRef > minDay ? 0 : -10));
         }
@@ -767,7 +769,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (!Lookups.GetOrAdd(keyCombo.tag, new PriceLookup()).Lookup.TryGetValue(key, out var clean))
                 {
                     sellClosestSearch.Inc();
-                    var closest = FindClosest(Lookups[keyCombo.tag].Lookup, key).Take(5).ToList();
+                    var closest = FindClosest(Lookups[keyCombo.tag].Lookup, key, keyCombo.tag).Take(5).ToList();
                     if (closest.Count > 0)
                         clean = closest.MinBy(m => m.Value.Price).Value;
                 }
@@ -1023,7 +1025,6 @@ ORDER BY l.`AuctionId`  DESC;
         /// <returns>The coin amount substracted</returns>
         public (long, bool removedRarity, bool includeReforge) CapKeyLength(List<Models.Enchant> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction)
         {
-            var valuePerEnchant = enchants?.Select(item => new RankElem(item, mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices)));
             var threshold = 500_000L;
             var underlyingItemValue = 0L;
             if (auction.Tag != null && Lookups.TryGetValue(auction.Tag, out var lookups))
@@ -1059,55 +1060,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 modifiers.Add(new("pgems", "5"));
             }
-
-            var valuePerModifier = modifiers?.Select(mod =>
-            {
-                var items = GetItemKeysForModifier(modifiers, auction, mod);
-                var sum = 0L;
-                foreach (var item in items)
-                {
-                    if (Lookups.TryGetValue(item.tag, out var lookup))
-                    {
-                        sum += (lookup.Lookup.Values.FirstOrDefault()?.Price ?? 0) * item.amount;
-                    }
-                }
-                if (mod.Key == "upgrade_level")
-                {
-                    sum += EstStarCost(auction.Tag, int.Parse(mod.Value));
-                }
-                if (mod.Key == "unlocked_slots")
-                {
-                    var present = mod.Value.Split(',').ToList();
-                    var costs = itemService.GetSlotCostSync(auction.Tag, new(), present);
-                    foreach (var cost in costs.Item1)
-                    {
-                        if (cost.Type.ToLower() == "item")
-                            sum += GetPriceForItem(cost.ItemId);
-                        else
-                            sum += cost.Coins;
-                    }
-                    if (costs.unavailable.Count() > 0)
-                    {
-                        modifiers.RemoveAll(m => m.Key == "unlocked_slots");
-                        var remaining = present.Except(costs.unavailable);
-                        if (remaining.Count() > 0)
-                            modifiers.Add(new(mod.Key, string.Join(",", remaining)));
-                    }
-                }
-                if (mod.Key == "pgems")
-                {
-                    sum += 100_000_000;
-                }
-
-                return new RankElem(mod, sum);
-            }).ToList();
-            IEnumerable<RankElem> combined = null;
-            if (valuePerEnchant != null && valuePerModifier != null)
-                combined = valuePerEnchant.Concat(valuePerModifier);
-            else if (valuePerEnchant != null)
-                combined = valuePerEnchant;
-            else if (valuePerModifier != null)
-                combined = valuePerModifier;
+            IEnumerable<RankElem> combined = ComparisonValue(enchants, modifiers, auction.Tag, auction.FlatenedNBT);
 
             var modifierSum = underlyingItemValue + combined?.Select(m => m.Value).DefaultIfEmpty(0).Sum() ?? 0;
             threshold = Math.Max(threshold, modifierSum / 22);
@@ -1148,6 +1101,60 @@ ORDER BY l.`AuctionId`  DESC;
 
                 return includeReforge;
             }
+        }
+
+        private IEnumerable<RankElem> ComparisonValue(IEnumerable<Enchant> enchants, List<KeyValuePair<string, string>> modifiers, string tag, Dictionary<string, string> flatNbt)
+        {
+            var valuePerEnchant = enchants?.Select(item => new RankElem(item, mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices)));
+            var valuePerModifier = modifiers?.Select(mod =>
+            {
+                var items = GetItemKeysForModifier(modifiers, flatNbt, tag, mod);
+                var sum = 0L;
+                foreach (var item in items)
+                {
+                    if (Lookups.TryGetValue(item.tag, out var lookup))
+                    {
+                        sum += (lookup.Lookup.Values.FirstOrDefault()?.Price ?? 0) * item.amount;
+                    }
+                }
+                if (mod.Key == "upgrade_level")
+                {
+                    sum += EstStarCost(tag, int.Parse(mod.Value));
+                }
+                if (mod.Key == "unlocked_slots")
+                {
+                    var present = mod.Value.Split(',').ToList();
+                    var costs = itemService.GetSlotCostSync(tag, new(), present);
+                    foreach (var cost in costs.Item1)
+                    {
+                        if (cost.Type.ToLower() == "item")
+                            sum += GetPriceForItem(cost.ItemId);
+                        else
+                            sum += cost.Coins;
+                    }
+                    if (costs.unavailable.Count() > 0)
+                    {
+                        modifiers.RemoveAll(m => m.Key == "unlocked_slots");
+                        var remaining = present.Except(costs.unavailable);
+                        if (remaining.Count() > 0)
+                            modifiers.Add(new(mod.Key, string.Join(",", remaining)));
+                    }
+                }
+                if (mod.Key == "pgems")
+                {
+                    sum += 100_000_000;
+                }
+
+                return new RankElem(mod, sum);
+            }).ToList();
+            IEnumerable<RankElem> combined = null;
+            if (valuePerEnchant != null && valuePerModifier != null)
+                combined = valuePerEnchant.Concat(valuePerModifier);
+            else if (valuePerEnchant != null)
+                combined = valuePerEnchant;
+            else if (valuePerModifier != null)
+                combined = valuePerModifier;
+            return combined;
         }
 
         private long GetReforgeValue(ItemReferences.Reforge reforge)
@@ -1481,7 +1488,7 @@ ORDER BY l.`AuctionId`  DESC;
                                 Console.WriteLine($"closest is not available yet, state is {this.State}");
                             return;
                         }
-                        var closests = FindClosest(l, key).Take(5).ToList();
+                        var closests = FindClosest(l, key, auction.Tag).Take(5).ToList();
                         foreach (var item in closests)
                         {
                             Console.WriteLine($"Closest bucket clean: {item.Key}");
@@ -1554,7 +1561,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             // special case for items that have no reference bucket, search using most similar
             var key = KeyFromSaveAuction(auction, 0);
-            var closest = FindClosestTo(l, key);
+            var closest = FindClosestTo(l, key, auction.Tag);
             medPrice *= 1.10; // increase price a bit to account for the fact that we are not using the exact same item
             if (closest.Value == null)
             {
@@ -1990,7 +1997,7 @@ ORDER BY l.`AuctionId`  DESC;
             props["refAge"] = refAge.ToString();
             if (auction.Tag.StartsWith("PET_") && auction.FlatenedNBT.Any(f => f.Value == "PET_ITEM_TIER_BOOST") && !props["key"].Contains(TierBoostShorthand))
                 throw new Exception("Tier boost missing " + props["key"] + " " + JSON.Stringify(auction));
-            if(auction.FlatenedNBT.TryGetValue("uid", out var uid))
+            if (auction.FlatenedNBT.TryGetValue("uid", out var uid))
             {
                 uid += type;
             }
