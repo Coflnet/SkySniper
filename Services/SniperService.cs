@@ -773,9 +773,10 @@ ORDER BY l.`AuctionId`  DESC;
                     if (closest.Count > 0)
                         clean = closest.MinBy(m => m.Value.Price).Value;
                 }
-                if (enchantPrice != 0 && clean != default && clean.Price > 10_000 && clean.Volume > 1)
+                var combined = (clean?.Price ?? 0) + enchantPrice;
+                if (enchantPrice != 0 && clean != default && clean.Price > 10_000 && clean.Volume > 1 && medianPrice > combined)
                 {
-                    bucket.Price = Math.Min(medianPrice, clean.Price + enchantPrice);
+                    bucket.Price = Math.Min(medianPrice, combined);
                     Console.WriteLine($"Adjusted for enchat cost {keyCombo.tag} -> {medianPrice}  {key} - {enchantPrice} {clean.Price} {clean.Volume}");
                     return;
                 }
