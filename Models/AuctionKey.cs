@@ -148,7 +148,8 @@ namespace Coflnet.Sky.Sniper.Models
                 else if (float.TryParse(modMatch.Modifier.Value, CultureInfo.InvariantCulture, out var mValue) && float.TryParse(m.Value, CultureInfo.InvariantCulture, out var value))
                     // numeric difference
                     matchValue -= modMatch.GetValueOrDefault(Math.Abs(mValue - value) * ImportanceFactor(m.Key));
-                matchValue -= modMatch.GetValueOrDefault(ImportanceFactor(m.Key));
+                else
+                    matchValue -= modMatch.GetValueOrDefault(ImportanceFactor(m.Key));
             }
 
             return matchValue;
