@@ -48,7 +48,7 @@ namespace Coflnet.Sky.Sniper.Models
             if (key == null)
                 return -100000;
 
-            if (service != null && (RetrainService.IsManager || Random.Shared.NextDouble() < 0.2))
+            if (service != null)
             {
                 return SimilarityByMarketPrice(key, keyvalue, self);
             }
@@ -142,7 +142,7 @@ namespace Coflnet.Sky.Sniper.Models
                 }
 
                 if (modMatch.Modifier.Value == m.Value)
-                    matchValue = modMatch.Value;
+                    matchValue += modMatch.GetValueOrDefault(ImportanceFactor(m.Key));
                 else if (modMatch.Modifier.Key == null && float.TryParse(m.Value, CultureInfo.InvariantCulture, out var parsed))
                     matchValue -= modMatch.GetValueOrDefault(Math.Abs(parsed) * ImportanceFactor(m.Key));
                 else if (float.TryParse(modMatch.Modifier.Value, CultureInfo.InvariantCulture, out var mValue) && float.TryParse(m.Value, CultureInfo.InvariantCulture, out var value))

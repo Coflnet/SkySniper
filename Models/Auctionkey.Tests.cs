@@ -22,35 +22,60 @@ public class AuctionkeyTests
         itemService = new HypixelItemService(null, null);
         service = new SniperService(itemService);
     }
+
+    [Test]
+    public void SkinsWithValue()
+    {
+        var withSkin = new AuctionKey()
+        {
+            Reforge = ItemReferences.Reforge.Any,
+            Enchants = new List<Enchant>().AsReadOnly(),
+            Modifiers = new(new List<KeyValuePair<string, string>>() { new("skin", "1"), new("exp", "6") }),
+            Tier = Tier.LEGENDARY
+        };
+        var withoutSkin = new AuctionKey()
+        {
+            Reforge = ItemReferences.Reforge.Any,
+            Enchants = new List<Enchant>().AsReadOnly(),
+            Modifiers = new(new List<KeyValuePair<string, string>>() { new("exp", "6") }),
+            Tier = Tier.LEGENDARY
+        };
+        var exp = new SniperService.RankElem(new KeyValuePair<string, string>("exp", "6"), 6);
+        var value = new List<SniperService.RankElem>() { new(new KeyValuePair<string, string>("skin", "1"), 0), exp };
+        var emtpyValue = new List<SniperService.RankElem>() { exp };
+        var similarity = withoutSkin.Similarity(withSkin, service, value, emtpyValue);
+        Assert.Greater(0, similarity);
+    }
+
     [Test]
     public void DifferentModifiersDecrease()
     {
         var key = new AuctionKey();
-        var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new ("test", "test") }.AsReadOnly() };
+        var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new("test", "test") }.AsReadOnly() };
         // by default reforge and tier match
         Assert.Greater(key.Similarity(key), keyB.Similarity(key));
     }
     [Test]
     public void SameModsMatch()
     {
-        var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new ("test", "test") }.AsReadOnly() };
-        var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new ("test", "test") }.AsReadOnly() };
+        var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new("test", "test") }.AsReadOnly() };
+        var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new("test", "test") }.AsReadOnly() };
         // by default reforge and tier match
         Assert.AreEqual(key.Similarity(key), keyB.Similarity(key));
     }
     [Test]
     public void SameModsDecreaseFurther()
     {
-        var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new ("mending", "1"),new ("veteran", "1") }.AsReadOnly() };
-        var further = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new ("dominance", "1"),new ("veteran", "1") }.AsReadOnly() };
-        var closer = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new ("mending", "4"),new ("veteran", "4") }.AsReadOnly() };
+        var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new("mending", "1"), new("veteran", "1") }.AsReadOnly() };
+        var further = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new("dominance", "1"), new("veteran", "1") }.AsReadOnly() };
+        var closer = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new("mending", "4"), new("veteran", "4") }.AsReadOnly() };
         // by default reforge and tier match
         Assert.Greater(key.Similarity(closer), key.Similarity(further));
     }
     [Test]
     public void PreferMatchingKind()
     {
-        var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new ("test", "test") }.AsReadOnly() };
+        var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new("test", "test") }.AsReadOnly() };
     }
     [Test]
     public void NoModsNoError()
@@ -87,7 +112,7 @@ public class AuctionkeyTests
         var auction = new SaveAuction()
         {
             Tag = "LAVA_SHELL_NECKLACE",
-            FlatenedNBT = new() { { "lifeline", "1" }, {"mana_regeneration", "1"} },
+            FlatenedNBT = new() { { "lifeline", "1" }, { "mana_regeneration", "1" } },
         };
         var key = service.KeyFromSaveAuction(auction);
         Assert.AreEqual(1, key.Modifiers.Count);
@@ -99,7 +124,7 @@ public class AuctionkeyTests
         var auction = new SaveAuction()
         {
             Tag = "LAVA_SHELL_NECKLACE",
-            FlatenedNBT = new() { { "lifeline", "1" }, {"mana_pool", "1"} },
+            FlatenedNBT = new() { { "lifeline", "1" }, { "mana_pool", "1" } },
         };
         var key = service.KeyFromSaveAuction(auction);
         Assert.AreEqual(2, key.Modifiers.Count);
