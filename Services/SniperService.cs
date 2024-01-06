@@ -486,7 +486,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (prefix == string.Empty)
                     return new (string, int)[] { (prefix + m.Value.ToUpper(), 1) };
                 else
-                    // some of the items actually don't have the prefix
+                    // some of the items actually don't have the prefix, skins on pets may but other skins don't
                     return new (string, int)[] { (prefix + m.Value.ToUpper(), 1), (m.Value.ToUpper(), 1) };
             if (tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false && m.Key.StartsWith("JASPER_0"))
             {
@@ -1113,7 +1113,8 @@ ORDER BY l.`AuctionId`  DESC;
         private IEnumerable<RankElem> ComparisonValue(IEnumerable<Enchant> enchants, List<KeyValuePair<string, string>> modifiers, string tag, Dictionary<string, string> flatNbt)
         {
             var valuePerEnchant = enchants?.Select(item => new RankElem(item, mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices)));
-            var valuePerModifier = modifiers?.Select(mod =>
+
+            var handler = (KeyValuePair<string, string> mod) =>
             {
                 var items = GetItemKeysForModifier(modifiers, flatNbt, tag, mod);
                 var sum = 0L;
@@ -1126,7 +1127,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (items.Count() > 0 && sum == 0)
                 {
-                   // sum += 2_000_000; // would not have been stored if it was cheaper but is apparently currently missing
+                    // sum += 2_000_000; // would not have been stored if it was cheaper but is apparently currently missing
                 }
                 if (mod.Key == "upgrade_level")
                 {
@@ -1164,11 +1165,23 @@ ORDER BY l.`AuctionId`  DESC;
                 if (Constants.AttributeKeys.Contains(mod.Key))
                 {
                     sum += 50_000 * (long)Math.Pow(2, int.Parse(mod.Value)) + 500_000;
-                    if(modifiers.Any(m=>m.Key != mod.Key && Constants.AttributeKeys.Contains(m.Key)))
+                    if (modifiers.Any(m => m.Key != mod.Key && Constants.AttributeKeys.Contains(m.Key)))
                         sum += 50_000_000; // godroll
                 }
                 return new RankElem(mod, sum);
-            }).ToList();
+            };
+            var valuePerModifier = modifiers?.Select(m =>
+            {
+                try
+                {
+                    return handler(m);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Error when calculating value for {m.Key} {m.Value} {tag}}n" + e);
+                    return new RankElem(m, 0);
+                }
+            });
             IEnumerable<RankElem> combined = null;
             if (valuePerEnchant != null && valuePerModifier != null)
                 combined = valuePerEnchant.Concat(valuePerModifier);
