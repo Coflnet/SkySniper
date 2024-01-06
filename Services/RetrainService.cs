@@ -20,6 +20,7 @@ public class RetrainService : BackgroundService
     readonly string streamName = "retrain";
     readonly string groupName = "retrain";
     private readonly Dictionary<string, DateTime> lastRetrain = new();
+    public static bool IsManager = false;
 
     public RetrainService(
         PartialCalcService partialCalcService,
@@ -76,11 +77,13 @@ public class RetrainService : BackgroundService
             logger.LogInformation("Loading retrained from " + value);
             _ = partialCalcService.Load();
         });
-        if(!bool.TryParse(configuration["IS_MANAGER"], out var enabled) || !enabled)
+        if(!bool.TryParse(configuration["IS_MANAGER"], out var isManaer) || !isManaer)
         {
             logger.LogInformation("Retrain disabled");
+            IsManager = false;
             return;
         }
+        IsManager = true;
         while (!stoppingToken.IsCancellationRequested)
         {
             try

@@ -458,7 +458,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(highestValAuction);
             highestValAuction.HighestBidAmount = 5000;
             service.TestNewAuction(highestValAuction);
-            Assert.AreEqual(1000000, found.First().TargetPrice);
+            Assert.AreEqual(1000000, found.First().TargetPrice, JsonConvert.SerializeObject(found.First()));
         }
 
         private void AddVolume(SaveAuction toAdd)
@@ -971,6 +971,10 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void StonksGodRollAttributeDifference()
         {
+            var baseVal = Dupplicate(highestValAuction);
+            baseVal.HighestBidAmount = 200_000;
+            baseVal.FlatenedNBT = new() { { "dominance", "8" }, { "speed", "1" } };
+            AddVolume(baseVal); // base item price
             highestValAuction.FlatenedNBT = new() { { "mana_pool", "1" } };
             var withRegen = Dupplicate(highestValAuction);
             withRegen.HighestBidAmount = 100_000_000;

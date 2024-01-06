@@ -1036,7 +1036,7 @@ ORDER BY l.`AuctionId`  DESC;
             var underlyingItemValue = 0L;
             if (auction.Tag != null && Lookups.TryGetValue(auction.Tag, out var lookups))
             {
-                var generalRelevant = lookups.Lookup.Where(v => v.Value.Price > threshold).ToList();
+                var generalRelevant = lookups.Lookup.Where(v => v.Value.Price > 0).ToList();
                 var percise = generalRelevant.Where(v => v.Key.Tier == auction.Tier).ToList();
                 var relevant = percise.Count > 0 ? percise : generalRelevant;
                 if (relevant.Count > 0)
@@ -1124,6 +1124,10 @@ ORDER BY l.`AuctionId`  DESC;
                         sum += (lookup.Lookup.Values.FirstOrDefault()?.Price ?? 0) * item.amount;
                     }
                 }
+                if (items.Count() > 0 && sum == 0)
+                {
+                   // sum += 2_000_000; // would not have been stored if it was cheaper but is apparently currently missing
+                }
                 if (mod.Key == "upgrade_level")
                 {
                     sum += EstStarCost(tag, int.Parse(mod.Value));
@@ -1153,13 +1157,16 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (mod.Key.EndsWith("_kills"))
                 {
-                    sum += 10_000 * (int)Math.Pow(2, int.Parse(mod.Value));
+                    sum += 10_000 * (int)Math.Pow(2, int.Parse(mod.Value)) + 500_000;
                 }
-                if(mod.Key == "color")
+                if (mod.Key == "color")
                     sum += 10_000_000;
-                if(Constants.AttributeKeys.Contains(mod.Key))
-                    sum += 50_000 * (long)Math.Pow(2, int.Parse(mod.Value));
-
+                if (Constants.AttributeKeys.Contains(mod.Key))
+                {
+                    sum += 50_000 * (long)Math.Pow(2, int.Parse(mod.Value)) + 500_000;
+                    if(modifiers.Any(m=>m.Key != mod.Key && Constants.AttributeKeys.Contains(m.Key)))
+                        sum += 50_000_000; // godroll
+                }
                 return new RankElem(mod, sum);
             }).ToList();
             IEnumerable<RankElem> combined = null;
