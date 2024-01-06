@@ -519,9 +519,9 @@ ORDER BY l.`AuctionId`  DESC;
         public IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> FindClosest(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey, string itemTag, int maxAge = 8)
         {
             var minDay = GetDay() - maxAge;
-            var values = ComparisonValue(itemKey.Enchants, itemKey.Modifiers.ToList(), itemTag, null);
+            var values = ComparisonValue(itemKey.Enchants, itemKey.Modifiers.ToList(), itemTag, null).ToList();
             return l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0 && !l.Key.Modifiers.Any(m => m.Key == "virtual"))
-                            .OrderByDescending(m => itemKey.Similarity(m.Key) + (m.Value.OldestRef > minDay ? 0 : -10));
+                            .OrderByDescending(m => itemKey.Similarity(m.Key, this, ComparisonValue(m.Key.Enchants, m.Key.Modifiers.ToList(), itemTag, null).ToList(), values) + (m.Value.OldestRef > minDay ? 0 : -10));
         }
 
         void AssignMedian(PriceEstimate result, AuctionKey key, ReferenceAuctions bucket, long gemVal)
@@ -873,6 +873,12 @@ ORDER BY l.`AuctionId`  DESC;
             public KeyValuePair<string, string> Modifier { get; set; }
             public ItemReferences.Reforge Reforge { get; set; }
 
+            public long GetValueOrDefault(double defaultVal)
+            {
+                if (Value == 0)
+                    return (long)defaultVal;
+                return Value;
+            }
 
             public override string ToString()
             {

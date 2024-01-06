@@ -6,6 +6,7 @@ using System.Linq;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Services;
 using MessagePack;
+using Prometheus;
 
 namespace Coflnet.Sky.Sniper.Models
 {
@@ -21,7 +22,7 @@ namespace Coflnet.Sky.Sniper.Models
         [Key(1)]
         public ItemReferences.Reforge Reforge;
         [Key(2)]
-        public ReadOnlyCollection<KeyValuePair<string, string>> Modifiers = new(new List<KeyValuePair<string,string>>());
+        public ReadOnlyCollection<KeyValuePair<string, string>> Modifiers = new(new List<KeyValuePair<string, string>>());
         [Key(3)]
         public Tier Tier;
         [Key(4)]
@@ -42,10 +43,15 @@ namespace Coflnet.Sky.Sniper.Models
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        public int Similarity(AuctionKey key)
+        public int Similarity(AuctionKey key, SniperService service = null, List<SniperService.RankElem> keyvalue = null, List<SniperService.RankElem> self = null)
         {
             if (key == null)
                 return -100000;
+
+            if (service != null)
+            {
+                return SimilarityByMarketPrice(key, keyvalue, self);
+            }
             var sum = 0;
             if (this.Reforge == key.Reforge)
                 sum++;
@@ -83,6 +89,78 @@ namespace Coflnet.Sky.Sniper.Models
                 sum -= this.Modifiers?.Count ?? 0 - key.Modifiers?.Count ?? 0;
             sum -= Math.Abs(key.Count - Count);
             return sum;
+        }
+
+        private int SimilarityByMarketPrice(AuctionKey key, List<SniperService.RankElem> keyvalue, List<SniperService.RankElem> self)
+        {
+            var matchValue = 0L;
+            matchValue = CompareValues(keyvalue, self, matchValue);
+            matchValue = CompareValues(self, keyvalue, matchValue);
+            var reforge = keyvalue.FirstOrDefault(k => k.Reforge != default);
+            if (reforge != default && reforge.Reforge != default)
+            {
+                var match = self.FirstOrDefault(k => k.Reforge == reforge.Reforge);
+                if (match.Reforge == reforge.Reforge)
+                    matchValue += match.Value;
+                else
+                    matchValue -= match.Value;
+            }
+            foreach (var item in keyvalue.Where(k => k.Value == 0))
+            {
+                if (Random.Shared.NextDouble() < 0.1)
+                    Console.WriteLine($"Key {item} has no value");
+            }
+
+            var petDiffere = Math.Abs(this.Tier - key.Tier);
+            matchValue -= petDiffere * 11_000_000;
+            if (petDiffere > 0 && key.Modifiers.Any(m => m.Key == "exp"))
+                matchValue -= 100_000_000; // higher tier is very bad
+            return (int)(matchValue / 100);
+        }
+
+        private static long CompareValues(List<SniperService.RankElem> keyvalue, List<SniperService.RankElem> self, long matchValue)
+        {
+            foreach (var item in keyvalue.Where(k => k.Enchant.Lvl != default))
+            {
+                var enchMatch = self.FirstOrDefault(k => k.Enchant.Type == item.Enchant.Type);
+                if (enchMatch?.Enchant.Lvl == default)
+                {
+                    matchValue -= item.Value;
+                    continue;
+                };
+                if (enchMatch.Enchant.Lvl == item.Enchant.Lvl)
+                    matchValue += enchMatch.Value;
+            }
+            foreach (var item in keyvalue.Where(k => k.Modifier.Key != default))
+            {
+                var modMatch = self.FirstOrDefault(k => k.Modifier.Key == item.Modifier.Key);
+                var m = item.Modifier;
+                if (modMatch == default)
+                {
+                    matchValue -= item.GetValueOrDefault(ImportanceFactor(m.Key));
+                    continue;
+                }
+
+                if (modMatch.Modifier.Value == m.Value)
+                    matchValue = modMatch.Value;
+                else if (modMatch.Modifier.Key == null && float.TryParse(m.Value, CultureInfo.InvariantCulture, out var parsed))
+                    matchValue -= modMatch.GetValueOrDefault(Math.Abs(parsed) * ImportanceFactor(m.Key));
+                else if (float.TryParse(modMatch.Modifier.Value, CultureInfo.InvariantCulture, out var mValue) && float.TryParse(m.Value, CultureInfo.InvariantCulture, out var value))
+                    // numeric difference
+                    matchValue -= modMatch.GetValueOrDefault(Math.Abs(mValue - value) * ImportanceFactor(m.Key));
+                matchValue -= modMatch.GetValueOrDefault(ImportanceFactor(m.Key));
+            }
+
+            return matchValue;
+        }
+
+        private static int ImportanceFactor(string key)
+        {
+            if (SniperService.VeryValuable.Contains(key))
+                return 10 * 1_000_000;
+            if (SniperService.Increadable.Contains(key))
+                return 100 * 1_000_000;
+            return 1 * 1_000_000;
         }
 
         private int EnchantSimilarity(IEnumerable<Enchant> enchantsToCompare, AuctionKey key)
@@ -130,10 +208,10 @@ namespace Coflnet.Sky.Sniper.Models
             if (Enchants != null)
                 foreach (var item in Enchants)
                 {
-                    enchRes = enchRes * 31 +  item.GetHashCode();
+                    enchRes = enchRes * 31 + item.GetHashCode();
                 }
             var modRes = 0x20;
-            if(Modifiers != null)
+            if (Modifiers != null)
                 foreach (var item in Modifiers)
                 {
                     modRes = modRes * 31 + (item.Value == null ? 0 : item.Value.GetHashCode());
