@@ -196,7 +196,7 @@ namespace Coflnet.Sky.Sniper.Services
             {"drill_part_engine", String.Empty},
             {"drill_part_fuel_tank", String.Empty},
             {"drill_part_upgrade_module", String.Empty},
-            {"skin", String.Empty},
+            {"skin", "PET_SKIN_"},
             {"dye_item", String.Empty},
             {"petItem", "PET_ITEM_"}
         };
