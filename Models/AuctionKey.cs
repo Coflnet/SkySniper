@@ -48,7 +48,7 @@ namespace Coflnet.Sky.Sniper.Models
             if (key == null)
                 return -100000;
 
-            if (service != null && (RetrainService.IsManager || Random.Shared.NextDouble() < 0.01))
+            if (service != null && (RetrainService.IsManager || Random.Shared.NextDouble() < 0.2))
             {
                 return SimilarityByMarketPrice(key, keyvalue, self);
             }
