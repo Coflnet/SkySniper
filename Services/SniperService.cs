@@ -1151,6 +1151,14 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     sum += 100_000_000;
                 }
+                if (mod.Key.EndsWith("_kills"))
+                {
+                    sum += 10_000 * (int)Math.Pow(2, int.Parse(mod.Value));
+                }
+                if(mod.Key == "color")
+                    sum += 10_000_000;
+                if(Constants.AttributeKeys.Contains(mod.Key))
+                    sum += 50_000 * (long)Math.Pow(2, int.Parse(mod.Value));
 
                 return new RankElem(mod, sum);
             }).ToList();
