@@ -1178,10 +1178,10 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"Error when calculating value for {m.Key} {m.Value} {tag}}n" + e);
+                    Console.WriteLine($"Error when calculating value for {m.Key} {m.Value} {tag}\n" + e);
                     return new RankElem(m, 0);
                 }
-            });
+            }).ToList();
             IEnumerable<RankElem> combined = null;
             if (valuePerEnchant != null && valuePerModifier != null)
                 combined = valuePerEnchant.Concat(valuePerModifier);
