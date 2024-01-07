@@ -1158,13 +1158,13 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (mod.Key.EndsWith("_kills"))
                 {
-                    sum += 10_000 * (int)Math.Pow(2, int.Parse(mod.Value)) + 500_000;
+                    sum += 300_000 * (int)Math.Pow(2, int.Parse(mod.Value)) + 300_000;
                 }
                 if (mod.Key == "color")
                     sum += 10_000_000;
                 if (Constants.AttributeKeys.Contains(mod.Key))
                 {
-                    sum += 50_000 * (long)Math.Pow(2, int.Parse(mod.Value)) + 500_000;
+                    sum += 200_000 * (long)Math.Pow(2, int.Parse(mod.Value)) + 600_000;
                     if (modifiers.Any(m => m.Key != mod.Key && Constants.AttributeKeys.Contains(m.Key)))
                         sum += 50_000_000; // godroll
                 }
