@@ -104,15 +104,7 @@ namespace Coflnet.Sky.Sniper.Models
             var matchValue = 0L;
             matchValue = CompareValues(keyvalue, self, matchValue);
             matchValue = CompareValues(self, keyvalue, matchValue);
-            var reforge = keyvalue.FirstOrDefault(k => k.Reforge != default);
-            if (reforge != default && reforge.Reforge != default)
-            {
-                var match = self.FirstOrDefault(k => k.Reforge == reforge.Reforge);
-                if (match.Reforge == reforge.Reforge)
-                    matchValue += match.Value;
-                else
-                    matchValue -= match.Value;
-            }
+            
             foreach (var item in keyvalue.Where(k => k.Value == 0))
             {
                 if (Random.Shared.NextDouble() < 0.1)
@@ -158,6 +150,15 @@ namespace Coflnet.Sky.Sniper.Models
                     matchValue -= modMatch.GetValueOrDefault(Math.Abs(mValue - value) * ImportanceFactor(m.Key));
                 else
                     matchValue -= modMatch.GetValueOrDefault(ImportanceFactor(m.Key));
+            }
+            var reforge = keyvalue.FirstOrDefault(k => k.Reforge != default);
+            if (reforge != default && reforge.Reforge != default)
+            {
+                var match = self.FirstOrDefault(k => k.Reforge == reforge.Reforge);
+                if (match.Reforge == reforge.Reforge)
+                    matchValue += match.Value;
+                else
+                    matchValue -= match.Value;
             }
 
             return matchValue;
