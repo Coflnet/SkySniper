@@ -12,6 +12,14 @@ namespace Coflnet.Sky.Sniper.Models
 {
     public class AuctionKeyWithValue : AuctionKey
     {
+        public AuctionKeyWithValue(AuctionKey key) : base(key)
+        {
+        }
+
+        public AuctionKeyWithValue()
+        {
+        }
+
         public long ValueSubstract { get; set; }
     }
     [MessagePackObject]

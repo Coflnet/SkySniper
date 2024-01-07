@@ -1191,6 +1191,29 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void CapValueAtSingleCount()
+        {
+            highestValAuction.FlatenedNBT = new();
+            var biggerStack = Dupplicate(highestValAuction);
+            biggerStack.Count = 3;
+            biggerStack.HighestBidAmount = 100_000_000;
+            AddVolume(biggerStack);
+
+            var single = Dupplicate(highestValAuction);
+            single.Count = 1;
+            single.HighestBidAmount = 1_000_000;
+            AddVolume(single);
+
+            var toTest = Dupplicate(highestValAuction);
+            toTest.Count = 3;
+            TestNewAuction(toTest);
+
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            Assert.AreEqual(3000000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+        }
+
+        [Test]
         public void LbinSimilarity()
         {
             highestValAuction.StartingBid = 5;

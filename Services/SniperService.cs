@@ -1888,6 +1888,18 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 return long.MaxValue;
             }).DefaultIfEmpty(long.MaxValue).Min();
+            if (key.Count > 1)
+            {
+                var lowerCountKey = new AuctionKey(key)
+                {
+                    Count = 1
+                };
+                if (l.TryGetValue(lowerCountKey, out ReferenceAuctions lowerCountBucket))
+                {
+                    if (lowerCountBucket.Price != 0)
+                        higherValueLowerPrice = Math.Min(higherValueLowerPrice, lowerCountBucket.Price * key.Count);
+                }
+            }
             var adjustedMedianPrice = Math.Min(bucket.Price, higherValueLowerPrice);
             return adjustedMedianPrice;
         }
@@ -1986,6 +1998,8 @@ ORDER BY l.`AuctionId`  DESC;
                 return false;
             }))
                 return false;
+            if(IsStacksize1Cheaper(lbinPrice, key, l))
+                return false;
             var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue);
             AddMedianSample(bucket, props);
             props["mVal"] = bucket.Price.ToString();
@@ -1999,6 +2013,23 @@ ORDER BY l.`AuctionId`  DESC;
                     .ElementAt(Math.Min(bucket.References.Count, subsetSize) * 9 / 10);
             targetPrice = Math.Min(targetPrice, percentile);
             return FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
+        }
+
+        private static bool IsStacksize1Cheaper(double lbinPrice, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
+        {
+            if (key.Count > 1)
+            {
+                var lowerCountKey = new AuctionKey(key)
+                {
+                    Count = 1
+                };
+                if (l.TryGetValue(lowerCountKey, out ReferenceAuctions lowerCountBucket))
+                {
+                    if (lowerCountBucket.Lbin.Price != 0 && lowerCountBucket.Lbin.Price * key.Count < lbinPrice)
+                        return true;
+                }
+            }
+            return false;
         }
 
         private static void AddMedianSample(ReferenceAuctions bucket, Dictionary<string, string> props)
