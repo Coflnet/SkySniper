@@ -872,6 +872,7 @@ ORDER BY l.`AuctionId`  DESC;
             public Models.Enchant Enchant { get; set; }
             public KeyValuePair<string, string> Modifier { get; set; }
             public ItemReferences.Reforge Reforge { get; set; }
+            public bool IsEstimate { get; set; }
 
             public long GetValueOrDefault(double defaultVal)
             {
@@ -1069,7 +1070,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             IEnumerable<RankElem> combined = ComparisonValue(enchants, modifiers, auction.Tag, auction.FlatenedNBT);
 
-            var modifierSum = underlyingItemValue + combined?.Select(m => m.Value).DefaultIfEmpty(0).Sum() ?? 0;
+            var modifierSum = underlyingItemValue + combined?.Select(m => m.IsEstimate ? m.Value / 20 : m.Value).DefaultIfEmpty(0).Sum() ?? 0;
             threshold = Math.Max(threshold, modifierSum / 22);
 
             bool removedRarity = false;
@@ -1152,6 +1153,9 @@ ORDER BY l.`AuctionId`  DESC;
                             modifiers.Add(new(mod.Key, string.Join(",", remaining)));
                     }
                 }
+                // early return if we have a value before estimates
+                if (sum > 0)
+                    return new RankElem(mod, sum);
                 if (mod.Key == "pgems")
                 {
                     sum += 100_000_000;
@@ -1168,7 +1172,10 @@ ORDER BY l.`AuctionId`  DESC;
                     if (modifiers.Any(m => m.Key != mod.Key && Constants.AttributeKeys.Contains(m.Key)))
                         sum += 50_000_000; // godroll
                 }
-                return new RankElem(mod, sum);
+                return new RankElem(mod, sum)
+                {
+                    IsEstimate = true
+                };
             };
             var valuePerModifier = modifiers?.Select(m =>
             {
