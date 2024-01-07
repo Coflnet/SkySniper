@@ -759,6 +759,19 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     Enchants = new(new List<Enchant>())
                 };
+
+                if (keyCombo.Item2.Count > 1)
+                {
+                    var lowerCountKey = new AuctionKey(keyCombo.Item2)
+                    {
+                        Count = 1
+                    };
+                    if (Lookups.GetOrAdd(keyCombo.tag, new PriceLookup()).Lookup.TryGetValue(lowerCountKey, out var lowerCountBucket))
+                    {
+                        if (lowerCountBucket.Price != 0)
+                            medianPrice = Math.Min(medianPrice, lowerCountBucket.Price * key.Count);
+                    }
+                }
                 var enchantPrice = GetPriceSumForEnchants(keyCombo.Item2.Enchants);
                 if (enchantPrice <= 0)
                 {
@@ -1888,18 +1901,6 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 return long.MaxValue;
             }).DefaultIfEmpty(long.MaxValue).Min();
-            if (key.Count > 1)
-            {
-                var lowerCountKey = new AuctionKey(key)
-                {
-                    Count = 1
-                };
-                if (l.TryGetValue(lowerCountKey, out ReferenceAuctions lowerCountBucket))
-                {
-                    if (lowerCountBucket.Price != 0)
-                        higherValueLowerPrice = Math.Min(higherValueLowerPrice, lowerCountBucket.Price * key.Count);
-                }
-            }
             var adjustedMedianPrice = Math.Min(bucket.Price, higherValueLowerPrice);
             return adjustedMedianPrice;
         }
@@ -1998,7 +1999,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return false;
             }))
                 return false;
-            if(IsStacksize1Cheaper(lbinPrice, key, l))
+            if (IsStacksize1Cheaper(lbinPrice, key, l))
                 return false;
             var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue);
             AddMedianSample(bucket, props);
