@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Coflnet.Sky.Core;
 using NUnit.Framework;
 
@@ -30,5 +31,13 @@ public class PropertyMapperTests
         Assert.IsTrue(mapper.TryGetIngredients("art_of_war_count", "1", null, out var ingredients));
         Assert.AreEqual(1, ingredients.Count);
         Assert.AreEqual("THE_ART_OF_WAR", ingredients[0]);
+    }
+
+    [Test]
+    public async Task LoadNeuConstants()
+    {
+        await mapper.LoadNeuConstants();
+        var cost = mapper.GetReforgeCost(ItemReferences.Reforge.aote_stone, Tier.EPIC);
+        Assert.AreEqual(5_000_000, cost.Item2);
     }
 }

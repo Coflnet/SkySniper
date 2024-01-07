@@ -1901,6 +1901,19 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 return long.MaxValue;
             }).DefaultIfEmpty(long.MaxValue).Min();
+
+            if (key.Count > 1)
+            {
+                var lowerCountKey = new AuctionKey(key)
+                {
+                    Count = 1
+                };
+                if (l.TryGetValue(lowerCountKey, out ReferenceAuctions lowerCountBucket))
+                {
+                    if (lowerCountBucket.Price != 0)
+                        higherValueLowerPrice = Math.Min(higherValueLowerPrice, lowerCountBucket.Price * key.Count);
+                }
+            }
             var adjustedMedianPrice = Math.Min(bucket.Price, higherValueLowerPrice);
             return adjustedMedianPrice;
         }
@@ -2120,6 +2133,7 @@ ORDER BY l.`AuctionId`  DESC;
         public async System.Threading.Tasks.Task Init()
         {
             await itemService.GetItemsAsync();
+            await mapper.LoadNeuConstants();
         }
     }
 }
