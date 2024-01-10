@@ -1022,6 +1022,28 @@ namespace Coflnet.Sky.Sniper.Services
             }].Price;
             Assert.AreEqual(625000, price);
         }
+        /// <summary>
+        /// "scrap for parts" is a possible value increase
+        /// </summary>
+        [Test]
+        public void SingleAttributeValueMin()
+        {
+            highestValAuction.Tag = "AURORA_LEGGINGS";
+            highestValAuction.FlatenedNBT = new() { { "mana_pool", "1" } };
+            highestValAuction.HighestBidAmount = 10_000_000;
+            AddVolume(highestValAuction);
+            highestValAuction.FlatenedNBT = new() { { "magic_find", "2" } };
+            highestValAuction.HighestBidAmount = 8_000_000;
+            AddVolume(highestValAuction);
+            var lowAuction = Dupplicate(highestValAuction);
+            lowAuction.HighestBidAmount = 100_000;
+            lowAuction.FlatenedNBT = new();
+            AddVolume(lowAuction);
+            var sampleAuction = Dupplicate(highestValAuction);
+            sampleAuction.FlatenedNBT = new(){{"magic_find","2"},{"mana_pool","1"}};
+            var estimate = service.GetPrice(sampleAuction);
+            Assert.AreEqual(10_000_000, estimate.Median);
+        }
         [Test]
         public void StonksPetCandyReduction()
         {

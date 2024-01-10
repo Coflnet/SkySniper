@@ -343,25 +343,9 @@ ORDER BY l.`AuctionId`  DESC;
             if (result.Median == default)
             {
                 var now = DateTime.UtcNow;
-                var res = ClosetMedianMapLookup.GetOrAdd(((string, AuctionKey))(auction.Tag, itemKey), a =>
-                {
-                    closestMedianBruteCounter.Inc();
-                    foreach (var c in FindClosest(l, itemKey, auction.Tag))
-                    {
-                        AssignMedian(result, c.Key, c.Value, gemVal);
-                        GetDifferenceSum(auction, result, itemKey, c, out var diffExp, out var changeAmount);
-                        if (changeAmount != 0)
-                        {
-                            result.Median -= changeAmount;
-                            result.MedianKey += diffExp;
-                        }
-                        if (Random.Shared.NextDouble() < 0.05)
-                            Console.WriteLine($"no match found for {auction.Tag} {itemKey} options: {l.Count} {c.Key}");
-                        if (result.Median > 0)
-                            break;
-                    }
-                    return (result, now);
-                });
+                var res = ClosetMedianMapLookup
+                            .GetOrAdd(((string, AuctionKey))(auction.Tag, itemKey),
+                                      _ => GetEstimatedMedian(auction, result, l, itemKey, gemVal, now));
                 if (res.addedAt != now)
                 {
                     result.Median = res.result.Median;
@@ -389,6 +373,41 @@ ORDER BY l.`AuctionId`  DESC;
                 result.MedianKey += $"+star:{tagGroup.Item2}";
             }
             return result;
+        }
+
+
+        private (PriceEstimate result, DateTime addedAt) GetEstimatedMedian(SaveAuction auction, PriceEstimate result, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKeyWithValue itemKey, long gemVal, DateTime now)
+        {
+            closestMedianBruteCounter.Inc();
+            foreach (var c in FindClosest(l, itemKey, auction.Tag))
+            {
+                AssignMedian(result, c.Key, c.Value, gemVal);
+                GetDifferenceSum(auction, result, itemKey, c, out var diffExp, out var changeAmount);
+                if (changeAmount != 0)
+                {
+                    result.Median -= changeAmount;
+                    result.MedianKey += diffExp;
+                }
+                foreach (var item in itemKey.Modifiers.Where(m => Constants.AttributeKeys.Contains(m.Key)))
+                {
+                    // "scrap for parts"
+                    var key = VirtualAttributeKey(item);
+                    if(!l.TryGetValue(key, out var references) || references.Price == 0)
+                        continue;
+                    var median = references.Price;
+                    if(result.Median < median)
+                    {
+                        result.Median = median;
+                        result.MedianKey = key.ToString();
+                    }
+                }
+
+                if (Random.Shared.NextDouble() < 0.05)
+                    Console.WriteLine($"no match found for {auction.Tag} {itemKey} options: {l.Count} {c.Key}");
+                if (result.Median > 0)
+                    break;
+            }
+            return (result, now);
         }
 
         private (PriceEstimate result, DateTime addedAt) ClosestLbin(SaveAuction auction, PriceEstimate result, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKeyWithValue itemKey, DateTime now)
@@ -669,14 +688,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var itemGroupTag = groupTag.Item1;
                 foreach (var item in attributesOnAuction)
                 {
-                    var itemKey = new AuctionKey()
-                    {
-                        Modifiers = new(new List<KeyValuePair<string, string>>()
-                        {
-                            new(item.Key, "1"),
-                            new("virtual",string.Empty)
-                        })
-                    };
+                    AuctionKey itemKey = VirtualAttributeKey(item);
                     var bucketForAttribute = GetOrAdd(itemKey, Lookups[itemGroupTag]);
                     var level = int.Parse(item.Value);
                     var power = Math.Pow(2, level - 1);
@@ -688,6 +700,18 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 dev.Logger.Instance.Error(e, $"Occured when trying to store attribue value");
             }
+        }
+
+        private static AuctionKey VirtualAttributeKey(KeyValuePair<string, string> item)
+        {
+            return new AuctionKey()
+            {
+                Modifiers = new(new List<KeyValuePair<string, string>>()
+                        {
+                            new(item.Key, "1"),
+                            new("virtual",string.Empty)
+                        })
+            };
         }
 
         /// <summary>
