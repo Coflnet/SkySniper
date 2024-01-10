@@ -310,7 +310,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (auction == null || auction.Tag == null)
                 return null;
             if (BazaarPrices.TryGetValue(auction.Tag, out var bazaar))
-                return new();
+                return new() { Median = (long)bazaar };
             var tagGroup = GetAuctionGroupTag(auction);
 
             var result = new PriceEstimate();
@@ -392,10 +392,10 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     // "scrap for parts"
                     var key = VirtualAttributeKey(item);
-                    if(!l.TryGetValue(key, out var references) || references.Price == 0)
+                    if (!l.TryGetValue(key, out var references) || references.Price == 0)
                         continue;
                     var median = references.Price;
-                    if(result.Median < median)
+                    if (result.Median < median)
                     {
                         result.Median = median;
                         result.MedianKey = key.ToString();
@@ -1950,6 +1950,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         public void UpdateBazaar(dev.BazaarPull bazaar)
         {
+            var today = GetDay(bazaar.Timestamp);
             foreach (var item in bazaar.Products)
             {
                 if (item.SellSummary.Count() == 0 && item.BuySummery.Count() == 0)
@@ -1960,30 +1961,44 @@ ORDER BY l.`AuctionId`  DESC;
                     Lookups[item.ProductId] = lookup;
                     Console.WriteLine($"Added {item.ProductId} to lookup");
                 }
-                var refernces = lookup.Lookup.GetOrAdd(defaultKey, _ => new());
+                var bucket = lookup.Lookup.GetOrAdd(defaultKey, _ => new());
+                var itemPrice = 0D;
                 if (item.SellSummary.Any() && item.BuySummery?.Count > 0 && item.QuickStatus?.BuyOrders >= 10)
                 {
                     var sellPrice = item.SellSummary.First().PricePerUnit;
                     var buyPrice = item.BuySummery.OrderBy(s => s.PricePerUnit).First().PricePerUnit;
-                    refernces.Price = (long)(sellPrice + buyPrice) / 2;
+                    itemPrice = (long)(sellPrice + buyPrice) / 2;
                 }
                 else if (item.SellSummary.Any())
                 {
-                    refernces.Price = (long)item.SellSummary.First().PricePerUnit;
+                    itemPrice = (long)item.SellSummary.First().PricePerUnit;
                 }
                 else if (item.BuySummery.Any())
                 {
-                    refernces.Price = (long)item.BuySummery.OrderBy(s => s.PricePerUnit).First().PricePerUnit;
+                    itemPrice = (long)item.BuySummery.OrderBy(s => s.PricePerUnit).First().PricePerUnit;
                 }
+
+                if (bucket.References.Count < 5 || new DateTime(bucket.References.Last().AuctionId) < bazaar.Timestamp.AddMinutes(10))
+                    bucket.References.Enqueue(new()
+                    {
+                        Day = today,
+                        Price = (long)itemPrice,
+                        AuctionId = bazaar.Timestamp.Ticks,
+                        Seller = (short)DateTime.Now.Ticks
+                    });
+                if(bucket.Price == 0)
+                    bucket.Price = (long)itemPrice;
+                UpdateMedian(bucket);
+                CapBucketSize(bucket);
 
                 // make sure higher enchants are higher value
                 if (item.ProductId.StartsWith("ENCHANTMENT"))
                 {
-                    MakePriceAtLeast90PercentHigherthanLowerLevel(item, refernces);
+                    MakePriceAtLeast90PercentHigherthanLowerLevel(item, bucket);
                 }
 
-                if (refernces.Price > 0)
-                    BazaarPrices[item.ProductId] = refernces.Price;
+                if (bucket.Price > 0)
+                    BazaarPrices[item.ProductId] = bucket.Price;
             }
             // make sure higher enchants are higher value
             foreach (var item in Lookups)

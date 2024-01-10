@@ -1040,7 +1040,7 @@ namespace Coflnet.Sky.Sniper.Services
             lowAuction.FlatenedNBT = new();
             AddVolume(lowAuction);
             var sampleAuction = Dupplicate(highestValAuction);
-            sampleAuction.FlatenedNBT = new(){{"magic_find","2"},{"mana_pool","1"}};
+            sampleAuction.FlatenedNBT = new() { { "magic_find", "2" }, { "mana_pool", "1" } };
             var estimate = service.GetPrice(sampleAuction);
             Assert.AreEqual(10_000_000, estimate.Median);
         }
@@ -1300,6 +1300,40 @@ namespace Coflnet.Sky.Sniper.Services
             SetBazaarPrice("PET_ITEM_QUICK_CLAW", 99_000_000);
             var price = service.GetPrice(highestValAuction);
             Assert.AreEqual(41_000_000 + random, price.Lbin.Price, JsonConvert.SerializeObject(price));
+        }
+
+        [Test]
+        public void BazaarHasMedian()
+        {
+            AddUpdate(100, DateTime.UtcNow.AddHours(-21));
+            AddUpdate(200, DateTime.UtcNow.AddHours(1));
+            AddUpdate(300, DateTime.UtcNow.AddHours(2));
+            AddUpdate(400, DateTime.UtcNow.AddHours(3));
+            AddUpdate(500, DateTime.UtcNow.AddHours(4));
+
+            highestValAuction.Tag = "XY";
+            var price = service.GetPrice(highestValAuction);
+            Assert.That(price.Median, Is.EqualTo(300));
+
+            void AddUpdate(int buyValue, DateTime timeStamp)
+            {
+                var sellOrder = new List<SellOrder>();
+                service.UpdateBazaar(new()
+                {
+                    Timestamp = timeStamp,
+                    Products = new(){
+                new (){
+                    ProductId = "XY",
+                    SellSummary = sellOrder,
+                    BuySummery = new(){
+                        new (){
+                            PricePerUnit = buyValue
+                        }
+                    }
+                }
+            }
+                });
+            }
         }
 
         private void SetBazaarPrice(string tag, int value, int buyValue = 0)
