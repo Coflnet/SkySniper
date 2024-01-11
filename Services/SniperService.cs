@@ -790,10 +790,11 @@ ORDER BY l.`AuctionId`  DESC;
                     {
                         Count = 1
                     };
-                    if (Lookups.GetOrAdd(keyCombo.tag, new PriceLookup()).Lookup.TryGetValue(lowerCountKey, out var lowerCountBucket))
+                    if (Lookups.GetOrAdd(keyCombo.tag, new PriceLookup()).Lookup.TryGetValue(lowerCountKey, out var lowerCountBucket) && lowerCountBucket.Price != 0)
                     {
-                        if (lowerCountBucket.Price != 0)
-                            medianPrice = Math.Min(medianPrice, lowerCountBucket.Price * key.Count);
+                        medianPrice = Math.Min(medianPrice, lowerCountBucket.Price * key.Count);
+
+                        Console.WriteLine($"Adjusted for count {keyCombo.tag} -> {medianPrice}  {key} - {keyCombo.Item2}");
                     }
                 }
                 var enchantPrice = GetPriceSumForEnchants(keyCombo.Item2.Enchants);
@@ -814,7 +815,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (enchantPrice != 0 && clean != default && clean.Price > 10_000 && clean.Volume > 1 && medianPrice > combined)
                 {
                     bucket.Price = Math.Min(medianPrice, combined);
-                    Console.WriteLine($"Adjusted for enchat cost {keyCombo.tag} -> {medianPrice}  {key} - {enchantPrice} {clean.Price} {clean.Volume}");
+                    Console.WriteLine($"Adjusted for enchat cost {keyCombo.tag} -> {medianPrice}  {keyCombo.Item2} - {enchantPrice} {clean.Price} {clean.Volume}");
                     return;
                 }
             }
@@ -1986,7 +1987,7 @@ ORDER BY l.`AuctionId`  DESC;
                         AuctionId = bazaar.Timestamp.Ticks,
                         Seller = (short)DateTime.Now.Ticks
                     });
-                if(bucket.Price == 0)
+                if (bucket.Price == 0)
                     bucket.Price = (long)itemPrice;
                 UpdateMedian(bucket);
                 CapBucketSize(bucket);
