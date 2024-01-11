@@ -807,19 +807,20 @@ ORDER BY l.`AuctionId`  DESC;
                 if (!Lookups.GetOrAdd(keyCombo.tag, new PriceLookup()).Lookup.TryGetValue(keyWithNoEnchants, out var clean))
                 {
                     sellClosestSearch.Inc();
-                    var closest = FindClosest(Lookups[keyCombo.tag].Lookup, keyWithNoEnchants, keyCombo.tag).Take(5).ToList();
+                    var closest = FindClosest(Lookups[keyCombo.tag].Lookup, keyWithNoEnchants, keyCombo.tag)
+                            .Where(x=>!x.Key.Modifiers.Except(keyCombo.Item2.Modifiers).Any()).Take(5).ToList();
                     if (closest.Count > 0)
                         clean = closest.MinBy(m => m.Value.Price).Value;
                 }
                 var combined = (clean?.Price ?? 0) + enchantPrice;
                 if (enchantPrice != 0 && clean != default && clean.Price > 10_000 && clean.Volume > 1 && medianPrice > combined)
                 {
-                    bucket.Price = Math.Min(medianPrice, combined);
                     if (clean.References.First().AuctionId == bucket.References.First().AuctionId)
                         Console.WriteLine($"skipping enchant adjustment {keyCombo.tag} -> {medianPrice}  {keyWithNoEnchants} - {enchantPrice} {clean.Price} {clean.Volume} {keyCombo.Item2}");
 
                     else
                     {
+                        bucket.Price = Math.Min(medianPrice, combined);
                         Console.WriteLine($"Adjusted for enchat cost {keyCombo.tag} -> {medianPrice}  {keyCombo.Item2} - {enchantPrice} {clean.Price} {clean.Volume} {keyWithNoEnchants}");
                         return;
                     }

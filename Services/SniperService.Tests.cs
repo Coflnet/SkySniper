@@ -1305,7 +1305,7 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void BazaarHasMedian()
         {
-            AddUpdate(100, DateTime.UtcNow.AddHours(-21));
+            AddUpdate(100, DateTime.UtcNow.AddHours(-24));
             AddUpdate(200, DateTime.UtcNow.AddHours(1));
             AddUpdate(300, DateTime.UtcNow.AddHours(2));
             AddUpdate(30000, DateTime.UtcNow.AddHours(2.1));
