@@ -808,7 +808,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     sellClosestSearch.Inc();
                     var closest = FindClosest(Lookups[keyCombo.tag].Lookup, keyWithNoEnchants, keyCombo.tag)
-                            .Where(x=>!x.Key.Modifiers.Except(keyCombo.Item2.Modifiers).Any()).Take(5).ToList();
+                            .Where(x=>!keyCombo.Item2.Modifiers.Except(x.Key.Modifiers).Any()).Take(5).ToList();
                     if (closest.Count > 0)
                         clean = closest.MinBy(m => m.Value.Price).Value;
                 }
