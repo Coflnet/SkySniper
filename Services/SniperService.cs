@@ -1836,8 +1836,8 @@ ORDER BY l.`AuctionId`  DESC;
             var volume = bucket.Volume;
             var medianPrice = bucket.Price + extraValue;
             var foundSnipe = false;
-            if (bucket.Lbin.Price > lbinPrice && (MaxMedianPriceForSnipe(bucket) > lbinPrice) && volume > 0.2f
-               )// || bucket.Price == 0))
+            if ((bucket.Lbin.Price > lbinPrice || bucket.Price == 0)&& (MaxMedianPriceForSnipe(bucket) > lbinPrice)
+               )
             {
                 foundSnipe = PotentialSnipe(auction, lbinPrice, bucket, key, l, extraValue);
             }
@@ -2069,9 +2069,13 @@ ORDER BY l.`AuctionId`  DESC;
                 return false;
             // check for 90th percentile from references
             var subsetSize = 20;
-            var percentile = bucket.References
+            var percentile = long.MaxValue;
+            if (bucket.References.Count > 1)
+                percentile = bucket.References
                     .OrderByDescending(r => r.Day).Take(subsetSize).Select(r => r.Price).OrderBy(p => p)
                     .ElementAt(Math.Min(bucket.References.Count, subsetSize) * 9 / 10);
+            else if (bucket.Lbin.Price < 50_000_000)
+                return false;
             targetPrice = Math.Min(targetPrice, percentile);
             return FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
         }
@@ -2100,6 +2104,8 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static long MaxMedianPriceForSnipe(ReferenceAuctions bucket)
         {
+            if(bucket.Price == 0)
+                return long.MaxValue; // disabled with 0 volume
             if (bucket.Price < 15_000_000)
                 return bucket.Price * 13 / 10;
             if (bucket.Price < 100_000_000)
@@ -2126,7 +2132,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (targetPrice < MIN_TARGET)
                 return false; // to low
             var refAge = (GetDay() - bucket.OldestRef);
-            if (refAge > 60 || State < SniperState.FullyLoaded && refAge > 5)
+            if (bucket.OldestRef != 0 && (refAge > 60 || State < SniperState.FullyLoaded && refAge > 5))
                 return false; // too old
             props["refAge"] = refAge.ToString();
             if (auction.Tag.StartsWith("PET_") && auction.FlatenedNBT.Any(f => f.Value == "PET_ITEM_TIER_BOOST") && !props["key"].Contains(TierBoostShorthand))

@@ -1673,7 +1673,7 @@ namespace Coflnet.Sky.Sniper.Services
                 Products = new() { CreateGemPrice("JADE"), CreateGemPrice("AMBER"), CreateGemPrice("SAPPHIRE"), CreateGemPrice("TOPAZ"), CreateGemPrice("AMETHYST") }
             });
             service.TestNewAuction(highestValAuction);
-            Assert.AreEqual(7501000, found.First().TargetPrice);
+            Assert.AreEqual(7500000, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
         }
 
         [Test]
@@ -1712,6 +1712,21 @@ namespace Coflnet.Sky.Sniper.Services
             service.TestNewAuction(Dupplicate(highestValAuction));
             Assert.AreEqual(3500000, found.Last().TargetPrice);
         }
+
+        [Test]
+        public void AllowSniperWithNoMedian()
+        {
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.StartingBid = 100_000_000;
+            highestValAuction.HighestBidAmount = 0;
+            TestNewAuction(highestValAuction);
+            var flip = Dupplicate(highestValAuction);
+            flip.StartingBid = 5;
+            TestNewAuction(flip);
+            Assert.AreEqual(100_000_000, found.Last().TargetPrice);
+            Assert.AreEqual(0, found.Last().DailyVolume);
+        }
+
         [Test]
         public void CleanAndEnchantLowerNoMatch()
         {
