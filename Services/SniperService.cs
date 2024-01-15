@@ -597,6 +597,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (!value.Lookup.TryGetValue(item.Key, out ReferenceAuctions existingBucket))
                     {
+                        item.Value.References = new ConcurrentQueue<ReferencePrice>(item.Value.References.OrderBy(r => r.Day));
                         value.Lookup[item.Key] = item.Value;
                         continue;
                     }
@@ -2076,6 +2077,16 @@ ORDER BY l.`AuctionId`  DESC;
                     .ElementAt(Math.Min(bucket.References.Count, subsetSize) * 9 / 10);
             else if (bucket.Lbin.Price < 50_000_000)
                 return false;
+            if(bucket.Price == 0)
+            {
+                // no references, check against all lbins
+                // all key modifiers and enchants need to be in the reference bucket
+                var allLbins = l.Where(x => x.Value.Lbin.Price > 0 
+                                        && x.Value.Lbin.Price < bucket.Lbin.Price 
+                                        && key.Modifiers.All(m => x.Key.Modifiers.Contains(m)) 
+                                        && key.Enchants.All(e => x.Key.Enchants.Contains(e)));
+                percentile = allLbins.Select(x => x.Value.Lbin.Price).DefaultIfEmpty(long.MaxValue).Min();
+            }
             targetPrice = Math.Min(targetPrice, percentile);
             return FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
         }

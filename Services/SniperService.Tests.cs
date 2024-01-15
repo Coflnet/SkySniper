@@ -1728,6 +1728,27 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void SniperLimitedByMorePropLbin()
+        {
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.Enchantments = new List<Core.Enchantment>(){
+                new Core.Enchantment(Enchantment.EnchantmentType.ultimate_one_for_all,1)
+            };
+            highestValAuction.StartingBid = 100_000_000;
+            highestValAuction.HighestBidAmount = 0;
+            TestNewAuction(highestValAuction);
+            var flip = Dupplicate(highestValAuction);
+            flip.StartingBid = 5;
+            highestValAuction.FlatenedNBT["rarity_upgrades"] = "1";
+            highestValAuction.StartingBid = 12_000_000;
+            TestNewAuction(highestValAuction);
+
+            TestNewAuction(flip);
+            Assert.AreEqual(12_000_000, found.Last().TargetPrice);
+            Assert.AreEqual(0, found.Last().DailyVolume);
+        }
+
+        [Test]
         public void CleanAndEnchantLowerNoMatch()
         {
             highestValAuction.Enchantments = new List<Core.Enchantment>(){
