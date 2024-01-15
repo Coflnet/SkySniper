@@ -1175,7 +1175,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (Lookups.TryGetValue(item.tag, out var lookup))
                     {
-                        sum += (lookup.Lookup.Values.FirstOrDefault()?.Price ?? 0) * item.amount;
+                        sum += (lookup.Lookup.Values.FirstOrDefault(f => f.Price != 0)?.Price ?? 0) * item.amount;
                     }
                 }
                 if (items.Count() > 0 && sum == 0)
