@@ -6,6 +6,8 @@ using Coflnet.Sky.Sniper.Models;
 using Coflnet.Sky.Core;
 using Prometheus;
 using Coflnet.Sky.Core.Services;
+using Amazon.Runtime.Internal.Util;
+using Newtonsoft.Json;
 
 namespace Coflnet.Sky.Sniper.Services
 {
@@ -597,7 +599,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (!value.Lookup.TryGetValue(item.Key, out ReferenceAuctions existingBucket))
                     {
-                        item.Value.References = new ConcurrentQueue<ReferencePrice>(item.Value.References.OrderBy(r => r.Day));
+                        item.Value.References = new ConcurrentQueue<ReferencePrice>(item.Value.References.Where(r => r.Price > 0).OrderBy(r => r.Day));
                         value.Lookup[item.Key] = item.Value;
                         continue;
                     }
@@ -727,6 +729,10 @@ ORDER BY l.`AuctionId`  DESC;
             if (bucket.References.Where(r => r.AuctionId == auction.UId).Any())
                 return; // duplicate
             var reference = CreateReferenceFromAuction(auction, valueSubstract);
+            if (reference.Price < 0)
+            {
+                Console.WriteLine($"Negative price {JsonConvert.SerializeObject(auction)} {reference.Price} {valueSubstract}");
+            }
             // move reference to sold
             bucket.References.Enqueue(reference);
             bucket.Lbins.RemoveAll(l => l.AuctionId == auction.UId);
@@ -809,7 +815,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     sellClosestSearch.Inc();
                     var closest = FindClosest(Lookups[keyCombo.tag].Lookup, keyWithNoEnchants, keyCombo.tag)
-                            .Where(x=>!keyCombo.Item2.Modifiers.Except(x.Key.Modifiers).Any()).Take(5).ToList();
+                            .Where(x => !keyCombo.Item2.Modifiers.Except(x.Key.Modifiers).Any()).Take(5).ToList();
                     if (closest.Count > 0)
                         clean = closest.MinBy(m => m.Value.Price).Value;
                 }
@@ -1837,7 +1843,7 @@ ORDER BY l.`AuctionId`  DESC;
             var volume = bucket.Volume;
             var medianPrice = bucket.Price + extraValue;
             var foundSnipe = false;
-            if ((bucket.Lbin.Price > lbinPrice || bucket.Price == 0)&& (MaxMedianPriceForSnipe(bucket) > lbinPrice)
+            if ((bucket.Lbin.Price > lbinPrice || bucket.Price == 0) && (MaxMedianPriceForSnipe(bucket) > lbinPrice)
                )
             {
                 foundSnipe = PotentialSnipe(auction, lbinPrice, bucket, key, l, extraValue);
@@ -2077,13 +2083,13 @@ ORDER BY l.`AuctionId`  DESC;
                     .ElementAt(Math.Min(bucket.References.Count, subsetSize) * 9 / 10);
             else if (bucket.Lbin.Price < 50_000_000)
                 return false;
-            if(bucket.Price == 0)
+            if (bucket.Price == 0)
             {
                 // no references, check against all lbins
                 // all key modifiers and enchants need to be in the reference bucket
-                var allLbins = l.Where(x => x.Value.Lbin.Price > 0 
-                                        && x.Value.Lbin.Price < bucket.Lbin.Price 
-                                        && key.Modifiers.All(m => x.Key.Modifiers.Contains(m)) 
+                var allLbins = l.Where(x => x.Value.Lbin.Price > 0
+                                        && x.Value.Lbin.Price < bucket.Lbin.Price
+                                        && key.Modifiers.All(m => x.Key.Modifiers.Contains(m))
                                         && key.Enchants.All(e => x.Key.Enchants.Contains(e)));
                 percentile = allLbins.Select(x => x.Value.Lbin.Price).DefaultIfEmpty(long.MaxValue).Min();
             }
@@ -2115,7 +2121,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static long MaxMedianPriceForSnipe(ReferenceAuctions bucket)
         {
-            if(bucket.Price == 0)
+            if (bucket.Price == 0)
                 return long.MaxValue; // disabled with 0 volume
             if (bucket.Price < 15_000_000)
                 return bucket.Price * 13 / 10;
