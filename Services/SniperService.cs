@@ -2081,8 +2081,7 @@ ORDER BY l.`AuctionId`  DESC;
                 percentile = bucket.References
                     .OrderByDescending(r => r.Day).Take(subsetSize).Select(r => r.Price).OrderBy(p => p)
                     .ElementAt(Math.Min(bucket.References.Count, subsetSize) * 9 / 10);
-            else if (bucket.Lbin.Price < 50_000_000)
-                return false;
+         
             if (bucket.Price == 0)
             {
                 // no references, check against all lbins
@@ -2091,7 +2090,8 @@ ORDER BY l.`AuctionId`  DESC;
                                         && x.Value.Lbin.Price < bucket.Lbin.Price
                                         && key.Modifiers.All(m => x.Key.Modifiers.Contains(m))
                                         && key.Enchants.All(e => x.Key.Enchants.Contains(e)));
-                percentile = allLbins.Select(x => x.Value.Lbin.Price).DefaultIfEmpty(long.MaxValue).Min();
+                var lowestLbin = allLbins.Select(x => x.Value.Lbin.Price).DefaultIfEmpty(long.MaxValue).Min();
+                percentile = Math.Min(percentile, lowestLbin);
             }
             targetPrice = Math.Min(targetPrice, percentile);
             return FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
