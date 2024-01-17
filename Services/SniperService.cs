@@ -965,7 +965,14 @@ ORDER BY l.`AuctionId`  DESC;
                 if (BazaarPrices.TryGetValue(ingred.itemId, out var cost))
                     sum += (int)cost * ingred.amount;
                 else
+                {
+                    Console.WriteLine($"Missing bazaar price for {ingred.itemId}");
                     sum += 1_000_000;
+                }
+            }
+            if(item == "ASPECT_OF_THE_DRAGON" && tier == 1)
+            {
+                Console.WriteLine($"Bazaar price for one star is {sum}");
             }
             return sum;
         }
@@ -1206,7 +1213,7 @@ ORDER BY l.`AuctionId`  DESC;
                     }
                 }
                 // early return if we have a value before estimates
-                if (sum > 0)
+                if (sum > 0 || mod.Key == null)
                     return new RankElem(mod, sum);
                 if (mod.Key == "pgems")
                 {
