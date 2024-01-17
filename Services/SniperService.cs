@@ -2074,16 +2074,17 @@ ORDER BY l.`AuctionId`  DESC;
             var targetPrice = (Math.Min(higherValueLowerBin, MaxMedianPriceForSnipe(bucket)) + extraValue) - MIN_TARGET / 200;
             if (targetPrice < auction.StartingBid * 1.03)
                 return false;
-            // check for 90th percentile from references
-            var subsetSize = 20;
             var percentile = long.MaxValue;
-            if (bucket.References.Count > 1)
-                percentile = bucket.References
-                    .OrderByDescending(r => r.Day).Take(subsetSize).Select(r => r.Price).OrderBy(p => p)
-                    .ElementAt(Math.Min(bucket.References.Count, subsetSize) * 9 / 10);
-         
+
             if (bucket.Price == 0)
             {
+                // check for 80th percentile from references
+                var subsetSize = 20;
+                if (bucket.References.Count >= 1)
+                    percentile = bucket.References
+                        .OrderByDescending(r => r.Day).Take(subsetSize).Select(r => r.Price).OrderBy(p => p)
+                        .ElementAt(Math.Min(bucket.References.Count, subsetSize) * 8 / 10);
+
                 // no references, check against all lbins
                 // all key modifiers and enchants need to be in the reference bucket
                 var allLbins = l.Where(x => x.Value.Lbin.Price > 0

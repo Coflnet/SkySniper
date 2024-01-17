@@ -191,7 +191,7 @@ public class AuctionkeyTests
         {
             Tag = "POWER_WITHER_CHESTPLATE",
             Enchantments = new() { new(EnchantmentType.ultimate_legion, 5) },
-            FlatenedNBT = new() { { "unlocked_slots", "COMBAT_0,COMBAT_1,DEFENSIVE_0,JASPER_0,SAPPHIRE_0" } },
+            FlatenedNBT = new() { { "unlocked_slots", "COMBAT_0,DEFENSIVE_0,JASPER_0,SAPPHIRE_0" } },
             Tier = Tier.MYTHIC
         };
         var key = service.KeyFromSaveAuction(baseAuction);

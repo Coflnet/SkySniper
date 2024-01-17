@@ -1761,6 +1761,9 @@ namespace Coflnet.Sky.Sniper.Services
             var referenceSale = Dupplicate(highestValAuction);
             referenceSale.HighestBidAmount = 5_000_000;
             service.AddSoldItem(referenceSale);
+            referenceSale = Dupplicate(highestValAuction);
+            referenceSale.HighestBidAmount = 5_500_000;
+            service.AddSoldItem(referenceSale);
             var flip = Dupplicate(highestValAuction);
             flip.StartingBid = 5;
             highestValAuction.FlatenedNBT["rarity_upgrades"] = "1";
@@ -1768,8 +1771,8 @@ namespace Coflnet.Sky.Sniper.Services
             TestNewAuction(highestValAuction);
 
             TestNewAuction(flip);
-            Assert.AreEqual(12_000_000, found.Last().TargetPrice);
-            Assert.AreEqual(1, found.Last().DailyVolume);
+            Assert.AreEqual(5_500_000, found.Last().TargetPrice);
+            Assert.AreEqual(2, found.Last().DailyVolume);
         }
 
         [Test]
