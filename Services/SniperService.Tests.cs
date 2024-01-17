@@ -1556,16 +1556,16 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void DoNotUseHigherLevelRune()
         {
-            highestValAuction.FlatenedNBT = new() { { "MUSIC", "1" } };
+            highestValAuction.FlatenedNBT = new() { { "RUNE_MUSIC", "1" } };
             highestValAuction.Tag = "RUNE_MUSIC";
             var higherLevel = Dupplicate(highestValAuction);
-            higherLevel.FlatenedNBT["MUSIC"] = "3";
+            higherLevel.FlatenedNBT["RUNE_MUSIC"] = "3";
             higherLevel.HighestBidAmount = 100_000_000;
             AddVolume(higherLevel);
             service.State = SniperState.Ready;
             service.FinishedUpdate();
             service.TestNewAuction(highestValAuction);
-            Assert.AreEqual(0, found.Count, "should not use raw rune");
+            Assert.AreEqual(0, found.Count, "should not use raw rune" + JsonConvert.SerializeObject(found));
         }
 
         [Test]
@@ -1710,7 +1710,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.FinishedUpdate();
             highestValAuction.StartingBid = 5;
             service.TestNewAuction(Dupplicate(highestValAuction));
-            Assert.AreEqual(3500000, found.Last().TargetPrice);
+            Assert.AreEqual(3500000, found.Where(f=>f.Finder != LowPricedAuction.FinderType.STONKS).Last().TargetPrice);
         }
 
         [Test]
@@ -1795,6 +1795,37 @@ namespace Coflnet.Sky.Sniper.Services
             var sample = Dupplicate(highestValAuction);
             service.TestNewAuction(sample);
             Assert.AreEqual(10_000_000, found.Last().TargetPrice);
+        }
+
+        /// <summary>
+        /// Real world example,
+        /// second drop level didn't cap modifier cost
+        /// </summary>
+        [Test]
+        public async Task AotdWisdomShouldRemoveStar()
+        {
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_WISDOM_5", 3_000_000);
+            SetBazaarPrice("ESSENCE_DRAGON", 2500);
+            await service.Init();
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.Enchantments = new List<Core.Enchantment>(){
+                new Core.Enchantment(Enchantment.EnchantmentType.ultimate_wisdom,5)
+            };
+            highestValAuction.Tag = "ASPECT_OF_THE_DRAGON";
+            highestValAuction.StartingBid = 60_000_000;
+            highestValAuction.HighestBidAmount = 0;
+            var decoy = Dupplicate(highestValAuction);
+            // the level should be ignored because its only 125k
+            decoy.FlatenedNBT["upgrade_level"] = "1";
+            TestNewAuction(decoy);
+            highestValAuction.HighestBidAmount = 5_000_000;
+            AddVolume(highestValAuction);
+
+            var sample = Dupplicate(decoy);
+            sample.HighestBidAmount = 0;
+            sample.StartingBid = 10000000;
+            service.TestNewAuction(sample);
+            Assert.AreEqual(0, found.Count, JsonConvert.SerializeObject(found, Formatting.Indented));
         }
 
         private static ProductInfo CreateGemPrice(string gemName)

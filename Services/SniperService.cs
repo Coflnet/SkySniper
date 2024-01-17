@@ -90,11 +90,11 @@ namespace Coflnet.Sky.Sniper.Services
             //"power_ability_scroll", // disabled as suggested by Coyu because comonly not worth 1m (up to 2m at most)
             "captured_player", // cake souls
             "handles_found", // NECRON ladder
-            "MUSIC", //rune
-            "DRAGON", //rune
-            "TIDAL", //rune
-            "GRAND_SEARING", //rune
-            "ENCHANT" // rune
+            "RUNE_MUSIC", 
+            "RUNE_DRAGON", 
+            "RUNE_TIDAL", 
+            "RUNE_GRAND_SEARING", 
+            "RUNE_ENCHANT"
         };
 
         /// <summary>
@@ -970,10 +970,6 @@ ORDER BY l.`AuctionId`  DESC;
                     sum += 1_000_000;
                 }
             }
-            if(item == "ASPECT_OF_THE_DRAGON" && tier == 1)
-            {
-                Console.WriteLine($"Bazaar price for one star is {sum}");
-            }
             return sum;
         }
         public AuctionKeyWithValue KeyFromSaveAuction(SaveAuction auction, int dropLevel = 0)
@@ -1014,7 +1010,9 @@ ORDER BY l.`AuctionId`  DESC;
             }
             else if (dropLevel == 1 || dropLevel == 2)
             {
-                modifiers = auction.FlatenedNBT?.Where(n => VeryValuable.Contains(n.Key) || Increadable.Contains(n.Key) || n.Value == "PERFECT" || n.Value == "PET_ITEM_TIER_BOOST")
+                modifiers = auction.FlatenedNBT?.Where(n => VeryValuable.Contains(n.Key) 
+                        || (n.Key?.StartsWith("RUNE") ?? false)
+                        || Increadable.Contains(n.Key) || n.Value == "PERFECT" || n.Value == "PET_ITEM_TIER_BOOST")
                             .OrderByDescending(n => n.Key)
                             .Select(i => NormalizeData(i, auction.Tag, auction.FlatenedNBT))
                                 .Where(i => i.Key != Ignore.Key)
@@ -1032,12 +1030,13 @@ ORDER BY l.`AuctionId`  DESC;
                     enchants = new List<Models.Enchant>() { new Models.Enchant() { Lvl = enchant.Level, Type = enchant.Type
                         } };
                 }
+                (valueSubstracted, removedRarity, shouldIncludeReforge) = CapKeyLength(enchants, modifiers, auction, 1_000_000);
             }
             else if (dropLevel == 3)
             {
                 var enchant = Constants.SelectBest(auction.Enchantments);
-                if (enchant == default)
-                    enchants = new List<Models.Enchant>();
+                if (enchant == default || GetPriceSumForEnchants([new() { Type = enchant.Type, Lvl = enchant.Level }]) < 3_000_000)
+                    enchants = new List<Enchant>();
                 else
                     enchants = new List<Models.Enchant>() { new Models.Enchant() { Lvl = enchant.Level, Type = enchant.Type } };
                 modifiers = AssignEmptyModifiers(auction);
@@ -1090,9 +1089,8 @@ ORDER BY l.`AuctionId`  DESC;
         /// <param name="enchants"></param>
         /// <param name="modifiers"></param>
         /// <returns>The coin amount substracted</returns>
-        public (long, bool removedRarity, bool includeReforge) CapKeyLength(List<Models.Enchant> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction)
+        public (long, bool removedRarity, bool includeReforge) CapKeyLength(List<Models.Enchant> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction, long threshold = 500000)
         {
-            var threshold = 500_000L;
             var underlyingItemValue = 0L;
             if (auction.Tag != null && Lookups.TryGetValue(auction.Tag, out var lookups))
             {
@@ -1660,6 +1658,8 @@ ORDER BY l.`AuctionId`  DESC;
 
         private void TryFindClosestRisky(SaveAuction auction, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, ref double lbinPrice, ref double medPrice)
         {
+            if (auction.Tag.StartsWith("RUNE_")) // TODO: compare levels
+                return;
             // special case for items that have no reference bucket, search using most similar
             var key = KeyFromSaveAuction(auction, 0);
             var closest = FindClosestTo(l, key, auction.Tag);
