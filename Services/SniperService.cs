@@ -1217,6 +1217,8 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     sum += 100_000_000;
                 }
+                if (mod.Key == "eman_kills")
+                    sum += 3_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
                 if (mod.Key.EndsWith("_kills"))
                 {
                     sum += 300_000 * (int)Math.Pow(2, int.Parse(mod.Value)) + 300_000;
