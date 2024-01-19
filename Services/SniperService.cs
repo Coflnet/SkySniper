@@ -2093,6 +2093,9 @@ ORDER BY l.`AuctionId`  DESC;
                     percentile = bucket.References
                         .OrderByDescending(r => r.Day).Take(subsetSize).Select(r => r.Price).OrderBy(p => p)
                         .ElementAt(Math.Min(bucket.References.Count, subsetSize) * 8 / 10);
+                else if (bucket.References.Count == 0)
+                    // undercut only similar lbin drasticly
+                    percentile = targetPrice * 9 / 11;
 
                 // no references, check against all lbins
                 // all key modifiers and enchants need to be in the reference bucket
