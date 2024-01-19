@@ -90,10 +90,10 @@ namespace Coflnet.Sky.Sniper.Services
             //"power_ability_scroll", // disabled as suggested by Coyu because comonly not worth 1m (up to 2m at most)
             "captured_player", // cake souls
             "handles_found", // NECRON ladder
-            "RUNE_MUSIC", 
-            "RUNE_DRAGON", 
-            "RUNE_TIDAL", 
-            "RUNE_GRAND_SEARING", 
+            "RUNE_MUSIC",
+            "RUNE_DRAGON",
+            "RUNE_TIDAL",
+            "RUNE_GRAND_SEARING",
             "RUNE_ENCHANT"
         };
 
@@ -528,7 +528,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (Lookups.TryGetValue(item, out var lookup))
             {
-                return lookup.Lookup.Values.FirstOrDefault()?.Price ?? 0;
+                return lookup.Lookup.Values.FirstOrDefault(p => p.Price != 0)?.Price ?? 0;
             }
             return 0;
         }
@@ -1010,7 +1010,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             else if (dropLevel == 1 || dropLevel == 2)
             {
-                modifiers = auction.FlatenedNBT?.Where(n => VeryValuable.Contains(n.Key) 
+                modifiers = auction.FlatenedNBT?.Where(n => VeryValuable.Contains(n.Key)
                         || (n.Key?.StartsWith("RUNE") ?? false)
                         || Increadable.Contains(n.Key) || n.Value == "PERFECT" || n.Value == "PET_ITEM_TIER_BOOST")
                             .OrderByDescending(n => n.Key)
