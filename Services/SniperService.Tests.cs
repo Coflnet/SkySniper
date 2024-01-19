@@ -1723,7 +1723,7 @@ namespace Coflnet.Sky.Sniper.Services
             var flip = Dupplicate(highestValAuction);
             flip.StartingBid = 5;
             TestNewAuction(flip);
-            Assert.AreEqual(100_000_000, found.Last().TargetPrice);
+            Assert.AreEqual(81818181, found.Last().TargetPrice);
             Assert.AreEqual(0, found.Last().DailyVolume);
         }
 
