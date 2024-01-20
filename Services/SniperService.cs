@@ -2098,11 +2098,14 @@ ORDER BY l.`AuctionId`  DESC;
                     percentile = targetPrice * 9 / 11;
 
                 // no references, check against all lbins
-                // all key modifiers and enchants need to be in the reference bucket
+                // all key modifiers and enchants need to be in the reference bucket or higher
                 var allLbins = l.Where(x => x.Value.Lbin.Price > 0
                                         && x.Value.Lbin.Price < bucket.Lbin.Price
-                                        && key.Modifiers.All(m => x.Key.Modifiers.Contains(m))
-                                        && key.Enchants.All(e => x.Key.Enchants.Contains(e)));
+                                        && key.Modifiers.All(m => x.Key.Modifiers.Any(other => other.Key == m.Key
+                                            && (other.Value == m.Value ||
+                                             float.TryParse(other.Value, out var otherVal)
+                                            && float.TryParse(m.Value, out var ownVal) && otherVal > ownVal)))
+                                        && key.Enchants.All(e => x.Key.Enchants.Any(other => other.Type == e.Type && other.Lvl >= e.Lvl))).ToList();
                 var lowestLbin = allLbins.Select(x => x.Value.Lbin.Price).DefaultIfEmpty(long.MaxValue).Min();
                 percentile = Math.Min(percentile, lowestLbin);
             }

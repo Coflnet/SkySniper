@@ -1748,6 +1748,24 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(0, found.Last().DailyVolume);
         }
         [Test]
+        public void SniperLimitedByHigherLevel()
+        {
+            highestValAuction.FlatenedNBT = new(){{"raider_kills", "12437"}};
+            highestValAuction.StartingBid = 100_000_000;
+            highestValAuction.HighestBidAmount = 0;
+            TestNewAuction(highestValAuction);
+            var moreValuable = Dupplicate(highestValAuction);
+            moreValuable.FlatenedNBT["raider_kills"] = "220000";
+            moreValuable.StartingBid = 12_000_000;
+            TestNewAuction(moreValuable);
+
+            var flip = Dupplicate(highestValAuction);
+            flip.StartingBid = 5;
+            TestNewAuction(flip);
+            Assert.AreEqual(12_000_000, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
+            Assert.AreEqual(0, found.Last().DailyVolume);
+        }
+        [Test]
         public void SniperLimitedByMorePropLbinCapAtReferencePrice()
         {
             highestValAuction.FlatenedNBT = new();
