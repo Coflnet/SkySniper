@@ -989,10 +989,7 @@ ORDER BY l.`AuctionId`  DESC;
                 modifiers = auction.FlatenedNBT?.Where(n =>
                                        IncludeKeys.Contains(n.Key)
                                     || n.Value == "PERFECT"
-                                    || n.Key.StartsWith("MASTER_CRYPT_TANK_ZOMBIE")
-                                    || n.Key.StartsWith("MINOS_CHAMPION_")
-                                    || n.Key == "MINOS_INQUISITOR_750"
-                                    || n.Key.StartsWith("MASTER_CRYPT_UNDEAD_") && n.Key.Length > 23) // admins
+                                    || IsSoul(n)) // admins
                                 .OrderByDescending(n => n.Key)
                                 .Select(i => NormalizeData(i, auction.Tag, auction.FlatenedNBT))
                                 .Where(i => i.Key != Ignore.Key).ToList();
@@ -1080,6 +1077,15 @@ ORDER BY l.`AuctionId`  DESC;
                 Count = (byte)auction.Count,
                 ValueSubstract = valueSubstracted
             };
+        }
+
+        private static bool IsSoul(KeyValuePair<string, string> n)
+        {
+            // captured souls
+            return n.Key.StartsWith("MASTER_CRYPT_TANK_ZOMBIE")
+                    || n.Key.StartsWith("MINOS_CHAMPION_")
+                    || n.Key == "MINOS_INQUISITOR_750"
+                    || n.Key.StartsWith("MASTER_CRYPT_UNDEAD_") && n.Key.Length > 23;
         }
 
         /// <summary>
@@ -1230,6 +1236,10 @@ ORDER BY l.`AuctionId`  DESC;
                     sum += 200_000 * (long)Math.Pow(2, int.Parse(mod.Value)) + 600_000;
                     if (modifiers.Any(m => m.Key != mod.Key && Constants.AttributeKeys.Contains(m.Key)))
                         sum += 50_000_000; // godroll
+                }
+                if (IsSoul(mod))
+                {
+                    sum += 3_000_000 * (int)Math.Pow(1.5, int.Parse(mod.Value));
                 }
                 return new RankElem(mod, sum)
                 {
