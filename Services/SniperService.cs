@@ -313,7 +313,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return null;
             if (BazaarPrices.TryGetValue(auction.Tag, out var bazaar))
                 return new() { Median = (long)bazaar };
-            var tagGroup = GetAuctionGroupTag(auction);
+            var tagGroup = GetAuctionGroupTag(auction.Tag);
 
             var result = new PriceEstimate();
             if (!Lookups.TryGetValue(tagGroup.Item1, out PriceLookup lookup))
@@ -687,7 +687,7 @@ ORDER BY l.`AuctionId`  DESC;
                     return;
                 if (key.Enchants.Count > 1 || key.Modifiers.Count > 3)
                     return; // only add attributes for (almost) clean items, one allowed for things that drop with extra enchants
-                var groupTag = GetAuctionGroupTag(auction);
+                var groupTag = GetAuctionGroupTag(auction.Tag);
                 var itemGroupTag = groupTag.Item1;
                 foreach (var item in attributesOnAuction)
                 {
@@ -740,7 +740,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (!preventMedianUpdate)
             {
                 var key = KeyFromSaveAuction(auction);
-                UpdateMedian(bucket, (auction.Tag, key));
+                UpdateMedian(bucket, (GetAuctionGroupTag(auction.Tag).tag, key));
             }
         }
 
@@ -846,7 +846,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         public (ReferenceAuctions auctions, AuctionKeyWithValue key) GetBucketForAuction(SaveAuction auction)
         {
-            var group = GetAuctionGroupTag(auction);
+            var group = GetAuctionGroupTag(auction.Tag);
             var itemGroupTag = group.Item1;
             if (!Lookups.TryGetValue(itemGroupTag, out var lookup) || lookup == null)
             {
@@ -1569,7 +1569,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         public void TestNewAuction(SaveAuction auction, bool triggerEvents = true)
         {
-            var itemGroupTag = GetAuctionGroupTag(auction);
+            var itemGroupTag = GetAuctionGroupTag(auction.Tag);
             var lookup = Lookups.GetOrAdd(itemGroupTag.Item1, key => new PriceLookup());
             var l = lookup.Lookup;
             var cost = auction.StartingBid;
@@ -1652,9 +1652,8 @@ ORDER BY l.`AuctionId`  DESC;
         /// </summary>
         /// <param name="auction"></param>
         /// <returns></returns>
-        private (string, long) GetAuctionGroupTag(SaveAuction auction)
+        private (string tag, long costSubstract) GetAuctionGroupTag(string itemGroupTag)
         {
-            var itemGroupTag = auction.Tag;
             if (itemGroupTag == "SCYLLA" || itemGroupTag == "VALKYRIE" || itemGroupTag == "NECRON_BLADE")
                 return ("HYPERION", GetPriceForItem("GIANT_FRAGMENT_LASER") * 8); // easily craftable from one into the other
             if (itemGroupTag.StartsWith("STARRED_"))
@@ -2095,7 +2094,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return false;
             var percentile = long.MaxValue;
 
-            if (bucket.Price == 0)
+            if (bucket.Price == 0 || bucket.Volume < 2)
             {
                 // check for 80th percentile from references
                 var subsetSize = 20;
