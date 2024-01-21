@@ -1723,7 +1723,7 @@ namespace Coflnet.Sky.Sniper.Services
             var flip = Dupplicate(highestValAuction);
             flip.StartingBid = 5;
             TestNewAuction(flip);
-            Assert.AreEqual(81818181, found.Last().TargetPrice);
+            Assert.AreEqual(50000000, found.Last().TargetPrice);
             Assert.AreEqual(0, found.Last().DailyVolume);
         }
 
@@ -1777,10 +1777,10 @@ namespace Coflnet.Sky.Sniper.Services
             TestNewAuction(highestValAuction);
             
             var referenceSale = Dupplicate(highestValAuction);
-            referenceSale.HighestBidAmount = 5_000_000;
+            referenceSale.HighestBidAmount = 5_500_000;
             service.AddSoldItem(referenceSale);
             referenceSale = Dupplicate(highestValAuction);
-            referenceSale.HighestBidAmount = 5_500_000;
+            referenceSale.HighestBidAmount = 5_400_000;
             service.AddSoldItem(referenceSale);
             var flip = Dupplicate(highestValAuction);
             flip.StartingBid = 5;
@@ -1789,8 +1789,25 @@ namespace Coflnet.Sky.Sniper.Services
             TestNewAuction(highestValAuction);
 
             TestNewAuction(flip);
-            Assert.AreEqual(5_500_000, found.Last().TargetPrice);
+            Assert.AreEqual(5_400_000, found.Last().TargetPrice);
             Assert.AreEqual(2, found.Last().DailyVolume);
+        }
+        [Test]
+        public void SniperNoVolumeLimitedByMoreAttribMedian()
+        {
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.StartingBid = 100_000_000;
+            highestValAuction.HighestBidAmount = 0;
+            TestNewAuction(highestValAuction);
+            var flip = Dupplicate(highestValAuction);
+            flip.StartingBid = 5;
+            highestValAuction.FlatenedNBT["rarity_upgrades"] = "1";
+            highestValAuction.HighestBidAmount = 12_000_000;
+            service.AddSoldItem(highestValAuction);
+
+            TestNewAuction(flip);
+            Assert.AreEqual(12_000_000, found.Last().TargetPrice);
+            Assert.AreEqual(0, found.Last().DailyVolume);
         }
 
         [Test]
