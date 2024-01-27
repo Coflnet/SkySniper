@@ -789,6 +789,31 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void ChecksLowerKeysForHigherPrice()
+        {
+            SetBazaarPrice("ENCHANTMENT_PROTECTION_6", 6_200_000);
+            SetBazaarPrice("ENCHANTMENT_GROWTH_6", 6_200_000);
+            SetBazaarPrice("FUMING_POTATO_BOOK", 1_200_000);
+            SetBazaarPrice("FIRST_MASTER_STAR", 14_200_000);
+            SetBazaarPrice("RECOMBOBULATOR_3000", 8_200_000);
+            firstAuction.FlatenedNBT = new() { { "rarity_ugprades", "1" }, { "upgrade_level", "6" } };
+            firstAuction.Enchantments = [new(Enchantment.EnchantmentType.growth, 6)];
+            var noVolume = Dupplicate(firstAuction);
+            var target = Dupplicate(firstAuction);
+            firstAuction.Enchantments.Add(new(Enchantment.EnchantmentType.protection, 6));
+            firstAuction.FlatenedNBT.Add("hpc", "15");
+            firstAuction.HighestBidAmount = 32_000_000;
+            AddVolume(firstAuction);
+
+            target.Enchantments.Clear();
+            target.HighestBidAmount = 35_000_000;
+            AddVolume(target);
+
+            var estimate = service.GetPrice(noVolume);
+            Assert.AreEqual(35_000_000, estimate.Median);
+        }
+
+        [Test]
         public void SubstractsEnchants()
         {
             highestValAuction.FlatenedNBT = new();
@@ -1710,7 +1735,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.FinishedUpdate();
             highestValAuction.StartingBid = 5;
             service.TestNewAuction(Dupplicate(highestValAuction));
-            Assert.AreEqual(3500000, found.Where(f=>f.Finder != LowPricedAuction.FinderType.STONKS).Last().TargetPrice);
+            Assert.AreEqual(3500000, found.Where(f => f.Finder != LowPricedAuction.FinderType.STONKS).Last().TargetPrice);
         }
 
         [Test]
@@ -1750,7 +1775,7 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void SniperLimitedByHigherLevel()
         {
-            highestValAuction.FlatenedNBT = new(){{"raider_kills", "12437"}};
+            highestValAuction.FlatenedNBT = new() { { "raider_kills", "12437" } };
             highestValAuction.StartingBid = 100_000_000;
             highestValAuction.HighestBidAmount = 0;
             TestNewAuction(highestValAuction);
@@ -1775,7 +1800,7 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.StartingBid = 100_000_000;
             highestValAuction.HighestBidAmount = 0;
             TestNewAuction(highestValAuction);
-            
+
             var referenceSale = Dupplicate(highestValAuction);
             referenceSale.HighestBidAmount = 5_500_000;
             service.AddSoldItem(referenceSale);

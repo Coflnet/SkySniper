@@ -27,7 +27,7 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly AuctionKey defaultKey = new AuctionKey();
         public SniperState State { get; set; } = SniperState.LoadingLbin;
         private readonly PropertyMapper mapper = new();
-        private readonly (string, int)[] EmptyArray = new (string, int)[0];
+        private readonly (string, int)[] EmptyArray = [];
         private readonly Dictionary<string, double> BazaarPrices = new();
         private readonly ConcurrentDictionary<(string, AuctionKey), (PriceEstimate result, DateTime addedAt)> ClosetLbinMapLookup = new();
         private readonly ConcurrentDictionary<(string, AuctionKey), (PriceEstimate result, DateTime addedAt)> ClosetMedianMapLookup = new();
@@ -126,7 +126,7 @@ namespace Coflnet.Sky.Sniper.Services
         };
 
         // combos that are worth more starting at lvl 1 because they are together
-        private readonly KeyValuePair<string, string>[] AttributeCombos = new KeyValuePair<string, string>[]{
+        private readonly KeyValuePair<string, string>[] AttributeCombos = [
             new("blazing_fortune", "fishing_experience"),
             new("life_regeneration", "mana_pool"),
             new("veteran", "mending"),
@@ -141,20 +141,20 @@ namespace Coflnet.Sky.Sniper.Services
             new("dominance", "magic_find"),
             new("dominance", "veteran"),
             new("mending", "mana_pool"),
-        };
+        ];
 
-        private readonly KeyValuePair<List<string>, List<KeyValuePair<string, string>>>[] ItemSpecificAttribCombo = new KeyValuePair<List<string>, List<KeyValuePair<string, string>>>[]
-        {
-            new(new(){"LAVA_SHELL_NECKLACE"}, new (){new("lifeline", "mana_pool"), new("lifeline", "lifeline")}),
+        private readonly KeyValuePair<List<string>, List<KeyValuePair<string, string>>>[] ItemSpecificAttribCombo =
+        [
+            new(["LAVA_SHELL_NECKLACE"], new (){new("lifeline", "mana_pool"), new("lifeline", "lifeline")}),
             new(new (){"TERROR_BOOTS", "TERROR_LEGGINGS", "TERROR_CHESTPLATE"}, new (){new("lifeline", "mana_pool")}),
             new(new (){"MAGMA_LORD_BOOTS", "MAGMA_LORD_LEGGINGS", "MAGMA_LORD_CHESTPLATE", "MAGMA_LORD_HELMET"},
                 new (){new("blazing_fortune", "mana_pool"), new("blazing_fortune", "fishing_experience"), new("blazing_fortune", "magic_find")}),
             new(new (){"AURORA_BOOTS", "AURORA_LEGGINGS", "AURORA_CHESTPLATE", "AURORA_HELMET", // not high but still noticable
                     "CRIMSON_BOOTS", "CRIMSON_LEGGINGS", "CRIMSON_CHESTPLATE", "CRIMSON_HELMET"}, new (){new("veteran", "mana_regeneration")}),
-            new(new (){"CRIMSON_BOOTS", "CRIMSON_LEGGINGS", "CRIMSON_CHESTPLATE", "CRIMSON_HELMET", "MOLTEN_BRACELET"}, 
+            new(new (){"CRIMSON_BOOTS", "CRIMSON_LEGGINGS", "CRIMSON_CHESTPLATE", "CRIMSON_HELMET", "MOLTEN_BRACELET"},
                     new (){new("magic_find", "vitality")}),
             new(new(){"MOLTEN_BRACELET"}, new (){new("lifeline", "mana_pool")}),
-        };
+        ];
         public readonly Dictionary<string, List<KeyValuePair<string, string>>> ItemSpecificAttributeComboLookup = new();
         public readonly ConcurrentDictionary<string, HashSet<string>> AttributeComboLookup = new();
 
@@ -411,6 +411,17 @@ ORDER BY l.`AuctionId`  DESC;
                     Console.WriteLine($"no match found for {auction.Tag} {itemKey} options: {l.Count} {c.Key}");
                 if (result.Median > 0)
                     break;
+            }
+            if (result.Median > 0)
+            {
+                // check lower value keys
+                var MaxValue = l.Where(k => IsHigherValue(k.Key, itemKey) && k.Key.Reforge == itemKey.Reforge)
+                    .OrderByDescending(b => b.Value.Price).FirstOrDefault();
+                if (MaxValue.Value?.Price > result.Median)
+                {
+                    result.Median = MaxValue.Value.Price;
+                    result.MedianKey = $"+HV-{MaxValue.Key}";
+                }
             }
             return (result, now);
         }
@@ -2111,13 +2122,7 @@ ORDER BY l.`AuctionId`  DESC;
 
                 // no references, check against all lbins
                 // all key modifiers and enchants need to be in the reference bucket or higher
-                var higherValueKeys = l.Where(x => //x.Value.Lbin.Price > 0
-                                                   //&& x.Value.Lbin.Price < bucket.Lbin.Price&&
-                                         key.Modifiers.All(m => x.Key.Modifiers.Any(other => other.Key == m.Key
-                                            && (other.Value == m.Value ||
-                                             float.TryParse(other.Value, out var otherVal)
-                                            && float.TryParse(m.Value, out var ownVal) && otherVal > ownVal)))
-                                        && key.Enchants.All(e => x.Key.Enchants.Any(other => other.Type == e.Type && other.Lvl >= e.Lvl))).ToList();
+                var higherValueKeys = l.Where(x => IsHigherValue(key, x.Key)).ToList();
                 var lowestLbin = higherValueKeys
                                 .Where(x => x.Value.Lbin.Price > 0 && x.Value.Lbin.Price < bucket.Lbin.Price)
                                 .Select(x => x.Value.Lbin.Price).DefaultIfEmpty(long.MaxValue).Min();
@@ -2131,6 +2136,15 @@ ORDER BY l.`AuctionId`  DESC;
             }
             targetPrice = Math.Min(targetPrice, percentile);
             return FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
+        }
+
+        private static bool IsHigherValue(AuctionKey baseKey, AuctionKey toCheck)
+        {
+            return baseKey.Modifiers.All(m => toCheck.Modifiers.Any(other => other.Key == m.Key
+                                                        && (other.Value == m.Value ||
+                                                         float.TryParse(other.Value, out var otherVal)
+                                                        && float.TryParse(m.Value, out var ownVal) && otherVal > ownVal)))
+                                                    && baseKey.Enchants.All(e => toCheck.Enchants.Any(other => other.Type == e.Type && other.Lvl >= e.Lvl));
         }
 
         private static bool IsStacksize1Cheaper(double lbinPrice, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
