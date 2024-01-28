@@ -682,6 +682,33 @@ namespace Coflnet.Sky.Sniper.Services
                 service.AddAuctionToBucket(Dupplicate(auction), false, bucket);
             }
         }
+        /// <summary>
+        /// Clean items need to be kept for references even with low volume
+        /// Targets expensive skins
+        /// </summary>
+        [Test]
+        public void IgnoreVolumeRequirementIfNoModifiers()
+        {
+            firstAuction.Tag = "SUPERIOR_BABY";
+            firstAuction.FlatenedNBT = new();
+            var startDay = DateTime.UtcNow - TimeSpan.FromDays(30);
+            for (int i = 0; i < 5; i++)
+            {
+                firstAuction.End = startDay.AddDays(-i * 10);
+                firstAuction.HighestBidAmount = 1_000_000_000 - i * 50_000_000;
+                service.AddSoldItem(Dupplicate(firstAuction));
+            }
+            var lookup = service.Lookups["SUPERIOR_BABY"];
+            var bucket = lookup.Lookup.First().Value;
+            bucket.References.Count.Should().Be(5);
+            bucket.Price.Should().Be(900_000_000);
+            service.Lookups.TryRemove("SUPERIOR_BABY", out _);
+            service.AddLookupData("SUPERIOR_BABY", lookup);
+            // volume threshold also ignored when loading back
+            bucket = lookup.Lookup.First().Value;
+            bucket.References.Count.Should().Be(5);
+            bucket.Price.Should().Be(900_000_000);
+        }
 
         [TestCase(1, 0)]
         [TestCase(200, 1)]

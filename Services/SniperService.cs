@@ -601,7 +601,8 @@ ORDER BY l.`AuctionId`  DESC;
                 var value = loadedVal.Lookup.GetValueOrDefault(item);
                 if (value == null)
                     continue;
-                if (value.References.Count == 0 || value.References.All(r => r.Day < GetDay() - 21))
+                if (value.References.Count == 0 
+                    || value.References.All(r => r.Day < GetDay() - 21) && !item.IsClean())
                     loadedVal.Lookup.TryRemove(item, out _); // unimportant
             }
             var current = Lookups.AddOrUpdate(itemTag, loadedVal, (tag, value) =>
@@ -767,7 +768,7 @@ ORDER BY l.`AuctionId`  DESC;
                 .Take(60)
                 .ToList();
             size = deduplicated.Count();
-            if (size <= 3 || deduplicated.Count(d => d.Day > GetDay() - 14) < 3)
+            if (size <= 3 || deduplicated.Count(d => d.Day > GetDay() - 14) < 3 && !(keyCombo.Item2?.IsClean() ?? false))
             {
                 bucket.Price = 0; // to low vol
                 return;

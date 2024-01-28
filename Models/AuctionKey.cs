@@ -46,6 +46,11 @@ namespace Coflnet.Sky.Sniper.Models
             };
         }
 
+        public bool IsClean()
+        {
+            return Enchants?.Count == 0 && Modifiers?.Count == 0 && Reforge == ItemReferences.Reforge.Any && Count <= 1;
+        }
+
         /// <summary>
         /// The higher the better
         /// </summary>
