@@ -499,19 +499,15 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (missingModifiers == null)
                 return 0;
-            var values = missingModifiers.SelectMany(m =>
+            return missingModifiers.Select(m =>
             {
-                return GetItemKeysForModifier(modifiers, auction.FlatenedNBT, auction.Tag, m);
-            }).Where(m => m.Item1 != null).Select(k =>
-            {
-                if (Lookups.TryGetValue(k.Item1, out var lookup))
-                {
-                    return lookup.Lookup.Values.Where(v => v.Price > 0).FirstOrDefault();
-                }
-                return null;
-            }).Where(m => m != null).ToList();
-            var medianSumIngredients = values.Select(m => m.Price).DefaultIfEmpty(0).Sum();
-            return medianSumIngredients;
+                var items = GetItemKeysForModifier(modifiers, auction.FlatenedNBT, auction.Tag, m)
+                                .Where(m => m.Item1 != null).ToList();
+                var sum = items.Select(i => GetPriceForItem(i.Item1)).DefaultIfEmpty(0).Sum();
+                if(items.Count > 0 && sum == 0)
+                    return 4_000_000_000; // not found potentially very valuable
+                return sum;
+            }).Sum();
         }
 
         private IEnumerable<(string tag, int amount)> GetItemKeysForModifier(IEnumerable<KeyValuePair<string, string>> modifiers, Dictionary<string, string> flatNbt, string tag, KeyValuePair<string, string> m)

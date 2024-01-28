@@ -1029,6 +1029,17 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual("veteran:5 (9897600)", estimate.AdditionalProps["missingModifiers"]);
         }
         [Test]
+        public void StonksSubstracts4bWhenItemNotFound()
+        {
+            // no volume SUPERIOR_BABY skin
+            highestValAuction.FlatenedNBT = new() { { "skin", "SUPERIOR_BABY" } };
+            highestValAuction.HighestBidAmount = 10_000_000_000;
+            AddVolume(highestValAuction);
+            highestValAuction.FlatenedNBT = new();
+            TestNewAuction(highestValAuction);
+            Assert.AreEqual(6_000_000_000 * 9 / 10, found.First().TargetPrice);
+        }
+        [Test]
         public void StoresAttributeCost()
         {
             highestValAuction.FlatenedNBT = new() { { "mana_pool", "1" } };
