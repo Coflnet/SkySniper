@@ -504,7 +504,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var items = GetItemKeysForModifier(modifiers, auction.FlatenedNBT, auction.Tag, m)
                                 .Where(m => m.Item1 != null).ToList();
                 var sum = items.Select(i => GetPriceForItem(i.Item1)).DefaultIfEmpty(0).Sum();
-                if(items.Count > 0 && sum == 0)
+                if (items.Count > 0 && sum == 0)
                     return 4_000_000_000; // not found potentially very valuable
                 return sum;
             }).Sum();
@@ -601,7 +601,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var value = loadedVal.Lookup.GetValueOrDefault(item);
                 if (value == null)
                     continue;
-                if (value.References.Count == 0 
+                if (value.References.Count == 0
                     || value.References.All(r => r.Day < GetDay() - 21) && !item.IsClean())
                     loadedVal.Lookup.TryRemove(item, out _); // unimportant
             }
@@ -1379,6 +1379,10 @@ ORDER BY l.`AuctionId`  DESC;
                 if (heldItem == null)
                     return Ignore;
                 return new KeyValuePair<string, string>(PetItemKey, heldItem);
+            }
+            if (s.Key == "is_shiny" && !(tag.EndsWith("_CHESTPLATE") || tag == "HYPERION"))
+            {
+                return Ignore;
             }
             if (s.Key == "dungeon_item_level" && flattenedNbt.TryGetValue("upgrade_level", out _))
                 return Ignore; // upgrade level is always higher (newer)

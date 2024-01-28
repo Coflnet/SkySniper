@@ -199,6 +199,26 @@ public class AuctionkeyTests
     }
 
     [Test]
+    public void ShinyOnlyOnChestPlateAndHyperion()
+    {
+        var auction = new SaveAuction()
+        {
+            Tag = "POWER_WITHER_CHESTPLATE",
+            FlatenedNBT = new() { { "is_shiny", "1" } },
+        };
+        var key = service.KeyFromSaveAuction(auction);
+        Assert.AreEqual(1, key.Modifiers.Count);
+        Assert.IsTrue(key.Modifiers.Any(x => x.Key == "is_shiny" && x.Value == "1"));
+        auction.Tag = "HYPERION";
+        key = service.KeyFromSaveAuction(auction);
+        Assert.AreEqual(1, key.Modifiers.Count);
+        Assert.IsTrue(key.Modifiers.Any(x => x.Key == "is_shiny" && x.Value == "1"));
+        auction.Tag = "POWER_WITHER_LEGGINGS";
+        key = service.KeyFromSaveAuction(auction);
+        Assert.AreEqual(0, key.Modifiers.Count);
+    }
+
+    [Test]
     public void HigherExpIsFurther()
     {
         AuctionKey originkey = CreateFromExp("1");
