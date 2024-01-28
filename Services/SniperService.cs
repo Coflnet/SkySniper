@@ -94,7 +94,8 @@ namespace Coflnet.Sky.Sniper.Services
             "RUNE_DRAGON",
             "RUNE_TIDAL",
             "RUNE_GRAND_SEARING",
-            "RUNE_ENCHANT"
+            "RUNE_ENCHANT",
+            "is_shiny", // cosmetic effect on wither armor ~5% drop chance on Master Mode 7
         };
 
         /// <summary>
