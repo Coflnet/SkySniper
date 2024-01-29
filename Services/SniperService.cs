@@ -741,7 +741,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (bucket.References.Where(r => r.AuctionId == auction.UId).Any())
                 return; // duplicate
             var reference = CreateReferenceFromAuction(auction, valueSubstract);
-            if (reference.Price < 0)
+            if (reference.Price < 0 && valueSubstract > 1_000_000)
             {
                 Console.WriteLine($"Negative price {JsonConvert.SerializeObject(auction)} {reference.Price} {valueSubstract}");
             }
@@ -895,11 +895,15 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static ReferencePrice CreateReferenceFromAuction(SaveAuction auction, long valueSubstract = 0)
         {
+            var basePrice = auction.HighestBidAmount == 0 ? auction.StartingBid : auction.HighestBidAmount;
+            // remove at most 50% of the value
+            if (basePrice < valueSubstract)
+                valueSubstract = Math.Min(valueSubstract, basePrice / 2);
             return new ReferencePrice()
             {
                 AuctionId = auction.UId,
                 Day = GetDay(auction.End),
-                Price = (auction.HighestBidAmount == 0 ? auction.StartingBid : auction.HighestBidAmount) - valueSubstract,
+                Price = basePrice - valueSubstract,
                 Seller = auction.AuctioneerId == null ? (short)(auction.SellerId % (2 << 14)) : Convert.ToInt16(auction.AuctioneerId.Substring(0, 4), 16)
             };
         }
