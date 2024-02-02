@@ -2146,11 +2146,12 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static bool IsHigherValue(AuctionKey baseKey, AuctionKey toCheck)
         {
-            return baseKey.Modifiers.All(m => toCheck.Modifiers.Any(other => other.Key == m.Key
+            return baseKey.Tier <= toCheck.Tier
+                    && baseKey.Modifiers.All(m => toCheck.Modifiers.Any(other => other.Key == m.Key
                                                         && (other.Value == m.Value ||
                                                          float.TryParse(other.Value, out var otherVal)
                                                         && float.TryParse(m.Value, out var ownVal) && otherVal > ownVal)))
-                                                    && baseKey.Enchants.All(e => toCheck.Enchants.Any(other => other.Type == e.Type && other.Lvl >= e.Lvl));
+                    && baseKey.Enchants.All(e => toCheck.Enchants.Any(other => other.Type == e.Type && other.Lvl >= e.Lvl));
         }
 
         private static bool IsStacksize1Cheaper(double lbinPrice, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
