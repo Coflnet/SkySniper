@@ -1258,6 +1258,15 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     sum += 3_000_000 * (int)Math.Pow(1.5, int.Parse(mod.Value));
                 }
+                if (mod.Key == "exp")
+                {
+                    var factor = 10_000_000;
+                    if (tag == "PET_GOLDEN_DRAGON")
+                        factor = 50_000_000;
+                    sum += (int)(factor * float.Parse(mod.Value));
+                }
+                if (mod.Key == "candyUsed")
+                    sum += 10_000_000;
                 return new RankElem(mod, sum)
                 {
                     IsEstimate = true
