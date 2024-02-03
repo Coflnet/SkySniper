@@ -982,7 +982,8 @@ ORDER BY l.`AuctionId`  DESC;
                     sum += (int)cost * ingred.amount;
                 else
                 {
-                    Console.WriteLine($"Missing bazaar price for {ingred.itemId}");
+                    if (Random.Shared.NextDouble() < 0.01)
+                        Console.WriteLine($"Missing bazaar price for {ingred.itemId}");
                     sum += 1_000_000;
                 }
             }
