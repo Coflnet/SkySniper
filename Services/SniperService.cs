@@ -1262,11 +1262,12 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     var factor = 10_000_000;
                     if (tag == "PET_GOLDEN_DRAGON")
-                        factor = 50_000_000;
-                    sum += (int)(factor * float.Parse(mod.Value));
+                        factor = 100_000_000;
+                    sum += (int)(factor * (float.Parse(mod.Value) + 1));
+                    Console.WriteLine($"Exp value {sum} {mod.Value} {tag}");
                 }
                 if (mod.Key == "candyUsed")
-                    sum += 10_000_000;
+                    sum += tag == "PET_GOLDEN_DRAGON" ? 80_000_000 : 10_000_000;
                 return new RankElem(mod, sum)
                 {
                     IsEstimate = true
