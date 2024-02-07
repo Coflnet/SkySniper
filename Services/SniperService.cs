@@ -882,7 +882,7 @@ ORDER BY l.`AuctionId`  DESC;
         private ReferenceAuctions CreateAndAddBucket(SaveAuction auction, int dropLevel = 0)
         {
             var key = KeyFromSaveAuction(auction, dropLevel);
-            var itemBucket = Lookups.GetOrAdd(auction.Tag, new PriceLookup());
+            var itemBucket = Lookups.GetOrAdd(GetAuctionGroupTag(auction.Tag).tag, new PriceLookup());
             return GetOrAdd(key, itemBucket);
         }
 
@@ -918,7 +918,7 @@ ORDER BY l.`AuctionId`  DESC;
         private bool TryGetReferenceAuctions(SaveAuction auction, out ReferenceAuctions bucket)
         {
             bucket = null;
-            if (!Lookups.TryGetValue(auction.Tag, out PriceLookup lookup))
+            if (!Lookups.TryGetValue(GetAuctionGroupTag(auction.Tag).tag, out PriceLookup lookup))
                 return false;
             var l = lookup.Lookup;
             if (l.TryGetValue(KeyFromSaveAuction(auction), out bucket))
@@ -1630,7 +1630,7 @@ ORDER BY l.`AuctionId`  DESC;
                                 Console.WriteLine($"closest is not available yet, state is {this.State}");
                             return;
                         }
-                        var closests = FindClosest(l, key, auction.Tag).Take(5).ToList();
+                        var closests = FindClosest(l, key, itemGroupTag.tag).Take(5).ToList();
                         foreach (var item in closests)
                         {
                             Console.WriteLine($"Closest bucket clean: {item.Key}");
