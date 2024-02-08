@@ -1017,7 +1017,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     var allUnlockable = itemService.GetUnlockableSlots(auction.Tag).ToList();
                     if (allUnlockable.Count > 0)
-                        modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", string.Join(",", allUnlockable)));
+                        modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", string.Join(",", allUnlockable.OrderBy(s=>s))));
                 }
 
                 (valueSubstracted, removedRarity, shouldIncludeReforge) = CapKeyLength(enchants, modifiers, auction);
@@ -1230,7 +1230,7 @@ ORDER BY l.`AuctionId`  DESC;
                         modifiers.RemoveAll(m => m.Key == "unlocked_slots");
                         var remaining = present.Except(costs.unavailable);
                         if (remaining.Count() > 0)
-                            modifiers.Add(new(mod.Key, string.Join(",", remaining)));
+                            modifiers.Add(new(mod.Key, string.Join(",", remaining.OrderBy(s=>s))));
                     }
                 }
                 // early return if we have a value before estimates
@@ -1423,6 +1423,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (val > 50)
                     return new KeyValuePair<string, string>("baseStatBoost", ">50");
             }
+            
 
             return s;
         }
