@@ -606,6 +606,15 @@ ORDER BY l.`AuctionId`  DESC;
                     || value.References.All(r => r.Day < GetDay() - 21) && !item.IsClean())
                     loadedVal.Lookup.TryRemove(item, out _); // unimportant
             }
+            if(itemTag.Contains("RUNE_"))
+            {
+                foreach (var item in loadedVal.Lookup.Keys.ToList())
+                {
+                    // the rune level should never be removed
+                    if (!item.Modifiers.Any(m => m.Key.Contains("RUNE")))
+                        loadedVal.Lookup.TryRemove(item, out _);
+                }
+            }
             var current = Lookups.AddOrUpdate(itemTag, loadedVal, (tag, value) =>
             {
                 foreach (var item in loadedVal.Lookup)
@@ -1334,6 +1343,8 @@ ORDER BY l.`AuctionId`  DESC;
                     return new List<KeyValuePair<string, string>>(EmptyPetModifiers) { new(PetItemKey, TierBoostShorthand) };
                 else
                     return EmptyPetModifiers.ToList();
+            if(auction.Tag.Contains("RUNE_"))
+                return auction.FlatenedNBT.ToList();
             if (auction.FlatenedNBT.Any(n => NeverDrop.Contains(n.Key)))
                 return auction.FlatenedNBT.Where(n => NeverDrop.Contains(n.Key)).ToList();
             else
