@@ -149,7 +149,8 @@ namespace Coflnet.Sky.Sniper.Services
             new(["LAVA_SHELL_NECKLACE"], new (){new("lifeline", "mana_pool"), new("lifeline", "lifeline")}),
             new(new (){"TERROR_BOOTS", "TERROR_LEGGINGS", "TERROR_CHESTPLATE"}, new (){new("lifeline", "mana_pool")}),
             new(new (){"MAGMA_LORD_BOOTS", "MAGMA_LORD_LEGGINGS", "MAGMA_LORD_CHESTPLATE", "MAGMA_LORD_HELMET"},
-                new (){new("blazing_fortune", "mana_pool"), new("blazing_fortune", "fishing_experience"), new("blazing_fortune", "magic_find")}),
+                new (){new("blazing_fortune", "mana_pool"), new("blazing_fortune", "fishing_experience"),
+                       new("blazing_fortune", "magic_find"), new("blazing_fortune","blazing_fortune")}),
             new(new (){"AURORA_BOOTS", "AURORA_LEGGINGS", "AURORA_CHESTPLATE", "AURORA_HELMET", // not high but still noticable
                     "CRIMSON_BOOTS", "CRIMSON_LEGGINGS", "CRIMSON_CHESTPLATE", "CRIMSON_HELMET"}, new (){new("veteran", "mana_regeneration")}),
             new(new (){"CRIMSON_BOOTS", "CRIMSON_LEGGINGS", "CRIMSON_CHESTPLATE", "CRIMSON_HELMET", "MOLTEN_BRACELET"},
@@ -1017,7 +1018,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     var allUnlockable = itemService.GetUnlockableSlots(auction.Tag).ToList();
                     if (allUnlockable.Count > 0)
-                        modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", string.Join(",", allUnlockable.OrderBy(s=>s))));
+                        modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", string.Join(",", allUnlockable.OrderBy(s => s))));
                 }
 
                 (valueSubstracted, removedRarity, shouldIncludeReforge) = CapKeyLength(enchants, modifiers, auction);
@@ -1230,7 +1231,7 @@ ORDER BY l.`AuctionId`  DESC;
                         modifiers.RemoveAll(m => m.Key == "unlocked_slots");
                         var remaining = present.Except(costs.unavailable);
                         if (remaining.Count() > 0)
-                            modifiers.Add(new(mod.Key, string.Join(",", remaining.OrderBy(s=>s))));
+                            modifiers.Add(new(mod.Key, string.Join(",", remaining.OrderBy(s => s))));
                     }
                 }
                 // early return if we have a value before estimates
@@ -1423,7 +1424,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (val > 50)
                     return new KeyValuePair<string, string>("baseStatBoost", ">50");
             }
-            
+
 
             return s;
         }
