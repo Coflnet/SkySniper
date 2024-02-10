@@ -1618,6 +1618,8 @@ ORDER BY l.`AuctionId`  DESC;
         public void TestNewAuction(SaveAuction auction, bool triggerEvents = true)
         {
             using var activity = !triggerEvents ? null : activitySource?.CreateActivity("TestNewAuction", ActivityKind.Internal);
+            activity?.SetTag("uuid", auction.Uuid);
+            activity?.SetTag("server", ServerDnsName);
             var itemGroupTag = GetAuctionGroupTag(auction.Tag);
             var lookup = Lookups.GetOrAdd(itemGroupTag.Item1, key => new PriceLookup());
             var l = lookup.Lookup;
