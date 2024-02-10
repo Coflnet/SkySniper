@@ -20,7 +20,7 @@ public class AuctionkeyTests
     public void Setup()
     {
         itemService = new HypixelItemService(null, null);
-        service = new SniperService(itemService);
+        service = new SniperService(itemService, null);
     }
 
     [Test]

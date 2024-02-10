@@ -9,7 +9,7 @@ public class MedianCalcTests
     [Test]
     public void LargeData()
     {
-        var service = new SniperService(null);
+        var service = new SniperService(null, null);
         var bucket = new ReferenceAuctions();
         bucket.References = new ConcurrentQueue<ReferencePrice>();
         var sample = JsonConvert.DeserializeObject<ReferencePrice[]>(SampleJson);
@@ -29,7 +29,7 @@ public class MedianCalcTests
         Assert.AreEqual(54900000, bucket.Price);
     }
 
-    private const string SampleJson = 
+    private const string SampleJson =
     """
         [{
             "auctionId": -2732142930133056936,

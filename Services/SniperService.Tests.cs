@@ -54,7 +54,7 @@ namespace Coflnet.Sky.Sniper.Services
                 AuctioneerId = "12c144"
             };
             SniperService.MIN_TARGET = 0;
-            service = new SniperService(new(null, null));
+            service = new SniperService(new(null, null), null);
 
             found = new List<LowPricedAuction>();
             service.FoundSnipe += found.Add;

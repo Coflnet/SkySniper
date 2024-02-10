@@ -9,6 +9,7 @@ using Coflnet.Sky.Core.Services;
 using Amazon.Runtime.Internal.Util;
 using Newtonsoft.Json;
 using System.Net;
+using System.Diagnostics;
 
 namespace Coflnet.Sky.Sniper.Services
 {
@@ -210,6 +211,7 @@ namespace Coflnet.Sky.Sniper.Services
             {"petItem", "PET_ITEM_"}
         };
         private readonly HypixelItemService itemService;
+        private readonly ActivitySource activitySource;
         private readonly Dictionary<Core.Enchantment.EnchantmentType, byte> MinEnchantMap = new();
 
         /** NOTES
@@ -263,7 +265,7 @@ ORDER BY l.`AuctionId`  DESC;
         public static KeyValuePair<string, string> Ignore { get; } = new KeyValuePair<string, string>(string.Empty, string.Empty);
 
 
-        public SniperService(HypixelItemService itemService)
+        public SniperService(HypixelItemService itemService, ActivitySource activitySource)
         {
 
             this.FoundSnipe += la =>
@@ -312,6 +314,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
 
             this.itemService = itemService;
+            this.activitySource = activitySource;
         }
 
         public PriceEstimate GetPrice(SaveAuction auction)
@@ -608,7 +611,7 @@ ORDER BY l.`AuctionId`  DESC;
                     || value.References.All(r => r.Day < GetDay() - 21) && !item.IsClean())
                     loadedVal.Lookup.TryRemove(item, out _); // unimportant
             }
-            if(itemTag.Contains("RUNE_"))
+            if (itemTag.Contains("RUNE_"))
             {
                 foreach (var item in loadedVal.Lookup.Keys.ToList())
                 {
@@ -1276,7 +1279,6 @@ ORDER BY l.`AuctionId`  DESC;
                     if (tag == "PET_GOLDEN_DRAGON")
                         factor = 100_000_000;
                     sum += (int)(factor * (float.Parse(mod.Value) + 1));
-                    Console.WriteLine($"Exp value {sum} {mod.Value} {tag}");
                 }
                 if (mod.Key == "candyUsed")
                     sum += tag == "PET_GOLDEN_DRAGON" ? 80_000_000 : 10_000_000;
@@ -1345,7 +1347,7 @@ ORDER BY l.`AuctionId`  DESC;
                     return new List<KeyValuePair<string, string>>(EmptyPetModifiers) { new(PetItemKey, TierBoostShorthand) };
                 else
                     return EmptyPetModifiers.ToList();
-            if(auction.Tag.Contains("RUNE_"))
+            if (auction.Tag.Contains("RUNE_"))
                 return auction.FlatenedNBT.ToList();
             if (auction.FlatenedNBT.Any(n => NeverDrop.Contains(n.Key)))
                 return auction.FlatenedNBT.Where(n => NeverDrop.Contains(n.Key)).ToList();
@@ -1615,6 +1617,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         public void TestNewAuction(SaveAuction auction, bool triggerEvents = true)
         {
+            using var activity = !triggerEvents ? null : activitySource?.CreateActivity("TestNewAuction", ActivityKind.Internal);
             var itemGroupTag = GetAuctionGroupTag(auction.Tag);
             var lookup = Lookups.GetOrAdd(itemGroupTag.Item1, key => new PriceLookup());
             var l = lookup.Lookup;
@@ -1915,9 +1918,10 @@ ORDER BY l.`AuctionId`  DESC;
             if (medianPrice > minMedPrice && BucketHasEnoughReferencesForPrice(bucket))
             {
                 long adjustedMedianPrice = CheckHigherValueKeyForLowerPrice(bucket, key, l, medianPrice);
+                Activity.Current.Log($"Bucket {key} has enough references {bucket.References.Count} and medianPrice > minMedPrice {medianPrice} > {minMedPrice} adjusted {adjustedMedianPrice} {extraValue} {expValue}");
                 if (adjustedMedianPrice + extraValue < minMedPrice)
                 {
-                    LogNonFlip(auction, bucket, key, extraValue, volume, medianPrice, $"Adjusted median {adjustedMedianPrice} lower than min price {minMedPrice}");
+                    LogNonFlip(auction, bucket, key, extraValue, volume, medianPrice, $"Adjusted median {adjustedMedianPrice} lower than min price {minMedPrice} {extraValue}");
                     return false;
                 }
                 var props = CreateReference(bucket.References.LastOrDefault().AuctionId, key, extraValue);
@@ -1934,6 +1938,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             else
             {
+                Activity.Current.Log($"Bucket {key} has too few references {bucket.References.Count} or medianPrice > minMedPrice {medianPrice} > {minMedPrice}");
                 LogNonFlip(auction, bucket, key, extraValue, volume, medianPrice, $"Median {medianPrice} lower than min price {minMedPrice} {bucket.References.Count}");
             }
             return foundSnipe;
@@ -2122,6 +2127,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (altBucket.Lbin.Price != 0 && altBucket.Lbin.Price < lbinPrice)
                     {
+                        Activity.Current.Log($"Higher value key {k} has lower lbin {altBucket.Lbin.Price} < {lbinPrice}");
                         return true;
                     }
                     if (altBucket.Lbin.Price != 0 && altBucket.Lbin.Price < higherValueLowerBin)
@@ -2129,9 +2135,15 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 return false;
             }))
+            {
+                Activity.Current.Log("Higher value key has lower lbin");
                 return false;
+            }
             if (IsStacksize1Cheaper(lbinPrice, key, l))
+            {
+                Activity.Current.Log("Stacksize 1 is cheaper");
                 return false;
+            }
             var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue);
             AddMedianSample(bucket, props);
             props["mVal"] = bucket.Price.ToString();
@@ -2165,6 +2177,7 @@ ORDER BY l.`AuctionId`  DESC;
                                 .DefaultIfEmpty(targetPrice / 2).Min();
                 percentile = Math.Min(percentile, referencePrice);
                 percentile = Math.Min(percentile, lowestLbin);
+                Activity.Current.Log($"No references, checking all lbins {percentile} {lowestLbin} {referencePrice}");
             }
             targetPrice = Math.Min(targetPrice, percentile);
             return FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
@@ -2233,7 +2246,10 @@ ORDER BY l.`AuctionId`  DESC;
                 return false; // to low
             var refAge = (GetDay() - bucket.OldestRef);
             if (bucket.OldestRef != 0 && (refAge > 60 || State < SniperState.FullyLoaded && refAge > 5))
+            {
+                Activity.Current.Log("References too old");
                 return false; // too old
+            }
             props["refAge"] = refAge.ToString();
             props["server"] = ServerDnsName;
             if (auction.Tag.StartsWith("PET_") && auction.FlatenedNBT.Any(f => f.Value == "PET_ITEM_TIER_BOOST") && !props["key"].Contains(TierBoostShorthand))
@@ -2246,6 +2262,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (RecentSnipeUids.Contains(uid) && profitPercent > 0.5)
             {
                 Console.WriteLine($"Already found {uid} recently");
+                Activity.Current.Log("Already found recently");
                 return true;
             }
             else if (uid != null)
