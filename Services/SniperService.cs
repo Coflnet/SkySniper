@@ -8,6 +8,7 @@ using Prometheus;
 using Coflnet.Sky.Core.Services;
 using Amazon.Runtime.Internal.Util;
 using Newtonsoft.Json;
+using System.Net;
 
 namespace Coflnet.Sky.Sniper.Services
 {
@@ -37,6 +38,7 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly Counter closestLbinBruteCounter = Metrics.CreateCounter("sky_sniper_closest_lbin_brute", "Number of brute force searches for closest median");
 
         public event Action<LowPricedAuction> FoundSnipe;
+        public readonly string ServerDnsName = Dns.GetHostName();
         public void MockFoundFlip(LowPricedAuction auction)
         {
             FoundSnipe?.Invoke(auction);
@@ -2233,6 +2235,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (bucket.OldestRef != 0 && (refAge > 60 || State < SniperState.FullyLoaded && refAge > 5))
                 return false; // too old
             props["refAge"] = refAge.ToString();
+            props["server"] = ServerDnsName;
             if (auction.Tag.StartsWith("PET_") && auction.FlatenedNBT.Any(f => f.Value == "PET_ITEM_TIER_BOOST") && !props["key"].Contains(TierBoostShorthand))
                 throw new Exception("Tier boost missing " + props["key"] + " " + JSON.Stringify(auction));
             if (auction.FlatenedNBT.TryGetValue("uid", out var uid))
