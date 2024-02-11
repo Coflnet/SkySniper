@@ -1802,7 +1802,12 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var closestDetails = mapper.GetReforgeCost(closest.Key.Reforge, auction.Tier);
                 var auctionDetails = mapper.GetReforgeCost(auction.Reforge, auction.Tier);
-                var reforgeDifference = GetCostForItem(closestDetails.Item1) + closestDetails.Item2 - (GetCostForItem(auctionDetails.Item1) - auctionDetails.Item2) / 2;
+                var closestItemCost = GetCostForItem(closestDetails.Item1);
+                if(closestItemCost == 0 && !string.IsNullOrEmpty(closestDetails.Item1))
+                {
+                    closestItemCost = 2_000_000; // estimated cost for missing items
+                }
+                var reforgeDifference = closestItemCost + closestDetails.Item2 - (GetCostForItem(auctionDetails.Item1) - auctionDetails.Item2) / 2;
                 Console.WriteLine($"Adjusting target price due to reforge {closestDetails.Item1} {closestDetails.Item2} {auctionDetails.Item1} {auctionDetails.Item2} {reforgeDifference}");
                 targetPrice -= reforgeDifference;
                 props.Add("reforge", $"{closest.Key.Reforge} -> {auction.Reforge} ({reforgeDifference})");
