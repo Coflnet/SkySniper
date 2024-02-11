@@ -99,14 +99,23 @@ namespace Coflnet.Sky.Sniper.Services
                 throw new Exception("at least one task stopped " + result.Status + " " + result.Exception);
         }
 
+        private bool ShouldProduceFound()
+        {
+            return !(bool.TryParse(config["NO_PRODUCE"], out var noProduce) && noProduce);
+        }
+
         private async Task StartProducer(CancellationToken stoppingToken)
         {
             await kafkaCreator.CreateTopicIfNotExist(LowPricedAuctionTopic);
             FlipProducer = kafkaCreator.BuildProducer<string, LowPricedAuction>(true, pb => pb);
-            sniper.FoundSnipe += flip =>
+            if (ShouldProduceFound())
             {
-                Produceflip(flip, FlipProducer);
-            };
+                Console.WriteLine("starting producer\n-----------------");
+                sniper.FoundSnipe += flip =>
+                {
+                    Produceflip(flip, FlipProducer);
+                };
+            }
             while (!stoppingToken.IsCancellationRequested)
             {
                 await Task.Delay(2000);
@@ -477,7 +486,7 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         private ConsumerConfig ConsumerConfig =>
-            new (KafkaCreator.GetClientConfig(config))
+            new(KafkaCreator.GetClientConfig(config))
             {
                 SessionTimeoutMs = 9_000,
                 AutoOffsetReset = AutoOffsetReset.Latest,
