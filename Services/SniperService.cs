@@ -2179,6 +2179,11 @@ ORDER BY l.`AuctionId`  DESC;
                                 .DefaultIfEmpty(targetPrice / 2).Min();
                 percentile = Math.Min(percentile, referencePrice);
                 percentile = Math.Min(percentile, lowestLbin);
+                if (lowestLbin > 10_000_000_000)
+                {
+                    Activity.Current.Log($"Reduced because no higher value lbin");
+                    percentile = Math.Min(percentile, targetPrice * 9 / 10);
+                }
                 Activity.Current.Log($"No references, checking all lbins {percentile} {lowestLbin} {referencePrice}");
             }
             targetPrice = Math.Min(targetPrice, percentile);
@@ -2191,7 +2196,9 @@ ORDER BY l.`AuctionId`  DESC;
                     && baseKey.Modifiers.All(m => toCheck.Modifiers.Any(other => other.Key == m.Key
                                                         && (other.Value == m.Value ||
                                                          float.TryParse(other.Value, out var otherVal)
-                                                        && float.TryParse(m.Value, out var ownVal) && otherVal > ownVal)))
+                                                        && float.TryParse(m.Value, out var ownVal) && otherVal > ownVal
+                                                        || other.Value.Contains(m.Value)
+                                                        )))
                     && baseKey.Enchants.All(e => toCheck.Enchants.Any(other => other.Type == e.Type && other.Lvl >= e.Lvl));
         }
 

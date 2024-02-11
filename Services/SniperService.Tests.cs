@@ -400,6 +400,30 @@ namespace Coflnet.Sky.Sniper.Services
             service.TestNewAuction(toTest);
             Assert.AreEqual(1000000, found.Last().TargetPrice, JsonConvert.SerializeObject(found));
         }
+        /// <summary>
+        /// Some attributes are string based and might include item keys that should be included
+        /// </summary>
+        [Test]
+        public void SniperLowVolumeHigherValueCheckIncludesStringContains()
+        {
+            SetBazaarPrice("WITHER_SHIELD_SCROLL", 200_000_000);
+            SetBazaarPrice("IMPLOSION_SCROLL", 200_000_000);
+            highestValAuction.FlatenedNBT = new(){
+                {"ability_scroll", "WITHER_SHIELD_SCROLL"}};
+            highestValAuction.Enchantments = [];
+            highestValAuction.HighestBidAmount = 4000000;
+            var overvalued = Dupplicate(highestValAuction);
+            overvalued.HighestBidAmount = 1_500_000_000;
+            service.AddSoldItem(Dupplicate(overvalued));
+            TestNewAuction(overvalued);
+            var higherValue = Dupplicate(highestValAuction);
+            higherValue.FlatenedNBT["ability_scroll"] = "IMPLOSION_SCROLL WITHER_SHIELD_SCROLL";
+            higherValue.HighestBidAmount = 1_000_000_000;
+            TestNewAuction(higherValue);
+            TestNewAuction(highestValAuction);
+            var foundFlip = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER).Last().TargetPrice;
+            Assert.AreEqual(1_000_000_000, foundFlip, JsonConvert.SerializeObject(found, Formatting.Indented));
+        }
         [Test]
         public void CapValueAtHigheEnchantPrice()
         {
