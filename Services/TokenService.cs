@@ -41,7 +41,7 @@ public class TokenService : ITokenService
         return new JwtBuilder()
         .WithAlgorithm(new HMACSHA512Algorithm())
         .WithSecret(secret)
-        .AddClaim("exp", DateTimeOffset.UtcNow.AddMinutes(10).ToUnixTimeSeconds())
+        .AddClaim("exp", DateTimeOffset.UtcNow.AddMinutes(100).ToUnixTimeSeconds())
         .AddClaim("id", id)
         .Encode();
     }
