@@ -1617,7 +1617,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         public void TestNewAuction(SaveAuction auction, bool triggerEvents = true)
         {
-            using var activity = !triggerEvents ? null : activitySource?.CreateActivity("TestNewAuction", ActivityKind.Server);
+            using var activity = !triggerEvents ? null : activitySource?.StartActivity("TestNewAuction", ActivityKind.Internal);
             activity?.SetTag("uuid", auction.Uuid);
             activity?.SetTag("server", ServerDnsName);
             var itemGroupTag = GetAuctionGroupTag(auction.Tag);
