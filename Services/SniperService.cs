@@ -2231,13 +2231,14 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static long MaxMedianPriceForSnipe(ReferenceAuctions bucket)
         {
-            if (bucket.Price == 0)
+            var price = bucket.Price;
+            if (price == 0)
                 return long.MaxValue; // disabled with 0 volume
-            if (bucket.Price < 15_000_000)
-                return bucket.Price * 13 / 10;
-            if (bucket.Price < 100_000_000)
-                return bucket.Price * 14 / 12;
-            return bucket.Price * 21 / 20;
+            if (price < 15_000_000)
+                return price * 13 / 10;
+            if (price < 100_000_000)
+                return price * 14 / 12;
+            return price * 21 / 20;
         }
 
         public void PrintLogQueue()
