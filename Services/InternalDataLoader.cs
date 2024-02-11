@@ -75,6 +75,7 @@ namespace Coflnet.Sky.Sniper.Services
                     await partialCalcService.Load();
                 }
             });
+            var bazaarConsume = ConsumeBazaar(stoppingToken);
             Task soldAuctions = LoadLookupsAndProcessSells(stoppingToken);
             Task newAuctions = ConsumeNewAuctions(stoppingToken);
             var sellLoad = LoadSellHistory(stoppingToken);
@@ -92,7 +93,7 @@ namespace Coflnet.Sky.Sniper.Services
             var result = await Task.WhenAny(newAuctions, soldAuctions,
                 Task.WhenAll(ActiveUpdater(stoppingToken),
                              StartProducer(stoppingToken),
-                             ConsumeBazaar(stoppingToken),
+                             bazaarConsume,
                              loadActive,
                              sellLoad));
             if (!stoppingToken.IsCancellationRequested)
