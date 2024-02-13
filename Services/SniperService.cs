@@ -1387,10 +1387,11 @@ ORDER BY l.`AuctionId`  DESC;
                 return s; // don't normalize attribute shards only one attribute on them
             if (s.Key == "exp")
             {
+                var expMulti = tag == "PET_GOLDEN_DRAGON" ? GoldenDragonMaxExp / PetExpMaxlevel : 1;
                 var exp = GetNumeric(s);
-                if (exp > 1_000_000 && exp <= 2_500_000)
+                if (exp > 1_000_000 * expMulti && exp <= 2_500_000 * expMulti)
                     return new KeyValuePair<string, string>(s.Key, "0.3");
-                else if (exp > 2_500_000 && exp < PetExpMaxlevel / 6)
+                else if (exp > 2_500_000 * expMulti && exp < PetExpMaxlevel * expMulti / 6)
                     return new KeyValuePair<string, string>(s.Key, "0.6");
                 if (tag == "PET_GOLDEN_DRAGON")
                     return NormalizeNumberTo(s, GoldenDragonMaxExp / 7, 7);
@@ -1995,7 +1996,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 foundSnipe = PotentialSnipe(auction, lbinPrice, bucket, key, l, extraValue);
             }
-            if (medianPrice > minMedPrice && BucketHasEnoughReferencesForPrice(bucket) )
+            if (medianPrice > minMedPrice && BucketHasEnoughReferencesForPrice(bucket))
             {
                 long adjustedMedianPrice = CheckHigherValueKeyForLowerPrice(bucket, key, l, medianPrice);
                 Activity.Current.Log($"Bucket {key} has enough references {bucket.References.Count} and medianPrice > minMedPrice {medianPrice} > {minMedPrice} adjusted {adjustedMedianPrice} {extraValue} {expValue}");

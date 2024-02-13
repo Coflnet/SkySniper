@@ -178,6 +178,20 @@ public class AuctionkeyTests
         Assert.Greater(originkey.Similarity(targetKey), originkey.Similarity(badKey));
     }
 
+    [Test]
+    public void Lvl103isNotbucket0()
+    {
+        var dragon = new SaveAuction()
+        {
+            Enchantments = [],
+            FlatenedNBT = new() { { "exp", 27245497.685185183.ToString() }, { "candyUsed", "0" } },
+            Tag = "PET_GOLDEN_DRAGON"
+        };
+        var key = service.KeyFromSaveAuction(dragon);
+        Assert.That(key.Modifiers.First(m=>m.Key == "candyUsed").Value, Is.EqualTo("0"));
+        Assert.That(key.Modifiers.First(m=>m.Key == "exp").Value, Is.EqualTo("0.6"));
+    }
+
     /// <summary>
     /// Slots only accessible when converting to another item are usually not worth it
     /// and almost never reach high enough volume

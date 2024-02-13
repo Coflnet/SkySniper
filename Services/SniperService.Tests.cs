@@ -1580,7 +1580,7 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(expectedPrice, flip.TargetPrice, "median should be adjusted for exp diff");
         }
 
-        [TestCase(31023190, 31023190, 766632161, LowPricedAuction.FinderType.SNIPER_MEDIAN)] // is adusted downwards
+        [TestCase(31023190, 31023190, 409489302, LowPricedAuction.FinderType.SNIPER_MEDIAN)] // is adusted downwards
         [TestCase(31023190, 355244041, 540000000, LowPricedAuction.FinderType.STONKS)]
         public void MedianAdjustForBucketExpDiffGoldenDrag(int exp, int referncesExp, int expectedPrice, LowPricedAuction.FinderType finder)
         {
