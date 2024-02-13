@@ -1716,7 +1716,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     long extraValue = GetExtraValue(auction, key) - itemGroupTag.Item2;
                     if (FindFlip(auction, lbinPrice, medPrice, bucket, key, l, extraValue))
-                        continue; // found a snipe, no need to check other lower value buckets
+                        shouldTryToFindClosest = false; // found a snipe, no need to check other lower value buckets
                 }
             }
             var topKey = basekey.GetReduced(0);
@@ -1795,6 +1795,8 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (auction.Tag.StartsWith("RUNE_")) // TODO: compare levels
                 return;
+            if (auction.Tag == "NEW_YEAR_CAKE")
+                return; // can't use closest for years
             // special case for items that have no reference bucket, search using most similar
             var key = KeyFromSaveAuction(auction);
             var closest = FindClosestTo(l, key, auction.Tag);
