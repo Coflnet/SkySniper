@@ -262,7 +262,7 @@ public class AuctionkeyTests
             FlatenedNBT = new() { { "heldItem", "PET_ITEM_TIER_BOOST" },
                                 {"candyUsed", "0"} },
         };
-        var modifierList = service.KeyFromSaveAuction(auction, level).Modifiers;
+        var modifierList = service.KeyFromSaveAuction(auction, level).Key.Modifiers;
         Assert.IsTrue(modifierList.Any(x => x.Value == SniperService.TierBoostShorthand));
         Assert.IsTrue(modifierList.Any(x => x.Value == "0" && x.Key == "candyUsed"));
     }

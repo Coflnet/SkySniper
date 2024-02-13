@@ -21,6 +21,7 @@ namespace Coflnet.Sky.Sniper.Services
         public const int PetExpMaxlevel = 4_225_538 * 6;
         private const int GoldenDragonMaxExp = 30_036_483 * 7;
         public static int MIN_TARGET = 200_000;
+        public static DateTime StartTime = new DateTime(2021, 9, 25);
         public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>(3, 2000);
 
         private readonly ConcurrentQueue<LogEntry> Logs = new ConcurrentQueue<LogEntry>();
@@ -607,7 +608,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var value = loadedVal.Lookup.GetValueOrDefault(item);
                 if (value == null)
                     continue;
-                if (value.References.Count == 0
+                if (value.References.Count == 0 && value.Lbins.Count == 0
                     || value.References.All(r => r.Day < GetDay() - 21) && !item.IsClean())
                     loadedVal.Lookup.TryRemove(item, out _); // unimportant
             }
@@ -894,9 +895,8 @@ ORDER BY l.`AuctionId`  DESC;
                 .First();
         }
 
-        private ReferenceAuctions CreateAndAddBucket(SaveAuction auction, int dropLevel = 0)
+        private ReferenceAuctions CreateAndAddBucket(SaveAuction auction, AuctionKey key)
         {
-            var key = KeyFromSaveAuction(auction, dropLevel);
             var itemBucket = Lookups.GetOrAdd(GetAuctionGroupTag(auction.Tag).tag, new PriceLookup());
             return GetOrAdd(key, itemBucket);
         }
@@ -927,7 +927,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (date == default)
                 date = DateTime.UtcNow;
-            return (short)(date - new DateTime(2021, 9, 25)).TotalDays;
+            return (short)(date - StartTime).TotalDays;
         }
 
         private bool TryGetReferenceAuctions(SaveAuction auction, out ReferenceAuctions bucket)
@@ -1004,7 +1004,11 @@ ORDER BY l.`AuctionId`  DESC;
             }
             return sum;
         }
-        public AuctionKeyWithValue KeyFromSaveAuction(SaveAuction auction, int dropLevel = 0)
+        public AuctionKeyWithValue KeyFromSaveAuction(SaveAuction auction)
+        {
+            return KeyFromSaveAuction(auction, 0);
+        }
+        public KeyWithValueBreakdown KeyFromSaveAuction(SaveAuction auction, int dropLevel)
         {
             var enchants = new List<Models.Enchant>();
             var modifiers = new List<KeyValuePair<string, string>>();
@@ -1012,6 +1016,7 @@ ORDER BY l.`AuctionId`  DESC;
             var shouldIncludeReforge = Constants.RelevantReforges.Contains(auction.Reforge) && dropLevel < 3;
             long valueSubstracted = 0;
             bool removedRarity = false;
+            List<RankElem> rankElems = [];
             if (dropLevel == 0)
             {
                 enchants = auction.Enchantments
@@ -1035,7 +1040,7 @@ ORDER BY l.`AuctionId`  DESC;
                         modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", string.Join(",", allUnlockable.OrderBy(s => s))));
                 }
 
-                (valueSubstracted, removedRarity, shouldIncludeReforge) = CapKeyLength(enchants, modifiers, auction);
+                (valueSubstracted, removedRarity, shouldIncludeReforge, rankElems) = CapKeyLength(enchants, modifiers, auction);
             }
             else if (dropLevel == 1 || dropLevel == 2)
             {
@@ -1059,7 +1064,7 @@ ORDER BY l.`AuctionId`  DESC;
                     enchants = new List<Models.Enchant>() { new Models.Enchant() { Lvl = enchant.Level, Type = enchant.Type
                         } };
                 }
-                (valueSubstracted, removedRarity, shouldIncludeReforge) = CapKeyLength(enchants, modifiers, auction, 1_000_000);
+                (valueSubstracted, removedRarity, shouldIncludeReforge, rankElems) = CapKeyLength(enchants, modifiers, auction, 1_000_000);
             }
             else if (dropLevel == 3)
             {
@@ -1088,18 +1093,14 @@ ORDER BY l.`AuctionId`  DESC;
             if (auction.Tag == "PANDORAS_BOX")
                 // pandoras box tier gets set based on the player
                 tier = Tier.COMMON;
-            if (removedRarity && tier < Tier.ULTIMATE)
+            if (removedRarity)
             {
-                if (tier == Tier.MYTHIC)
-                    tier = Tier.LEGENDARY;
-                else if (tier == Tier.DIVINE)
-                    tier = Tier.MYTHIC;
-                else
-                    tier--;
+                tier = ReduceRarity(tier);
             }
             enchants = RemoveNoEffectEnchants(auction, enchants);
 
-            return new AuctionKeyWithValue()
+
+            var key = new AuctionKeyWithValue()
             {
                 // order attributes
                 Modifiers = modifiers.OrderBy(m => m.Key).ToList().AsReadOnly(),
@@ -1109,6 +1110,30 @@ ORDER BY l.`AuctionId`  DESC;
                 Count = (byte)auction.Count,
                 ValueSubstract = valueSubstracted
             };
+            var fullKey = new KeyWithValueBreakdown()
+            {
+                Key = key,
+                SubstractedValue = valueSubstracted,
+                ValueBreakdown = rankElems
+            };
+
+
+            return fullKey;
+        }
+
+        public static Tier ReduceRarity(Tier tier)
+        {
+            if (tier < Tier.ULTIMATE)
+            {
+                if (tier == Tier.MYTHIC)
+                    tier = Tier.LEGENDARY;
+                else if (tier == Tier.DIVINE)
+                    tier = Tier.MYTHIC;
+                else
+                    tier--;
+            }
+
+            return tier;
         }
 
         private static bool IsSoul(KeyValuePair<string, string> n)
@@ -1127,7 +1152,7 @@ ORDER BY l.`AuctionId`  DESC;
         /// <param name="enchants"></param>
         /// <param name="modifiers"></param>
         /// <returns>The coin amount substracted</returns>
-        public (long, bool removedRarity, bool includeReforge) CapKeyLength(List<Models.Enchant> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction, long threshold = 500000)
+        public (long, bool removedRarity, bool includeReforge, List<RankElem>) CapKeyLength(List<Models.Enchant> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction, long threshold = 500000)
         {
             var underlyingItemValue = 0L;
             if (auction.Tag != null && Lookups.TryGetValue(auction.Tag, out var lookups))
@@ -1170,7 +1195,7 @@ ORDER BY l.`AuctionId`  DESC;
 
             bool removedRarity = false;
             bool includeReforge = AddReforgeValue(auction, ref combined);
-            combined = combined.OrderByDescending(i => i.Value).ToList();
+            combined = combined.OrderByDescending(i => i.Value).Where(c => c.Value != 0).ToList();
             foreach (var item in combined.Skip(5).Where(c => c.Value > 0).Concat(combined.Where(c => c.Value > 0 && c.Value < threshold)))
             {
                 // remove all but the top 5
@@ -1191,7 +1216,8 @@ ORDER BY l.`AuctionId`  DESC;
                         removedRarity = true;
                 }
             }
-            return (valueSubstracted, removedRarity, includeReforge);
+            var ordered = combined.Where(c => c.Value == 0).Concat(combined.Take(5)).ToList();
+            return (valueSubstracted, removedRarity, includeReforge, ordered);
 
             bool AddReforgeValue(SaveAuction auction, ref IEnumerable<RankElem> combined)
             {
@@ -1628,9 +1654,10 @@ ORDER BY l.`AuctionId`  DESC;
             var medPrice = auction.StartingBid * 1.05 + itemGroupTag.Item2;
             var lastKey = new AuctionKey();
             var shouldTryToFindClosest = false;
+            var basekey = KeyFromSaveAuction(auction, 0);
             for (int i = 0; i < 5; i++)
             {
-                var key = KeyFromSaveAuction(auction, i);
+                var key = basekey.GetReduced(i);
                 if (i > 0 && key == lastKey)
                 {
                     if (i < 4)
@@ -1681,7 +1708,7 @@ ORDER BY l.`AuctionId`  DESC;
                     else if (i != 0)
                         continue;
                     else
-                        bucket = CreateAndAddBucket(auction);
+                        bucket = CreateAndAddBucket(auction, key);
                 }
                 if (i == 0)
                     UpdateLbin(auction, bucket);
@@ -1689,13 +1716,59 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     long extraValue = GetExtraValue(auction, key) - itemGroupTag.Item2;
                     if (FindFlip(auction, lbinPrice, medPrice, bucket, key, l, extraValue))
-                        return; // found a snipe, no need to check other lower value buckets
+                        continue; // found a snipe, no need to check other lower value buckets
                 }
+            }
+            var topKey = basekey.GetReduced(0);
+            var topAttrib = basekey.ValueBreakdown.FirstOrDefault(v => v.Value != 0);
+            if (topAttrib != default)
+            {
+                CheckCombined(auction, l, lbinPrice, medPrice, topKey, topAttrib);
             }
             if (shouldTryToFindClosest && triggerEvents && this.State >= SniperState.Ready)
             {
                 TryFindClosestRisky(auction, l, ref lbinPrice, ref medPrice);
             }
+            activity.Log($"BaseKey value {JsonConvert.SerializeObject(basekey.ValueBreakdown)}");
+        }
+
+        private void CheckCombined(SaveAuction auction, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, double lbinPrice, double medPrice, AuctionKeyWithValue topKey, RankElem topAttrib)
+        {
+            foreach (var item in l.Keys.Where(k => k.Modifiers.Any(m => m.Value.Contains("BLACK"))))
+            {
+                Console.WriteLine($"Black item {item}");
+            }
+            var similar = l.Where(e => e.Key.Modifiers.Contains(topAttrib.Modifier) || e.Key.Enchants.Contains(topAttrib.Enchant)).ToList();
+            var relevant = similar.Where(e => IsHigherValue(e.Key, topKey))
+                .ToList();
+
+            var combined = relevant.SelectMany(r => r.Value.References).ToList();
+            if (combined.Count == 0)
+            {
+                return;
+            }
+            var lbinBucket = relevant.MinBy(r => r.Value.Lbin.Price).Value;
+            var virtualBucket = new ReferenceAuctions()
+            {
+                Lbins = [lbinBucket.Lbin],
+                References = new(combined),
+                Price = GetMedian(combined),
+                OldestRef = (short)(GetDay() - 2)
+            };
+            FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, l, 0);
+            /*  
+              var median = combined.OrderBy(r => r.Price).Skip(combined.Count / 2).FirstOrDefault().Price;
+              if (lbinBucket.Lbin.Price > lbinPrice && median == 0 || median * 1.1 > lbinBucket.Lbin.Price)
+              {
+                  var props = CreateReference(lbinBucket.Lbin.AuctionId, topKey, -1);
+                  FoundAFlip(auction, lbinBucket, LowPricedAuction.FinderType.SNIPER, lbinBucket.Lbin.Price, props);
+              }
+              if(median > 0 && median * 1.1 > lbinPrice)
+              {
+                  var props = CreateReference(lbinBucket.Lbin.AuctionId, topKey, -1);
+                  AddMedianSample(combined, props);
+                  FoundAFlip(auction, lbinBucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, median, props);
+              }*/
         }
 
         /// <summary>
@@ -1723,7 +1796,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (auction.Tag.StartsWith("RUNE_")) // TODO: compare levels
                 return;
             // special case for items that have no reference bucket, search using most similar
-            var key = KeyFromSaveAuction(auction, 0);
+            var key = KeyFromSaveAuction(auction);
             var closest = FindClosestTo(l, key, auction.Tag);
             medPrice *= 1.10; // increase price a bit to account for the fact that we are not using the exact same item
             if (closest.Value == null)
@@ -1803,7 +1876,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var closestDetails = mapper.GetReforgeCost(closest.Key.Reforge, auction.Tier);
                 var auctionDetails = mapper.GetReforgeCost(auction.Reforge, auction.Tier);
                 var closestItemCost = GetCostForItem(closestDetails.Item1);
-                if(closestItemCost == 0 && !string.IsNullOrEmpty(closestDetails.Item1))
+                if (closestItemCost == 0 && !string.IsNullOrEmpty(closestDetails.Item1))
                 {
                     closestItemCost = 2_000_000; // estimated cost for missing items
                 }
@@ -1812,7 +1885,7 @@ ORDER BY l.`AuctionId`  DESC;
                 targetPrice -= reforgeDifference;
                 props.Add("reforge", $"{closest.Key.Reforge} -> {auction.Reforge} ({reforgeDifference})");
             }
-            AddMedianSample(closest.Value, props);
+            AddMedianSample(closest.Value.References, props);
             FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, props);
         }
 
@@ -1922,7 +1995,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 foundSnipe = PotentialSnipe(auction, lbinPrice, bucket, key, l, extraValue);
             }
-            if (medianPrice > minMedPrice && BucketHasEnoughReferencesForPrice(bucket))
+            if (medianPrice > minMedPrice && BucketHasEnoughReferencesForPrice(bucket) )
             {
                 long adjustedMedianPrice = CheckHigherValueKeyForLowerPrice(bucket, key, l, medianPrice);
                 Activity.Current.Log($"Bucket {key} has enough references {bucket.References.Count} and medianPrice > minMedPrice {medianPrice} > {minMedPrice} adjusted {adjustedMedianPrice} {extraValue} {expValue}");
@@ -1932,7 +2005,7 @@ ORDER BY l.`AuctionId`  DESC;
                     return false;
                 }
                 var props = CreateReference(bucket.References.LastOrDefault().AuctionId, key, extraValue);
-                AddMedianSample(bucket, props);
+                AddMedianSample(bucket.References, props);
                 if (key.ValueSubstract != 0)
                 {
                     props["valuedropped"] = key.ValueSubstract.ToString();
@@ -2036,7 +2109,7 @@ ORDER BY l.`AuctionId`  DESC;
         private static bool BucketHasEnoughReferencesForPrice(ReferenceAuctions bucket)
         {
             // high value items need more volume to pop up
-            return bucket.Price < 200_000_000 || bucket.References.Count > 5;
+            return bucket.Price < 280_000_000 || bucket.References.Count > 5;
         }
 
         public void UpdateBazaar(dev.BazaarPull bazaar)
@@ -2152,7 +2225,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return false;
             }
             var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue);
-            AddMedianSample(bucket, props);
+            AddMedianSample(bucket.References, props);
             props["mVal"] = bucket.Price.ToString();
             var targetPrice = (Math.Min(higherValueLowerBin, MaxMedianPriceForSnipe(bucket)) + extraValue) - MIN_TARGET / 200;
             if (targetPrice < auction.StartingBid * 1.03)
@@ -2224,9 +2297,9 @@ ORDER BY l.`AuctionId`  DESC;
             return false;
         }
 
-        private static void AddMedianSample(ReferenceAuctions bucket, Dictionary<string, string> props)
+        private static void AddMedianSample(IEnumerable<ReferencePrice> bucket, Dictionary<string, string> props)
         {
-            props["med"] = string.Join(',', bucket.References.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
+            props["med"] = string.Join(',', bucket.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
         }
 
         private static long MaxMedianPriceForSnipe(ReferenceAuctions bucket)
@@ -2269,21 +2342,6 @@ ORDER BY l.`AuctionId`  DESC;
             props["server"] = ServerDnsName;
             if (auction.Tag.StartsWith("PET_") && auction.FlatenedNBT.Any(f => f.Value == "PET_ITEM_TIER_BOOST") && !props["key"].Contains(TierBoostShorthand))
                 throw new Exception("Tier boost missing " + props["key"] + " " + JSON.Stringify(auction));
-            if (auction.FlatenedNBT.TryGetValue("uid", out var uid))
-            {
-                uid += type;
-            }
-            var profitPercent = (targetPrice - auction.StartingBid) / (double)auction.StartingBid;
-            if (RecentSnipeUids.Contains(uid) && profitPercent > 0.5)
-            {
-                Console.WriteLine($"Already found {uid} recently");
-                Activity.Current.Log("Already found recently");
-                return true;
-            }
-            else if (uid != null)
-                RecentSnipeUids.Enqueue(uid);
-            if (RecentSnipeUids.Count > 50)
-                RecentSnipeUids.TryDequeue(out _);
 
             FoundSnipe?.Invoke(new LowPricedAuction()
             {

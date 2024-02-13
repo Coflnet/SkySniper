@@ -109,7 +109,7 @@ namespace Coflnet.Sky.Sniper.Models
             var matchValue = 0L;
             matchValue = CompareValues(keyvalue, self, matchValue);
             matchValue = CompareValues(self, keyvalue, matchValue);
-            
+
             foreach (var item in keyvalue.Where(k => k.Value == 0))
             {
                 if (Random.Shared.NextDouble() < 0.1)
