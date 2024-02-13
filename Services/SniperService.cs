@@ -1885,6 +1885,12 @@ ORDER BY l.`AuctionId`  DESC;
                 targetPrice -= reforgeDifference;
                 props.Add("reforge", $"{closest.Key.Reforge} -> {auction.Reforge} ({reforgeDifference})");
             }
+            if(closest.Key.Tier > auction.Tier && auction.FlatenedNBT.Any(f=>f.Key == "exp"))
+            {
+                var tierDifference = (long)(closest.Value.Price * 0.45);
+                targetPrice -= tierDifference;
+                props.Add("tierVal", $"{closest.Key.Tier} -> {auction.Tier} ({tierDifference})");
+            }
             AddMedianSample(closest.Value.References, props);
             FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, props);
         }

@@ -885,6 +885,22 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual("sharpness_7 (49000000)", estimate.AdditionalProps["missingEnchants"]);
         }
         [Test]
+        public void DeductsForRarityDifference()
+        {
+            SetBazaarPrice("PET_SKIN_SCATHA_DARK", 50_000_000);
+            highestValAuction.FlatenedNBT = new() { { "skin", "SCATHA_DARK" }, { "exp", "30000000" } };
+            highestValAuction.Tier = Tier.RARE;
+            var epic = Dupplicate(highestValAuction);
+            epic.HighestBidAmount = 200_000_000;
+            epic.Tier = Tier.EPIC;
+            AddVolume(epic);
+            SimulateNewAuction(highestValAuction);
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            Assert.AreEqual(90000000, estimate.TargetPrice, "should half estimated value for tier difference");
+            Assert.AreEqual("EPIC -> RARE (90000000)", estimate.AdditionalProps["tierVal"]);
+        }
+        [Test]
         public void PartiallyAddsEnchants()
         {
             highestValAuction.FlatenedNBT = new();
