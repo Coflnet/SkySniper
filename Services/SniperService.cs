@@ -1720,7 +1720,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
             var topKey = basekey.GetReduced(0);
-            var topAttrib = basekey.ValueBreakdown.FirstOrDefault(v => v.Value != 0);
+            var topAttrib = basekey.ValueBreakdown.FirstOrDefault();
             if (topAttrib != default)
             {
                 CheckCombined(auction, l, lbinPrice, medPrice, topKey, topAttrib);
@@ -1739,6 +1739,11 @@ ORDER BY l.`AuctionId`  DESC;
                 Console.WriteLine($"Black item {item}");
             }
             var similar = l.Where(e => e.Key.Modifiers.Contains(topAttrib.Modifier) || e.Key.Enchants.Contains(topAttrib.Enchant)).ToList();
+            if(similar.Count == 1)
+            {
+                // include all if no match otherwise
+                similar = l.ToList();
+            }
             var relevant = similar.Where(e => IsHigherValue(e.Key, topKey) && e.Key.Reforge == topKey.Reforge)
                 .ToList();
 

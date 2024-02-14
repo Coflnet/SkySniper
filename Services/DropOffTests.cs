@@ -53,16 +53,7 @@ public class DropOffTests
         };
         SniperService.StartTime += TimeSpan.FromDays(10000);
         sniperService.AddLookupData("WISE_WITHER_BOOTS", converted);
-        foreach (var item in converted.Lookup.Where(l => l.Key.ToString().Contains("BLACK")).Take(4))
-        {
-            Console.WriteLine(item.Key);
-        }
-        Console.WriteLine("Parsed");
-        foreach (var item in parsed.Lookup.Where(l => l.Key.Contains("BLACK")).Take(8))
-        {
-            Console.WriteLine("from " + item.Key);
-            Console.WriteLine("to : " + ParseKey(item));
-        }
+
         found = new List<LowPricedAuction>();
         sniperService.AddLookupData("RUNE_TIDAL", new PriceLookup()
         {
@@ -236,6 +227,38 @@ public class DropOffTests
         Assert.GreaterOrEqual(found.Count, 1);
         // combines buckets to reach estimation
         Assert.AreEqual(279629280, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
+    }
+
+    [Test]
+    public void UsesLessSpiderKills()
+    {
+        // ultimate_last_stand=5 Any [color, 0:0:0],[hotpc, 1],[rarity_upgrades, 1],[spider_kills, 2]
+        var auction = new SaveAuction()
+        {
+            Tag = "FIRST_MASTER_STAR",
+            Tier = Tier.LEGENDARY,
+            Enchantments = new(new List<Enchantment>()
+            {
+                new() { Type = Enchantment.EnchantmentType.ultimate_last_stand, Level = 5 }
+            }),
+            FlatenedNBT = new(new Dictionary<string, string>()
+            {
+                { "color", "0:0:0" },
+                { "rarity_upgrades", "1" },
+                { "spider_kills", "100000" }
+            }),
+        };
+        var lowerKills = auction.Dupplicate();
+        lowerKills.FlatenedNBT["spider_kills"] = "61000";
+        sniperService.AddSoldItem(lowerKills.Dupplicate(30760795, DateTime.UtcNow-TimeSpan.FromDays(30)));
+        sniperService.AddSoldItem(lowerKills.Dupplicate(24716394, DateTime.UtcNow-TimeSpan.FromDays(25)));
+        sniperService.AddSoldItem(lowerKills.Dupplicate(21760795, DateTime.UtcNow-TimeSpan.FromDays(6)));
+
+        sniperService.AddSoldItem(auction.Dupplicate(49742295, DateTime.UtcNow-TimeSpan.FromDays(2)));
+
+        sniperService.TestNewAuction(auction.Dupplicate());
+        Assert.AreEqual(1, found.Count);
+        Assert.AreEqual(24716394, found.First().TargetPrice);
     }
 
 
