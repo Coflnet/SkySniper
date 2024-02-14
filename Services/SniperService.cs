@@ -1752,7 +1752,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 Lbins = [lbinBucket.Lbin],
                 References = new(combined),
-                Price = combined.Count < 5 ? 0 : GetMedian(combined),
+                Price = combined.Count < 4 ? 0 : GetMedian(combined),
                 OldestRef = (short)(GetDay() - 2)
             };
             FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, l, 0);
@@ -2338,7 +2338,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private bool FoundAFlip(SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, long targetPrice, Dictionary<string, string> props)
         {
-            if (targetPrice < MIN_TARGET)
+            if (targetPrice < MIN_TARGET || targetPrice < auction.StartingBid * 1.03)
                 return false; // to low
             var refAge = (GetDay() - bucket.OldestRef);
             if (bucket.OldestRef != 0 && (refAge > 60 || State < SniperState.FullyLoaded && refAge > 5))
