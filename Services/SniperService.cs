@@ -1739,7 +1739,7 @@ ORDER BY l.`AuctionId`  DESC;
                 Console.WriteLine($"Black item {item}");
             }
             var similar = l.Where(e => e.Key.Modifiers.Contains(topAttrib.Modifier) || e.Key.Enchants.Contains(topAttrib.Enchant)).ToList();
-            var relevant = similar.Where(e => IsHigherValue(e.Key, topKey))
+            var relevant = similar.Where(e => IsHigherValue(e.Key, topKey) && e.Key.Reforge == topKey.Reforge)
                 .ToList();
 
             var combined = relevant.SelectMany(r => r.Value.References).ToList();
@@ -1887,7 +1887,7 @@ ORDER BY l.`AuctionId`  DESC;
                 targetPrice -= reforgeDifference;
                 props.Add("reforge", $"{closest.Key.Reforge} -> {auction.Reforge} ({reforgeDifference})");
             }
-            if(closest.Key.Tier > auction.Tier && auction.FlatenedNBT.Any(f=>f.Key == "exp"))
+            if (closest.Key.Tier > auction.Tier && auction.FlatenedNBT.Any(f => f.Key == "exp"))
             {
                 var tierDifference = (long)(closest.Value.Price * 0.45);
                 targetPrice -= tierDifference;
