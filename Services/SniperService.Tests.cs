@@ -585,6 +585,26 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void CakeYearIsInverted()
+        {
+            var auction = highestValAuction;
+            SetBazaarPrice("RECOMBOBULATOR_3000", 8_200_000);
+            auction.FlatenedNBT = new() { { "rarity_upgrades", "1" }, { "new_years_cake", "252" } };
+            var future = auction.Dupplicate(500_000);
+            future.FlatenedNBT["new_years_cake"] = "283";
+            var funny = auction.Dupplicate(5_000_000);
+            funny.FlatenedNBT["new_years_cake"] = "69";
+            var hundret = auction.Dupplicate(4_000_000);
+            hundret.FlatenedNBT["new_years_cake"] = "100";
+            AddVolume(future);
+            AddVolume(funny);
+            service.AddSoldItem(hundret);
+            service.TestNewAuction(auction);
+
+            Assert.AreEqual(500_000, found.Last().TargetPrice);
+        }
+
+        [Test]
         public void UpdatesOldestRefWithMedian()
         {
             var bucket = new ReferenceAuctions();

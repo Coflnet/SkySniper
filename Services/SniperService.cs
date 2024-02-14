@@ -102,6 +102,12 @@ namespace Coflnet.Sky.Sniper.Services
             "is_shiny", // cosmetic effect on wither armor ~5% drop chance on Master Mode 7
         };
 
+        private static readonly HashSet<string> InvertedValueKey = new()
+        {
+            "edition",
+            "new_years_cake"
+        };
+
         /// <summary>
         /// Keys containing itemTags that should be added separately
         /// </summary>
@@ -1734,12 +1740,8 @@ ORDER BY l.`AuctionId`  DESC;
 
         private void CheckCombined(SaveAuction auction, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, double lbinPrice, double medPrice, AuctionKeyWithValue topKey, RankElem topAttrib)
         {
-            foreach (var item in l.Keys.Where(k => k.Modifiers.Any(m => m.Value.Contains("BLACK"))))
-            {
-                Console.WriteLine($"Black item {item}");
-            }
             var similar = l.Where(e => e.Key.Modifiers.Contains(topAttrib.Modifier) || e.Key.Enchants.Contains(topAttrib.Enchant)).ToList();
-            if(similar.Count == 1)
+            if (similar.Count == 1)
             {
                 // include all if no match otherwise
                 similar = l.ToList();
@@ -2287,7 +2289,7 @@ ORDER BY l.`AuctionId`  DESC;
                     && baseKey.Modifiers.All(m => toCheck.Modifiers.Any(other => other.Key == m.Key
                                                         && (other.Value == m.Value ||
                                                          float.TryParse(other.Value, out var otherVal)
-                                                        && float.TryParse(m.Value, out var ownVal) && otherVal > ownVal
+                                                        && float.TryParse(m.Value, out var ownVal) && (InvertedValueKey.Contains(other.Key) ? otherVal < ownVal : otherVal > ownVal)
                                                         || other.Value.Contains(m.Value)
                                                         )))
                     && baseKey.Enchants.All(e => toCheck.Enchants.Any(other => other.Type == e.Type && other.Lvl >= e.Lvl));
