@@ -1752,7 +1752,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 Lbins = [lbinBucket.Lbin],
                 References = new(combined),
-                Price = GetMedian(combined),
+                Price = combined.Count < 5 ? 0 : GetMedian(combined),
                 OldestRef = (short)(GetDay() - 2)
             };
             FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, l, 0);
