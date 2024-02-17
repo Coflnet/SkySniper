@@ -64,6 +64,20 @@ namespace Coflnet.Sky.Sniper.Controllers
         }
 
         /// <summary>
+        /// Get multiple itemIds at once
+        /// </summary>
+        /// <param name="itemIds"></param>
+        /// <param name="Authorization"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [Route("lookup")]
+        public IEnumerable<string> GetLookups(IEnumerable<string> itemIds, [FromHeader] string Authorization)
+        {
+            CountUsageAndValidate(Authorization);
+            return itemIds.Select(i => Convert.ToBase64String(MessagePack.MessagePackSerializer.Serialize(service.Lookups[i])));
+        }
+
+        /// <summary>
         /// Retrieve item lookup state transfer
         /// </summary>
         /// <param name="itemId"></param>
@@ -151,7 +165,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         [HttpPost]
         public IEnumerable<PriceEstimate> GetPrices([FromBody] string data)
         {
-            var auctions = MessagePack.LZ4MessagePackSerializer.Deserialize<IEnumerable<SaveAuction>>(Convert.FromBase64String(data));
+            var auctions = MessagePack.LZ4MessagePackSerializer.Deserialize<IEnumerable<ApiSaveAuction>>(Convert.FromBase64String(data));
             return auctions.Select(a =>
             {
                 try
