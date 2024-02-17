@@ -454,6 +454,32 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(1000000, found.Last().TargetPrice);
         }
         [Test]
+        public void CapValueAtCraftCostRecombobulator()
+        {
+            SetBazaarPrice("RECOMBOBULATOR_3000", 8_200_000);
+            SetBazaarPrice("THE_ART_OF_WAR", 8_200_000);
+            SetBazaarPrice("ETHERWARP_CONDUIT", 15_700_000);
+            SetBazaarPrice("ETHERWARP_MERGER", 400_000);
+            SetBazaarPrice("FUMING_POTATO_BOOK", 1_377_000);
+            SetBazaarPrice("HOT_POTATO_BOOK", 80_000);
+            SetBazaarPrice("AOTE_STONE", 5_000_000);
+            var clean = Dupplicate(highestValAuction);
+            clean.HighestBidAmount = 5_000_000;
+            clean.FlatenedNBT = [];
+            clean.Reforge = ItemReferences.Reforge.None;
+            AddVolume(clean);
+
+            highestValAuction.FlatenedNBT = new() { { "rarity_upgrades", "1" }, {"art_of_war_count","1"}, {"hpc", "15"}, {"ethermerge","1"} };
+            highestValAuction.Reforge = ItemReferences.Reforge.warped_on_aote;
+            highestValAuction.HighestBidAmount = 95_000_000;
+            AddVolume(highestValAuction);
+            highestValAuction.HighestBidAmount = 0;
+            highestValAuction.StartingBid = 0;
+            TestNewAuction(highestValAuction);
+            Assert.NotNull(found.FirstOrDefault(), "there should be one found");
+            Assert.AreEqual(55185000, found.Last().TargetPrice, "should be capped at sum of craft cost");
+        }
+        [Test]
         public void FallbackOnNomatchLevel2()
         {
             AddVolume(highestValAuction);

@@ -238,7 +238,7 @@ namespace Coflnet.Sky.Sniper.Services
                     foreach (var bucket in item.Value.Lookup)
                     {
                         // make sure all medians are up to date
-                        sniper.UpdateMedian(bucket.Value, (item.Key, bucket.Key));
+                        sniper.UpdateMedian(bucket.Value, (item.Key, sniper.GetBreakdownKey(bucket.Key, item.Key)));
                     }
                 }
             }

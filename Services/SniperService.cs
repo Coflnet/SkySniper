@@ -775,12 +775,12 @@ ORDER BY l.`AuctionId`  DESC;
             CapBucketSize(bucket);
             if (!preventMedianUpdate)
             {
-                var key = KeyFromSaveAuction(auction);
+                var key = DetailedKeyFromSaveAuction(auction, 0);
                 UpdateMedian(bucket, (GetAuctionGroupTag(auction.Tag).tag, key));
             }
         }
 
-        public void UpdateMedian(ReferenceAuctions bucket, (string tag, AuctionKey) keyCombo = default)
+        public void UpdateMedian(ReferenceAuctions bucket, (string tag, KeyWithValueBreakdown key) keyCombo = default)
         {
             var size = bucket.References.Count;
             if (size < 4)
@@ -792,7 +792,7 @@ ORDER BY l.`AuctionId`  DESC;
                 .Take(60)
                 .ToList();
             size = deduplicated.Count();
-            if (size <= 3 || deduplicated.Count(d => d.Day > GetDay() - 14) < 3 && !(keyCombo.Item2?.IsClean() ?? false))
+            if (size <= 3 || deduplicated.Count(d => d.Day > GetDay() - 14) < 3 && !(keyCombo.Item2?.Key.IsClean() ?? false))
             {
                 bucket.Price = 0; // to low vol
                 return;
@@ -822,12 +822,21 @@ ORDER BY l.`AuctionId`  DESC;
             // get price of item without enchants and add enchant value 
             if (keyCombo != default)
             {
+                var breakdown = keyCombo.key.ValueBreakdown;
+                long limitedPrice = CapAtCraftCost(keyCombo.tag, medianPrice, breakdown, bucket.Price);
+                if (limitedPrice > 0 && limitedPrice != bucket.Price)
+                {
+                    medianPrice = limitedPrice;
+                    bucket.Price = medianPrice;
+                    return;
+                }
+
                 var keyWithNoEnchants = new AuctionKey(keyCombo.Item2)
                 {
                     Enchants = new(new List<Enchant>())
                 };
 
-                if (keyCombo.Item2.Count > 1)
+                if (keyCombo.Item2.Key.Count > 1)
                 {
                     var lowerCountKey = new AuctionKey(keyCombo.Item2)
                     {
@@ -837,10 +846,10 @@ ORDER BY l.`AuctionId`  DESC;
                     {
                         medianPrice = Math.Min(medianPrice, lowerCountBucket.Price * keyWithNoEnchants.Count);
 
-                        Console.WriteLine($"Adjusted for count {keyCombo.tag} -> {medianPrice}  {keyWithNoEnchants} - {keyCombo.Item2}");
+                        Console.WriteLine($"Adjusted for count {keyCombo.tag} -> {medianPrice}  {keyWithNoEnchants} - {keyCombo.Item2.Key}");
                     }
                 }
-                var enchantPrice = GetPriceSumForEnchants(keyCombo.Item2.Enchants);
+                var enchantPrice = GetPriceSumForEnchants(keyCombo.Item2.Key.Enchants);
                 if (enchantPrice <= 0)
                 {
                     // early return
@@ -851,7 +860,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     sellClosestSearch.Inc();
                     var closest = FindClosest(Lookups[keyCombo.tag].Lookup, keyWithNoEnchants, keyCombo.tag)
-                            .Where(x => !keyCombo.Item2.Modifiers.Except(x.Key.Modifiers).Any()).Take(5).ToList();
+                            .Where(x => !keyCombo.Item2.Key.Modifiers.Except(x.Key.Modifiers).Any()).Take(5).ToList();
                     if (closest.Count > 0)
                         clean = closest.MinBy(m => m.Value.Price).Value;
                 }
@@ -870,6 +879,24 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
             bucket.Price = medianPrice;
+        }
+
+        private long CapAtCraftCost(string tag, long medianPrice, List<RankElem> breakdown, long currentPrice)
+        {
+            var limitedPrice = 0L;
+            // determine craft cost 
+            if (Lookups.TryGetValue(tag, out var lookup) && !breakdown.Any(v => v.Value == 0) && breakdown.Count > 0)
+            {
+                var minValue = lookup.Lookup.Values.Where(v => v.Price > 0).Select(v => v.Price).DefaultIfEmpty(0).Min();
+                if (minValue == 0 || currentPrice == minValue)
+                    return medianPrice;
+                var modifierSum = breakdown.Select(v => v.Value).Sum();
+                if (modifierSum > 0)
+                    limitedPrice = Math.Min(minValue + modifierSum, medianPrice);
+            }
+            if (limitedPrice > 0)
+                return limitedPrice;
+            return medianPrice;
         }
 
         private static List<ReferencePrice> GetShortTermBatch(List<ReferencePrice> deduplicated)
@@ -1106,7 +1133,11 @@ ORDER BY l.`AuctionId`  DESC;
             }
             enchants = RemoveNoEffectEnchants(auction, enchants);
 
+            return Constructkey(auction, enchants, modifiers, shouldIncludeReforge, valueSubstracted, rankElems, tier);
+        }
 
+        private static KeyWithValueBreakdown Constructkey(SaveAuction auction, List<Enchant> enchants, List<KeyValuePair<string, string>> modifiers, bool shouldIncludeReforge, long valueSubstracted, List<RankElem> rankElems, Tier tier)
+        {
             var key = new AuctionKeyWithValue()
             {
                 // order attributes
@@ -1123,9 +1154,14 @@ ORDER BY l.`AuctionId`  DESC;
                 SubstractedValue = valueSubstracted,
                 ValueBreakdown = rankElems
             };
-
-
             return fullKey;
+        }
+
+        public KeyWithValueBreakdown GetBreakdownKey(AuctionKey key, string tag)
+        {
+            var virtualAuction = new SaveAuction() { Reforge = key.Reforge, Tier = key.Tier, Tag = tag, Count = key.Count };
+            var capped = CapKeyLength(key.Enchants.ToList(), key.Modifiers.ToList(), virtualAuction, 0);
+            return Constructkey(virtualAuction, [.. key.Enchants], key.Modifiers.ToList(), capped.includeReforge, capped.valueSubstracted, capped.ranked, key.Tier);
         }
 
         public static Tier ReduceRarity(Tier tier)
@@ -1159,7 +1195,8 @@ ORDER BY l.`AuctionId`  DESC;
         /// <param name="enchants"></param>
         /// <param name="modifiers"></param>
         /// <returns>The coin amount substracted</returns>
-        public (long, bool removedRarity, bool includeReforge, List<RankElem>) CapKeyLength(List<Models.Enchant> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction, long threshold = 500000)
+        public (long valueSubstracted, bool removedRarity, bool includeReforge, List<RankElem> ranked) CapKeyLength(
+            List<Models.Enchant> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction, long threshold = 500000)
         {
             var underlyingItemValue = 0L;
             if (auction.Tag != null && Lookups.TryGetValue(auction.Tag, out var lookups))
@@ -1737,7 +1774,7 @@ ORDER BY l.`AuctionId`  DESC;
             var topAttrib = basekey.ValueBreakdown.FirstOrDefault();
             if (topAttrib != default)
             {
-                CheckCombined(auction, l, lbinPrice, medPrice, topKey, topAttrib);
+                CheckCombined(auction, l, lbinPrice, medPrice, basekey, topAttrib);
             }
             if (shouldTryToFindClosest && triggerEvents && this.State >= SniperState.Ready)
             {
@@ -1746,8 +1783,9 @@ ORDER BY l.`AuctionId`  DESC;
             activity.Log($"BaseKey value {JsonConvert.SerializeObject(basekey.ValueBreakdown)}");
         }
 
-        private void CheckCombined(SaveAuction auction, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, double lbinPrice, double medPrice, AuctionKeyWithValue topKey, RankElem topAttrib)
+        private void CheckCombined(SaveAuction auction, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, double lbinPrice, double medPrice, KeyWithValueBreakdown fullKey, RankElem topAttrib)
         {
+            var topKey = fullKey.GetReduced(0);
             var similar = l.Where(e => e.Key.Modifiers.Contains(topAttrib.Modifier) || e.Key.Enchants.Contains(topAttrib.Enchant)).ToList();
             if (similar.Count == 1)
             {
@@ -1767,23 +1805,17 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 Lbins = [lbinBucket.Lbin],
                 References = new(combined),
-                Price = combined.Count < 4 ? 0 : GetMedian(combined),
+                Price = combined.Count < 4 ? 0 : GetCappedMedian(auction, fullKey, combined),
                 OldestRef = (short)(GetDay() - 2)
             };
             FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, l, 0);
-            /*  
-              var median = combined.OrderBy(r => r.Price).Skip(combined.Count / 2).FirstOrDefault().Price;
-              if (lbinBucket.Lbin.Price > lbinPrice && median == 0 || median * 1.1 > lbinBucket.Lbin.Price)
-              {
-                  var props = CreateReference(lbinBucket.Lbin.AuctionId, topKey, -1);
-                  FoundAFlip(auction, lbinBucket, LowPricedAuction.FinderType.SNIPER, lbinBucket.Lbin.Price, props);
-              }
-              if(median > 0 && median * 1.1 > lbinPrice)
-              {
-                  var props = CreateReference(lbinBucket.Lbin.AuctionId, topKey, -1);
-                  AddMedianSample(combined, props);
-                  FoundAFlip(auction, lbinBucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, median, props);
-              }*/
+
+            long GetCappedMedian(SaveAuction auction, KeyWithValueBreakdown fullKey, List<ReferencePrice> combined)
+            {
+                var median = GetMedian(combined);
+                median = CapAtCraftCost(auction.Tag, median, fullKey.ValueBreakdown, 0);
+                return median;
+            }
         }
 
         /// <summary>
