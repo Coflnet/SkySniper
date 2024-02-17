@@ -229,6 +229,19 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void KeepCandyOnSkinnedPetsOnLvl100()
+        {
+            // items with skins have a difference in value for candies because they are motly bought by collectors
+            AddVolume(new SaveAuction()
+            {
+                Tag = "PET_EXAMPLE",
+                FlatenedNBT = new() {{"skin", "SKIN" }, {"candyUsed", "1"}, {"exp", "30000000"}},
+                HighestBidAmount = 70_000_000
+            });
+            service.Lookups["PET_EXAMPLE"].Lookup.First().Key.Modifiers.Count.Should().Be(3);
+        }
+
+        [Test]
         public async Task UnlockedAllOnlyForUnlockable()
         {
             await service.Init();

@@ -619,7 +619,7 @@ public class ItemBreakDown
         foreach (var item in Flatten.Keys)
         {
             var kv = new KeyValuePair<string, string>(item, Flatten[item].ToString() ?? "");
-            var normalized = SniperService.NormalizeGeneral(kv, true, (long)Convert.ToDouble(Flatten.GetValueOrDefault("exp", "0")), true);
+            var normalized = SniperService.NormalizeGeneral(kv, true, Flatten, true);
             if (normalized.Key != SniperService.Ignore.Key)
                 Flatten[normalized.Key] = normalized.Value;
         }

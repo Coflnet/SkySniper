@@ -1014,7 +1014,7 @@ ORDER BY l.`AuctionId`  DESC;
         }
         public AuctionKeyWithValue KeyFromSaveAuction(SaveAuction auction, int dropLevel = 0)
         {
-            return DetailedKeyFromSaveAuction(auction,0).GetReduced(dropLevel);
+            return DetailedKeyFromSaveAuction(auction, 0).GetReduced(dropLevel);
         }
         private KeyWithValueBreakdown DetailedKeyFromSaveAuction(SaveAuction auction, int dropLevel)
         {
@@ -1406,7 +1406,7 @@ ORDER BY l.`AuctionId`  DESC;
                     return NormalizeNumberTo(s, PetExpMaxlevel / 6, 6);
             }
             var generalNormalizations = NormalizeGeneral(s, tag?.StartsWith("MIDAS") ?? false,
-                GetNumeric(flattenedNbt.FirstOrDefault(f => f.Key == "exp")),
+                flattenedNbt,
                 tag == "PET_GOLDEN_DRAGON"
                 );
             if (generalNormalizations.Value != "continue")
@@ -1478,7 +1478,7 @@ ORDER BY l.`AuctionId`  DESC;
             return s;
         }
 
-        public static KeyValuePair<string, string> NormalizeGeneral(KeyValuePair<string, string> s, bool isMiddas, long expAmount, bool isGDrag)
+        public static KeyValuePair<string, string> NormalizeGeneral(KeyValuePair<string, string> s, bool isMiddas, Dictionary<string, string> flatten, bool isGDrag)
         {
             if (s.Key == "winning_bid")
                 if (isMiddas)
@@ -1494,11 +1494,15 @@ ORDER BY l.`AuctionId`  DESC;
             if (s.Key == "thunder_charge")
                 return NormalizeNumberTo(s, 1_000_000, 5);
             if (s.Key == "candyUsed")
-                if (expAmount >= PetExpMaxlevel && !isGDrag || expAmount >= GoldenDragonMaxExp)
+            {
+                var expAmount = GetNumeric(flatten.FirstOrDefault(f => f.Key == "exp"));
+                var hasSkin = flatten.ContainsKey("skin");
+                if ((expAmount >= PetExpMaxlevel && !isGDrag || expAmount >= GoldenDragonMaxExp) && !hasSkin)
                     return Ignore; // not displayed on max exp items
                 else
                     // all candied are the same
                     return new KeyValuePair<string, string>(s.Key, (double.Parse(s.Value) > 0 ? 1 : 0).ToString());
+            }
             if (s.Key == "edition")
             {
                 return NormalizeEdition(s);
