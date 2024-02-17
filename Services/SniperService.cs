@@ -1731,6 +1731,8 @@ ORDER BY l.`AuctionId`  DESC;
                         shouldTryToFindClosest = false; // found a snipe, no need to check other lower value buckets
                 }
             }
+            if (!triggerEvents)
+                return; // no need to check for closest, just storing
             var topKey = basekey.GetReduced(0);
             var topAttrib = basekey.ValueBreakdown.FirstOrDefault();
             if (topAttrib != default)
