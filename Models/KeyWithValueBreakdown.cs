@@ -18,7 +18,7 @@ namespace Coflnet.Sky.Sniper.Models
 
         public AuctionKeyWithValue GetReduced(int level)
         {
-            if(level == 0)
+            if (level == 0)
                 return new AuctionKeyWithValue(Key) { ValueSubstract = SubstractedValue };
             var modifiers = Key.Modifiers.ToList();
             var enchants = Key.Enchants.ToList();
@@ -27,6 +27,8 @@ namespace Coflnet.Sky.Sniper.Models
             var valueSubstracted = SubstractedValue;
             foreach (var item in (ValueBreakdown as IEnumerable<SniperService.RankElem>).Reverse().Take(level))
             {
+                if(SniperService.NeverDrop.Contains(item.Modifier.Key))
+                    continue;
                 if (item.Enchant.Type != 0)
                 {
                     if (enchants.Remove(item.Enchant))
@@ -39,9 +41,16 @@ namespace Coflnet.Sky.Sniper.Models
                 else
                 {
                     if (modifiers.Remove(item.Modifier))
-                        valueSubstracted += item.Value;
+                        // only substract (and save adding) value for keys which are lower when removed
+                        if(!SniperService.InvertedValueKey.Contains(item.Modifier.Key))
+                            valueSubstracted += item.Value;
                     if (item.Modifier.Key == "rarity_upgrades")
                         tier = SniperService.ReduceRarity(tier);
+                    if (item.Modifier.Value == SniperService.TierBoostShorthand)
+                    {
+                        tier = SniperService.ReduceRarity(tier);
+                        valueSubstracted -= item.Value * 2;
+                    }
                 }
             }
             return new AuctionKeyWithValue()

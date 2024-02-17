@@ -585,6 +585,32 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void RemoveTierBoostCostInsteadOfAdd()
+        {
+            SetBazaarPrice("PET_ITEM_TIER_BOOST", 88_000_000);
+            SetBazaarPrice("PET_SKIN_DRAGON_NEON_PURPLE", 230_000_000);
+            highestValAuction.FlatenedNBT = new() { { "heldItem", "PET_ITEM_TIER_BOOST" },
+                                {"candyUsed", "0"},
+                                {"skin", "DRAGON_NEON_PURPLE"} };
+            highestValAuction.HighestBidAmount = 650000000;
+            highestValAuction.Tier = Tier.LEGENDARY;
+            highestValAuction.Tag = "PET_ENDER_DRAGON";
+            var volumeLower = Dupplicate(highestValAuction);
+            volumeLower.HighestBidAmount = 650_000_000;
+            volumeLower.FlatenedNBT.Remove("heldItem");
+            volumeLower.Tier = Tier.EPIC;
+            AddVolume(volumeLower); // double volume because high value
+            AddVolume(volumeLower);
+            highestValAuction.StartingBid = 650000000;
+            service.TestNewAuction(highestValAuction);
+            Assert.IsNull(found.FirstOrDefault(), JsonConvert.SerializeObject(found, Formatting.Indented));
+            highestValAuction.HighestBidAmount = 600_000_000;
+            highestValAuction.StartingBid = 600_000_000;
+            service.TestNewAuction(highestValAuction);
+            Assert.AreEqual(640000000, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
+        }
+
+        [Test]
         public void CakeYearIsInverted()
         {
             var auction = highestValAuction;

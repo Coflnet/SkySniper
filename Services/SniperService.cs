@@ -102,10 +102,11 @@ namespace Coflnet.Sky.Sniper.Services
             "is_shiny", // cosmetic effect on wither armor ~5% drop chance on Master Mode 7
         };
 
-        private static readonly HashSet<string> InvertedValueKey = new()
+        public static readonly HashSet<string> InvertedValueKey = new()
         {
             "edition",
-            "new_years_cake"
+            "new_years_cake",
+            "candyUsed",
         };
 
         /// <summary>
@@ -266,6 +267,7 @@ ORDER BY l.`AuctionId`  DESC;
             "exp", // this helps with closest match 
             "party_hat_color", // closest to clean would mix them up
             "ability_scroll", // most expensive attribues in the game
+            "candyUsed", // candy count on pets can't be accounted
             "new_years_cake" // not that valuable but the only attribute
         };
 
@@ -609,7 +611,7 @@ ORDER BY l.`AuctionId`  DESC;
             foreach (var item in loadedVal.Lookup.Keys)
             {
                 if (item.Modifiers.Any(m => m.Key == "candyUsed" && m.Value == "0")
-                        && item.Modifiers.Any(m => m.Key == "exp" && m.Value == "6"))
+                        && item.Modifiers.Any(m => m.Key == "exp" && m.Value == (itemTag == "PET_GOLDEN_DRAGON" ? "7" : "6")))
                     loadedVal.Lookup.TryRemove(item, out _); // have been dropped
                 var value = loadedVal.Lookup.GetValueOrDefault(item);
                 if (value == null)
@@ -944,11 +946,11 @@ ORDER BY l.`AuctionId`  DESC;
             var l = lookup.Lookup;
             if (l.TryGetValue(KeyFromSaveAuction(auction), out bucket))
                 return true;
-            if (l.TryGetValue(KeyFromSaveAuction(auction, 1), out bucket))
+            if (l.TryGetValue(DetailedKeyFromSaveAuction(auction, 1), out bucket))
                 return true;
-            if (l.TryGetValue(KeyFromSaveAuction(auction, 2), out bucket))
+            if (l.TryGetValue(DetailedKeyFromSaveAuction(auction, 2), out bucket))
                 return true;
-            return l.TryGetValue(KeyFromSaveAuction(auction, 3), out bucket);
+            return l.TryGetValue(DetailedKeyFromSaveAuction(auction, 3), out bucket);
         }
 
         private static readonly System.Collections.ObjectModel.ReadOnlyCollection<KeyValuePair<string, string>> EmptyModifiers = new(new List<KeyValuePair<string, string>>());
@@ -1010,11 +1012,11 @@ ORDER BY l.`AuctionId`  DESC;
             }
             return sum;
         }
-        public AuctionKeyWithValue KeyFromSaveAuction(SaveAuction auction)
+        public AuctionKeyWithValue KeyFromSaveAuction(SaveAuction auction, int dropLevel = 0)
         {
-            return KeyFromSaveAuction(auction, 0);
+            return DetailedKeyFromSaveAuction(auction,0).GetReduced(dropLevel);
         }
-        public KeyWithValueBreakdown KeyFromSaveAuction(SaveAuction auction, int dropLevel)
+        private KeyWithValueBreakdown DetailedKeyFromSaveAuction(SaveAuction auction, int dropLevel)
         {
             var enchants = new List<Models.Enchant>();
             var modifiers = new List<KeyValuePair<string, string>>();
@@ -1660,7 +1662,7 @@ ORDER BY l.`AuctionId`  DESC;
             var medPrice = auction.StartingBid * 1.05 + itemGroupTag.Item2;
             var lastKey = new AuctionKey();
             var shouldTryToFindClosest = false;
-            var basekey = KeyFromSaveAuction(auction, 0);
+            var basekey = DetailedKeyFromSaveAuction(auction, 0);
             for (int i = 0; i < 5; i++)
             {
                 var key = basekey.GetReduced(i);
@@ -2355,8 +2357,6 @@ ORDER BY l.`AuctionId`  DESC;
             }
             props["refAge"] = refAge.ToString();
             props["server"] = ServerDnsName;
-            if (auction.Tag.StartsWith("PET_") && auction.FlatenedNBT.Any(f => f.Value == "PET_ITEM_TIER_BOOST") && !props["key"].Contains(TierBoostShorthand))
-                throw new Exception("Tier boost missing " + props["key"] + " " + JSON.Stringify(auction));
 
             FoundSnipe?.Invoke(new LowPricedAuction()
             {
