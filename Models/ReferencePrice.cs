@@ -18,6 +18,8 @@ namespace Coflnet.Sky.Sniper.Models
         /// </summary>
         [Key(3)]
         public short Seller { get; set; }
+        [Key(4)]
+        public short Buyer { get; set; }
 
         public static ReferenceComparer Compare = new ReferenceComparer();
 
@@ -31,6 +33,7 @@ namespace Coflnet.Sky.Sniper.Models
             Price = price.Price;
             Day = price.Day;
             Seller = price.Seller;
+            Buyer = price.Buyer;
         }
 
         public override bool Equals(object obj)
@@ -39,7 +42,8 @@ namespace Coflnet.Sky.Sniper.Models
                    AuctionId == price.AuctionId &&
                    Price == price.Price &&
                    Day == price.Day &&
-                   Seller == price.Seller;
+                   Seller == price.Seller
+                   && Buyer == price.Buyer;
         }
 
         public override int GetHashCode()
@@ -47,6 +51,6 @@ namespace Coflnet.Sky.Sniper.Models
             return HashCode.Combine(AuctionId, Seller);
         }
 
-        
+
     }
 }

@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Concurrent;
+using System.Linq;
+using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Models;
 using Newtonsoft.Json;
 using NUnit.Framework;
@@ -27,6 +30,35 @@ public class MedianCalcTests
         }
         service.UpdateMedian(bucket);
         Assert.AreEqual(54900000, bucket.Price);
+    }
+
+    [Test]
+    public void DedupsBuyer()
+    {
+        var service = new SniperService(null, null);
+        var random = new Random(1);
+        var auction = new SaveAuction()
+        {
+            AuctioneerId = random.Next().ToString(),
+            Tag = "test",
+            Uuid = random.Next().ToString(),
+            End = DateTime.Now - TimeSpan.FromDays(1),
+        };
+        for (int i = 0; i < 5; i++)
+        {
+            var copy = auction.Dupplicate();
+            copy.Bids = new (){new SaveBids() { Bidder = random.Next().ToString(), Amount = i * 1000 }};
+            copy.HighestBidAmount = i * 1000;
+            service.AddSoldItem(copy);
+        }
+        for (int i = 0; i < 10; i++)
+        {
+            var copy = auction.Dupplicate();
+            copy.Bids = new (){new SaveBids() { Bidder = "abcdef", Amount = 5000000 }};
+            copy.HighestBidAmount = 5000000;
+            service.AddSoldItem(copy);
+        }
+        Assert.AreEqual(2000, service.Lookups.First().Value.Lookup.First().Value.Price);
     }
 
     private const string SampleJson =

@@ -786,10 +786,13 @@ ORDER BY l.`AuctionId`  DESC;
             var size = bucket.References.Count;
             if (size < 4)
                 return; // can't have enough volume
+            var buyerCounter = 0;
             var deduplicated = bucket.References.Reverse()
                 .OrderByDescending(b => b.Day)
                 .GroupBy(a => a.Seller)
                 .Select(a => a.First())  // only use one (the latest) price from each seller
+                .GroupBy(a => a.Buyer == 0 ? buyerCounter++ : a.Buyer)
+                .Select(a => a.OrderBy(ai => ai.Price).First())  // only use cheapest price from each buyer 
                 .Take(60)
                 .ToList();
             size = deduplicated.Count();
@@ -950,12 +953,14 @@ ORDER BY l.`AuctionId`  DESC;
             // remove at most 50% of the value
             if (basePrice < valueSubstract)
                 valueSubstract = Math.Min(valueSubstract, basePrice / 2);
+            var buyer = auction.Bids?.OrderByDescending(b => b.Amount).FirstOrDefault();
             return new ReferencePrice()
             {
                 AuctionId = auction.UId,
                 Day = GetDay(auction.End),
                 Price = basePrice - valueSubstract,
-                Seller = auction.AuctioneerId == null ? (short)(auction.SellerId % (2 << 14)) : Convert.ToInt16(auction.AuctioneerId.Substring(0, 4), 16)
+                Seller = auction.AuctioneerId == null ? (short)(auction.SellerId % (2 << 14)) : Convert.ToInt16(auction.AuctioneerId.Substring(0, 4), 16),
+                Buyer = buyer?.Bidder == null ? (short)0 : Convert.ToInt16(buyer.Bidder.Substring(0, 4), 16)
             };
         }
 
@@ -1070,8 +1075,8 @@ ORDER BY l.`AuctionId`  DESC;
                     // safe guard for when the creation date is wrong 
                     && !auction.FlatenedNBT.ContainsKey("unlocked_slots"))
                 {
-                    var allUnlockable = itemService.GetUnlockableSlots(auction.Tag).ToList();
-                    if (allUnlockable.Count > 0)
+                    var allUnlockable = itemService?.GetUnlockableSlots(auction.Tag).ToList();
+                    if (allUnlockable?.Count > 0)
                         modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", string.Join(",", allUnlockable.OrderBy(s => s))));
                 }
 
@@ -2204,7 +2209,8 @@ ORDER BY l.`AuctionId`  DESC;
                         Day = today,
                         Price = (long)itemPrice,
                         AuctionId = bazaar.Timestamp.Ticks,
-                        Seller = (short)DateTime.Now.Ticks
+                        Seller = (short)DateTime.Now.Ticks,
+                        Buyer = (short)(DateTime.Now.Ticks + 1)
                     });
                 if (bucket.Price == 0)
                     bucket.Price = (long)itemPrice;
