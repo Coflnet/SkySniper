@@ -431,7 +431,8 @@ ORDER BY l.`AuctionId`  DESC;
             if (result.Median > 0)
             {
                 // check lower value keys
-                var MaxValue = l.Where(k => IsHigherValue(k.Key, itemKey) && k.Key.Reforge == itemKey.Reforge)
+                var lowerValue = l.Where(k => IsHigherValue(k.Key, itemKey) && k.Key.Reforge == itemKey.Reforge);
+                var MaxValue = lowerValue
                     .OrderByDescending(b => b.Value.Price).FirstOrDefault();
                 if (MaxValue.Value?.Price > result.Median)
                 {
@@ -2330,7 +2331,7 @@ ORDER BY l.`AuctionId`  DESC;
                                                         && (other.Value == m.Value ||
                                                          float.TryParse(other.Value, out var otherVal)
                                                         && float.TryParse(m.Value, out var ownVal) && (InvertedValueKey.Contains(other.Key) ? otherVal < ownVal : otherVal > ownVal)
-                                                        || other.Value.Contains(m.Value)
+                                                        || other.Value.Contains(m.Value) && !float.TryParse(other.Value, out _)
                                                         )))
                     && baseKey.Enchants.All(e => toCheck.Enchants.Any(other => other.Type == e.Type && other.Lvl >= e.Lvl));
         }
