@@ -1358,6 +1358,8 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (mod.Key == "candyUsed")
                     sum += tag == "PET_GOLDEN_DRAGON" ? 80_000_000 : 10_000_000;
+                if(mod.Key == "is_shiny")
+                    sum += 88_000_000;
                 return new RankElem(mod, sum)
                 {
                     IsEstimate = true
@@ -1462,6 +1464,8 @@ ORDER BY l.`AuctionId`  DESC;
                     > 10 => new("hotpc", "0"),
                     _ => Ignore
                 };
+            if(s.Key == "ability_scroll")
+                return new("scroll_count", s.Value.Where(c=>c == ',' || c == ' ').Count().ToString());
             if (s.Key == "heldItem")
             {
                 var heldItem = s.Value switch
