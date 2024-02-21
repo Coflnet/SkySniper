@@ -2298,7 +2298,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return false;
             var percentile = long.MaxValue;
 
-            if (bucket.Price == 0 || bucket.Volume < 2)
+            if (bucket.Price == 0 || bucket.Volume < 20)
             {
                 // check for 80th percentile from references
                 var subsetSize = 20;
