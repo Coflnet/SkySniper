@@ -235,7 +235,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(new SaveAuction()
             {
                 Tag = "PET_EXAMPLE",
-                FlatenedNBT = new() {{"skin", "SKIN" }, {"candyUsed", "1"}, {"exp", "30000000"}},
+                FlatenedNBT = new() { { "skin", "SKIN" }, { "candyUsed", "1" }, { "exp", "30000000" } },
                 HighestBidAmount = 70_000_000
             });
             service.Lookups["PET_EXAMPLE"].Lookup.First().Key.Modifiers.Count.Should().Be(3);
@@ -443,7 +443,7 @@ namespace Coflnet.Sky.Sniper.Services
         {
             var higherValue = Dupplicate(highestValAuction);
             higherValue.Tag = "PET_LION";
-            higherValue.FlatenedNBT = new (){{"exp", "27000000"}, {"candyUsed", "0"}};
+            higherValue.FlatenedNBT = new() { { "exp", "27000000" }, { "candyUsed", "0" } };
             higherValue.HighestBidAmount = 10_000_000;
             AddVolume(higherValue);
             var lowerValue = Dupplicate(higherValue);
@@ -488,7 +488,7 @@ namespace Coflnet.Sky.Sniper.Services
             clean.Reforge = ItemReferences.Reforge.None;
             AddVolume(clean);
 
-            highestValAuction.FlatenedNBT = new() { { "rarity_upgrades", "1" }, {"art_of_war_count","1"}, {"hpc", "15"}, {"ethermerge","1"} };
+            highestValAuction.FlatenedNBT = new() { { "rarity_upgrades", "1" }, { "art_of_war_count", "1" }, { "hpc", "15" }, { "ethermerge", "1" } };
             highestValAuction.Reforge = ItemReferences.Reforge.warped_on_aote;
             highestValAuction.HighestBidAmount = 95_000_000;
             AddVolume(highestValAuction);
@@ -496,7 +496,7 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.StartingBid = 0;
             TestNewAuction(highestValAuction);
             Assert.NotNull(found.FirstOrDefault(), "there should be one found");
-            Assert.AreEqual(55185000, found.Last().TargetPrice, "should be capped at sum of craft cost");
+            Assert.AreEqual(60203500, found.Last().TargetPrice, "should be capped at sum of craft cost");
         }
         [Test]
         public void FallbackOnNomatchLevel2()
@@ -1907,7 +1907,8 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void CleanAndEnchantLower()
         {
-            SetBazaarPrice("ENCHANTMENT_SHARPNESS_7", 3_000_000);
+            var enchantPrice = 3_000_000;
+            SetBazaarPrice("ENCHANTMENT_SHARPNESS_7", enchantPrice);
             highestValAuction.Enchantments = new List<Core.Enchantment>(){
                 new Core.Enchantment(Enchantment.EnchantmentType.sharpness,7)
             };
@@ -1921,7 +1922,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.FinishedUpdate();
             highestValAuction.StartingBid = 5;
             service.TestNewAuction(Dupplicate(highestValAuction));
-            Assert.AreEqual(3500000, found.Where(f => f.Finder != LowPricedAuction.FinderType.STONKS).First().TargetPrice);
+            Assert.AreEqual(500000 + enchantPrice * 11/10, found.Where(f => f.Finder != LowPricedAuction.FinderType.STONKS).First().TargetPrice);
         }
 
         [Test]
@@ -2002,6 +2003,25 @@ namespace Coflnet.Sky.Sniper.Services
             TestNewAuction(flip);
             Assert.AreEqual(5_400_000, found.Last().TargetPrice);
             Assert.AreEqual(2, found.Last().DailyVolume);
+        }
+        [Test]
+        public void SniperLimitedByIngredientCostEstimation()
+        {
+            SetBazaarPrice("RECOMBOBULATOR_3000", 9_000_000);
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.StartingBid = 10_000_000;
+            highestValAuction.HighestBidAmount = 0;
+            var flip = Dupplicate(highestValAuction);
+            highestValAuction.HighestBidAmount = 10_000_000;
+            AddVolume(highestValAuction);
+            flip.StartingBid = 5;
+            flip.FlatenedNBT["rarity_upgrades"] = "1";
+            flip.StartingBid = 12_000_000;
+            var overvalued = Dupplicate(flip);
+            overvalued.StartingBid = 120_000_000;
+            TestNewAuction(overvalued);
+            TestNewAuction(flip);
+            Assert.AreEqual(10_000_000 + 9_000_000 * 1.1, found.Last().TargetPrice);
         }
         [Test]
         public void SniperNoVolumeLimitedByMoreAttribMedian()

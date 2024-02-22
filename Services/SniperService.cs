@@ -896,7 +896,7 @@ ORDER BY l.`AuctionId`  DESC;
                     return medianPrice;
                 var modifierSum = breakdown.Select(v => v.Value).Sum();
                 if (modifierSum > 0)
-                    limitedPrice = Math.Min(minValue + modifierSum, medianPrice);
+                    limitedPrice = Math.Min(minValue + modifierSum * 11 / 10, medianPrice);
             }
             if (limitedPrice > 0)
                 return limitedPrice;
@@ -1774,7 +1774,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (triggerEvents)
                 {
                     long extraValue = GetExtraValue(auction, key) - itemGroupTag.Item2;
-                    if (FindFlip(auction, lbinPrice, medPrice, bucket, key, l, extraValue))
+                    if (FindFlip(auction, lbinPrice, medPrice, bucket, key, l, basekey, extraValue))
                         shouldTryToFindClosest = false; // found a snipe, no need to check other lower value buckets
                 }
             }
@@ -1818,7 +1818,7 @@ ORDER BY l.`AuctionId`  DESC;
                 Price = combined.Count < 4 ? 0 : GetCappedMedian(auction, fullKey, combined),
                 OldestRef = (short)(GetDay() - 2)
             };
-            FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, l, 0);
+            FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, l, fullKey, 0);
 
             long GetCappedMedian(SaveAuction auction, KeyWithValueBreakdown fullKey, List<ReferencePrice> combined)
             {
@@ -2049,7 +2049,7 @@ ORDER BY l.`AuctionId`  DESC;
             return gemValue;
         }
 
-        private bool FindFlip(SaveAuction auction, double lbinPrice, double minMedPrice, ReferenceAuctions bucket, AuctionKeyWithValue key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue = 0)
+        private bool FindFlip(SaveAuction auction, double lbinPrice, double minMedPrice, ReferenceAuctions bucket, AuctionKeyWithValue key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, KeyWithValueBreakdown breakdown, long extraValue = 0)
         {
             var expValue = GetValueDifferenceForExp(auction, key, l);
             var volume = bucket.Volume;
@@ -2058,7 +2058,7 @@ ORDER BY l.`AuctionId`  DESC;
             if ((bucket.Lbin.Price > lbinPrice || bucket.Price == 0) && (MaxMedianPriceForSnipe(bucket) > lbinPrice)
                )
             {
-                foundSnipe = PotentialSnipe(auction, lbinPrice, bucket, key, l, extraValue);
+                foundSnipe = PotentialSnipe(auction, lbinPrice, bucket, key, l, extraValue, breakdown);
             }
             if (medianPrice > minMedPrice && BucketHasEnoughReferencesForPrice(bucket))
             {
@@ -2188,7 +2188,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     lookup = new();
                     Lookups[item.ProductId] = lookup;
-                    Console.WriteLine($"Added {item.ProductId} to lookup");
+                    //Console.WriteLine($"Added {item.ProductId} to lookup");
                 }
                 var bucket = lookup.Lookup.GetOrAdd(defaultKey, _ => new());
                 var itemPrice = 0D;
@@ -2264,7 +2264,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private bool PotentialSnipe(SaveAuction auction, double lbinPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue)
+        private bool PotentialSnipe(SaveAuction auction, double lbinPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue, KeyWithValueBreakdown breakdown)
         {
             var higherValueLowerBin = bucket.Lbin.Price;
             if (HigherValueKeys(key, l, lbinPrice).Any(k =>
@@ -2327,6 +2327,12 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     Activity.Current.Log($"Reduced because no higher value lbin");
                     percentile = Math.Min(percentile, targetPrice * 9 / 10);
+                }
+                var reduced = CapAtCraftCost(auction.Tag, percentile, breakdown.ValueBreakdown, 0);
+                if(reduced > 0)
+                {
+                    percentile = reduced;
+                    Activity.Current.Log($"Reduced to craft cost {reduced}");
                 }
                 Activity.Current.Log($"No references, checking all lbins {percentile} {lowestLbin} {referencePrice}");
             }
