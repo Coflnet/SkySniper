@@ -1820,7 +1820,7 @@ ORDER BY l.`AuctionId`  DESC;
                 Price = combined.Count < 4 ? 0 : GetCappedMedian(auction, fullKey, combined),
                 OldestRef = (short)(GetDay() - 2)
             };
-            FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, l, fullKey, 0);
+            FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, l, fullKey, -3);
 
             long GetCappedMedian(SaveAuction auction, KeyWithValueBreakdown fullKey, List<ReferencePrice> combined)
             {
