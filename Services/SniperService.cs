@@ -1796,6 +1796,8 @@ ORDER BY l.`AuctionId`  DESC;
         private void CheckCombined(SaveAuction auction, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, double lbinPrice, double medPrice, KeyWithValueBreakdown fullKey, RankElem topAttrib)
         {
             var topKey = fullKey.GetReduced(0);
+            if (topKey.Modifiers.Any(m => m.Key == "petItem" && m.Value == "TIER_BOOST"))
+                return; // currently ignored cause highervalue check fails
             var similar = l.Where(e => e.Key.Modifiers.Contains(topAttrib.Modifier) || e.Key.Enchants.Contains(topAttrib.Enchant)).ToList();
             if (similar.Count == 1)
             {
