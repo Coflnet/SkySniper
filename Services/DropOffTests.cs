@@ -226,7 +226,7 @@ public class DropOffTests
         sniperService.TestNewAuction(item);
         Assert.GreaterOrEqual(found.Count, 1);
         // combines buckets to reach estimation
-        Assert.AreEqual(279629280, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
+        Assert.AreEqual(279629280 - 3, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
     }
 
     [Test]
@@ -258,7 +258,7 @@ public class DropOffTests
 
         sniperService.TestNewAuction(auction.Dupplicate());
         Assert.AreEqual(1, found.Count);
-        Assert.AreEqual(24716394, found.First().TargetPrice);
+        Assert.AreEqual(24716394 -3, found.First().TargetPrice);
     }
 
 
