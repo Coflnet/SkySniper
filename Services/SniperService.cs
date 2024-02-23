@@ -60,7 +60,7 @@ namespace Coflnet.Sky.Sniper.Services
             "drill_part_engine",
             "drill_part_fuel_tank",
             "drill_part_upgrade_module", // low worth of normal omlet but can go up to 180m
-            "ability_scroll", // applied to hyperions worth ~50m https://discord.com/channels/267680588666896385/1031668335731019886/1031668607479975976
+            "ability_scroll", // applied to hyperions worth ~250m https://discord.com/channels/267680588666896385/1031668335731019886/1031668607479975976
             // magma armor is to cheap "magmaCubesKilled"
             "captured_player", // cake soul 
             "event", // year+eventtype
@@ -1324,6 +1324,10 @@ ORDER BY l.`AuctionId`  DESC;
                             modifiers.Add(new(mod.Key, string.Join(",", remaining.OrderBy(s => s))));
                     }
                 }
+                if(mod.Key == "scroll_count")
+                {
+                    sum += (GetPriceForItem("IMPLOSION_SCROLL") + GetPriceForItem("SHADOW_WARP_SCROLL") + GetPriceForItem("WITHER_SHIELD_SCROLL")) / 3 * int.Parse(mod.Value);
+                }
                 // early return if we have a value before estimates
                 if (sum > 0 || mod.Key == null)
                     return new RankElem(mod, sum);
@@ -1820,6 +1824,7 @@ ORDER BY l.`AuctionId`  DESC;
                 Price = combined.Count < 4 ? 0 : GetCappedMedian(auction, fullKey, combined),
                 OldestRef = (short)(GetDay() - 2)
             };
+            // mark with extra value -3
             FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, l, fullKey, MIN_TARGET == 0 ? 0 : -3);
 
             long GetCappedMedian(SaveAuction auction, KeyWithValueBreakdown fullKey, List<ReferencePrice> combined)
