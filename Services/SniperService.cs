@@ -350,7 +350,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (result.Lbin.AuctionId == default && bucket.Lbin.AuctionId != default)
                 {
                     var lbinGemValue = gemVal;
-                    if(itemKey.Modifiers.Any(m=>m.Key == "pgems" && m.Value ==  "5"))
+                    if (itemKey.Modifiers.Any(m => m.Key == "pgems" && m.Value == "5"))
                     {// gems are already accounted for
                         lbinGemValue = 0;
                     }
@@ -1329,7 +1329,7 @@ ORDER BY l.`AuctionId`  DESC;
                             modifiers.Add(new(mod.Key, string.Join(",", remaining.OrderBy(s => s))));
                     }
                 }
-                if(mod.Key == "scroll_count")
+                if (mod.Key == "scroll_count")
                 {
                     sum += (GetPriceForItem("IMPLOSION_SCROLL") + GetPriceForItem("SHADOW_WARP_SCROLL") + GetPriceForItem("WITHER_SHIELD_SCROLL")) / 3 * int.Parse(mod.Value);
                 }
@@ -1367,7 +1367,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (mod.Key == "candyUsed")
                     sum += tag == "PET_GOLDEN_DRAGON" ? 80_000_000 : 10_000_000;
-                if(mod.Key == "is_shiny")
+                if (mod.Key == "is_shiny")
                     sum += 88_000_000;
                 return new RankElem(mod, sum)
                 {
@@ -1473,8 +1473,8 @@ ORDER BY l.`AuctionId`  DESC;
                     > 10 => new("hotpc", "0"),
                     _ => Ignore
                 };
-            if(s.Key == "ability_scroll")
-                return new("scroll_count", s.Value.Where(c=>c == ',' || c == ' ').Count().ToString());
+            if (s.Key == "ability_scroll")
+                return new("scroll_count", (s.Value.Where(c => c == ',' || c == ' ').Count() + 1).ToString());
             if (s.Key == "heldItem")
             {
                 var heldItem = s.Value switch
@@ -2341,7 +2341,7 @@ ORDER BY l.`AuctionId`  DESC;
                     percentile = Math.Min(percentile, targetPrice * 9 / 10);
                 }
                 var reduced = CapAtCraftCost(auction.Tag, percentile, breakdown.ValueBreakdown, 0);
-                if(reduced > 0)
+                if (reduced > 0)
                 {
                     percentile = reduced;
                     Activity.Current.Log($"Reduced to craft cost {reduced}");
