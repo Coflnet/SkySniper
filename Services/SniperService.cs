@@ -349,9 +349,14 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 if (result.Lbin.AuctionId == default && bucket.Lbin.AuctionId != default)
                 {
+                    var lbinGemValue = gemVal;
+                    if(itemKey.Modifiers.Any(m=>m.Key == "pgems" && m.Value ==  "5"))
+                    {// gems are already accounted for
+                        lbinGemValue = 0;
+                    }
                     result.Lbin = new(bucket.Lbin)
                     {
-                        Price = bucket.Lbin.Price + gemVal
+                        Price = bucket.Lbin.Price + lbinGemValue
                     };
                     result.LbinKey = itemKey.ToString();
                     result.SLbin = bucket.Lbins.Skip(1).FirstOrDefault();

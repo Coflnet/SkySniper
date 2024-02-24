@@ -1885,6 +1885,10 @@ namespace Coflnet.Sky.Sniper.Services
             });
             service.TestNewAuction(highestValAuction);
             Assert.AreEqual(7500000, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
+            service.FinishedUpdate();
+            // lbin is now the starting bid of that auction
+            var price = service.GetPrice(highestValAuction);
+            Assert.AreEqual(highestValAuction.StartingBid, price.Lbin.Price, JsonConvert.SerializeObject(price));
         }
 
         [Test]
