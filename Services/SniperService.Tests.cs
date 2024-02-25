@@ -458,6 +458,32 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(5_000_000, price.Median);
         }
         [Test]
+        public void WithTierBoostUsesLowerRarityForHigherValue()
+        {
+            SetBazaarPrice("PET_ITEM_TIER_BOOST", 95_000_000);
+            SetBazaarPrice("PET_SKIN_DRAGON_NEON_BLUE", 251_000_000);
+            var higherValue = Dupplicate(highestValAuction);
+            higherValue.Tag = "PET_LION";
+            higherValue.FlatenedNBT = new() { { "exp", "27000000" }, { "skin", "DRAGON_NEON_BLUE"} };
+            higherValue.Tier = Tier.LEGENDARY;
+            higherValue.HighestBidAmount = 800_000_000;
+            AddVolume(higherValue, 3);
+            var lowerValue = Dupplicate(higherValue);
+            lowerValue.FlatenedNBT["heldItem"] = "PET_ITEM_TIER_BOOST";
+            lowerValue.HighestBidAmount = 600_000_000;
+            AddVolume(lowerValue, 3);
+            var lowerRarity = Dupplicate(higherValue);
+            lowerRarity.Tier = Tier.RARE;
+            lowerRarity.HighestBidAmount = 500_000_000;
+            AddVolume(lowerRarity, 3);
+            var sample = Dupplicate(lowerValue);
+            sample.HighestBidAmount = 0;
+            sample.StartingBid = 1000;
+            TestNewAuction(sample);
+            Assert.AreEqual(500_000_000, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
+
+        }
+        [Test]
         public void CapValueAtHigheEnchantPrice()
         {
             highestValAuction.Enchantments = new(){
@@ -544,12 +570,12 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(1000000, found.First().TargetPrice, JsonConvert.SerializeObject(found.First()));
         }
 
-        private void AddVolume(SaveAuction toAdd)
+        private void AddVolume(SaveAuction toAdd, int count = 4)
         {
-            service.AddSoldItem(Dupplicate(toAdd));
-            service.AddSoldItem(Dupplicate(toAdd));
-            service.AddSoldItem(Dupplicate(toAdd));
-            service.AddSoldItem(Dupplicate(toAdd));
+            for (int i = 0; i < count; i++)
+            {
+                service.AddSoldItem(Dupplicate(toAdd));
+            }
         }
 
         [Test]

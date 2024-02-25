@@ -1753,7 +1753,7 @@ ORDER BY l.`AuctionId`  DESC;
                         if (!closests.Any())
                         {
                             Console.WriteLine($"No closest bucket found for {key} {auction.Uuid}");
-                            return;
+                            break;
                         }
                         if (ShouldIgnoreMostSimilar(auction))
                         {
@@ -1805,8 +1805,6 @@ ORDER BY l.`AuctionId`  DESC;
         private void CheckCombined(SaveAuction auction, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, double lbinPrice, double medPrice, KeyWithValueBreakdown fullKey, RankElem topAttrib)
         {
             var topKey = fullKey.GetReduced(0);
-            if (topKey.Modifiers.Any(m => m.Key == "petItem" && m.Value == "TIER_BOOST"))
-                return; // currently ignored cause highervalue check fails
             var similar = l.Where(e => e.Key.Modifiers.Contains(topAttrib.Modifier) || e.Key.Enchants.Contains(topAttrib.Enchant)).ToList();
             if (similar.Count == 1)
             {
@@ -2356,12 +2354,28 @@ ORDER BY l.`AuctionId`  DESC;
         {
             return baseKey.Tier <= toCheck.Tier
                     && baseKey.Modifiers.All(m => toCheck.Modifiers.Any(other => other.Key == m.Key
-                                                        && (other.Value == m.Value ||
-                                                         float.TryParse(other.Value, out var otherVal)
-                                                        && float.TryParse(m.Value, out var ownVal) && (InvertedValueKey.Contains(other.Key) ? otherVal < ownVal : otherVal > ownVal)
-                                                        || other.Value.Contains(m.Value) && !float.TryParse(other.Value, out _)
-                                                        )))
+                                            && (other.Value == m.Value ||
+                                                float.TryParse(other.Value, out var otherVal)
+                                            && float.TryParse(m.Value, out var ownVal) && (InvertedValueKey.Contains(other.Key) ? otherVal < ownVal : otherVal > ownVal)
+                                            || other.Value.Contains(m.Value) && !float.TryParse(other.Value, out _)
+                                            )
+                                            && MatchesTierBoostOrLowerTier(baseKey, toCheck, m))
+                                            )
                     && baseKey.Enchants.All(e => toCheck.Enchants.Any(other => other.Type == e.Type && other.Lvl >= e.Lvl));
+
+            static bool MatchesTierBoostOrLowerTier(AuctionKey baseKey, AuctionKey toCheck, KeyValuePair<string, string> m)
+            {
+                if (m.Key != "exp" )
+                    return true;
+                var toCheckModifiers = toCheck.Modifiers.Where(other => other.Key == "petItem" && other.Value == "TIER_BOOST").FirstOrDefault();
+                if(toCheckModifiers.Key == default)
+                {
+                    return true;
+                }
+                var res = baseKey.Modifiers.Any(other => other.Key == "petItem" && other.Value == "TIER_BOOST")
+                                                               ;
+                return res || baseKey.Tier < toCheck.Tier;
+            }
         }
 
         private static bool IsStacksize1Cheaper(double lbinPrice, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
