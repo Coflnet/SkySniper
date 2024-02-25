@@ -69,6 +69,7 @@ namespace Coflnet.Sky.Sniper
             services.AddSingleton<HypixelItemService>();
             services.AddSingleton<System.Net.Http.HttpClient>();
             services.AddJaeger(Configuration);
+            services.AddTransient<HypixelContext>(di=> new HypixelContext());
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
