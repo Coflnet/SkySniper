@@ -60,7 +60,7 @@ public class MayorService : BackgroundService, IMayorService
         {
             try
             {
-                mayors = await electionPeriodsApi.ElectionPeriodRangeGetAsync(0, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                mayors = await electionPeriodsApi.ElectionPeriodRangeGetAsync(0, DateTimeOffset.UtcNow.ToUnixTimeSeconds() * 1000);
             }
             catch (System.Exception)
             {
