@@ -74,6 +74,8 @@ public class MayorService : BackgroundService, IMayorService
         }
         foreach (var mayor in mayors)
         {
+            if (mayor == null || mayor.Winner == null)
+                continue;
             YearToMayorName[mayor.Year] = mayor.Winner.Name;
         }
         logger.LogInformation("Loaded " + mayors.Count + " mayors");
