@@ -1816,11 +1816,12 @@ ORDER BY l.`AuctionId`  DESC;
                 // include all if no match otherwise
                 similar = l.ToList();
             }
+            var targetVolume = 11;
             var relevant = similar.Where(e => IsHigherValue(e.Key, topKey) && e.Key.Reforge == topKey.Reforge)
                 .ToList();
             // get enough relevant to build a median and try to get highest value (most enchantments and modifiers)
             var combined = relevant.SelectMany(r => r.Value.References.Select(ri => (ri, relevancy: r.Key.Modifiers.Count + r.Key.Enchants.Count + ri.Day / 10)))
-                                .OrderByDescending(r => r.relevancy).Select(r => r.ri).Take(11).ToList();
+                                .OrderByDescending(r => r.relevancy).Select(r => r.ri).Take(targetVolume).ToList();
             if (combined.Count == 0)
             {
                 return;
@@ -1834,7 +1835,12 @@ ORDER BY l.`AuctionId`  DESC;
                 OldestRef = (short)(GetDay() - 2)
             };
             // mark with extra value -3
-            FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, l, fullKey, MIN_TARGET == 0 ? 0 : -3);
+            FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, l, fullKey, MIN_TARGET == 0 ? 0 : -3, props =>
+            {
+                var total = 0;
+                props.Add("combined", string.Join(",", relevant.TakeWhile(c => (total += c.Value.References.Count) < targetVolume)
+                    .Select(c => c.Key.ToString() + ":" + c.Value.References.Count)));
+            });
 
             long GetCappedMedian(SaveAuction auction, KeyWithValueBreakdown fullKey, List<ReferencePrice> combined)
             {
@@ -2065,7 +2071,15 @@ ORDER BY l.`AuctionId`  DESC;
             return gemValue;
         }
 
-        private bool FindFlip(SaveAuction auction, double lbinPrice, double minMedPrice, ReferenceAuctions bucket, AuctionKeyWithValue key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, KeyWithValueBreakdown breakdown, long extraValue = 0)
+        private bool FindFlip(SaveAuction auction,
+                              double lbinPrice,
+                              double minMedPrice,
+                              ReferenceAuctions bucket,
+                              AuctionKeyWithValue key,
+                              ConcurrentDictionary<AuctionKey, ReferenceAuctions> l,
+                              KeyWithValueBreakdown breakdown,
+                              long extraValue = 0,
+                              Action<Dictionary<string, string>> addProps = null)
         {
             var expValue = GetValueDifferenceForExp(auction, key, l);
             var volume = bucket.Volume;
@@ -2095,6 +2109,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     props["expvalue"] = expValue.ToString();
                 }
+                addProps?.Invoke(props);
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, adjustedMedianPrice + extraValue + expValue, props);
             }
             else
