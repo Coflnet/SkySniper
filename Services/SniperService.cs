@@ -1251,13 +1251,18 @@ ORDER BY l.`AuctionId`  DESC;
             bool removedRarity = false;
             bool includeReforge = AddReforgeValue(auction, ref combined);
             combined = combined.OrderByDescending(i => i.Value).Where(c => c.Value != 0).ToList();
+            var percentDiff = (double)auction.HighestBidAmount / modifierSum;
+            if(auction.HighestBidAmount == 0 || percentDiff > 1)
+                percentDiff = 1;
             foreach (var item in combined.Skip(5).Where(c => c.Value > 0).Concat(combined.Where(c => c.Value > 0 && c.Value < threshold)))
             {
+                // use percentage of full value
+                var adjustedRemoveValue = (long)(item.Value * percentDiff);
                 // remove all but the top 5
                 if (item.Enchant.Type != 0)
                 {
                     if (enchants.Remove(item.Enchant))
-                        valueSubstracted += item.Value;
+                        valueSubstracted += adjustedRemoveValue;
                 }
                 else if (item.Reforge != ItemReferences.Reforge.None)
                 {
@@ -1266,7 +1271,7 @@ ORDER BY l.`AuctionId`  DESC;
                 else
                 {
                     if (modifiers.Remove(item.Modifier))
-                        valueSubstracted += item.Value;
+                        valueSubstracted += adjustedRemoveValue;
                     if (item.Modifier.Key == "rarity_upgrades")
                         removedRarity = true;
                 }
@@ -2365,10 +2370,10 @@ ORDER BY l.`AuctionId`  DESC;
 
             static bool MatchesTierBoostOrLowerTier(AuctionKey baseKey, AuctionKey toCheck, KeyValuePair<string, string> m)
             {
-                if (m.Key != "exp" )
+                if (m.Key != "exp")
                     return true;
                 var toCheckModifiers = toCheck.Modifiers.Where(other => other.Key == "petItem" && other.Value == "TIER_BOOST").FirstOrDefault();
-                if(toCheckModifiers.Key == default)
+                if (toCheckModifiers.Key == default)
                 {
                     return true;
                 }

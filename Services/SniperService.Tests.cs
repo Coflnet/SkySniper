@@ -133,12 +133,14 @@ namespace Coflnet.Sky.Sniper.Services
                 },
                 Tier = Tier.MYTHIC,
                 Reforge = ItemReferences.Reforge.Fabled,
+                HighestBidAmount = 80_000_000
             });
             Console.WriteLine(JsonConvert.SerializeObject(key, Formatting.Indented));
             Assert.IsTrue(key.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.growth), "Growth should be in key even if there are no buy orders on bazaar");
             Assert.IsTrue(!key.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.ultimate_legion));
             Assert.AreEqual(ItemReferences.Reforge.Any, key.Reforge);
             Assert.AreEqual(Tier.LEGENDARY, key.Tier, "Recombobulator should drop the rarity");
+            Assert.AreEqual(7171902, key.ValueSubstract, "Because highest bid is lower than craft cost the removed modifier sum is not 9.6m");
         }
         /// <summary>
         /// Negative test to <see cref="CapKeySize"/>
@@ -481,8 +483,8 @@ namespace Coflnet.Sky.Sniper.Services
             sample.StartingBid = 1000;
             TestNewAuction(sample);
             Assert.AreEqual(500_000_000, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
-
         }
+
         [Test]
         public void CapValueAtHigheEnchantPrice()
         {
