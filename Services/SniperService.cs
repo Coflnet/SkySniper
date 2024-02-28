@@ -1788,7 +1788,9 @@ ORDER BY l.`AuctionId`  DESC;
                 if (triggerEvents)
                 {
                     long extraValue = GetExtraValue(auction, key) - itemGroupTag.Item2;
-                    if (FindFlip(auction, lbinPrice, medPrice, bucket, key, l, basekey, extraValue))
+                    if (FindFlip(auction, lbinPrice, medPrice, bucket, key, l, basekey, extraValue, props=>{
+                        props["breakdown"] = JsonConvert.SerializeObject(basekey.ValueBreakdown);
+                    }))
                         shouldTryToFindClosest = false; // found a snipe, no need to check other lower value buckets
                 }
             }
@@ -1840,6 +1842,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var total = 0;
                 props.Add("combined", string.Join(",", relevant.TakeWhile(c => (total += c.Value.References.Count) < targetVolume)
                     .Select(c => c.Key.ToString() + ":" + c.Value.References.Count)));
+                Console.WriteLine($"Combined {fullKey} {auction.Uuid} {virtualBucket.Price} {virtualBucket.Lbin.Price} keys: {string.Join(",", relevant.Select(r => r.Key))}");
             });
 
             long GetCappedMedian(SaveAuction auction, KeyWithValueBreakdown fullKey, List<ReferencePrice> combined)
