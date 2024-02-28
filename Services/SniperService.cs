@@ -1252,7 +1252,7 @@ ORDER BY l.`AuctionId`  DESC;
             bool includeReforge = AddReforgeValue(auction, ref combined);
             combined = combined.OrderByDescending(i => i.Value).Where(c => c.Value != 0).ToList();
             var percentDiff = (double)auction.HighestBidAmount / modifierSum;
-            if(auction.HighestBidAmount == 0 || percentDiff > 1)
+            if (auction.HighestBidAmount == 0 || percentDiff > 1)
                 percentDiff = 1;
             foreach (var item in combined.Skip(5).Where(c => c.Value > 0).Concat(combined.Where(c => c.Value > 0 && c.Value < threshold)))
             {
@@ -1818,8 +1818,9 @@ ORDER BY l.`AuctionId`  DESC;
             }
             var relevant = similar.Where(e => IsHigherValue(e.Key, topKey) && e.Key.Reforge == topKey.Reforge)
                 .ToList();
-
-            var combined = relevant.SelectMany(r => r.Value.References).ToList();
+            // get enough relevant to build a median and try to get highest value (most enchantments and modifiers)
+            var combined = relevant.SelectMany(r => r.Value.References.Select(ri => (ri, relevancy: r.Key.Modifiers.Count + r.Key.Enchants.Count + ri.Day / 10)))
+                                .OrderByDescending(r => r.relevancy).Select(r => r.ri).Take(11).ToList();
             if (combined.Count == 0)
             {
                 return;
