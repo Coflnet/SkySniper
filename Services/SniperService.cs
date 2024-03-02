@@ -1788,7 +1788,8 @@ ORDER BY l.`AuctionId`  DESC;
                 if (triggerEvents)
                 {
                     long extraValue = GetExtraValue(auction, key) - itemGroupTag.Item2;
-                    if (FindFlip(auction, lbinPrice, medPrice, bucket, key, l, basekey, extraValue, props=>{
+                    if (FindFlip(auction, lbinPrice, medPrice, bucket, key, l, basekey, extraValue, props =>
+                    {
                         props["breakdown"] = JsonConvert.SerializeObject(basekey.ValueBreakdown);
                     }))
                         shouldTryToFindClosest = false; // found a snipe, no need to check other lower value buckets
@@ -2382,6 +2383,8 @@ ORDER BY l.`AuctionId`  DESC;
                                                 float.TryParse(other.Value, out var otherVal)
                                             && float.TryParse(m.Value, out var ownVal) && (InvertedValueKey.Contains(other.Key) ? otherVal < ownVal : otherVal > ownVal)
                                             || other.Value.Contains(m.Value) && !float.TryParse(other.Value, out _)
+                                                // has any space or comma for contains
+                                                && other.Value.Any(c => new char[] { ' ', ',' }.Contains(c))
                                             )
                                             && MatchesTierBoostOrLowerTier(baseKey, toCheck, m))
                                             )

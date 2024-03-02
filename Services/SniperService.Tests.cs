@@ -441,6 +441,30 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual(1_000_000_000, foundFlip, JsonConvert.SerializeObject(found, Formatting.Indented));
         }
         [Test]
+        public void SniperLowVolumeHigherValueCheckSeperatesSkins()
+        {
+            SetBazaarPrice("PET_SKIN_WOLF", 130_000_000);
+            SetBazaarPrice("PET_SKIN_WOLF_DOGE", 33_000_000);
+            highestValAuction.FlatenedNBT = new(){
+                {"skin", "WOLF"}};
+            highestValAuction.Enchantments = [];
+            highestValAuction.HighestBidAmount = 120000000;
+            highestValAuction.StartingBid = 10_000_000;
+            AddVolume(highestValAuction, 7);
+            var sample = Dupplicate(highestValAuction);
+            sample.HighestBidAmount = 30_000_000;
+            sample.FlatenedNBT["skin"] = "WOLF_DOGE";
+            AddVolume(sample, 3);
+            var noSkin = Dupplicate(sample);
+            noSkin.FlatenedNBT.Remove("skin");
+            noSkin.HighestBidAmount = 20_000_000;
+            AddVolume(noSkin, 2);
+            sample.HighestBidAmount = 0;
+            sample.StartingBid = 500;
+            TestNewAuction(sample);
+            Assert.AreEqual(30_000_000, found.Last().TargetPrice);
+        }
+        [Test]
         public void HigherValueCheckChecksSmallerValueForHigherPrice()
         {
             var higherValue = Dupplicate(highestValAuction);
