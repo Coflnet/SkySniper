@@ -1823,7 +1823,7 @@ ORDER BY l.`AuctionId`  DESC;
             var relevant = similar.Where(e => IsHigherValue(e.Key, topKey) && e.Key.Reforge == topKey.Reforge)
                 .ToList();
             // get enough relevant to build a median and try to get highest value (most enchantments and modifiers)
-            var combined = relevant.SelectMany(r => r.Value.References.Select(ri => (ri, relevancy: r.Key.Modifiers.Count + r.Key.Enchants.Count + ri.Day / 10)))
+            var combined = relevant.SelectMany(r => r.Value.References.Select(ri => (ri, relevancy: (r.Key.Modifiers.Count + r.Key.Enchants.Count) * 10 + ri.Day)))
                                 .OrderByDescending(r => r.relevancy).Select(r => r.ri).Take(targetVolume).ToList();
             if (combined.Count == 0)
             {
