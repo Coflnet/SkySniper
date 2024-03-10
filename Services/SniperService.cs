@@ -903,10 +903,11 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (!Constants.AttributeKeys.Contains(v.Modifier.Key))
                         return v.Value;
+                    var baseLevel = int.Parse(v.Modifier.Value);
                     // check lowest value path
-                    var lowest = lookup.Lookup.Where(l => l.Value.Price > 0 && l.Key.Modifiers.Count == 1 && l.Key.Modifiers.Any(m => m.Key == v.Modifier.Key))
+                    var lowest = lookup.Lookup.Where(l => l.Value.Price > 0 && l.Key.Modifiers.Count == 1 && l.Key.Modifiers.Any(m => m.Key == v.Modifier.Key) && baseLevel > int.Parse(l.Key.Modifiers.First().Value))
                         .Select(l => l.Value.Price / Math.Pow(2, int.Parse(l.Key.Modifiers.First().Value))).DefaultIfEmpty(0).Min();
-                    return (long)(Math.Pow(2, int.Parse(v.Modifier.Value)) * lowest);
+                    return (long)(Math.Pow(2, baseLevel) * lowest);
                 }).Sum();
                 if (modifierSum > 0)
                     limitedPrice = Math.Min(minValue + modifierSum * 11 / 10, medianPrice);
