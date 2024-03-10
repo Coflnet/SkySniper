@@ -1847,6 +1847,44 @@ namespace Coflnet.Sky.Sniper.Services
             var price = service.GetPrice(highAttrib);
             Assert.AreEqual(400000, price.Median, price.MedianKey);
         }
+        /// <summary>
+        /// buying higher than lvl 1 attributes is mostly cheaper and should be used
+        /// instead of level 1, if possible 
+        /// </summary>
+        [Test]
+        public void AttributeValueCapAtCraftCostHigherLevel()
+        {
+            highestValAuction.StartingBid = 0;
+            CreateVolume("dominance", 5, 3_300_000);
+            CreateVolume("dominance", 4, 3_900_000);
+            CreateVolume("dominance", 3, 3_400_000);
+            CreateVolume("dominance", 2, 1_600_000);
+            CreateVolume("dominance", 1, 700_000);
+            CreateVolume("mending", 5, 2_800_000);
+            CreateVolume("mending", 4, 3_700_000);
+            CreateVolume("mending", 3, 2_400_000);
+            CreateVolume("mending", 2, 1_700_000);
+            CreateVolume("mending", 1, 700_000);
+
+            var toTest = Dupplicate(highestValAuction);
+            toTest.FlatenedNBT["dominance"] = "7";
+            toTest.FlatenedNBT["mending"] = "7";
+            toTest.HighestBidAmount = 80_000_000;
+            AddVolume(toTest);
+            toTest.HighestBidAmount = 1_000_000;
+            TestNewAuction(toTest);
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            // should be at about craft cost
+            Assert.AreEqual(27302500, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+
+            void CreateVolume(string attrib, int level, int cost)
+            {
+                highestValAuction.FlatenedNBT = new() { { attrib, level.ToString() } };
+                highestValAuction.HighestBidAmount = cost;
+                AddVolume(highestValAuction);
+            }
+        }
 
         [Test]
         public void WitherBladeCombination()
