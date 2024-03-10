@@ -1855,12 +1855,12 @@ namespace Coflnet.Sky.Sniper.Services
         public void AttributeValueCapAtCraftCostHigherLevel()
         {
             highestValAuction.StartingBid = 0;
-            CreateVolume("dominance", 5, 3_300_000);
+            CreateVolume("dominance", 5, 2_000_000);
             CreateVolume("dominance", 4, 3_900_000);
             CreateVolume("dominance", 3, 3_400_000);
             CreateVolume("dominance", 2, 1_600_000);
             CreateVolume("dominance", 1, 700_000);
-            CreateVolume("mending", 5, 2_800_000);
+            CreateVolume("mending", 5, 2_000_000);
             CreateVolume("mending", 4, 3_700_000);
             CreateVolume("mending", 3, 2_400_000);
             CreateVolume("mending", 2, 1_700_000);
@@ -1876,7 +1876,7 @@ namespace Coflnet.Sky.Sniper.Services
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             // should be at about craft cost
-            Assert.AreEqual(27302500, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.AreEqual(21582500, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
 
             void CreateVolume(string attrib, int level, int cost)
             {
