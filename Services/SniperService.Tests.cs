@@ -483,6 +483,23 @@ namespace Coflnet.Sky.Sniper.Services
             var price = service.GetPrice(sample);
             Assert.AreEqual(5_000_000, price.Median);
         }
+        /// <summary>
+        /// Combined is always checked and should use the most recent if the bucket is big enough
+        /// </summary>
+        [Test]
+        public void HigherValueCheckUsesMostRecent()
+        {
+            highestValAuction.FlatenedNBT = new(){{"skin", "WOLF"}};
+            SetBazaarPrice("WOLF", 21_000_000);
+            highestValAuction.HighestBidAmount = 50_000_000;
+            AddVolume(highestValAuction, 16);
+            highestValAuction.HighestBidAmount = 10_000_000;
+            AddVolume(highestValAuction, 6);
+            highestValAuction.HighestBidAmount = 5_000_000;
+            TestNewAuction(highestValAuction);
+            Assert.AreEqual(10_000_000, found.Last().TargetPrice);
+            Assert.That(found.Where(f=>f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).Count(), Is.EqualTo(2), "one found direct one combined");
+        }
         [Test]
         public void WithTierBoostUsesLowerRarityForHigherValue()
         {
