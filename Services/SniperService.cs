@@ -2388,6 +2388,7 @@ ORDER BY l.`AuctionId`  DESC;
         private static bool IsHigherValue(AuctionKey baseKey, AuctionKey toCheck)
         {
             return baseKey.Tier <= toCheck.Tier
+                    && baseKey.Count <= toCheck.Count
                     && baseKey.Modifiers.All(m => toCheck.Modifiers.Any(other => other.Key == m.Key
                                             && (other.Value == m.Value ||
                                                 float.TryParse(other.Value, out var otherVal)
