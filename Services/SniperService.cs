@@ -903,12 +903,20 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (!Constants.AttributeKeys.Contains(v.Modifier.Key))
                         return v.Value;
+                    var comboValue = 0L;
+                    var both = breakdown.Where(b => Constants.AttributeKeys.Contains(b.Modifier.Key)).ToDictionary(e => e.Modifier.Key, e => e.Modifier.Value);
+                    if (HasAttributeCombo(v.Modifier, both, tag))
+                    {
+                        comboValue = lookup.Lookup
+                            .Where(l=>both.All(b=>l.Key.Modifiers.Any(m=>m.Key == b.Key && "1" == m.Value)))
+                            .Select(l=>l.Value.Price).DefaultIfEmpty(0).Min() / 2;
+                    }
                     var baseLevel = int.Parse(v.Modifier.Value);
                     // check lowest value path
                     var values = lookup.Lookup.Where(l => l.Value.Price > 0 && l.Key.Modifiers.Count == 1 && l.Key.Modifiers.Any(m => m.Key == v.Modifier.Key) && baseLevel > int.Parse(l.Key.Modifiers.First().Value))
                         .Select(l => l.Value.Price / Math.Pow(2, int.Parse(l.Key.Modifiers.First().Value))).ToList();
                     var quarterPercentile = values.Count > 0 ? values.OrderBy(v => v).Skip(values.Count / 4).First() : 0;
-                    return (long)(Math.Pow(2, baseLevel) * quarterPercentile * 1.20);
+                    return (long)(Math.Pow(2, baseLevel) * quarterPercentile * 1.20) + comboValue;
                 }).Sum();
                 if (modifierSum > 0)
                     limitedPrice = Math.Min(minValue + modifierSum * 11 / 10, medianPrice);

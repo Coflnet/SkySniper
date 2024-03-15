@@ -489,7 +489,7 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void HigherValueCheckUsesMostRecent()
         {
-            highestValAuction.FlatenedNBT = new(){{"skin", "WOLF"}};
+            highestValAuction.FlatenedNBT = new() { { "skin", "WOLF" } };
             SetBazaarPrice("WOLF", 21_000_000);
             highestValAuction.HighestBidAmount = 50_000_000;
             AddVolume(highestValAuction, 16);
@@ -498,7 +498,7 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.HighestBidAmount = 5_000_000;
             TestNewAuction(highestValAuction);
             Assert.AreEqual(10_000_000, found.Last().TargetPrice);
-            Assert.That(found.Where(f=>f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).Count(), Is.EqualTo(2), "one found direct one combined");
+            Assert.That(found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).Count(), Is.EqualTo(2), "one found direct one combined");
         }
         [Test]
         public void WithTierBoostUsesLowerRarityForHigherValue()
@@ -507,7 +507,7 @@ namespace Coflnet.Sky.Sniper.Services
             SetBazaarPrice("PET_SKIN_DRAGON_NEON_BLUE", 251_000_000);
             var higherValue = Dupplicate(highestValAuction);
             higherValue.Tag = "PET_LION";
-            higherValue.FlatenedNBT = new() { { "exp", "27000000" }, { "skin", "DRAGON_NEON_BLUE"} };
+            higherValue.FlatenedNBT = new() { { "exp", "27000000" }, { "skin", "DRAGON_NEON_BLUE" } };
             higherValue.Tier = Tier.LEGENDARY;
             higherValue.HighestBidAmount = 800_000_000;
             AddVolume(higherValue, 3);
@@ -1904,6 +1904,37 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void AttributeValueCapAtCraftcostPlusComboValue()
+        {
+            highestValAuction.StartingBid = 0;
+            // god roll combinations have different handling
+            CreateVolume("speed", 5, 2_000_000);
+            CreateVolume("dominance", 5, 2_000_000);
+            var toTest = Dupplicate(highestValAuction);
+            toTest.FlatenedNBT["speed"] = "1";
+            toTest.FlatenedNBT["dominance"] = "1";
+            toTest.HighestBidAmount = 50_000_000;
+            AddVolume(toTest);
+            toTest.FlatenedNBT["speed"] = "7";
+            toTest.FlatenedNBT["dominance"] = "7";
+            toTest.HighestBidAmount = 80_000_000;
+            AddVolume(toTest);
+            toTest.HighestBidAmount = 1_000_000;
+            TestNewAuction(toTest);
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            // craft cost + combo value
+            Assert.AreEqual(76245000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+
+            void CreateVolume(string attrib, int level, int cost)
+            {
+                highestValAuction.FlatenedNBT = new() { { attrib, level.ToString() } };
+                highestValAuction.HighestBidAmount = cost;
+                AddVolume(highestValAuction);
+            }
+        }
+
+        [Test]
         public void WitherBladeCombination()
         {
             highestValAuction.Tag = "HYPERION";
@@ -2033,7 +2064,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.FinishedUpdate();
             highestValAuction.StartingBid = 5;
             service.TestNewAuction(Dupplicate(highestValAuction));
-            Assert.AreEqual(500000 + enchantPrice * 11/10, found.Where(f => f.Finder != LowPricedAuction.FinderType.STONKS).First().TargetPrice);
+            Assert.AreEqual(500000 + enchantPrice * 11 / 10, found.Where(f => f.Finder != LowPricedAuction.FinderType.STONKS).First().TargetPrice);
         }
 
         [Test]
