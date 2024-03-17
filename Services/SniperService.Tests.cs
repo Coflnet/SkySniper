@@ -8,6 +8,7 @@ using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Models;
 using dev;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.VisualBasic;
 using Newtonsoft.Json;
 using NUnit.Framework;
@@ -1400,6 +1401,23 @@ namespace Coflnet.Sky.Sniper.Services
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
             Assert.AreEqual(2_000_000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+        }
+        [Test]
+        public void EnrichmentIsKept()
+        {
+            SetBazaarPrice("TALISMAN_ENRICHMENT_SWAPPER", 50);
+            SetBazaarPrice("TALISMAN_ENRICHMENT_FEROCITY", 5_000_000);
+            highestValAuction.Tag = "EXPERIENCE_ARTIFACT";
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.HighestBidAmount = 2_500_000;
+            AddVolume(highestValAuction);
+            highestValAuction.FlatenedNBT = new() { { "talisman_enrichment", "attack_speed" } };
+            highestValAuction.HighestBidAmount = 8_000_000;
+            AddVolume(highestValAuction);
+            (var bucket,var key) = service.GetBucketForAuction(highestValAuction);
+            key.Modifiers.Should().Contain(new KeyValuePair<string, string>("talisman_enrichment", "yes"));
+            var price = service.GetPrice(highestValAuction);
+            price.Median.Should().Be(8_000_000);
         }
         [Test]
         public void StonksIncreaseForKills()
