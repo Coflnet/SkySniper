@@ -1913,6 +1913,10 @@ namespace Coflnet.Sky.Sniper.Services
             var toTest = Dupplicate(highestValAuction);
             toTest.FlatenedNBT["speed"] = "1";
             toTest.FlatenedNBT["dominance"] = "1";
+            toTest.HighestBidAmount = 45_000_000;
+            AddVolume(toTest, 3);
+            // lowest non 0 median should be used so here we insert lvl 3, lvl 1-1 is 0 because low volume
+            toTest.FlatenedNBT["dominance"] = "3";
             toTest.HighestBidAmount = 50_000_000;
             AddVolume(toTest);
             toTest.FlatenedNBT["speed"] = "7";

@@ -908,8 +908,8 @@ ORDER BY l.`AuctionId`  DESC;
                     if (HasAttributeCombo(v.Modifier, both, tag))
                     {
                         comboValue = lookup.Lookup
-                            .Where(l=>both.All(b=>l.Key.Modifiers.Any(m=>m.Key == b.Key && "1" == m.Value)))
-                            .Select(l=>l.Value.Price).DefaultIfEmpty(0).Min() / 2;
+                            .Where(l => both.All(b => l.Key.Modifiers.Any(m => m.Key == b.Key)))
+                            .Select(l => l.Value.Price).Where(p => p != 0).DefaultIfEmpty(0).Min() / 2;
                     }
                     var baseLevel = int.Parse(v.Modifier.Value);
                     // check lowest value path
