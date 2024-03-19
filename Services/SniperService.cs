@@ -1524,7 +1524,7 @@ ORDER BY l.`AuctionId`  DESC;
                     return Ignore;
                 return new KeyValuePair<string, string>(PetItemKey, heldItem);
             }
-            if (s.Key == "is_shiny" && !(tag.EndsWith("_CHESTPLATE") || tag == "HYPERION"))
+            if (s.Key == "is_shiny" && !(tag.EndsWith("_CHESTPLATE") || tag == "HYPERION" || tag == "NECRON_HANDLE"))
             {
                 return Ignore;
             }
