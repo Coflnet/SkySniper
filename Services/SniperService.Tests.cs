@@ -526,6 +526,23 @@ namespace Coflnet.Sky.Sniper.Services
             TestNewAuction(sample);
             Assert.AreEqual(500_000_000, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
         }
+        [Test]
+        public void HigherValueCheckUsedOnLbinGetPrice()
+        {
+            var higherValue = Dupplicate(highestValAuction);
+            higherValue.Tag = "PET_LION";
+            higherValue.FlatenedNBT = new() { { "exp", "27000000" } };
+            higherValue.HighestBidAmount = 20_000_000;
+            AddVolume(higherValue);
+            TestNewAuction(higherValue);
+            var lowerValue = Dupplicate(higherValue);
+            lowerValue.FlatenedNBT["exp"] = "500000";
+            lowerValue.HighestBidAmount = 50_000_000;
+            AddVolume(lowerValue);
+            TestNewAuction(lowerValue);
+            var price = service.GetPrice(lowerValue);
+            Assert.AreEqual(20_000_000, price.Lbin.Price);
+        }
 
         [Test]
         public void CapValueAtHigheEnchantPrice()

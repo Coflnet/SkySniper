@@ -34,6 +34,7 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly Dictionary<string, double> BazaarPrices = new();
         private readonly ConcurrentDictionary<(string, AuctionKey), (PriceEstimate result, DateTime addedAt)> ClosetLbinMapLookup = new();
         private readonly ConcurrentDictionary<(string, AuctionKey), (PriceEstimate result, DateTime addedAt)> ClosetMedianMapLookup = new();
+        private readonly ConcurrentDictionary<(string, AuctionKey), (ReferencePrice result, DateTime addedAt)> HigherValueLbinMapLookup = new();
 
         private readonly Counter sellClosestSearch = Metrics.CreateCounter("sky_sniper_sell_closest_search", "Number of searches for closest sell");
         private readonly Counter closestMedianBruteCounter = Metrics.CreateCounter("sky_sniper_closest_median_brute", "Number of brute force searches for closest median");
@@ -174,7 +175,12 @@ namespace Coflnet.Sky.Sniper.Services
         public void FinishedUpdate()
         {
             ProcessLbins();
-            var removeBefore = DateTime.UtcNow.AddHours(-0.5);
+            var removeBefore = DateTime.UtcNow.AddHours(-3);
+            foreach (var item in HigherValueLbinMapLookup.Where(c => c.Value.addedAt < removeBefore).ToList())
+            {
+                HigherValueLbinMapLookup.TryRemove(item.Key, out _);
+            }
+            removeBefore = DateTime.UtcNow.AddHours(-0.5);
             foreach (var item in ClosetLbinMapLookup.Where(c => c.Value.addedAt < removeBefore).ToList())
             {
                 ClosetLbinMapLookup.TryRemove(item.Key, out _);
@@ -391,6 +397,17 @@ ORDER BY l.`AuctionId`  DESC;
                     result.Lbin = res.result.Lbin;
                     result.LbinKey = res.result.LbinKey;
                 }
+            }
+            var lbinCap = HigherValueLbinMapLookup.GetOrAdd(((string, AuctionKey))(auction.Tag, itemKey), a =>
+            {
+                var higherValue = l.Where(k => k.Value.Lbin.Price != 0 && !IsHigherValue(k.Key, itemKey) && k.Key.Reforge == itemKey.Reforge);
+                var MaxValue = higherValue.OrderByDescending(b => b.Value.Lbin.Price).FirstOrDefault();
+                return (MaxValue.Value?.Lbin ?? default, DateTime.UtcNow);
+            });
+            if(lbinCap.result.Price != 0 && result.Lbin.Price > lbinCap.result.Price)
+            {
+                result.Lbin = lbinCap.result;
+                result.LbinKey += $"+HV";
             }
             // correct for combined items
             if (tagGroup.Item2 != 0)
