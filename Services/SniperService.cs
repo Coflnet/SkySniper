@@ -400,11 +400,12 @@ ORDER BY l.`AuctionId`  DESC;
             }
             var lbinCap = HigherValueLbinMapLookup.GetOrAdd(((string, AuctionKey))(auction.Tag, itemKey), a =>
             {
-                var higherValue = l.Where(k => k.Value.Lbin.Price != 0 && !IsHigherValue(k.Key, itemKey) && k.Key.Reforge == itemKey.Reforge);
-                var MaxValue = higherValue.OrderByDescending(b => b.Value.Lbin.Price).FirstOrDefault();
+                var higherValue = l.Where(k => k.Value.Lbin.Price != 0
+                                    && IsHigherValue(itemKey, k.Key) && k.Key.Reforge == itemKey.Reforge);
+                var MaxValue = higherValue.OrderBy(b => b.Value.Lbin.Price).FirstOrDefault();
                 return (MaxValue.Value?.Lbin ?? default, DateTime.UtcNow);
             });
-            if(lbinCap.result.Price != 0 && result.Lbin.Price > lbinCap.result.Price)
+            if (lbinCap.result.Price != 0 && result.Lbin.Price > lbinCap.result.Price)
             {
                 result.Lbin = lbinCap.result;
                 result.LbinKey += $"+HV";
