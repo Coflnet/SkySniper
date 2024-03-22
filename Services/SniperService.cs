@@ -819,7 +819,7 @@ ORDER BY l.`AuctionId`  DESC;
                 .Take(60)
                 .ToList();
             size = deduplicated.Count();
-            if (size <= 3 || deduplicated.Count(d => d.Day > GetDay() - 14) < 3 && !(keyCombo.Item2?.Key.IsClean() ?? false) && !IsMaxAttrib(keyCombo))
+            if (size <= 3 || deduplicated.Count(d => d.Day >= GetDay() - 20) < 3 && !(keyCombo.Item2?.Key.IsClean() ?? false) && !IsMaxAttrib(keyCombo))
             {
                 bucket.Price = 0; // to low vol
                 return;
