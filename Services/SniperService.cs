@@ -460,7 +460,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (MaxValue.Value?.Price > result.Median)
                 {
                     result.Median = MaxValue.Value.Price;
-                    result.MedianKey = $"+HV-{MaxValue.Key}";
+                    result.MedianKey += $"+HV-{MaxValue.Key}";
                 }
             }
             return (result, now);
