@@ -543,6 +543,22 @@ namespace Coflnet.Sky.Sniper.Services
             var price = service.GetPrice(lowerValue);
             Assert.AreEqual(20_000_000, price.Lbin.Price);
         }
+        [Test]
+        public void ExpNotCappedForScatha() // exp is very valuable on high value pet
+        {
+            var higherValue = Dupplicate(highestValAuction);
+            higherValue.Tag = "PET_SCATHA";
+            higherValue.FlatenedNBT = new() { { "exp", "0" }, { "candyUsed", "0" } };
+            higherValue.Tier = Tier.EPIC;
+            higherValue.HighestBidAmount = 100_000_000;
+            AddVolume(higherValue);
+            higherValue.FlatenedNBT = new() { { "exp", "27000000" } };
+            higherValue.HighestBidAmount = 400_000_000;
+            higherValue.Tier = Tier.LEGENDARY;
+            AddVolume(higherValue);
+            var price = service.GetPrice(higherValue);
+            Assert.AreEqual(400_000_000, price.Median);
+        }
 
         [Test]
         public void CapValueAtHigheEnchantPrice()
@@ -1431,7 +1447,7 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.FlatenedNBT = new() { { "talisman_enrichment", "attack_speed" } };
             highestValAuction.HighestBidAmount = 8_000_000;
             AddVolume(highestValAuction);
-            (var bucket,var key) = service.GetBucketForAuction(highestValAuction);
+            (var bucket, var key) = service.GetBucketForAuction(highestValAuction);
             key.Modifiers.Should().Contain(new KeyValuePair<string, string>("talisman_enrichment", "yes"));
             var price = service.GetPrice(highestValAuction);
             price.Median.Should().Be(8_000_000);

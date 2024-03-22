@@ -850,7 +850,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (keyCombo != default)
             {
                 var breakdown = keyCombo.key.ValueBreakdown;
-                long limitedPrice = CapAtCraftCost(keyCombo.tag, medianPrice, breakdown, bucket.Price);
+                long limitedPrice = CapAtCraftCost(keyCombo.tag, medianPrice, keyCombo.key, bucket.Price);
                 if (limitedPrice > 0 && limitedPrice != bucket.Price)
                 {
                     medianPrice = limitedPrice;
@@ -914,13 +914,17 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private long CapAtCraftCost(string tag, long medianPrice, List<RankElem> breakdown, long currentPrice)
+        private long CapAtCraftCost(string tag, long medianPrice, KeyWithValueBreakdown key, long currentPrice)
         {
+            List<RankElem> breakdown = key.ValueBreakdown;
             var limitedPrice = 0L;
             // determine craft cost 
             if (Lookups.TryGetValue(tag, out var lookup) && !breakdown.Any(v => v.Value == 0) && breakdown.Count > 0)
             {
-                var minValue = lookup.Lookup.Values.Where(v => v.Price > 0).Select(v => v.Price).DefaultIfEmpty(0).Min();
+                var select = tag.StartsWith("PET_") ?
+                    lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value.Price):
+                     lookup.Lookup.Values.Where(v => v.Price > 0).Select(v => v.Price);
+                var minValue = select.DefaultIfEmpty(0).Min();
                 if (minValue == 0 || currentPrice == minValue)
                     return medianPrice;
                 var modifierSum = breakdown.Select(v =>
@@ -1892,7 +1896,7 @@ ORDER BY l.`AuctionId`  DESC;
             long GetCappedMedian(SaveAuction auction, KeyWithValueBreakdown fullKey, List<ReferencePrice> combined)
             {
                 var median = GetMedian(combined);
-                median = CapAtCraftCost(auction.Tag, median, fullKey.ValueBreakdown, 0);
+                median = CapAtCraftCost(auction.Tag, median, fullKey, 0);
                 return median;
             }
         }
@@ -2406,7 +2410,7 @@ ORDER BY l.`AuctionId`  DESC;
                     Activity.Current.Log($"Reduced because no higher value lbin");
                     percentile = Math.Min(percentile, targetPrice * 9 / 10);
                 }
-                var reduced = CapAtCraftCost(auction.Tag, percentile, breakdown.ValueBreakdown, 0);
+                var reduced = CapAtCraftCost(auction.Tag, percentile, breakdown, 0);
                 if (reduced > 0)
                 {
                     percentile = reduced;
