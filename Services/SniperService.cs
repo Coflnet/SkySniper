@@ -819,7 +819,7 @@ ORDER BY l.`AuctionId`  DESC;
                 .Take(60)
                 .ToList();
             size = deduplicated.Count();
-            if (size <= 3 || deduplicated.Count(d => d.Day > GetDay() - 14) < 3 && !(keyCombo.Item2?.Key.IsClean() ?? false))
+            if (size <= 3 || deduplicated.Count(d => d.Day > GetDay() - 14) < 3 && !(keyCombo.Item2?.Key.IsClean() ?? false) && !IsMaxAttrib(keyCombo))
             {
                 bucket.Price = 0; // to low vol
                 return;
@@ -906,6 +906,12 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
             bucket.Price = medianPrice;
+
+            bool IsMaxAttrib((string tag, KeyWithValueBreakdown key) keyCombo)
+            {
+                var matchCount = keyCombo.key.Key.Modifiers.Where(m => Constants.AttributeKeys.Contains(m.Key) && m.Value == "10").Count();
+                return matchCount == 2;
+            }
         }
 
         private long CapAtCraftCost(string tag, long medianPrice, List<RankElem> breakdown, long currentPrice)
