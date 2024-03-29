@@ -922,7 +922,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (Lookups.TryGetValue(tag, out var lookup) && !breakdown.Any(v => v.Value == 0) && breakdown.Count > 0)
             {
                 var select = tag.StartsWith("PET_") ?
-                    lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value.Price):
+                    lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value.Price) :
                      lookup.Lookup.Values.Where(v => v.Price > 0).Select(v => v.Price);
                 var minValue = select.DefaultIfEmpty(0).Min();
                 if (minValue == 0 || currentPrice == minValue)
@@ -935,9 +935,15 @@ ORDER BY l.`AuctionId`  DESC;
                     var both = breakdown.Where(b => Constants.AttributeKeys.Contains(b.Modifier.Key)).ToDictionary(e => e.Modifier.Key, e => e.Modifier.Value);
                     if (HasAttributeCombo(v.Modifier, both, tag))
                     {
-                        comboValue = lookup.Lookup
+                        var lowestTwo = lookup.Lookup
+                            .Where(p => p.Value.Price > 0)
                             .Where(l => both.All(b => l.Key.Modifiers.Any(m => m.Key == b.Key)))
-                            .Select(l => l.Value.Price).Where(p => p != 0).DefaultIfEmpty(0).Min() / 2;
+                            .OrderBy(p => p.Value.Price).Take(2).SelectMany(l => l.Value.References).ToList();
+                        var percentile = lowestTwo.OrderBy(r => r.Price)
+                                    .Skip(lowestTwo.Count / 2).Select(r => r.Price)
+                                    // deviding by two because both attributes count
+                                    .DefaultIfEmpty(0).Min() / 2;
+                        comboValue = percentile;
                     }
                     var baseLevel = int.Parse(v.Modifier.Value);
                     // check lowest value path

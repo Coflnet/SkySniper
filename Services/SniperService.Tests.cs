@@ -1512,7 +1512,7 @@ namespace Coflnet.Sky.Sniper.Services
             var toTest = Dupplicate(highestValAuction);
             service.FinishedUpdate();
             service.State = SniperState.Ready;
-            toTest.FlatenedNBT["upgrade_level"] = "7";
+            toTest.FlatenedNBT["upgrade_level"] = "5";
             service.TestNewAuction(toTest);
             service.FinishedUpdate();
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
