@@ -931,26 +931,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (!Constants.AttributeKeys.Contains(v.Modifier.Key))
                         return v.Value;
-                    var comboValue = 0L;
-                    var both = breakdown.Where(b => Constants.AttributeKeys.Contains(b.Modifier.Key)).ToDictionary(e => e.Modifier.Key, e => e.Modifier.Value);
-                    if (HasAttributeCombo(v.Modifier, both, tag))
-                    {
-                        var lowestTwo = lookup.Lookup
-                            .Where(p => p.Value.Price > 0)
-                            .Where(l => both.All(b => l.Key.Modifiers.Any(m => m.Key == b.Key)))
-                            .OrderBy(p => p.Value.Price).Take(2).SelectMany(l => l.Value.References).ToList();
-                        var percentile = lowestTwo.OrderBy(r => r.Price)
-                                    .Skip(lowestTwo.Count / 2).Select(r => r.Price)
-                                    // deviding by two because both attributes count
-                                    .DefaultIfEmpty(0).Min() / 2;
-                        comboValue = percentile;
-                    }
-                    var baseLevel = int.Parse(v.Modifier.Value);
-                    // check lowest value path
-                    var values = lookup.Lookup.Where(l => l.Value.Price > 0 && l.Key.Modifiers.Count == 1 && l.Key.Modifiers.Any(m => m.Key == v.Modifier.Key) && baseLevel > int.Parse(l.Key.Modifiers.First().Value))
-                        .Select(l => l.Value.Price / Math.Pow(2, int.Parse(l.Key.Modifiers.First().Value))).ToList();
-                    var quarterPercentile = values.Count > 0 ? values.OrderBy(v => v).Skip(values.Count / 4).First() : 0;
-                    return (long)(Math.Pow(2, baseLevel) * quarterPercentile * 1.20) + comboValue;
+                    return AttributeValueEstimateForCap(tag, v, breakdown, lookup);
                 }).Sum();
                 if (modifierSum > 0)
                     limitedPrice = Math.Min(minValue + modifierSum * 11 / 10, medianPrice);
@@ -958,6 +939,39 @@ ORDER BY l.`AuctionId`  DESC;
             if (limitedPrice > 0)
                 return limitedPrice;
             return medianPrice;
+        }
+
+        private long AttributeValueEstimateForCap(string tag, RankElem v, List<RankElem> breakdown, PriceLookup lookup)
+        {
+            var comboValue = 0L;
+            var both = breakdown.Where(b => Constants.AttributeKeys.Contains(b.Modifier.Key)).ToDictionary(e => e.Modifier.Key, e => e.Modifier.Value);
+            if (HasAttributeCombo(v.Modifier, both, tag))
+            {
+                var lowestTwo = lookup.Lookup
+                    .Where(p => p.Value.Price > 0)
+                    .Where(l => both.All(b => l.Key.Modifiers.Any(m => m.Key == b.Key)))
+                    .OrderBy(p => p.Value.Price).Take(2).SelectMany(l => l.Value.References).ToList();
+                var percentile = lowestTwo.OrderBy(r => r.Price)
+                            .Skip(lowestTwo.Count / 2).Select(r => r.Price)
+                            // deviding by two because both attributes count
+                            .DefaultIfEmpty(0).Min() / 2;
+                comboValue = percentile;
+            }
+            var baseLevel = int.Parse(v.Modifier.Value);
+            // check lowest value path
+            var options = lookup.Lookup.AsEnumerable();
+            var startOptions = new string[]{"CRIMSON_", "TERROR_", "AURORA_", "FERVOR_"};
+            if(startOptions.Any(tag.StartsWith))
+            {
+                // these 4 types can be combined amongst each other
+                var secondType = tag.Split("_")[1];
+                options = startOptions.SelectMany(s=>Lookups.TryGetValue(s+secondType, out var lookup) ? lookup.Lookup.AsEnumerable() : []);
+            }
+            var values = options.Where(l => l.Value.Price > 0 && l.Key.Modifiers.Count == 1 && l.Key.Modifiers.Any(m => m.Key == v.Modifier.Key) && baseLevel > int.Parse(l.Key.Modifiers.First().Value))
+                .Select(l => l.Value.Price / Math.Pow(2, int.Parse(l.Key.Modifiers.First().Value)))
+                .ToList();
+            var quarterPercentile = values.Count > 0 ? values.OrderBy(v => v).Skip(values.Count / 4).First() : 0;
+            return (long)(Math.Pow(2, baseLevel) * quarterPercentile * 1.20) + comboValue;
         }
 
         private static List<ReferencePrice> GetShortTermBatch(List<ReferencePrice> deduplicated)

@@ -1989,6 +1989,35 @@ namespace Coflnet.Sky.Sniper.Services
             }
         }
 
+        /// <summary>
+        /// Attributes can be fused accross different pieces of armor with the same type
+        /// </summary>
+        [Test]
+        public void AttributeValueCapArmorTypeCombo()
+        {
+            highestValAuction.StartingBid = 0;
+            highestValAuction.FlatenedNBT = new() { { "speed", "3" } };
+            var cheap = Dupplicate(highestValAuction);
+            cheap.Tag = "CRIMSON_CHESTPLATE";
+            cheap.HighestBidAmount = 1_000_000;
+            AddVolume(cheap);
+            var sameType = Dupplicate(highestValAuction);
+            sameType.Tag = "TERROR_CHESTPLATE";
+            sameType.HighestBidAmount = 3_000_000;
+            AddVolume(sameType);
+            var toTest = Dupplicate(sameType);
+            toTest.FlatenedNBT["speed"] = "7";
+            toTest.HighestBidAmount = 180_000_000;
+            AddVolume(toTest);
+            toTest.HighestBidAmount = 1_000;
+            TestNewAuction(toTest);
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
+            Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
+            // should be at about craft cost
+            Assert.AreEqual(21870000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+
+        }
+
         [Test]
         public void WitherBladeCombination()
         {
