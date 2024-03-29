@@ -1910,6 +1910,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var total = 0;
                 props.Add("combined", string.Join(",", relevant.TakeWhile(c => (total += c.Value.References.Count) < targetVolume)
                     .Select(c => c.Key.ToString() + ":" + c.Value.References.Count)));
+                props.Add("breakdown", JsonConvert.SerializeObject(fullKey.ValueBreakdown));
                 Console.WriteLine($"Combined {fullKey} {auction.Uuid} {virtualBucket.Price} {virtualBucket.Lbin.Price} keys: {string.Join(",", relevant.Select(r => r.Key))}");
             });
 
