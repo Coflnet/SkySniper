@@ -2008,9 +2008,10 @@ ORDER BY l.`AuctionId`  DESC;
             var additionalEnchants = key.Enchants.Where(e => !closest.Key.Enchants.Contains(e)).ToList();
             if (additionalEnchants.Count > 0)
             {
-                var enchantVal = Math.Min(GetPriceSumForEnchants(additionalEnchants) / 2, closest.Value.Price / 4);
+                var valEst = GetPriceSumForEnchants(additionalEnchants) / 2;
+                var enchantVal = Math.Min(valEst, closest.Value.Price / 4);
                 toSubstract -= enchantVal;
-                props.Add("enchValueAdded", string.Join(",", additionalEnchants.Select(e => $"{e.Type}_{e.Lvl}")) + $" ({enchantVal})");
+                props.Add("enchValueAdded", string.Join(",", additionalEnchants.Select(e => $"{e.Type}_{e.Lvl}")) + $" ({enchantVal}-{valEst})");
             }
             var targetPrice = (long)((closest.Value.Price - toSubstract) * 0.9);
             // adjust due to count
