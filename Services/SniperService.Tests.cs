@@ -1125,8 +1125,8 @@ namespace Coflnet.Sky.Sniper.Services
             SimulateNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.NotNull(estimate, JsonConvert.SerializeObject(found));
-            Assert.AreEqual(135000000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
-            Assert.AreEqual("critical_7,sharpness_7 (50000000)", estimate.AdditionalProps["additionalEnchants"]);
+            Assert.AreEqual(112500000, estimate.TargetPrice, JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.AreEqual("critical_7,sharpness_7 (25000000)", estimate.AdditionalProps["enchValueAdded"]);
         }
         [Test]
         public void SubstractsEnchantsCrafted()
