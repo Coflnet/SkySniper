@@ -960,12 +960,12 @@ ORDER BY l.`AuctionId`  DESC;
             var baseLevel = int.Parse(v.Modifier.Value);
             // check lowest value path
             var options = lookup.Lookup.AsEnumerable();
-            var startOptions = new string[]{"CRIMSON_", "TERROR_", "AURORA_", "FERVOR_"};
-            if(startOptions.Any(tag.StartsWith))
+            var startOptions = new string[] { "CRIMSON_", "TERROR_", "AURORA_", "FERVOR_" };
+            if (startOptions.Any(tag.StartsWith))
             {
                 // these 4 types can be combined amongst each other
                 var secondType = tag.Split("_")[1];
-                options = startOptions.SelectMany(s=>Lookups.TryGetValue(s+secondType, out var lookup) ? lookup.Lookup.AsEnumerable() : []);
+                options = startOptions.SelectMany(s => Lookups.TryGetValue(s + secondType, out var lookup) ? lookup.Lookup.AsEnumerable() : []);
             }
             var values = options.Where(l => l.Value.Price > 0 && l.Key.Modifiers.Count == 1 && l.Key.Modifiers.Any(m => m.Key == v.Modifier.Key) && baseLevel > int.Parse(l.Key.Modifiers.First().Value))
                 .Select(l => l.Value.Price / Math.Pow(2, int.Parse(l.Key.Modifiers.First().Value)))
@@ -1172,7 +1172,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (enchants?.Count == 0)
                 {
                     var enchant = Constants.SelectBest(auction.Enchantments);
-                    enchants = new List<Models.Enchant>() { new Models.Enchant() { Lvl = enchant.Level, Type = enchant.Type
+                    enchants = new List<Enchant>() { new Enchant() { Lvl = enchant.Level, Type = enchant.Type
                         } };
                 }
                 (valueSubstracted, removedRarity, shouldIncludeReforge, rankElems) = CapKeyLength(enchants, modifiers, auction, 1_000_000);
@@ -1320,7 +1320,13 @@ ORDER BY l.`AuctionId`  DESC;
             var percentDiff = (double)auction.HighestBidAmount / modifierSum;
             if (auction.HighestBidAmount == 0 || percentDiff > 1)
                 percentDiff = 1;
-            foreach (var item in combined.Skip(5).Where(c => c.Value > 0).Concat(combined.Where(c => c.Value > 0 && c.Value < threshold)))
+            // remove all but the top 5 
+            var toRemove = combined.Skip(5).Where(c => c.Value > 0)
+                    // keep top 2 even if below threshold
+                    .Concat(combined.Skip(2).Where(c => c.Value > 0 && c.Value < threshold))
+                    // always remove below 500k
+                    .Concat(combined.Take(2).Where(c => c.Value > 0 && c.Value < 500_000)).ToList();
+            foreach (var item in toRemove)
             {
                 // use percentage of full value
                 var adjustedRemoveValue = (long)(item.Value * percentDiff);

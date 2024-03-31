@@ -172,6 +172,7 @@ namespace Coflnet.Sky.Sniper.Services
         {
             SetBazaarPrice("ENCHANTMENT_MANA_VAMPIRE_6", 2_100_000);
             SetBazaarPrice("ENCHANTMENT_SHARPNESS_6", 4_100_000);
+            SetBazaarPrice("ENCHANTMENT_GROWTH_6", 4_100_000);
             SetBazaarPrice("TEST", 80_600_000);
             var key = service.KeyFromSaveAuction(new SaveAuction()
             {
@@ -179,6 +180,7 @@ namespace Coflnet.Sky.Sniper.Services
                 Enchantments = new List<Enchantment>(){
                     new (Enchantment.EnchantmentType.mana_vampire, 6),
                     new (Enchantment.EnchantmentType.sharpness, 6),
+                    new (Enchantment.EnchantmentType.growth, 6),
                 },
                 FlatenedNBT = [],
                 Reforge = ItemReferences.Reforge.Fabled,
@@ -751,7 +753,7 @@ namespace Coflnet.Sky.Sniper.Services
             SetBazaarPrice("PET_ITEM_TIER_BOOST", 88_000_000);
             SetBazaarPrice("PET_SKIN_DRAGON_NEON_PURPLE", 230_000_000);
             highestValAuction.FlatenedNBT = new() { { "heldItem", "PET_ITEM_TIER_BOOST" },
-                                {"candyUsed", "0"},
+                              //  {"candyUsed", "0"},
                                 {"skin", "DRAGON_NEON_PURPLE"} };
             highestValAuction.HighestBidAmount = 650000000;
             highestValAuction.Tier = Tier.LEGENDARY;
@@ -768,7 +770,7 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.HighestBidAmount = 600_000_000;
             highestValAuction.StartingBid = 600_000_000;
             service.TestNewAuction(highestValAuction);
-            Assert.AreEqual(640000000, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
+            Assert.AreEqual(650000000, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
         }
 
         [Test]
