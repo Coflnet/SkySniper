@@ -46,6 +46,8 @@ namespace Coflnet.Sky.Sniper.Services
         {
             FoundSnipe?.Invoke(auction);
         }
+
+        private readonly string[] CrimsonArmors = new string[] { "CRIMSON_", "TERROR_", "AURORA_", "FERVOR_" };
         private readonly HashSet<string> IncludeKeys = new HashSet<string>()
         {
             "baseStatBoostPercentage", // has an effect on drops from dungeons, is filtered to only max level
@@ -339,6 +341,10 @@ ORDER BY l.`AuctionId`  DESC;
             if (BazaarPrices.TryGetValue(auction.Tag, out var bazaar))
                 return new() { Median = (long)bazaar };
             var tagGroup = GetAuctionGroupTag(auction.Tag);
+            if((tagGroup.tag.StartsWith("HOT_") || tagGroup.tag.StartsWith("BURNING_") || tagGroup.tag.StartsWith("FIERY_")|| tagGroup.tag.StartsWith("INFERNAL_")) && CrimsonArmors.Any(tagGroup.tag.Contains) )
+            {
+                tagGroup.tag = tagGroup.tag.Replace($"{tagGroup.tag.Split('_')[0]}_", "");
+            }
 
             var result = new PriceEstimate();
             if (!Lookups.TryGetValue(tagGroup.Item1, out PriceLookup lookup))
@@ -960,12 +966,11 @@ ORDER BY l.`AuctionId`  DESC;
             var baseLevel = int.Parse(v.Modifier.Value);
             // check lowest value path
             var options = lookup.Lookup.AsEnumerable();
-            var startOptions = new string[] { "CRIMSON_", "TERROR_", "AURORA_", "FERVOR_" };
-            if (startOptions.Any(tag.StartsWith))
+            if (CrimsonArmors.Any(tag.StartsWith))
             {
                 // these 4 types can be combined amongst each other
                 var secondType = tag.Split("_")[1];
-                options = startOptions.SelectMany(s => Lookups.TryGetValue(s + secondType, out var lookup) ? lookup.Lookup.AsEnumerable() : []);
+                options = CrimsonArmors.SelectMany(s => Lookups.TryGetValue(s + secondType, out var lookup) ? lookup.Lookup.AsEnumerable() : []);
             }
             var values = options.Where(l => l.Value.Price > 0 && l.Key.Modifiers.Count == 1 && l.Key.Modifiers.Any(m => m.Key == v.Modifier.Key) && baseLevel > int.Parse(l.Key.Modifiers.First().Value))
                 .Select(l => l.Value.Price / Math.Pow(2, int.Parse(l.Key.Modifiers.First().Value)))
