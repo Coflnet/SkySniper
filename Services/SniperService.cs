@@ -927,10 +927,12 @@ ORDER BY l.`AuctionId`  DESC;
             // determine craft cost 
             if (Lookups.TryGetValue(tag, out var lookup) && !breakdown.Any(v => v.Value == 0) && breakdown.Count > 0)
             {
-                var select = tag.StartsWith("PET_") ?
+                var select = (tag.StartsWith("PET_") ?
                     lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value.Price) :
-                     lookup.Lookup.Values.Where(v => v.Price > 0).Select(v => v.Price);
-                var minValue = select.DefaultIfEmpty(0).Min();
+                     lookup.Lookup.Values.Where(v => v.Price > 0).Select(v => v.Price)).ToList();
+                var count = select.Count;
+                // 2nd percentile to skip low volume outliers on complex items
+                var minValue = select.DefaultIfEmpty(0).OrderBy(v => v).Skip(count / 50).FirstOrDefault();
                 if (minValue == 0 || currentPrice == minValue)
                     return medianPrice;
                 var modifierSum = breakdown.Select(v =>
