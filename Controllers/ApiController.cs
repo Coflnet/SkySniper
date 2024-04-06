@@ -185,6 +185,8 @@ namespace Coflnet.Sky.Sniper.Controllers
         public IEnumerable<object> SimilarKeys(string tag, string auctionId)
         {
             var firstKey = Search(tag, auctionId).FirstOrDefault();
+            if(firstKey == default)
+                return new List<object>() { new { Key = "not found" } };
             return service.FindClosest(service.Lookups[tag].Lookup, firstKey, tag)
                                 .Take(10)
                                 .Select(v => new
