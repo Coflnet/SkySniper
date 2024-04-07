@@ -341,7 +341,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (BazaarPrices.TryGetValue(auction.Tag, out var bazaar))
                 return new() { Median = (long)bazaar };
             var tagGroup = GetAuctionGroupTag(auction.Tag);
-            if((tagGroup.tag.StartsWith("HOT_") || tagGroup.tag.StartsWith("BURNING_") || tagGroup.tag.StartsWith("FIERY_")|| tagGroup.tag.StartsWith("INFERNAL_")) && CrimsonArmors.Any(tagGroup.tag.Contains) )
+            if ((tagGroup.tag.StartsWith("HOT_") || tagGroup.tag.StartsWith("BURNING_") || tagGroup.tag.StartsWith("FIERY_") || tagGroup.tag.StartsWith("INFERNAL_")) && CrimsonArmors.Any(tagGroup.tag.Contains))
             {
                 tagGroup.tag = tagGroup.tag.Replace($"{tagGroup.tag.Split('_')[0]}_", "");
             }
@@ -674,7 +674,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 return value;
             });
-
+            var idLookup = current.Lookup.SelectMany(l => l.Value.References.Select(r => r.AuctionId)).GroupBy(a => a).Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet();
             foreach (var item in current.Lookup.Keys.ToList())
             {
                 try
@@ -685,7 +685,11 @@ ORDER BY l.`AuctionId`  DESC;
                     // remove all with too many enchants
                     if (item.Enchants.Count > 5)
                         current.Lookup.TryRemove(item, out _);
-                    Deduplicate(itemTag, current, item);
+                    //Deduplicate(itemTag, current, item); probably not needed anymore
+                    if (item.Modifiers.Count <= 1 && current.Lookup.TryGetValue(item, out var tocheck) && tocheck.References.Any(r => idLookup.Contains(r.AuctionId)))
+                    {
+                        tocheck.References = new(tocheck.References.Where(r => !idLookup.Contains(r.AuctionId)));
+                    }
                 }
                 catch (System.Exception e)
                 {
