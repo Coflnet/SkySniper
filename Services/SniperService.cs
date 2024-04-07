@@ -2359,8 +2359,8 @@ ORDER BY l.`AuctionId`  DESC;
             void MakePriceAtLeast90PercentHigherthanLowerLevel(dev.ProductInfo item, ReferenceAuctions refernces)
             {
                 var currentLevel = int.Parse(item.ProductId.Split("_").Last());
-                if (currentLevel <= 2 || item.ProductId.Contains("STRONG_MANA"))
-                {
+                if (currentLevel <= 1 || item.ProductId.Contains("STRONG_MANA") && currentLevel <= 5) 
+                { // strong mana can drop up to lvl 5 and is worth almost the same at all levels
                     return;
                 }
                 var lowerLevelId = item.ProductId.Replace($"_{currentLevel}", $"_{currentLevel - 1}");
