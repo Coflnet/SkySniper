@@ -168,7 +168,7 @@ namespace Coflnet.Sky.Sniper.Services
             new(new (){"AURORA_BOOTS", "AURORA_LEGGINGS", "AURORA_CHESTPLATE", "AURORA_HELMET", // not high but still noticable
                     "CRIMSON_BOOTS", "CRIMSON_LEGGINGS", "CRIMSON_CHESTPLATE", "CRIMSON_HELMET"}, new (){new("veteran", "mana_regeneration")}),
             new(new (){"CRIMSON_BOOTS", "CRIMSON_LEGGINGS", "CRIMSON_CHESTPLATE", "CRIMSON_HELMET", "MOLTEN_BRACELET"},
-                    new (){new("magic_find", "vitality")}),
+                    new (){new("magic_find", "mending")}), // vitality = mending
             new(new(){"MOLTEN_BRACELET"}, new (){new("lifeline", "mana_pool")}),
         ];
         public readonly Dictionary<string, List<KeyValuePair<string, string>>> ItemSpecificAttributeComboLookup = new();
