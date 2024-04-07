@@ -688,7 +688,7 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 Lookup = dict
             });
-            Assert.AreEqual(1, service.Lookups["test"].Lookup.Count);
+            Assert.AreEqual(0, service.Lookups["test"].Lookup[keyWithEnch].References.Count);
         }
 
         [Test]
@@ -1647,6 +1647,7 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.Tag = "XY";
             var price = service.GetPrice(highestValAuction);
             Assert.That(price.Median, Is.EqualTo(300));
+            Assert.That(service.Lookups["XY"].Lookup.First().Value.Price, Is.EqualTo(300));
 
             void AddUpdate(int buyValue, DateTime timeStamp)
             {

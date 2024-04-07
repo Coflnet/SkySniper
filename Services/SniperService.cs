@@ -724,21 +724,6 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 CapBucketSize(existingBucket);
             }
-
-            void Deduplicate(string itemTag, PriceLookup value, AuctionKey item)
-            {
-                if (item.Enchants?.Count == 0)
-                    return;
-                var keyWithoutEnchants = new AuctionKey(item) { Enchants = new(new Models.Enchant[0]) };
-                var without = value.Lookup.GetValueOrDefault(keyWithoutEnchants);
-                var with = value.Lookup.GetValueOrDefault(item);
-                if (without == null || with == null)
-                    return;
-                if (!without.References.Any(r => with.References.Any(w => w.AuctionId == r.AuctionId && r.AuctionId != 0)))
-                    return;
-                // remove without enchants
-                value.Lookup.TryRemove(keyWithoutEnchants, out _);
-            }
         }
 
         private static void CapBucketSize(ReferenceAuctions bucket)
@@ -2374,13 +2359,14 @@ ORDER BY l.`AuctionId`  DESC;
             void MakePriceAtLeast90PercentHigherthanLowerLevel(dev.ProductInfo item, ReferenceAuctions refernces)
             {
                 var currentLevel = int.Parse(item.ProductId.Split("_").Last());
-                if (currentLevel > 1)
+                if (currentLevel <= 2 || item.ProductId.Contains("STRONG_MANA"))
                 {
-                    var lowerLevelId = item.ProductId.Replace($"_{currentLevel}", $"_{currentLevel - 1}");
-                    if (BazaarPrices.TryGetValue(lowerLevelId, out var lowerValue))
-                    {
-                        refernces.Price = (long)Math.Max(refernces.Price, lowerValue * 1.9);
-                    }
+                    return;
+                }
+                var lowerLevelId = item.ProductId.Replace($"_{currentLevel}", $"_{currentLevel - 1}");
+                if (BazaarPrices.TryGetValue(lowerLevelId, out var lowerValue))
+                {
+                    refernces.Price = (long)Math.Max(refernces.Price, lowerValue * 1.9);
                 }
             }
         }
