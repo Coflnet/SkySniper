@@ -2117,6 +2117,21 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void LowerValueHigherPriceLbinIsUpdated()
+        {
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.HighestBidAmount = 1_000_000;
+            service.TestNewAuction(highestValAuction);
+            var lower = Dupplicate(highestValAuction);
+            lower.HighestBidAmount = 3_000_000;
+            TestNewAuction(lower);
+            service.AddSoldItem(highestValAuction);
+            var estimate = service.GetPrice(highestValAuction);
+            estimate.Lbin.Price.Should().Be(3000000);
+            estimate.LbinKey.Should().NotEndWith("HV");
+        }
+
+        [Test]
         public void MarkifAll5Gems()
         {
             highestValAuction.FlatenedNBT = new Dictionary<string, string>()

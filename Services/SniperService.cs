@@ -409,6 +409,8 @@ ORDER BY l.`AuctionId`  DESC;
                 var higherValue = l.Where(k => k.Value.Lbin.Price != 0
                                     && IsHigherValue(itemKey, k.Key) && k.Key.Reforge == itemKey.Reforge);
                 var MaxValue = higherValue.OrderBy(b => b.Value.Lbin.Price).FirstOrDefault();
+                if(MaxValue.Key == a.Item2)
+                    return (default, DateTime.UtcNow); // best match is itself, skip
                 return (MaxValue.Value?.Lbin ?? default, DateTime.UtcNow);
             });
             if (lbinCap.result.Price != 0 && result.Lbin.Price > lbinCap.result.Price)
