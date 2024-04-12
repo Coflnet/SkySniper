@@ -170,6 +170,7 @@ namespace Coflnet.Sky.Sniper.Services
             new(new (){"CRIMSON_BOOTS", "CRIMSON_LEGGINGS", "CRIMSON_CHESTPLATE", "CRIMSON_HELMET", "MOLTEN_BRACELET"},
                     new (){new("magic_find", "mending")}), // vitality = mending
             new(new(){"MOLTEN_BRACELET"}, new (){new("lifeline", "mana_pool")}),
+            new(new(){"GAUNTLET_OF_CONTAGION"}, new (){new("veteran", "mana_regeneration")}),
         ];
         public readonly Dictionary<string, List<KeyValuePair<string, string>>> ItemSpecificAttributeComboLookup = new();
         public readonly ConcurrentDictionary<string, HashSet<string>> AttributeComboLookup = new();
