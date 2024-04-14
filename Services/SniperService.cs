@@ -47,7 +47,7 @@ namespace Coflnet.Sky.Sniper.Services
             FoundSnipe?.Invoke(auction);
         }
 
-        private readonly string[] CrimsonArmors = new string[] { "CRIMSON_", "TERROR_", "AURORA_", "FERVOR_" };
+        internal readonly string[] CrimsonArmors = new string[] { "CRIMSON_", "TERROR_", "AURORA_", "FERVOR_" };
         private readonly HashSet<string> IncludeKeys = new HashSet<string>()
         {
             "baseStatBoostPercentage", // has an effect on drops from dungeons, is filtered to only max level

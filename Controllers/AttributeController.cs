@@ -3,6 +3,7 @@ using Coflnet.Sky.Sniper.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
+using Coflnet.Sky.Sniper.Models;
 
 namespace Coflnet.Sky.Sniper.Controllers;
 
@@ -23,24 +24,31 @@ public class AttributeController : ControllerBase
     [HttpGet]
     public List<AttributeComboResult> GetAttributes(string leftAttrib, string rightAttrib)
     {
-        return service.Lookups.Where(l => l.Key.StartsWith("CRIMSON"))
+        return GetKuudraArmors()
             .Select(l => (l.Key, l.Value.Lookup.Where(r => r.Value.Lbin.Price > 0 && r.Key.Modifiers.Any(m => m.Key == leftAttrib) && r.Key.Modifiers.Any(m => m.Key == rightAttrib))
-                .OrderByDescending(r => r.Value.Lbin.Price).FirstOrDefault()))
+                .OrderBy(r => r.Value.Lbin.Price).FirstOrDefault()))
             .Select(l => new AttributeComboResult()
             {
-                AuctionUid = l.Item2.Value.Lbin.AuctionId,
+                AuctionUid = l.Item2.Value.Lbin.AuctionId.ToString(),
                 Tag = l.Item1,
                 Price = l.Item2.Value.Lbin.Price
             }).ToList();
     }
 
-
-
-    [Route("cheapest/{attribute}")]
-    [HttpGet]
-    public List<(string level, List<string>)> GetCheapest(string attribute, int startLevel = 1, int endLevel = 10)
+    private IEnumerable<KeyValuePair<string, PriceLookup>> GetKuudraArmors()
     {
-        var allOptions = service.Lookups.Where(l => l.Key.StartsWith("CRIMSON"))
+        return service.Lookups.Where(l => service.CrimsonArmors.Any(k => l.Key.StartsWith(k)));
+    }
+
+    [Route("cheapest/{itemType}/{attribute}")]
+    [HttpGet]
+    public List<(string level, List<string>)> GetCheapest(string itemType, string attribute, int startLevel = 1, int endLevel = 10)
+    {
+        if(itemType.ToLower() != "kuudra")
+        {
+            throw new System.Exception("Only kuudra is supported");
+        }
+        var allOptions = GetKuudraArmors()
             .SelectMany(l => l.Value.Lookup.Where(r => r.Value.Lbin.Price > 0 && r.Key.Modifiers.Any(m => m.Key == attribute))
                 .SelectMany(r => r.Value.Lbins.Select(l => (int.Parse(r.Key.Modifiers.Where(m => m.Key == attribute).First().Value), l.AuctionId.ToString(), l.Price)).ToList()))
             .ToList();
@@ -72,7 +80,7 @@ public class AttributeController : ControllerBase
 
     public class AttributeComboResult
     {
-        public long AuctionUid { get; set; }
+        public string AuctionUid { get; set; }
         public string Tag { get; set; }
         public long Price { get; set; }
     }
