@@ -38,14 +38,14 @@ public class AttributeController : ControllerBase
 
     [Route("cheapest/{attribute}")]
     [HttpGet]
-    public List<(string level, List<long>)> GetCheapest(string attribute, int startLevel = 0, int endLevel = 10)
+    public List<(string level, List<string>)> GetCheapest(string attribute, int startLevel = 1, int endLevel = 10)
     {
         var allOptions = service.Lookups.Where(l => l.Key.StartsWith("CRIMSON"))
             .SelectMany(l => l.Value.Lookup.Where(r => r.Value.Lbin.Price > 0 && r.Key.Modifiers.Any(m => m.Key == attribute))
-                .SelectMany(r => r.Value.Lbins.Select(l => (int.Parse(r.Key.Modifiers.Where(m => m.Key == attribute).First().Value), l.AuctionId, l.Price)).ToList()))
+                .SelectMany(r => r.Value.Lbins.Select(l => (int.Parse(r.Key.Modifiers.Where(m => m.Key == attribute).First().Value), l.AuctionId.ToString(), l.Price)).ToList()))
             .ToList();
-        var result = new List<(string level, List<long>)>();
-        
+        var result = new List<(string level, List<string>)>();
+
         for (int i = startLevel; i < endLevel; i++)
         {
             // find the cheapest for each level
@@ -53,7 +53,7 @@ public class AttributeController : ControllerBase
             if (cheapest == default)
             {
                 // try find two of lower level
-                var lower = allOptions.Where(o => o.Item1 < i).OrderBy(o => o.Item3).Take(2).ToList();
+                var lower = allOptions.Where(o => o.Item1 == i - 1).OrderBy(o => o.Item3).Take(2).ToList();
                 if (lower.Count < 2)
                 {
                     // no more options
@@ -64,8 +64,8 @@ public class AttributeController : ControllerBase
                 continue;
             }
             // remove all other options for this auction
-            allOptions.RemoveAll(o => o.Item2 == cheapest.AuctionId);
-            result.Add((i.ToString(), new List<long> { cheapest.AuctionId }));
+            allOptions.RemoveAll(o => o.Item2 == cheapest.Item2);
+            result.Add((i.ToString(), new List<string> { cheapest.Item2 }));
         }
         return result;
     }
