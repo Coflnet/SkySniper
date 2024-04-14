@@ -34,6 +34,42 @@ public class AttributeController : ControllerBase
             }).ToList();
     }
 
+
+
+    [Route("cheapest/{attribute}")]
+    [HttpGet]
+    public List<(string level, List<long>)> GetCheapest(string attribute, int startLevel = 0, int endLevel = 10)
+    {
+        var allOptions = service.Lookups.Where(l => l.Key.StartsWith("CRIMSON"))
+            .SelectMany(l => l.Value.Lookup.Where(r => r.Value.Lbin.Price > 0 && r.Key.Modifiers.Any(m => m.Key == attribute))
+                .SelectMany(r => r.Value.Lbins.Select(l => (int.Parse(r.Key.Modifiers.Where(m => m.Key == attribute).First().Value), l.AuctionId, l.Price)).ToList()))
+            .ToList();
+        var result = new List<(string level, List<long>)>();
+        
+        for (int i = startLevel; i < endLevel; i++)
+        {
+            // find the cheapest for each level
+            var cheapest = allOptions.Where(o => o.Item1 == i).OrderBy(o => o.Item3).FirstOrDefault();
+            if (cheapest == default)
+            {
+                // try find two of lower level
+                var lower = allOptions.Where(o => o.Item1 < i).OrderBy(o => o.Item3).Take(2).ToList();
+                if (lower.Count < 2)
+                {
+                    // no more options
+                    break;
+                }
+                // add the two lower levels
+                result.Add((i.ToString(), lower.Select(l => l.Item2).ToList()));
+                continue;
+            }
+            // remove all other options for this auction
+            allOptions.RemoveAll(o => o.Item2 == cheapest.AuctionId);
+            result.Add((i.ToString(), new List<long> { cheapest.AuctionId }));
+        }
+        return result;
+    }
+
     public class AttributeComboResult
     {
         public long AuctionUid { get; set; }
