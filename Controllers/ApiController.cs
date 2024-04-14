@@ -10,8 +10,6 @@ using Microsoft.Extensions.Logging;
 using Coflnet.Sky.Core;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
-using Microsoft.AspNetCore.OutputCaching;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Coflnet.Sky.Sniper.Controllers
 {

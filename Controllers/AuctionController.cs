@@ -31,4 +31,3 @@ public class AuctionController : ControllerBase
         return service.KeyFromSaveAuction(auction);
     }
 }
-
