@@ -917,7 +917,7 @@ ORDER BY l.`AuctionId`  DESC;
             List<RankElem> breakdown = key.ValueBreakdown;
             var limitedPrice = 0L;
             // determine craft cost 
-            if (Lookups.TryGetValue(tag.Replace("STARRED_", ""), out var lookup) && !breakdown.Any(v => v.Value == 0) && breakdown.Count > 0)
+            if (Lookups.TryGetValue(tag, out var lookup) && !breakdown.Any(v => v.Value == 0) && breakdown.Count > 0)
             {
                 var select = (tag.StartsWith("PET_") ?
                     lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value.Price) :
@@ -936,6 +936,8 @@ ORDER BY l.`AuctionId`  DESC;
                 if (modifierSum > 0)
                     limitedPrice = Math.Min(minValue + modifierSum * 11 / 10, medianPrice);
             }
+            else
+                Console.WriteLine($"Could not cap, No lookup for {tag}");
             if (limitedPrice > 0)
                 return limitedPrice;
             return medianPrice;

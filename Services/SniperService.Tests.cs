@@ -2067,6 +2067,26 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void CapFraggedItemValue()
+        { // make sure starred(fragged) items are also capped at craft cost, has issues because starred is removed
+            highestValAuction.Tag = "STARRED_SHADOW_FURY";
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.HighestBidAmount = 4_000_000;
+            var enchantCost = 1_600_000;
+            SetBazaarPrice("LIVID_FRAGMENT", 20_000);
+            SetBazaarPrice("ENCHANTMENT_SHARPNESS_6", enchantCost);
+            AddVolume(highestValAuction);
+            var withEnchant = Dupplicate(highestValAuction);
+            withEnchant.HighestBidAmount = 50_000_000;
+            withEnchant.Enchantments = new List<Enchantment>(){
+                new Enchantment(Enchantment.EnchantmentType.sharpness,6)
+            };
+            AddVolume(withEnchant);
+            var price = service.GetPrice(withEnchant);
+            Assert.AreEqual(4_000_000 + enchantCost * 1.1, price.Median);
+        }
+
+        [Test]
         public void AttributeHigherThanRef()
         {
             highestValAuction.FlatenedNBT = new() { { "mana_pool", "8" } };
