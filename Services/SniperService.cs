@@ -52,7 +52,7 @@ namespace Coflnet.Sky.Sniper.Services
         {
             "baseStatBoostPercentage", // has an effect on drops from dungeons, is filtered to only max level
             "dye_item",
-            "backpack_color",
+            // "backpack_color", no difference anymore
             "party_hat_color",
             "party_hat_emoji",
             "color", // armour
@@ -410,7 +410,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var higherValue = l.Where(k => k.Value.Lbin.Price != 0
                                     && IsHigherValue(itemKey, k.Key) && k.Key.Reforge == itemKey.Reforge);
                 var MaxValue = higherValue.OrderBy(b => b.Value.Lbin.Price).FirstOrDefault();
-                if(MaxValue.Key == a.Item2)
+                if (MaxValue.Key == a.Item2)
                     return (default, DateTime.UtcNow); // best match is itself, skip
                 return (MaxValue.Value?.Lbin ?? default, DateTime.UtcNow);
             });
@@ -917,7 +917,7 @@ ORDER BY l.`AuctionId`  DESC;
             List<RankElem> breakdown = key.ValueBreakdown;
             var limitedPrice = 0L;
             // determine craft cost 
-            if (Lookups.TryGetValue(tag.Replace("STARRED_",""), out var lookup) && !breakdown.Any(v => v.Value == 0) && breakdown.Count > 0)
+            if (Lookups.TryGetValue(tag.Replace("STARRED_", ""), out var lookup) && !breakdown.Any(v => v.Value == 0) && breakdown.Count > 0)
             {
                 var select = (tag.StartsWith("PET_") ?
                     lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value.Price) :
@@ -1445,6 +1445,12 @@ ORDER BY l.`AuctionId`  DESC;
                     sum += tag == "PET_GOLDEN_DRAGON" ? 80_000_000 : 10_000_000;
                 if (mod.Key == "is_shiny")
                     sum += 88_000_000;
+                if (mod.Key == "party_hat_color")
+                    sum += 20_000_000;
+                if (mod.Key == "winning_bid")
+                    sum += (int)(float.Parse(mod.Value) * 8_000_000);
+                if (mod.Key == "baseStatBoostPercentage")
+                    sum += (int)((float.Parse(mod.Value) - 45) * 500_000);
                 return new RankElem(mod, sum)
                 {
                     IsEstimate = true
@@ -2362,7 +2368,7 @@ ORDER BY l.`AuctionId`  DESC;
             void MakePriceAtLeast90PercentHigherthanLowerLevel(dev.ProductInfo item, ReferenceAuctions refernces)
             {
                 var currentLevel = int.Parse(item.ProductId.Split("_").Last());
-                if (currentLevel <= 1 || item.ProductId.Contains("_MANA_") && currentLevel <= 5) 
+                if (currentLevel <= 1 || item.ProductId.Contains("_MANA_") && currentLevel <= 5)
                 { // mana enchants can drop up to lvl 5 and is worth almost the same at all levels
                     return;
                 }
