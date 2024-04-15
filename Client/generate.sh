@@ -1,4 +1,4 @@
-VERSION=0.5.0
+VERSION=0.6.0
 
 docker run --rm -v "${PWD}:/local" --network host -u $(id -u ${USER}):$(id -g ${USER})  openapitools/openapi-generator-cli generate \
 -i http://localhost:5022/swagger/v1/swagger.json \
@@ -6,9 +6,12 @@ docker run --rm -v "${PWD}:/local" --network host -u $(id -u ${USER}):$(id -g ${
 -o /local/out --additional-properties=packageName=Coflnet.Sky.Sniper.Client,packageVersion=$VERSION,licenseId=MIT
 
 cd out
-sed -i 's/GIT_USER_ID/Coflnet/g' src/Coflnet.Sky.Sniper.Client/Coflnet.Sky.Sniper.Client.csproj
-sed -i 's/GIT_REPO_ID/SkyApi/g' src/Coflnet.Sky.Sniper.Client/Coflnet.Sky.Sniper.Client.csproj
-sed -i 's/>OpenAPI/>Coflnet/g' src/Coflnet.Sky.Sniper.Client/Coflnet.Sky.Sniper.Client.csproj
+path=src/Coflnet.Sky.Sniper.Client/Coflnet.Sky.Sniper.Client.csproj
+sed -i 's/GIT_USER_ID/Coflnet/g' $path
+sed -i 's/GIT_REPO_ID/SkyApi/g' $path
+sed -i 's/>OpenAPI/>Coflnet/g' $path
+sed -i 's@annotations</Nullable>@annotations</Nullable>\n    <PackageReadmeFile>README.md</PackageReadmeFile>@g' $path
+sed -i 's@Remove="System.Web" />@Remove="System.Web" />\n    <None Include="../../../../README.md" Pack="true" PackagePath="\"/>@g' $path
 
 dotnet pack
-cp src/Coflnet.Sky.Sniper.Client/bin/Debug/Coflnet.Sky.Sniper.Client.*.nupkg ..
+cp src/Coflnet.Sky.Sniper.Client/bin/Release/Coflnet.Sky.Sniper.Client.*.nupkg ..
