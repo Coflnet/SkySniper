@@ -29,9 +29,9 @@ public class AttributeController : ControllerBase
                 .OrderBy(r => r.Value.Lbin.Price).FirstOrDefault()))
             .Select(l => new AttributeComboResult()
             {
-                AuctionUid = l.Item2.Value.Lbin.AuctionId.ToString(),
+                AuctionUid = l.Item2.Value?.Lbin.AuctionId.ToString(),
                 Tag = l.Item1,
-                Price = l.Item2.Value.Lbin.Price
+                Price = l.Item2.Value?.Lbin.Price ?? -1
             }).ToList();
     }
 
