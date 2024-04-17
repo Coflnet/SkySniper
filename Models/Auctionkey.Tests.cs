@@ -188,8 +188,8 @@ public class AuctionkeyTests
             Tag = "PET_GOLDEN_DRAGON"
         };
         var key = service.KeyFromSaveAuction(dragon);
-        Assert.That(key.Modifiers.First(m=>m.Key == "candyUsed").Value, Is.EqualTo("0"));
-        Assert.That(key.Modifiers.First(m=>m.Key == "exp").Value, Is.EqualTo("0.6"));
+        Assert.That(key.Modifiers.First(m => m.Key == "candyUsed").Value, Is.EqualTo("0"));
+        Assert.That(key.Modifiers.First(m => m.Key == "exp").Value, Is.EqualTo("0.6"));
     }
 
     /// <summary>
@@ -557,6 +557,40 @@ public class AuctionkeyTests
         Assert.AreEqual(key, originalKey);
         Assert.AreEqual(key.GetHashCode(), deserilaizedKey.GetHashCode());
         Assert.AreEqual(key.GetHashCode(), originalKey.GetHashCode());
+    }
+
+    [Test]
+    public void IncludesFarmingForDummies()
+    {
+        var auction = new SaveAuction()
+        {
+            FlatenedNBT = new() { { "farming_for_dummies_count", "1" } },
+            Tag = "FARMING_FOR_DUMMIES"
+        };
+        SetBazaarPrice("FARMING_FOR_DUMMIES", 1_000_000);
+        var key = service.ValueKeyForTest(auction);
+        Assert.That(key.ValueBreakdown.First().Value, Is.EqualTo(1_000_000));
+    }
+
+    private void SetBazaarPrice(string tag, int value, int buyValue = 0)
+    {
+        var sellOrder = new List<dev.SellOrder>();
+        if (value > 0)
+            sellOrder.Add(new dev.SellOrder() { PricePerUnit = value });
+        service.UpdateBazaar(new()
+        {
+            Products = new(){
+                new (){
+                    ProductId =  tag,
+                    SellSummary = sellOrder,
+                    BuySummery = new(){
+                        new (){
+                            PricePerUnit = buyValue
+                        }
+                    }
+                }
+            }
+        });
     }
     //[Test]
     public void HyperionMostSimilar()

@@ -576,7 +576,7 @@ ORDER BY l.`AuctionId`  DESC;
 
             if (m.Value == "PERFECT" || m.Value == "FLAWLESS")
                 return new (string, int)[] { (mapper.GetItemKeyForGem(m, flatNbt ?? new()), 1) };
-            if (mapper.TryGetIngredients(m.Key, m.Value, modifiers?.Where(mi => mi.Key == m.Key).Select(mi => mi.Value).FirstOrDefault(), out var ingredients))
+            if (mapper.TryGetIngredients(m.Key, m.Value, null, out var ingredients))
             {
                 return ingredients.Select(i => (i, 1));
             }
@@ -1120,6 +1120,10 @@ ORDER BY l.`AuctionId`  DESC;
         public AuctionKeyWithValue KeyFromSaveAuction(SaveAuction auction, int dropLevel = 0)
         {
             return DetailedKeyFromSaveAuction(auction, 0).GetReduced(dropLevel);
+        }
+        public KeyWithValueBreakdown ValueKeyForTest(SaveAuction auction, int dropLevel = 0)
+        {
+            return DetailedKeyFromSaveAuction(auction, dropLevel);
         }
         private KeyWithValueBreakdown DetailedKeyFromSaveAuction(SaveAuction auction, int dropLevel)
         {
