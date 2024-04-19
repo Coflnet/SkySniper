@@ -197,6 +197,17 @@ namespace Coflnet.Sky.Sniper.Controllers
                                 .ToList();
         }
 
+        [Route("similar/{tag}/lbin")]
+        [HttpPost]
+        public IEnumerable<object> SimilarKeysLbin(string tag, [FromBody] AuctionKey key)
+        {
+            return service.ClosestLbinKeys(tag, key).Select(v => new
+            {
+                Key = v.Item1.ToString(),
+                v.lbin
+            });
+        }
+
         [Route("migrate")]
         [HttpPost]
         public async Task Migrate()

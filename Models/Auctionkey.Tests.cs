@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -570,6 +571,19 @@ public class AuctionkeyTests
         SetBazaarPrice("FARMING_FOR_DUMMIES", 1_000_000);
         var key = service.ValueKeyForTest(auction);
         Assert.That(key.ValueBreakdown.First().Value, Is.EqualTo(1_000_000));
+    }
+    [Test]
+    public void ValueAssignedtoRecombobulator()
+    {
+        var price = Random.Shared.Next(1_000_000, 10_000_000);
+        var auction = new SaveAuction()
+        {
+            FlatenedNBT = new() { { "rarity_upgrades", "1" } },
+            Tag = "KEVIN"
+        };
+        SetBazaarPrice("RECOMBOBULATOR_3000", price);
+        var key = service.ValueKeyForTest(auction);
+        Assert.That(key.ValueBreakdown.First().Value, Is.EqualTo(price));
     }
 
     private void SetBazaarPrice(string tag, int value, int buyValue = 0)

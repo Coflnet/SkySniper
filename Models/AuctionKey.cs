@@ -6,7 +6,6 @@ using System.Linq;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Services;
 using MessagePack;
-using Prometheus;
 
 namespace Coflnet.Sky.Sniper.Models
 {

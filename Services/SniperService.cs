@@ -478,8 +478,7 @@ ORDER BY l.`AuctionId`  DESC;
         private (PriceEstimate result, DateTime addedAt) ClosestLbin(SaveAuction auction, PriceEstimate result, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKeyWithValue itemKey, DateTime now)
         {
             closestLbinBruteCounter.Inc();
-            var closest = l.Where(l => l.Key != null && l.Value?.Price > 0 && l.Value?.Lbin.Price > 0)
-                .OrderByDescending(m => itemKey.Similarity(m.Key) + Math.Min(m.Value.Volume, 2)).FirstOrDefault();
+            var closest = GetClosestLbins(l, itemKey).FirstOrDefault();
             if (closest.Key != default)
             {
                 result.Lbin = closest.Value.Lbin;
@@ -502,6 +501,26 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
             return (result, now);
+        }
+
+        public IEnumerable<(AuctionKey, ReferencePrice lbin)> ClosestLbinKeys(string tag, AuctionKey baseKey)
+        {
+            var tagGroup = GetAuctionGroupTag(tag);
+
+            var result = new PriceEstimate();
+            if (!Lookups.TryGetValue(tagGroup.Item1, out PriceLookup lookup))
+            {
+                return null;
+            }
+            var l = lookup.Lookup;
+            var itemKey = GetBreakdownKey(baseKey, tag);
+            return GetClosestLbins(l, itemKey).Select(c => (c.Key, c.Value.Lbin));
+        }
+
+        private static IOrderedEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> GetClosestLbins(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKeyWithValue itemKey)
+        {
+            return l.Where(l => l.Key != null && l.Value?.Price > 0 && l.Value?.Lbin.Price > 0)
+                            .OrderByDescending(m => itemKey.Similarity(m.Key) + Math.Min(m.Value.Volume, 2));
         }
 
         private void GetDifferenceSum(SaveAuction auction, PriceEstimate result, AuctionKeyWithValue itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> c, out string diffExp, out long changeAmount)
