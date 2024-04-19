@@ -47,10 +47,18 @@ public class MayorService : BackgroundService, IMayorService
 
     private async Task LoadMayorForYear(int year)
     {
-        var mayor = await electionPeriodsApi.ElectionPeriodYearGetAsync(year);
-        if (mayor?.Winner != null)
-            YearToMayorName[mayor.Year] = mayor.Winner.Name;
-        logger.LogInformation("Loaded mayor for year " + year + " " + mayor?.Winner?.Name);
+        try
+        {
+
+            var mayor = await electionPeriodsApi.ElectionPeriodYearGetAsync(year);
+            if (mayor?.Winner != null)
+                YearToMayorName[mayor.Year] = mayor.Winner.Name;
+            logger.LogInformation("Loaded mayor for year " + year + " " + mayor?.Winner?.Name);
+        }
+        catch (System.Exception e)
+        {
+            logger.LogError(e, "Failed to load mayor for year " + year);
+        }
     }
 
     private async Task InitMayors()
