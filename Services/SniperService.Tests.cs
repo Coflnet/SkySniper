@@ -1700,7 +1700,7 @@ namespace Coflnet.Sky.Sniper.Services
                 new (){
                     ProductId =  "ENCHANTMENT_ULTIMATE_BOBBIN_TIME_3",
                     QuickStatus = new(){
-                        BuyOrders = 10
+                        BuyOrders = 20
                     },
                     BuySummery = new (){
                         new (){
@@ -1731,6 +1731,59 @@ namespace Coflnet.Sky.Sniper.Services
             }
             });
             Assert.AreEqual(12_750_000, service.Lookups["ENCHANTMENT_ULTIMATE_BOBBIN_TIME_3"].Lookup.First().Value.Price);
+        }
+        [Test]
+        public void BazaarSampledEvery10min()
+        {
+            var time = DateTime.UtcNow;
+            AddUpdate(TimeSpan.FromMinutes(0), 5_000_000);
+            AddUpdate(TimeSpan.FromMinutes(1), 7_000_000);
+            AddUpdate(TimeSpan.FromMinutes(2), 16_000_000);
+            AddUpdate(TimeSpan.FromMinutes(3), 6_000_000);
+            AddUpdate(TimeSpan.FromMinutes(4), 6_000_000);
+            CurrentValue().Should().Be(3_000_000);
+            AddUpdate(TimeSpan.FromMinutes(15), 6_000_000);
+            AddUpdate(TimeSpan.FromMinutes(26), 6_000_000);
+            AddUpdate(TimeSpan.FromMinutes(26), 50_000_000);
+            AddUpdate(TimeSpan.FromMinutes(27), 50_000_000);
+            AddUpdate(TimeSpan.FromMinutes(28), 50_000_000);
+            AddUpdate(TimeSpan.FromMinutes(29), 50_000_000);
+            CurrentValue().Should().Be(3_000_000, "should ignore expensive values in short frames");
+            AddUpdate(TimeSpan.FromMinutes(36.2), 6_000_000);
+            CurrentValue().Should().Be(3_500_000);
+
+            void AddUpdate(TimeSpan toAdd, int sellPrice)
+            {
+                service.UpdateBazaar(new()
+                {
+                    Timestamp = time + toAdd,
+                    Products = new(){
+                new (){
+                    ProductId =  "SAMPLE",
+                    QuickStatus = new(){
+                        BuyOrders = 20
+                    },
+                    BuySummery = new (){
+                        new (){
+                            PricePerUnit = sellPrice,
+                            Amount = 3
+                        }
+                    },
+                    SellSummary = new(){
+                        new (){
+                            PricePerUnit = 1_000_000,
+                            Amount = 4
+                        }
+                    }
+                }
+            }
+                });
+            }
+
+            long CurrentValue()
+            {
+                return service.Lookups["SAMPLE"].Lookup.First().Value.Price;
+            }
         }
 
         [Test]
@@ -2368,7 +2421,8 @@ namespace Coflnet.Sky.Sniper.Services
                     BuyPrice = 1000,
                     SellPrice = 1000,
                     SellVolume = 1000,
-                    BuyVolume = 1000
+                    BuyVolume = 1000,
+                    BuyOrders = 19
                 },
                 SellSummary = new()
                 {
@@ -2377,8 +2431,21 @@ namespace Coflnet.Sky.Sniper.Services
                         PricePerUnit = 2_000_000,
                         Amount = 1000
                     }
+                },
+                BuySummery = new()
+                {
+                    Order(200),Order(200),Order(200),Order(200),Order(200)
                 }
             };
+
+            static BuyOrder Order(int millions)
+            {
+                return new()
+                {
+                    PricePerUnit = millions * 1_000_000,
+                    Amount = 1000
+                };
+            }
         }
 
         //[Test]

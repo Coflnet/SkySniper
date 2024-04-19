@@ -2313,8 +2313,10 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 var bucket = lookup.Lookup.GetOrAdd(defaultKey, _ => new());
                 var itemPrice = 0D;
-                if (item.SellSummary.Any() && item.BuySummery?.Count > 0 && item.QuickStatus?.BuyOrders >= 10)
+                if (item.SellSummary.Any() && item.BuySummery?.Count > 0 && item.QuickStatus?.BuyOrders >= 20)
                 {
+                    // some items have undervalued buy orders so use the center of the spread as estimate
+                    // only for items with at least 20 buy orders to avoid manipulation
                     var sellPrice = item.SellSummary.First().PricePerUnit;
                     var buyPrice = item.BuySummery.OrderBy(s => s.PricePerUnit).First().PricePerUnit;
                     itemPrice = (long)(sellPrice + buyPrice) / 2;
@@ -2327,16 +2329,16 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     itemPrice = (long)item.BuySummery.OrderBy(s => s.PricePerUnit).First().PricePerUnit;
                 }
-
-                if (bucket.References.Count < 5 || new DateTime(bucket.References.Last().AuctionId) < bazaar.Timestamp.AddMinutes(10))
-                    bucket.References.Enqueue(new()
-                    {
-                        Day = today,
-                        Price = (long)itemPrice,
-                        AuctionId = bazaar.Timestamp.Ticks,
-                        Seller = (short)DateTime.Now.Ticks,
-                        Buyer = (short)(DateTime.Now.Ticks + 1)
-                    });
+                if (bucket.References.Count >= 5 && NotEnoughTimePassed(bazaar, bucket))
+                    continue; // only sample prices every 10 minutes
+                bucket.References.Enqueue(new()
+                {
+                    Day = today,
+                    Price = (long)itemPrice,
+                    AuctionId = bazaar.Timestamp.Ticks,
+                    Seller = (short)DateTime.Now.Ticks,
+                    Buyer = (short)(DateTime.Now.Ticks + 1)
+                });
                 if (bucket.Price == 0)
                     bucket.Price = (long)itemPrice;
                 UpdateMedian(bucket);
@@ -2383,6 +2385,12 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     refernces.Price = (long)Math.Max(refernces.Price, lowerValue * 1.9);
                 }
+            }
+
+            static bool NotEnoughTimePassed(dev.BazaarPull bazaar, ReferenceAuctions bucket)
+            {
+                var lastAdded = new DateTime(bucket.References.Last().AuctionId);
+                return lastAdded.AddMinutes(10) > bazaar.Timestamp;
             }
         }
 
