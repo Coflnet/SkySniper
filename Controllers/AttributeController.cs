@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using Coflnet.Sky.Sniper.Models;
+using Coflnet.Sky.Core;
 
 namespace Coflnet.Sky.Sniper.Controllers;
 
@@ -44,9 +45,9 @@ public class AttributeController : ControllerBase
     [HttpGet]
     public List<(string level, List<string>)> GetCheapest(string itemType, string attribute, int startLevel = 1, int endLevel = 10)
     {
-        if(itemType.ToLower() != "kuudra")
+        if (itemType.ToLower() != "kuudra")
         {
-            throw new System.Exception("Only kuudra is supported");
+            throw new CoflnetException("unsuported", "Only kuudra is supported");
         }
         var allOptions = GetKuudraArmors()
             .SelectMany(l => l.Value.Lookup.Where(r => r.Value.Lbin.Price > 0 && r.Key.Modifiers.Any(m => m.Key == attribute))
@@ -58,15 +59,22 @@ public class AttributeController : ControllerBase
         {
             // find the cheapest for each level
             var cheapest = allOptions.Where(o => o.Item1 == i).OrderBy(o => o.Item3).FirstOrDefault();
+            var lower = allOptions.Where(o => o.Item1 == i - 1).OrderBy(o => o.Item3).Take(2).ToList();
             if (cheapest == default)
             {
                 // try find two of lower level
-                var lower = allOptions.Where(o => o.Item1 == i - 1).OrderBy(o => o.Item3).Take(2).ToList();
                 if (lower.Count < 2)
                 {
                     // no more options
                     break;
                 }
+                // add the two lower levels
+                result.Add((i.ToString(), lower.Select(l => l.Item2).ToList()));
+                continue;
+            }
+            var lowerSum = lower.Sum(l => l.Item3);
+            if (lowerSum < cheapest.Item3)
+            {
                 // add the two lower levels
                 result.Add((i.ToString(), lower.Select(l => l.Item2).ToList()));
                 continue;
