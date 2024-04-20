@@ -926,7 +926,7 @@ ORDER BY l.`AuctionId`  DESC;
 
             bool IsMaxAttrib((string tag, KeyWithValueBreakdown key) keyCombo)
             {
-                var matchCount = keyCombo.key.Key.Modifiers.Where(m => Constants.AttributeKeys.Contains(m.Key) && m.Value == "10").Count();
+                var matchCount = keyCombo.key?.Key?.Modifiers?.Where(m => Constants.AttributeKeys.Contains(m.Key) && m.Value == "10").Count();
                 return matchCount == 2;
             }
         }
