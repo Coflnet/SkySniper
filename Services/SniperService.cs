@@ -1418,7 +1418,7 @@ ORDER BY l.`AuctionId`  DESC;
                     foreach (var cost in costs.Item1)
                     {
                         if (cost.Type.ToLower() == "item")
-                            sum += GetPriceForItem(cost.ItemId);
+                            sum += GetPriceForItem(cost.ItemId) * cost.Amount ?? 1;
                         else
                             sum += cost.Coins;
                     }

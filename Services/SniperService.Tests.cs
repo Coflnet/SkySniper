@@ -266,6 +266,23 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.AreEqual("AMBER_0,AMBER_1,JADE_0,JADE_1,TOPAZ_0", key.Modifiers.First().Value);
         }
         [Test]
+        public async Task UnlockNewPeridotGem()
+        {
+            await service.Init();
+            SetBazaarPrice("FINE_PERIDOT_GEM", 80_000);
+            var a = new SaveAuction()
+            {
+                Tag = "FERMENTO_CHESTPLATE",
+                FlatenedNBT = new(){
+                    {"unlocked_slots", "PERIDOT_0,PERIDOT_1"}
+                },
+                ItemCreatedAt = new DateTime(2024, 1, 1)
+            };
+            var key = service.KeyFromSaveAuction(a);
+            Assert.AreEqual(1, key.Modifiers.Count, JsonConvert.SerializeObject(key.Modifiers, Formatting.Indented));
+            Assert.AreEqual("PERIDOT_0,PERIDOT_1", key.Modifiers.First().Value);
+        }
+        [Test]
         public async Task DropUnlockedSlotsIfBelow500k()
         {
             await service.Init();
