@@ -511,17 +511,20 @@ namespace Coflnet.Sky.Sniper.Services
 
         private async Task LoadLookupsAndProcessSells(CancellationToken stoppingToken)
         {
-            try
-            {
-                await persitance.LoadLookups(sniper);
-                await partialCalcService.Load();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine("lookup load failed");
-                Console.WriteLine(e.Message);
-                Console.WriteLine(e.StackTrace);
-            }
+            while (true)
+                try
+                {
+                    await persitance.LoadLookups(sniper);
+                    await partialCalcService.Load();
+                    break;
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("lookup load failed");
+                    Console.WriteLine(e.Message);
+                    Console.WriteLine(e.StackTrace);
+                    await Task.Delay(2000, stoppingToken);
+                }
             Console.WriteLine("loaded lookup");
             if (sniper.Lookups.FirstOrDefault().Value?.Lookup?.Select(l => l.Value.References.Count()).FirstOrDefault() > 0)
                 sniper.State = SniperState.LadingLookup;
