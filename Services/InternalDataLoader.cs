@@ -258,7 +258,7 @@ namespace Coflnet.Sky.Sniper.Services
             }
 
             var batchSize = 10_000;
-            var totalSize = 15_000_000;
+            var totalSize = RetrainService.IsManager ? 30_000_000 : 15_000_000;
             var allStart = maxId - totalSize;
             var differential = 10;
             logger.LogInformation("loading sell history " + allStart + " " + maxId + " " + batchSize);
@@ -550,6 +550,8 @@ namespace Coflnet.Sky.Sniper.Services
             if (a.UId % 1000 != 0)
                 return Task.CompletedTask;
             Console.WriteLine($"processed 1k {sniper.Lookups.Sum(l => l.Value.Lookup.Count)} {saveCount} -");
+            if (!RetrainService.IsManager)
+                return Task.CompletedTask; // only manager saves
             saveCount++;
             if (!saving && saveCount % 20 == 0)
             {
