@@ -23,9 +23,12 @@ public class AttributeController : ControllerBase
 
     [Route("combo/{leftAttrib}/{rightAttrib}")]
     [HttpGet]
-    public List<AttributeComboResult> GetAttributes(string leftAttrib, string rightAttrib)
+    public List<AttributeComboResult> GetAttributes(string leftAttrib, string rightAttrib, string itemType = "kuudra")
     {
-        return GetKuudraArmors()
+        var allOptions = GetKuudraArmors();
+        if (itemType != "kuudra")
+            allOptions = service.Lookups.Where(l => l.Key == itemType);
+        return allOptions
             .Select(l => (l.Key, l.Value.Lookup.Where(r => r.Value.Lbin.Price > 0 && r.Key.Modifiers.Any(m => m.Key == leftAttrib) && r.Key.Modifiers.Any(m => m.Key == rightAttrib))
                 .OrderBy(r => r.Value.Lbin.Price).FirstOrDefault()))
             .Select(l => new AttributeComboResult()
