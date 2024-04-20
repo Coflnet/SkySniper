@@ -360,7 +360,7 @@ public class AuctionkeyTests
     public void RunesAppart()
     {
         var clean = CreateFromLevel("0");
-        clean.Modifiers = AuctionKey.EmptyModifiers;
+        clean = new AuctionKey() { Modifiers = AuctionKey.EmptyModifiers };
 
         var lvl1 = CreateFromLevel("1");
         var lvl2 = CreateFromLevel("2");
@@ -401,7 +401,7 @@ public class AuctionkeyTests
         var clean = Create();
 
         var close = Create();
-        close.Tier = Tier.SPECIAL;
+        close = new() { Tier = Tier.SPECIAL };
         var far = Create();
         far = far.WithEnchants(new List<Enchant>() { new() { Type = EnchantmentType.efficiency, Lvl = 10 } });
 

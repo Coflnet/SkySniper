@@ -27,13 +27,13 @@ namespace Coflnet.Sky.Sniper.Models
         [Key(0)]
         public ReadOnlyCollection<Enchant> Enchants { get; init; } = new(new List<Enchant>());
         [Key(1)]
-        public ItemReferences.Reforge Reforge;
+        public ItemReferences.Reforge Reforge { get; init; }
         [Key(2)]
-        public ReadOnlyCollection<KeyValuePair<string, string>> Modifiers = new(new List<KeyValuePair<string, string>>());
+        public ReadOnlyCollection<KeyValuePair<string, string>> Modifiers { get; init; } = new(new List<KeyValuePair<string, string>>());
         [Key(3)]
-        public Tier Tier;
+        public Tier Tier { get; init; }
         [Key(4)]
-        public byte Count;
+        public byte Count { get; init; }
 
         public static ReadOnlyCollection<KeyValuePair<string, string>> EmptyModifiers = new(new List<KeyValuePair<string, string>>());
 
