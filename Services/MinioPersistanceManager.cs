@@ -88,6 +88,7 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 BucketName = "sky-sniper",
                 Key = "itemList",
+                DisablePayloadSigning = true,
                 InputStream = stream
             });
             logger.LogInformation("saved list ");
@@ -113,6 +114,7 @@ namespace Coflnet.Sky.Sniper.Services
                 {
                     BucketName = "sky-sniper",
                     Key = tag,
+                    DisablePayloadSigning = true,
                     InputStream = itemStream
                 });
                 if (!string.IsNullOrEmpty(tag) && tag.StartsWith('S') || tag == "test")
@@ -183,6 +185,7 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 BucketName = "sky-sniper",
                 Key = PartialObjectStoreKey,
+                DisablePayloadSigning = true,
                 InputStream = stream
             });
         }
