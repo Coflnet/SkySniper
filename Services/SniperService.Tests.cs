@@ -237,13 +237,17 @@ namespace Coflnet.Sky.Sniper.Services
         public void KeepCandyOnSkinnedPetsOnLvl100()
         {
             // items with skins have a difference in value for candies because they are motly bought by collectors
+            SetBazaarPrice("PET_SKIN_SKIN", 500_000_000);
             AddVolume(new SaveAuction()
             {
                 Tag = "PET_EXAMPLE",
                 FlatenedNBT = new() { { "skin", "SKIN" }, { "candyUsed", "1" }, { "exp", "30000000" } },
-                HighestBidAmount = 70_000_000
-            });
-            service.Lookups["PET_EXAMPLE"].Lookup.First().Key.Modifiers.Count.Should().Be(3);
+                HighestBidAmount = 1_700_000_000
+            },9);
+            var all = service.Lookups["PET_EXAMPLE"].Lookup.OrderByDescending(l => l.Key.Modifiers.Count()).First().Key.Modifiers;
+            all.Should().Contain(m => m.Key == "candyUsed");
+            all.Should().Contain(m => m.Key == "skin");
+            all.Should().Contain(m => m.Key == "exp");
         }
 
         [Test]

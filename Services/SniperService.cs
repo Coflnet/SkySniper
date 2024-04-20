@@ -1461,13 +1461,11 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (mod.Key == "exp")
                 {
-                    var factor = 10_000_000;
-                    if (tag == "PET_GOLDEN_DRAGON")
-                        factor = 100_000_000;
+                    var factor = Math.Max(GetPriceForItem(tag) / 6, 10_000_000);
                     sum += (int)(factor * (float.Parse(mod.Value) + 1));
                 }
                 if (mod.Key == "candyUsed")
-                    sum += tag == "PET_GOLDEN_DRAGON" ? 80_000_000 : 10_000_000;
+                    sum += Math.Max(GetPriceForItem(tag) / 6, 10_000_000); // for skined pets important
                 if (mod.Key == "is_shiny")
                     sum += 88_000_000;
                 if (mod.Key == "party_hat_color")
