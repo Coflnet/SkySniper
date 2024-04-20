@@ -46,7 +46,7 @@ public class AttributeController : ControllerBase
 
     [Route("cheapest/{itemType}/{attribute}")]
     [HttpGet]
-    public List<(string level, List<string>)> GetCheapest(string itemType, string attribute, int startLevel = 1, int endLevel = 10)
+    public Dictionary<string, List<string>> GetCheapest(string itemType, string attribute, int startLevel = 1, int endLevel = 10)
     {
         if (itemType.ToLower() != "kuudra")
         {
@@ -86,7 +86,7 @@ public class AttributeController : ControllerBase
             allOptions.RemoveAll(o => o.Item2 == cheapest.Item2);
             result.Add((i.ToString(), new List<string> { cheapest.Item2 }));
         }
-        return result;
+        return result.ToDictionary(r => r.level, r => r.Item2);
     }
 
     public class AttributeComboResult
