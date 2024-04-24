@@ -224,9 +224,9 @@ public class DropOffTests
         SetBazaarPrice("HOT_POTATO_BOOK", 80_000);
         sniperService.State = SniperState.Ready;
         sniperService.TestNewAuction(item);
-        Assert.GreaterOrEqual(found.Count, 1);
+        Assert.That(found.Count, Is.GreaterThanOrEqualTo(1));
         // combines buckets to reach estimation
-        Assert.AreEqual(279629280 - 3, found.Last().TargetPrice, JsonConvert.SerializeObject(found, Formatting.Indented));
+        Assert.That(279629280 - 3,Is.EqualTo(found.Last().TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
     }
 
     [Test]
@@ -257,8 +257,8 @@ public class DropOffTests
         sniperService.AddSoldItem(auction.Dupplicate(49742295, DateTime.UtcNow-TimeSpan.FromDays(2)));
 
         sniperService.TestNewAuction(auction.Dupplicate());
-        Assert.AreEqual(1, found.Count);
-        Assert.AreEqual(24716394 -3, found.First().TargetPrice);
+        Assert.That(1,Is.EqualTo(found.Count));
+        Assert.That(24716394 -3,Is.EqualTo(found.First().TargetPrice));
     }
 
 

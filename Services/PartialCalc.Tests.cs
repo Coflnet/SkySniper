@@ -75,7 +75,7 @@ public class PartialCalcTests
             }
         }, 100);
         var result = Service.GetPrice(item);
-        Assert.Greater(80000, result.Price);
+        Assert.That(80000, Is.GreaterThan(result.Price));
     }
 
     [Test]
@@ -105,7 +105,7 @@ public class PartialCalcTests
             }
         }, 100);
         var result = Service.GetPrice(item);
-        Assert.Greater(result.Price, 5_000_000);
+        Assert.That(result.Price, Is.GreaterThan(5_000_000));
     }
 
     [Test]
@@ -142,7 +142,7 @@ public class PartialCalcTests
         }, 100);
         var result = Service.GetPrice(item, true);
         Console.WriteLine(string.Join("\n", result.BreakDown));
-        Assert.Greater(result.Price, 5_000_000);
+        Assert.That(result.Price, Is.GreaterThan(5_000_000));
     }
 
     [Test]
@@ -186,7 +186,7 @@ public class PartialCalcTests
         }
         var result = Service.GetPrice(item, true);
         Console.WriteLine(string.Join("\n", result.BreakDown));
-        Assert.Greater(700000, result.Price);
+        Assert.That(700000, Is.GreaterThan(result.Price));
     }
 
     [Test]
@@ -216,7 +216,7 @@ public class PartialCalcTests
         await Service.CapAtCraftCost();
         var result = Service.GetPrice(item, true);
         Console.WriteLine(string.Join("\n", result.BreakDown));
-        Assert.Greater(600000, result.Price);
+        Assert.That(600000, Is.GreaterThan(result.Price));
     }
 
     [Test]
@@ -251,7 +251,7 @@ public class PartialCalcTests
         await Service.CapAtCraftCost();
         var result = Service.GetPrice(item, true);
         Console.WriteLine(string.Join("\n", result.BreakDown));
-        Assert.AreEqual("ench.impaling 3: 787.5", result.BreakDown[1].Replace(",", "."));
+        Assert.That("ench.impaling 3: 787.5",Is.EqualTo(result.BreakDown[1].Replace(",", ".")));
     }
 
     [Test]
@@ -284,7 +284,7 @@ public class PartialCalcTests
         var result = Service.GetPrice(item, true);
         Console.WriteLine(string.Join("\n", result.BreakDown));
         // capped at 50k - no enchant from ench table is worth more than that
-        Assert.AreEqual("ench.cleave 5: 50000.0", result.BreakDown[1].Replace(",", "."));
+        Assert.That("ench.cleave 5: 50000.0",Is.EqualTo(result.BreakDown[1].Replace(",", ".")));
     }
 
     [Test]
@@ -329,7 +329,7 @@ public class PartialCalcTests
         var result = Service.GetPrice(item, true);
         Console.WriteLine(string.Join("\n", result.BreakDown));
         // capped at sum of essence cost
-        Assert.AreEqual("upgrade_level 5: 7855750.0", result.BreakDown[1].Replace(",", "."));
+        Assert.That("upgrade_level 5: 7855750.0",Is.EqualTo(result.BreakDown[1].Replace(",", ".")));
     }
 
     private void AddSell(SaveAuction sell, int volume = 1)

@@ -29,7 +29,7 @@ public class MedianCalcTests
             bucket.References.Enqueue(adopted);
         }
         service.UpdateMedian(bucket);
-        Assert.AreEqual(54900000, bucket.Price);
+        Assert.That(54900000,Is.EqualTo(bucket.Price));
     }
 
     [Test]
@@ -58,7 +58,7 @@ public class MedianCalcTests
             copy.HighestBidAmount = 5000000;
             service.AddSoldItem(copy);
         }
-        Assert.AreEqual(2000, service.Lookups.First().Value.Lookup.First().Value.Price);
+        Assert.That(2000,Is.EqualTo(service.Lookups.First().Value.Lookup.First().Value.Price));
     }
 
     private const string SampleJson =

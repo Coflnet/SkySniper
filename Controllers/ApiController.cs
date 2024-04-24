@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Coflnet.Sky.Core;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using MessagePack;
 
 namespace Coflnet.Sky.Sniper.Controllers
 {
@@ -163,7 +164,8 @@ namespace Coflnet.Sky.Sniper.Controllers
         [HttpPost]
         public IEnumerable<PriceEstimate> GetPrices([FromBody] string data)
         {
-            var auctions = MessagePack.LZ4MessagePackSerializer.Deserialize<IEnumerable<ApiSaveAuction>>(Convert.FromBase64String(data));
+            var options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4Block);
+            var auctions = MessagePackSerializer.Deserialize<IEnumerable<ApiSaveAuction>>(Convert.FromBase64String(data), options);
             return auctions.Select(a =>
             {
                 try
@@ -183,7 +185,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         public IEnumerable<object> SimilarKeys(string tag, string auctionId)
         {
             var firstKey = Search(tag, auctionId).FirstOrDefault();
-            if(firstKey == default)
+            if (firstKey == default)
                 return new List<object>() { new { Key = "not found" } };
             return service.FindClosest(service.Lookups[tag].Lookup, firstKey, tag)
                                 .Take(10)

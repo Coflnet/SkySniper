@@ -20,7 +20,7 @@ public class InternalDataLoaderTest
         {
             references.Enqueue(sample);
         }
-        Assert.IsFalse(loader.ShouldAuctionBeIncluded(new SaveAuction() { End = DateTime.UtcNow - TimeSpan.FromDays(10) }, references));
-        Assert.IsTrue(loader.ShouldAuctionBeIncluded(new SaveAuction() { End = DateTime.UtcNow - TimeSpan.FromDays(1) }, references));
+        Assert.That(!loader.ShouldAuctionBeIncluded(new SaveAuction() { End = DateTime.UtcNow - TimeSpan.FromDays(10) }, references));
+        Assert.That(loader.ShouldAuctionBeIncluded(new SaveAuction() { End = DateTime.UtcNow - TimeSpan.FromDays(1) }, references));
     }
 }

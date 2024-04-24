@@ -45,7 +45,7 @@ public class AuctionkeyTests
         var value = new List<SniperService.RankElem>() { new(new KeyValuePair<string, string>("skin", "1"), 0), exp };
         var emtpyValue = new List<SniperService.RankElem>() { exp };
         var similarity = withoutSkin.Similarity(withSkin, service, value, emtpyValue);
-        Assert.Greater(0, similarity);
+        Assert.That(0, Is.GreaterThan(similarity));
     }
 
     [Test]
@@ -54,7 +54,7 @@ public class AuctionkeyTests
         var key = new AuctionKey();
         var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new("test", "test") }.AsReadOnly() };
         // by default reforge and tier match
-        Assert.Greater(key.Similarity(key), keyB.Similarity(key));
+        Assert.That(key.Similarity(key), Is.GreaterThan(keyB.Similarity(key)));
     }
     [Test]
     public void SameModsMatch()
@@ -62,7 +62,7 @@ public class AuctionkeyTests
         var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new("test", "test") }.AsReadOnly() };
         var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new("test", "test") }.AsReadOnly() };
         // by default reforge and tier match
-        Assert.AreEqual(key.Similarity(key), keyB.Similarity(key));
+        Assert.That(key.Similarity(key),Is.EqualTo(keyB.Similarity(key)));
     }
     [Test]
     public void SameModsDecreaseFurther()
@@ -71,7 +71,7 @@ public class AuctionkeyTests
         var further = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new("dominance", "1"), new("veteran", "1") }.AsReadOnly() };
         var closer = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new("mending", "4"), new("veteran", "4") }.AsReadOnly() };
         // by default reforge and tier match
-        Assert.Greater(key.Similarity(closer), key.Similarity(further));
+        Assert.That(key.Similarity(closer), Is.GreaterThan(key.Similarity(further)));
     }
     [Test]
     public void PreferMatchingKind()
@@ -84,7 +84,7 @@ public class AuctionkeyTests
         var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>().AsReadOnly() };
         var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>().AsReadOnly() };
         // by default reforge and tier match
-        Assert.AreEqual(key.Similarity(key), keyB.Similarity(key));
+        Assert.That(key.Similarity(key),Is.EqualTo(keyB.Similarity(key)));
     }
 
     [Test]
@@ -93,7 +93,7 @@ public class AuctionkeyTests
         var key = new AuctionKey();
         var keyB = new AuctionKey() { Enchants = new List<Enchant>() { new Enchant() { Lvl = 1, Type = EnchantmentType.angler } }.AsReadOnly() };
         // by default reforge and tier match
-        Assert.Greater(key.Similarity(key), keyB.Similarity(key), "extra enchants should decrease");
+        Assert.That(key.Similarity(key), Is.GreaterThan(keyB.Similarity(key)), "extra enchants should decrease");
     }
     [Test]
     public void RecombCadyRelicLbinSimilarity()
@@ -105,7 +105,7 @@ public class AuctionkeyTests
         b.Tier = Tier.MYTHIC;
         var keyA = service.KeyFromSaveAuction(auctionA);
         var keyB = service.KeyFromSaveAuction(b);
-        Assert.Less(keyA.Similarity(keyB), keyA.Similarity(keyA));
+        Assert.That(keyA.Similarity(keyB), Is.LessThan(keyA.Similarity(keyA)));
     }
     [Test]
     public void IncludesLavaShellNecklaceSpecialAttribs()
@@ -116,8 +116,8 @@ public class AuctionkeyTests
             FlatenedNBT = new() { { "lifeline", "1" }, { "mana_regeneration", "1" } },
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.AreEqual(1, key.Modifiers.Count);
-        Assert.IsTrue(key.Modifiers.Any(x => x.Key == "lifeline" && x.Value == "1"));
+        Assert.That(1,Is.EqualTo(key.Modifiers.Count));
+        Assert.That(key.Modifiers.Any(x => x.Key == "lifeline" && x.Value == "1"));
     }
     [Test]
     public void IncludesLavaShellNecklaceSpecialAttribCombo()
@@ -128,7 +128,7 @@ public class AuctionkeyTests
             FlatenedNBT = new() { { "lifeline", "1" }, { "mana_pool", "1" } },
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.AreEqual(2, key.Modifiers.Count);
+        Assert.That(2,Is.EqualTo(key.Modifiers.Count));
     }
     [Test]
     public void IgnoresBadEnchants()
@@ -148,7 +148,7 @@ public class AuctionkeyTests
              }
         };
         // by default reforge and tier match
-        Assert.AreEqual(key, service.KeyFromSaveAuction(auction));
+        Assert.That(key,Is.EqualTo(service.KeyFromSaveAuction(auction)));
     }
     [Test]
     public async Task UnlockedSlotsVsLegianSimilarity()
@@ -176,7 +176,7 @@ public class AuctionkeyTests
         var targetKey = service.KeyFromSaveAuction(targetAuction);
         var badKey = service.KeyFromSaveAuction(badAuction);
         // by default reforge and tier match
-        Assert.Greater(originkey.Similarity(targetKey), originkey.Similarity(badKey));
+        Assert.That(originkey.Similarity(targetKey), Is.GreaterThan(originkey.Similarity(badKey)));
     }
 
     [Test]
@@ -210,7 +210,7 @@ public class AuctionkeyTests
             Tier = Tier.MYTHIC
         };
         var key = service.KeyFromSaveAuction(baseAuction);
-        Assert.AreEqual("COMBAT_0,JASPER_0", key.Modifiers.First().Value);
+        Assert.That("COMBAT_0,JASPER_0",Is.EqualTo(key.Modifiers.First().Value));
     }
 
     [Test]
@@ -222,15 +222,15 @@ public class AuctionkeyTests
             FlatenedNBT = new() { { "is_shiny", "1" } },
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.AreEqual(1, key.Modifiers.Count);
-        Assert.IsTrue(key.Modifiers.Any(x => x.Key == "is_shiny" && x.Value == "1"));
+        Assert.That(1,Is.EqualTo(key.Modifiers.Count));
+        Assert.That(key.Modifiers.Any(x => x.Key == "is_shiny" && x.Value == "1"));
         auction.Tag = "HYPERION";
         key = service.KeyFromSaveAuction(auction);
-        Assert.AreEqual(1, key.Modifiers.Count);
-        Assert.IsTrue(key.Modifiers.Any(x => x.Key == "is_shiny" && x.Value == "1"));
+        Assert.That(1,Is.EqualTo(key.Modifiers.Count));
+        Assert.That(key.Modifiers.Any(x => x.Key == "is_shiny" && x.Value == "1"));
         auction.Tag = "POWER_WITHER_LEGGINGS";
         key = service.KeyFromSaveAuction(auction);
-        Assert.AreEqual(0, key.Modifiers.Count);
+        Assert.That(0,Is.EqualTo(key.Modifiers.Count));
     }
 
     [Test]
@@ -241,7 +241,7 @@ public class AuctionkeyTests
         var furtherKey = CreateFromExp("3");
         var closerValue = originkey.Similarity(closerKey);
         System.Console.WriteLine("computing");
-        Assert.Greater(closerValue, originkey.Similarity(furtherKey));
+        Assert.That(closerValue, Is.GreaterThan(originkey.Similarity(furtherKey)));
 
         static AuctionKey CreateFromExp(string amount)
         {
@@ -260,7 +260,7 @@ public class AuctionkeyTests
             Enchantments = new() { new(type, level) },
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.AreEqual(shouldIgnore, key.Enchants.Count == 0);
+        Assert.That(shouldIgnore,Is.EqualTo(key.Enchants.Count == 0));
     }
 
     [TestCase(0)]
@@ -278,8 +278,8 @@ public class AuctionkeyTests
                                 {"candyUsed", "0"} },
         };
         var modifierList = service.KeyFromSaveAuction(auction, level).Modifiers;
-        Assert.IsTrue(modifierList.Any(x => x.Value == SniperService.TierBoostShorthand));
-        Assert.IsTrue(modifierList.Any(x => x.Value == "0" && x.Key == "candyUsed"));
+        Assert.That(modifierList.Any(x => x.Value == SniperService.TierBoostShorthand));
+        Assert.That(modifierList.Any(x => x.Value == "0" && x.Key == "candyUsed"));
     }
 
     [TestCase(0, 0)]
@@ -294,8 +294,8 @@ public class AuctionkeyTests
                                 {"candyUsed", amount.ToString()} },
         };
         var modifierList = service.KeyFromSaveAuction(auction).Modifiers;
-        Assert.IsTrue(modifierList.Any(x => x.Value == SniperService.TierBoostShorthand));
-        Assert.IsTrue(modifierList.Any(x => x.Value == target.ToString() && x.Key == "candyUsed"));
+        Assert.That(modifierList.Any(x => x.Value == SniperService.TierBoostShorthand));
+        Assert.That(modifierList.Any(x => x.Value == target.ToString() && x.Key == "candyUsed"));
     }
 
     [Test]
@@ -307,7 +307,7 @@ public class AuctionkeyTests
             FlatenedNBT = new() { { "fishing_speed", "9" } },
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.IsTrue(key.Modifiers.Any(x => x.Value == "9" && x.Key == "fishing_speed"));
+        Assert.That(key.Modifiers.Any(x => x.Value == "9" && x.Key == "fishing_speed"));
     }
 
     [Test]
@@ -327,7 +327,7 @@ public class AuctionkeyTests
         };
         var keyHigh = service.KeyFromSaveAuction(auctionHigh);
         var key = service.KeyFromSaveAuction(auction);
-        Assert.Greater(-3, keyHigh.Similarity(key), $"{keyHigh}\n{key}");
+        Assert.That(-3, Is.GreaterThan(keyHigh.Similarity(key)), $"{keyHigh}\n{key}");
     }
 
     [Test]
@@ -353,7 +353,7 @@ public class AuctionkeyTests
         var key3 = service.KeyFromSaveAuction(noEdition);
         var similarity = key3.Similarity(key2);
         var lessSimilar = key3.Similarity(key);
-        Assert.Greater(similarity, lessSimilar);
+        Assert.That(similarity, Is.GreaterThan(lessSimilar));
     }
 
     [Test]
@@ -365,7 +365,7 @@ public class AuctionkeyTests
         var lvl1 = CreateFromLevel("1");
         var lvl2 = CreateFromLevel("2");
 
-        Assert.Greater(clean.Similarity(lvl1), clean.Similarity(lvl2));
+        Assert.That(clean.Similarity(lvl1), Is.GreaterThan(clean.Similarity(lvl2)));
         static AuctionKey CreateFromLevel(string amount)
         {
             return new AuctionKey(null, ItemReferences.Reforge.Any, new() { new("DRAGON", amount) }, Tier.EPIC, 1);
@@ -384,7 +384,7 @@ public class AuctionkeyTests
         var simValue = clean.Similarity(lvl1);
         System.Console.WriteLine(simValue);
 
-        Assert.Greater(simValue, clean.Similarity(lvl2));
+        Assert.That(simValue, Is.GreaterThan(clean.Similarity(lvl2)));
         static AuctionKey CreateFromExp(string amount, bool boost)
         {
             if (boost)
@@ -408,7 +408,7 @@ public class AuctionkeyTests
         var simValue = clean.Similarity(close);
         System.Console.WriteLine(simValue);
 
-        Assert.Greater(simValue, clean.Similarity(far));
+        Assert.That(simValue, Is.GreaterThan(clean.Similarity(far)));
         static AuctionKey Create()
         {
             return new AuctionKey(new(), ItemReferences.Reforge.Any, new(), Tier.VERY_SPECIAL, 1);
@@ -435,7 +435,7 @@ public class AuctionkeyTests
         var simValue = baseKey.Similarity(closer);
         System.Console.WriteLine(simValue);
 
-        Assert.Greater(simValue, baseKey.Similarity(lvl2));
+        Assert.That(simValue, Is.GreaterThan(baseKey.Similarity(lvl2)));
     }
     [Test]
     public void LowerEnchantIsCloser()
@@ -448,7 +448,7 @@ public class AuctionkeyTests
         var simValue = baseKey.Similarity(closer);
         System.Console.WriteLine(simValue);
 
-        Assert.Greater(simValue, baseKey.Similarity(lvl2));
+        Assert.That(simValue, Is.GreaterThan(baseKey.Similarity(lvl2)));
     }
 
     [Test]
@@ -476,7 +476,7 @@ public class AuctionkeyTests
         var simValue = baseKey.Similarity(closer);
         System.Console.WriteLine(simValue);
 
-        Assert.Greater(simValue, baseKey.Similarity(lvl2));
+        Assert.That(simValue, Is.GreaterThan(baseKey.Similarity(lvl2)));
     }
 
     [Test]
@@ -489,8 +489,8 @@ public class AuctionkeyTests
                                 {"mending", "2"} },
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.AreEqual(2, key.Modifiers.Count);
-        Assert.IsTrue(key.Modifiers.Any(x => x.Key == "dominance" && x.Value == "2"));
+        Assert.That(2,Is.EqualTo(key.Modifiers.Count));
+        Assert.That(key.Modifiers.Any(x => x.Key == "dominance" && x.Value == "2"));
     }
 
     [Test]
@@ -503,10 +503,10 @@ public class AuctionkeyTests
                                 {"mana_pool", "2"} },
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.AreEqual(1, key.Modifiers.Count);
+        Assert.That(1,Is.EqualTo(key.Modifiers.Count));
         auction.Tag = "TERROR_LEGGINGS";
         key = service.KeyFromSaveAuction(auction);
-        Assert.AreEqual(2, key.Modifiers.Count);
+        Assert.That(2,Is.EqualTo(key.Modifiers.Count));
     }
 
     [Test]
@@ -520,7 +520,7 @@ public class AuctionkeyTests
             Tag = "DEMONLORD_GAUNTLET"
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.AreEqual(0, key.Enchants.Count);
+        Assert.That(0,Is.EqualTo(key.Enchants.Count));
     }
 
     [Test]
@@ -532,7 +532,7 @@ public class AuctionkeyTests
             Tag = "DEMONLORD_GAUNTLET"
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.AreEqual(1, key.Enchants.Count);
+        Assert.That(1,Is.EqualTo(key.Enchants.Count));
     }
 
     [Test]
@@ -544,7 +544,7 @@ public class AuctionkeyTests
             Tag = "DEMONLORD_GAUNTLET"
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.AreEqual(0, key.Enchants.Count);
+        Assert.That(0,Is.EqualTo(key.Enchants.Count));
     }
 
     [Test]
@@ -554,10 +554,10 @@ public class AuctionkeyTests
         var deserilaizedKey = JsonConvert.DeserializeObject<AuctionKey>(json);
         var originalKey = new AuctionKey(new() { new() { Type = EnchantmentType.cultivating, Lvl = 8 } }, ItemReferences.Reforge.Any, new() { new("rarity_upgrades", 1.ToString()) }, Tier.MYTHIC, 1);
         var key = MessagePackSerializer.Deserialize<AuctionKey>(MessagePackSerializer.Serialize(originalKey));
-        Assert.AreEqual(key, deserilaizedKey, JsonConvert.SerializeObject(key));
-        Assert.AreEqual(key, originalKey);
-        Assert.AreEqual(key.GetHashCode(), deserilaizedKey.GetHashCode());
-        Assert.AreEqual(key.GetHashCode(), originalKey.GetHashCode());
+        Assert.That(key,Is.EqualTo(deserilaizedKey), JsonConvert.SerializeObject(key));
+        Assert.That(key,Is.EqualTo(originalKey));
+        Assert.That(key.GetHashCode(),Is.EqualTo(deserilaizedKey.GetHashCode()));
+        Assert.That(key.GetHashCode(),Is.EqualTo(originalKey.GetHashCode()));
     }
 
     [Test]
@@ -659,9 +659,9 @@ public class AuctionkeyTests
         toExpensive.StartingBid = 890_000;
         service.TestNewAuction(toExpensive);
         // Non exact matches have to have higher profit
-        Assert.IsNull(flip);
+        Assert.That(flip, Is.Null);
         service.TestNewAuction(baseAuction);
         // uses median of the different most similar sells
-        Assert.AreEqual(1_000_000, flip.TargetPrice);
+        Assert.That(1_000_000,Is.EqualTo(flip.TargetPrice));
     }
 }
