@@ -632,6 +632,7 @@ ORDER BY l.`AuctionId`  DESC;
             result.Volume = bucket.Volume;
             result.MedianKey = key.ToString();
             result.Volatility = bucket.Volatility;
+            result.LastSale = bucket.References.LastOrDefault();
         }
 
         internal void Move(string tag, long auctionId, AuctionKey from, AuctionKey to)

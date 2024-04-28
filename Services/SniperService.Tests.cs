@@ -2041,6 +2041,7 @@ namespace Coflnet.Sky.Sniper.Services
             CreateVolume(c);
             var estimate = service.GetPrice(highestValAuction);
             Assert.That(estimate.Volatility, Is.EqualTo(expected));
+            Assert.That(estimate.LastSale.Price, Is.EqualTo(c));
             void CreateVolume(int cost)
             {
                 highestValAuction.HighestBidAmount = cost;
