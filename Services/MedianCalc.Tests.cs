@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
 using NUnit.Framework;
 
@@ -12,7 +13,7 @@ public class MedianCalcTests
     [Test]
     public void LargeData()
     {
-        var service = new SniperService(null, null);
+        var service = new SniperService(null, null, null);
         var bucket = new ReferenceAuctions();
         bucket.References = new ConcurrentQueue<ReferencePrice>();
         var sample = JsonConvert.DeserializeObject<ReferencePrice[]>(SampleJson);
@@ -35,7 +36,7 @@ public class MedianCalcTests
     [Test]
     public void DedupsBuyer()
     {
-        var service = new SniperService(null, null);
+        var service = new SniperService(null, null, NullLogger<SniperService>.Instance);
         var random = new Random(1);
         var auction = new SaveAuction()
         {

@@ -6,6 +6,7 @@ using Coflnet.Sky.Core;
 using Coflnet.Sky.Core.Services;
 using Coflnet.Sky.Sniper.Models;
 using dev;
+using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
 using NUnit.Framework;
 
@@ -23,7 +24,7 @@ public class DropOffTests
         {
             loaded = File.ReadAllText("Mock/boots.json");
         }
-        sniperService = new SniperService(new(null, null), null);
+        sniperService = new SniperService(new(null, null), null, NullLogger<SniperService>.Instance);
         var parsed = Newtonsoft.Json.JsonConvert.DeserializeObject<LookupLoad>(loaded);
         var xy =
                 parsed.Lookup.Where(l => l.Key.Contains("BLACK")).ToDictionary(l => ParseKey(l), l => l.Value);

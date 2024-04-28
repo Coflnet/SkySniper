@@ -9,5 +9,7 @@ namespace Coflnet.Sky.Sniper.Models
         public string LbinKey { get; set; }
         public string MedianKey { get; set; }
         public string ItemKey { get; set; }
+        public byte Volatility { get; set; }
+        public ReferencePrice LastSale { get; set; }
     }
 }

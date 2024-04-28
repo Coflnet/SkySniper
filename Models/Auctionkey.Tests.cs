@@ -7,6 +7,7 @@ using Coflnet.Sky.Core;
 using Coflnet.Sky.Core.Services;
 using Coflnet.Sky.Sniper.Services;
 using MessagePack;
+using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
 using NUnit.Framework;
 using static Coflnet.Sky.Core.Enchantment;
@@ -21,7 +22,7 @@ public class AuctionkeyTests
     public void Setup()
     {
         itemService = new HypixelItemService(null, null);
-        service = new SniperService(itemService, null);
+        service = new SniperService(itemService, null, NullLogger<SniperService>.Instance);
     }
 
     [Test]

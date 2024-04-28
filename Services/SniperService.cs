@@ -10,6 +10,7 @@ using Amazon.Runtime.Internal.Util;
 using Newtonsoft.Json;
 using System.Net;
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace Coflnet.Sky.Sniper.Services
 {
@@ -22,6 +23,7 @@ namespace Coflnet.Sky.Sniper.Services
         private const int GoldenDragonMaxExp = 30_036_483 * 7;
         public static int MIN_TARGET = 200_000;
         public static DateTime StartTime = new DateTime(2021, 9, 25);
+        private readonly ILogger<SniperService> logger;
         public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>(3, 2000);
 
         private readonly ConcurrentQueue<LogEntry> Logs = new ConcurrentQueue<LogEntry>();
@@ -211,11 +213,11 @@ namespace Coflnet.Sky.Sniper.Services
                     bucket.Lbins.Sort(ReferencePrice.Compare);
                     if (bucket.Lbins.First().AuctionId == item.AuctionId)
                     {
-                        Console.WriteLine($"New lowest lbin {auction.Uuid} {auction.StartingBid}");
+                        logger.LogInformation($"New lowest lbin {auction.Uuid} {auction.StartingBid}");
                     }
                 }
             }
-            Console.WriteLine($"Finished processing {count} lbin updates");
+            logger.LogInformation($"Finished processing {count} lbin updates");
         }
 
         private readonly Dictionary<string, string> ModifierItemPrefixes = new()
@@ -283,13 +285,13 @@ ORDER BY l.`AuctionId`  DESC;
         public static KeyValuePair<string, string> Ignore { get; } = new KeyValuePair<string, string>(string.Empty, string.Empty);
 
 
-        public SniperService(HypixelItemService itemService, ActivitySource activitySource)
+        public SniperService(HypixelItemService itemService, ActivitySource activitySource, ILogger<SniperService> logger)
         {
 
             this.FoundSnipe += la =>
             {
                 if (la.Finder == LowPricedAuction.FinderType.SNIPER && (float)la.Auction.StartingBid / la.TargetPrice < 0.8 && la.TargetPrice > 1_000_000)
-                    Console.WriteLine($"A: {la.Auction.Uuid} {la.Auction.StartingBid} -> {la.TargetPrice}  {KeyFromSaveAuction(la.Auction)}");
+                    logger.LogInformation($"A: {la.Auction.Uuid} {la.Auction.StartingBid} -> {la.TargetPrice}  {KeyFromSaveAuction(la.Auction)}");
             };
             foreach (var item in AttributeCombos.ToList())
             {
@@ -333,6 +335,7 @@ ORDER BY l.`AuctionId`  DESC;
 
             this.itemService = itemService;
             this.activitySource = activitySource;
+            this.logger = logger;
         }
 
         public PriceEstimate GetPrice(SaveAuction auction)
@@ -456,7 +459,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
 
                 if (Random.Shared.NextDouble() < 0.05)
-                    Console.WriteLine($"no match found for {auction.Tag} {itemKey} options: {l.Count} {c.Key}");
+                    logger.LogInformation($"no match found for {auction.Tag} {itemKey} options: {l.Count} {c.Key}");
                 if (result.Median > 0)
                     break;
             }
@@ -628,6 +631,7 @@ ORDER BY l.`AuctionId`  DESC;
             result.Median = bucket.Price + gemVal;
             result.Volume = bucket.Volume;
             result.MedianKey = key.ToString();
+            result.Volatility = bucket.Volatility;
         }
 
         internal void Move(string tag, long auctionId, AuctionKey from, AuctionKey to)
@@ -808,7 +812,7 @@ ORDER BY l.`AuctionId`  DESC;
             var reference = CreateReferenceFromAuction(auction, valueSubstract);
             if (reference.Price < 0 && valueSubstract > 1_000_000)
             {
-                Console.WriteLine($"Negative price {JsonConvert.SerializeObject(auction)} {reference.Price} {valueSubstract}");
+                logger.LogInformation($"Negative price {JsonConvert.SerializeObject(auction)} {reference.Price} {valueSubstract}");
             }
             // move reference to sold
             bucket.References.Enqueue(reference);
@@ -862,6 +866,7 @@ ORDER BY l.`AuctionId`  DESC;
                 longSpanPrice = deduplicated.OrderBy(d => d.Price).Take((int)Math.Max(deduplicated.Count() * 0.25, 1)).Max(d => d.Price);
             }
             var medianPrice = Math.Min(shortTermPrice, longSpanPrice);
+            bucket.Volatility = GetVolatility(bucket, shortTermPrice, medianPrice);
             bucket.HitsSinceCalculating = 0;
             // get price of item without enchants and add enchant value 
             if (keyCombo != default)
@@ -890,7 +895,7 @@ ORDER BY l.`AuctionId`  DESC;
                     {
                         medianPrice = Math.Min(medianPrice, lowerCountBucket.Price * keyWithNoEnchants.Count);
 
-                        Console.WriteLine($"Adjusted for count {keyCombo.tag} -> {medianPrice}  {keyWithNoEnchants} - {keyCombo.Item2.Key}");
+                        logger.LogInformation($"Adjusted for count {keyCombo.tag} -> {medianPrice}  {keyWithNoEnchants} - {keyCombo.Item2.Key}");
                     }
                 }
                 var enchantPrice = GetPriceSumForEnchants(keyCombo.Item2.Key.Enchants);
@@ -912,12 +917,12 @@ ORDER BY l.`AuctionId`  DESC;
                 if (enchantPrice != 0 && clean != default && clean.Price > 10_000 && clean.Volume > 1 && medianPrice > combined)
                 {
                     if (clean.References.First().AuctionId == bucket.References.First().AuctionId)
-                        Console.WriteLine($"skipping enchant adjustment {keyCombo.tag} -> {medianPrice}  {keyWithNoEnchants} - {enchantPrice} {clean.Price} {clean.Volume} {keyCombo.Item2}");
+                        logger.LogInformation($"skipping enchant adjustment {keyCombo.tag} -> {medianPrice}  {keyWithNoEnchants} - {enchantPrice} {clean.Price} {clean.Volume} {keyCombo.Item2}");
 
                     else
                     {
                         bucket.Price = Math.Min(medianPrice, combined);
-                        Console.WriteLine($"Adjusted for enchat cost {keyCombo.tag} -> {medianPrice}  {keyCombo.Item2} - {enchantPrice} {clean.Price} {clean.Volume} {keyWithNoEnchants}");
+                        logger.LogInformation($"Adjusted for enchat cost {keyCombo.tag} -> {medianPrice}  {keyCombo.Item2} - {enchantPrice} {clean.Price} {clean.Volume} {keyWithNoEnchants}");
                         return;
                     }
                 }
@@ -929,6 +934,22 @@ ORDER BY l.`AuctionId`  DESC;
                 var matchCount = keyCombo.key?.Key?.Modifiers?.Where(m => Constants.AttributeKeys.Contains(m.Key) && m.Value == "10").Count();
                 return matchCount == 2;
             }
+        }
+
+        private static byte GetVolatility(ReferenceAuctions bucket, long shortTermPrice, long medianPrice)
+        {
+            var oldMedian = GetMedian(bucket.References.AsEnumerable().Reverse().Take(5).ToList());
+            var secondNewestMedian = 0L;
+            if (bucket.References.Count > 8)
+                secondNewestMedian = GetMedian(bucket.References.AsEnumerable().Skip(5).Take(5).ToList());
+            var medianList = new float[] { oldMedian, secondNewestMedian, medianPrice, shortTermPrice }.OrderByDescending(m => m).ToList();
+            var mean = medianList.Average();
+            medianList = medianList.Select(m => m / mean).ToList();
+            mean = medianList.Average();
+            var variance = medianList.Select(m => Math.Pow(m - mean, 2)).Sum() / medianList.Count;
+            var volatility = Math.Sqrt(variance);
+            var volatilityReduced = (byte)Math.Clamp(volatility * 100, -120, 120);
+            return volatilityReduced;
         }
 
         private long CapAtCraftCost(string tag, long medianPrice, KeyWithValueBreakdown key, long currentPrice)
@@ -956,7 +977,7 @@ ORDER BY l.`AuctionId`  DESC;
                     limitedPrice = Math.Min(minValue + modifierSum * 11 / 10, medianPrice);
             }
             else
-                Console.WriteLine($"Could not cap, No lookup for {tag}");
+                logger.LogInformation($"Could not cap, No lookup for {tag}");
             if (limitedPrice > 0)
                 return limitedPrice;
             return medianPrice;
@@ -1130,7 +1151,7 @@ ORDER BY l.`AuctionId`  DESC;
                 else
                 {
                     if (Random.Shared.NextDouble() < 0.01)
-                        Console.WriteLine($"Missing bazaar price for {ingred.itemId}");
+                        logger.LogInformation($"Missing bazaar price for {ingred.itemId}");
                     sum += 1_000_000;
                 }
             }
@@ -1487,7 +1508,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"Error when calculating value for {m.Key} {m.Value} {tag}\n" + e);
+                    logger.LogInformation($"Error when calculating value for {m.Key} {m.Value} {tag}\n" + e);
                     return new RankElem(m, 0);
                 }
             }).ToList();
@@ -1843,21 +1864,21 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (triggerEvents && i == 4)
                     {
-                        Console.WriteLine($"could not find bucket {key} for {auction.Tag} {l.Count} {auction.Uuid}");
+                        logger.LogInformation($"could not find bucket {key} for {auction.Tag} {l.Count} {auction.Uuid}");
                         if (this.State < SniperState.Ready)
                         {
                             if (auction.UId % 10 == 2)
-                                Console.WriteLine($"closest is not available yet, state is {this.State}");
+                                logger.LogInformation($"closest is not available yet, state is {this.State}");
                             return;
                         }
                         var closests = FindClosest(l, key, itemGroupTag.tag).Take(5).ToList();
                         foreach (var item in closests)
                         {
-                            Console.WriteLine($"Closest bucket clean: {item.Key}");
+                            logger.LogInformation($"Closest bucket clean: {item.Key}");
                         }
                         if (!closests.Any())
                         {
-                            Console.WriteLine($"No closest bucket found for {key} {auction.Uuid}");
+                            logger.LogInformation($"No closest bucket found for {key} {auction.Uuid}");
                             break;
                         }
                         if (ShouldIgnoreMostSimilar(auction))
@@ -1868,7 +1889,7 @@ ORDER BY l.`AuctionId`  DESC;
                         var closestKey = closests.FirstOrDefault().Key;
                         if (bucket.HitsSinceCalculating > 8)
                         {
-                            Console.WriteLine($"Bucket {closestKey} for {auction.Uuid} has been hit {bucket.HitsSinceCalculating} times, skipping");
+                            logger.LogInformation($"Bucket {closestKey} for {auction.Uuid} has been hit {bucket.HitsSinceCalculating} times, skipping");
                             TryFindClosestRisky(auction, l, ref lbinPrice, ref medPrice);
                             return;
                         }
@@ -1945,7 +1966,7 @@ ORDER BY l.`AuctionId`  DESC;
                 props.Add("combined", string.Join(",", relevant.TakeWhile(c => (total += c.Value.References.Count) < targetVolume)
                     .Select(c => c.Key.ToString() + ":" + c.Value.References.Count)));
                 props.Add("breakdown", JsonConvert.SerializeObject(fullKey.ValueBreakdown));
-                Console.WriteLine($"Combined {fullKey} {auction.Uuid} {virtualBucket.Price} {virtualBucket.Lbin.Price} keys: {string.Join(",", relevant.Select(r => r.Key))}");
+                logger.LogInformation($"Combined {fullKey} {auction.Uuid} {virtualBucket.Price} {virtualBucket.Lbin.Price} keys: {string.Join(",", relevant.Select(r => r.Key))}");
             });
 
             long GetCappedMedian(SaveAuction auction, KeyWithValueBreakdown fullKey, List<ReferencePrice> combined)
@@ -2001,7 +2022,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (closest.Key == key)
                 return; // already found - or rather not - by median
             else
-                Console.WriteLine($"Would estimate closest to {key} {closest.Key} {auction.Uuid} for {closest.Value.Price}");
+                logger.LogInformation($"Would estimate closest to {key} {closest.Key} {auction.Uuid} for {closest.Value.Price}");
             if (closest.Value.Price <= medPrice)
                 return;
             var props = new Dictionary<string, string>() { { "closest", closest.Key.ToString() } };
@@ -2056,7 +2077,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var countDiffPrice = (long)(countDiff * targetPrice / closest.Key.Count);
                 targetPrice -= countDiffPrice;
                 props.Add("countDiff", $"{countDiff} ({countDiffPrice})");
-                Console.WriteLine($"Adjusting target price due to count diff {countDiff} {countDiffPrice} {targetPrice}");
+                logger.LogInformation($"Adjusting target price due to count diff {countDiff} {countDiffPrice} {targetPrice}");
             }
             // adjust price of reforge 
             if (closest.Key.Reforge != auction.Reforge)
@@ -2069,7 +2090,7 @@ ORDER BY l.`AuctionId`  DESC;
                     closestItemCost = 2_000_000; // estimated cost for missing items
                 }
                 var reforgeDifference = closestItemCost + closestDetails.Item2 - (GetCostForItem(auctionDetails.Item1) - auctionDetails.Item2) / 2;
-                Console.WriteLine($"Adjusting target price due to reforge {closestDetails.Item1} {closestDetails.Item2} {auctionDetails.Item1} {auctionDetails.Item2} {reforgeDifference}");
+                logger.LogInformation($"Adjusting target price due to reforge {closestDetails.Item1} {closestDetails.Item2} {auctionDetails.Item1} {auctionDetails.Item2} {reforgeDifference}");
                 targetPrice -= reforgeDifference;
                 props.Add("reforge", $"{closest.Key.Reforge} -> {auction.Reforge} ({reforgeDifference})");
             }
@@ -2096,7 +2117,7 @@ ORDER BY l.`AuctionId`  DESC;
                     if (missingModifiers.Count > 1)
                         baseFactor = 1.35;
                     var factor = Math.Pow(baseFactor, Math.Abs(biggestDifference)) - 1;
-                    Console.WriteLine($"Adjusting target price due to attribute diff on {biggestDifference} {medPrice} {factor}");
+                    logger.LogInformation($"Adjusting target price due to attribute diff on {biggestDifference} {medPrice} {factor}");
                     return -(long)(medPrice * factor);
                 }
                 var keyhasCombo = AttributeComboLookup.TryGetValue(missingAttributes.Select(m => m.Key).First(), out var combo) && key.Modifiers.Any(m => combo.Contains(m.Key));
@@ -2206,7 +2227,8 @@ ORDER BY l.`AuctionId`  DESC;
                     LogNonFlip(auction, bucket, key, extraValue, volume, medianPrice, $"Adjusted median {adjustedMedianPrice} lower than min price {minMedPrice} {extraValue}");
                     return false;
                 }
-                var props = CreateReference(bucket.References.LastOrDefault().AuctionId, key, extraValue);
+                var referenceAuctionId = bucket.References.LastOrDefault().AuctionId;
+                var props = CreateReference(referenceAuctionId, key, extraValue, bucket);
                 AddMedianSample(bucket.References, props);
                 if (key.ValueSubstract != 0)
                 {
@@ -2326,7 +2348,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     lookup = new();
                     Lookups[item.ProductId] = lookup;
-                    //Console.WriteLine($"Added {item.ProductId} to lookup");
+                    //logger.LogInformation($"Added {item.ProductId} to lookup");
                 }
                 var bucket = lookup.Lookup.GetOrAdd(defaultKey, _ => new());
                 var itemPrice = 0D;
@@ -2388,7 +2410,7 @@ ORDER BY l.`AuctionId`  DESC;
                     }
                 }
             }
-            Console.WriteLine($"Updated bazaar {Lookups.Count} items");
+            logger.LogInformation($"Updated bazaar {Lookups.Count} items");
 
             void MakePriceAtLeast90PercentHigherthanLowerLevel(dev.ProductInfo item, ReferenceAuctions refernces)
             {
@@ -2437,7 +2459,7 @@ ORDER BY l.`AuctionId`  DESC;
                 Activity.Current.Log("Stacksize 1 is cheaper");
                 return false;
             }
-            var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue);
+            var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue, bucket);
             AddMedianSample(bucket.References, props);
             props["mVal"] = bucket.Price.ToString();
             var targetPrice = (Math.Min(higherValueLowerBin, MaxMedianPriceForSnipe(bucket)) + extraValue) - MIN_TARGET / 200;
@@ -2557,7 +2579,7 @@ ORDER BY l.`AuctionId`  DESC;
             while (Logs.TryDequeue(out LogEntry result))
             {
                 var finderName = result.Finder == LowPricedAuction.FinderType.UNKOWN ? "NF" : result.Finder.ToString();
-                Console.WriteLine($"Info: {finderName} {result.Uuid} {result.Median} \t{result.LBin} {result.Volume} {result.Key}");
+                logger.LogInformation($"Info: {finderName} {result.Uuid} {result.Median} \t{result.LBin} {result.Volume} {result.Key}");
             }
         }
 
@@ -2599,11 +2621,12 @@ ORDER BY l.`AuctionId`  DESC;
             return true;
         }
 
-        private static Dictionary<string, string> CreateReference(long reference, AuctionKey key, long extraValue = 0)
+        private static Dictionary<string, string> CreateReference(long reference, AuctionKey key, long extraValue, ReferenceAuctions bucket)
         {
             var dict = new Dictionary<string, string>() {
                 { "reference", AuctionService.Instance.GetUuid(reference) },
-                { "key", key.ToString() + (extraValue == 0 ? "" : $" +{extraValue}")}
+                { "key", key.ToString() + (extraValue == 0 ? "" : $" +{extraValue}")},
+                { "volat", bucket.Volatility.ToString()}
             };
             if (extraValue != 0)
                 dict["extraValue"] = extraValue.ToString();

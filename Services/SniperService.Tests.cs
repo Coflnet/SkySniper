@@ -9,6 +9,7 @@ using Coflnet.Sky.Sniper.Models;
 using dev;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualBasic;
 using Newtonsoft.Json;
 using NUnit.Framework;
@@ -56,7 +57,7 @@ namespace Coflnet.Sky.Sniper.Services
                 AuctioneerId = "12c144"
             };
             SniperService.MIN_TARGET = 0;
-            service = new SniperService(new(null, null), null);
+            service = new SniperService(new(null, null), null, NullLogger<SniperService>.Instance);
 
             found = new List<LowPricedAuction>();
             service.FoundSnipe += found.Add;
@@ -136,7 +137,6 @@ namespace Coflnet.Sky.Sniper.Services
                 Reforge = ItemReferences.Reforge.Fabled,
                 HighestBidAmount = 80_000_000
             });
-            Console.WriteLine(JsonConvert.SerializeObject(key, Formatting.Indented));
             Assert.That(key.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.growth), "Growth should be in key even if there are no buy orders on bazaar");
             Assert.That(!key.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.ultimate_legion));
             Assert.That(ItemReferences.Reforge.Any, Is.EqualTo(key.Reforge));
@@ -832,7 +832,6 @@ namespace Coflnet.Sky.Sniper.Services
             service.Lookups.TryAdd("1", lookup);
             for (int i = 0; i < 11; i++)
             {
-                Console.WriteLine($"Day: {SniperService.GetDay(auction.End)}");
                 service.AddAuctionToBucket(Dupplicate(auction), false, bucket);
                 auction.End = auction.End.AddDays(1);
             }
@@ -1856,7 +1855,6 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 if (s.Finder == LowPricedAuction.FinderType.SNIPER)
                     found = s;
-                Console.WriteLine(JsonConvert.SerializeObject(s, Formatting.Indented));
             };
             service.FoundSnipe += lowAssert;
             var testFlip = Dupplicate(highestValAuction);
@@ -1925,7 +1923,6 @@ namespace Coflnet.Sky.Sniper.Services
             service.TestNewAuction(sample);
             var flip = found.Where(a => a.Finder == finder).FirstOrDefault();
             Assert.That(flip, Is.Not.Null, "flip should have been found");
-            Console.WriteLine(JsonConvert.SerializeObject(flip, Formatting.Indented));
             Assert.That(expectedPrice, Is.EqualTo(flip.TargetPrice), "median should be adjusted for exp diff");
         }
         [Test]
@@ -1937,7 +1934,6 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 found = s;
                 Assert.That(2000, Is.EqualTo(s.TargetPrice), "extra value should be added to price");
-                Console.WriteLine(JsonConvert.SerializeObject(s));
             };
             service.FoundSnipe += lowAssert;
             service.TestNewAuction(Dupplicate(drill));
@@ -2026,6 +2022,27 @@ namespace Coflnet.Sky.Sniper.Services
             void CreateVolume(string attrib, int level, int cost)
             {
                 highestValAuction.FlatenedNBT = new() { { attrib, level.ToString() } };
+                highestValAuction.HighestBidAmount = cost;
+                AddVolume(highestValAuction);
+            }
+        }
+
+        [TestCase(10, 20, 15, 23)]
+        [TestCase(20, 20, 5, 74)]
+        [TestCase(2000, 2000, 500, 74)]
+        [TestCase(20, 20, 19, 2)]
+        [TestCase(20, 20, 20, 0)]
+        [TestCase(1, 18, 2, 120)]
+        [Test]
+        public void CalculatesVolatility(int a, int b, int c, int expected)
+        {
+            CreateVolume(a);
+            CreateVolume(b);
+            CreateVolume(c);
+            var estimate = service.GetPrice(highestValAuction);
+            Assert.That(estimate.Volatility, Is.EqualTo(expected));
+            void CreateVolume(int cost)
+            {
                 highestValAuction.HighestBidAmount = cost;
                 AddVolume(highestValAuction);
             }
