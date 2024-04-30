@@ -1978,6 +1978,8 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
+        public static readonly HashSet<string> HyperionGroup = new() { "SCYLLA", "VALKYRIE", "NECRON_BLADE", "ASTRAEA" };
+
         /// <summary>
         /// Remaps item tags into one item if they are easily switchable
         /// </summary>
@@ -1985,7 +1987,7 @@ ORDER BY l.`AuctionId`  DESC;
         /// <returns></returns>
         private (string tag, long costSubstract) GetAuctionGroupTag(string itemGroupTag)
         {
-            if (itemGroupTag == "SCYLLA" || itemGroupTag == "VALKYRIE" || itemGroupTag == "NECRON_BLADE")
+            if (HyperionGroup.Contains(itemGroupTag))
                 return ("HYPERION", GetPriceForItem("GIANT_FRAGMENT_LASER") * 8); // easily craftable from one into the other
             if (itemGroupTag.StartsWith("STARRED_"))
                 // technically neds 8 for crafting but looses the value on craft so using 7

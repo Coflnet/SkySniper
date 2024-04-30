@@ -306,7 +306,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         [ResponseCache(Duration = 1800, Location = ResponseCacheLocation.Any, NoStore = false)]
         public Dictionary<string, long> CleanPrices()
         {
-            return service.Lookups.SelectMany(l => l.Value.Lookup
+            var dictionary = service.Lookups.SelectMany(l => l.Value.Lookup
                 .Where(l => l.Value.Price > 0)
                 .GroupBy(i =>
                 {
@@ -333,6 +333,13 @@ namespace Coflnet.Sky.Sniper.Controllers
                 ))
                 .Where(l => l.Item2 > 0)
                 .ToDictionary(l => l.Key, l => l.Item2);
+            // expand group(s)
+            var hyperion = dictionary["HYPERION"];
+            foreach (var item in SniperService.HyperionGroup)
+            {
+                dictionary[item] = hyperion;
+            }
+            return dictionary;
         }
 
         public class Result
