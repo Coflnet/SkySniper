@@ -417,21 +417,12 @@ public class PartialCalcService
                     price = reforgeStonePrice + cost.Item2;
                     return true;
                 }
-                else
-                {
-                    // Console.WriteLine($"Not Found Reforge {key} {s} {cost.Item1}");
-                }
             }
 
             if (TryGetItemCost(s, out var itemPrice))
             {
-                // Console.WriteLine($"Found Val {key} {s} {lookup.Lookup.First().Value.Price}");
                 price = itemPrice;
                 return true;
-            }
-            else
-            {
-                //Console.WriteLine($"Not Found Val {key} {s}");
             }
         }
 

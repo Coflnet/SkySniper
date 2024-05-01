@@ -56,37 +56,50 @@ public class AttributeController : ControllerBase
             .SelectMany(l => l.Value.Lookup.Where(r => r.Value.Lbin.Price > 0 && r.Key.Modifiers.Any(m => m.Key == attribute))
                 .SelectMany(r => r.Value.Lbins.Select(l => (int.Parse(r.Key.Modifiers.Where(m => m.Key == attribute).First().Value), l.AuctionId.ToString(), l.Price)).ToList()))
             .ToList();
+        return GetCheapestPath(startLevel, endLevel, allOptions);
+    }
+
+    public static Dictionary<string, List<string>> GetCheapestPath(int startLevel, int endLevel, List<(int, string, long Price)> allOptions)
+    {
         var result = new List<(string level, List<string>)>();
 
         for (int i = startLevel; i < endLevel; i++)
         {
             // find the cheapest for each level
-            var cheapest = allOptions.Where(o => o.Item1 == i).OrderBy(o => o.Item3).FirstOrDefault();
-            var lower = allOptions.Where(o => o.Item1 == i - 1).OrderBy(o => o.Item3).Take(2).ToList();
-            if (cheapest == default)
-            {
-                // try find two of lower level
-                if (lower.Count < 2)
-                {
-                    // no more options
-                    break;
-                }
-                // add the two lower levels
-                result.Add((i.ToString(), lower.Select(l => l.Item2).ToList()));
-                continue;
-            }
-            var lowerSum = lower.Sum(l => l.Item3);
-            if (lowerSum < cheapest.Item3)
-            {
-                // add the two lower levels
-                result.Add((i.ToString(), lower.Select(l => l.Item2).ToList()));
-                continue;
-            }
-            // remove all other options for this auction
-            allOptions.RemoveAll(o => o.Item2 == cheapest.Item2);
-            result.Add((i.ToString(), new List<string> { cheapest.Item2 }));
+            var neededLevel = i;
+            var combo = GetCheapestForLevel(allOptions, i);
+            result.Add((i.ToString(), combo.Select(c => c.Item2).ToList()));
+            allOptions.RemoveAll(r => combo.Any(c => c.Item2 == r.Item2));
         }
         return result.ToDictionary(r => r.level, r => r.Item2);
+
+        static List<(int, string, long Price)> GetCheapestForLevel(List<(int, string, long Price)> allOptions, int neededLevel)
+        {
+            var cheapest = allOptions.Where(o => o.Item1 == neededLevel).OrderBy(o => o.Item3).Take(1).ToList();
+            if (neededLevel == 1)
+            {
+                return cheapest;
+            }
+
+            // try find cheaper combination
+            var lowerLeft = GetCheapestForLevel(allOptions, neededLevel - 1);
+            // temp remove the cheapest
+            allOptions.RemoveAll(r => lowerLeft.Any(l => l.Item2 == r.Item2));
+            var lowerRight = GetCheapestForLevel(allOptions, neededLevel - 1);
+            if (lowerRight.Count == 0)
+            {
+                return cheapest;
+            }
+            var combined = lowerLeft.Concat(lowerRight).ToList();
+            var sum = combined.Sum(c => c.Item3);
+            var lowestCost = cheapest.FirstOrDefault().Item3;
+            if (cheapest.Count == default || sum < lowestCost)
+            {
+                cheapest = combined;
+            }
+
+            return cheapest;
+        }
     }
 
     public class AttributeComboResult

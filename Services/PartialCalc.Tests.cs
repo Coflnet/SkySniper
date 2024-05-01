@@ -141,7 +141,6 @@ public class PartialCalcTests
             }
         }, 100);
         var result = Service.GetPrice(item, true);
-        Console.WriteLine(string.Join("\n", result.BreakDown));
         Assert.That(result.Price, Is.GreaterThan(5_000_000));
     }
 
@@ -182,10 +181,8 @@ public class PartialCalcTests
             }
             }, 1);
             AddSell(normalPriced, 20);
-            Console.WriteLine(JsonConvert.SerializeObject(Service.GetAttributeCosts("CLEAN")));
         }
         var result = Service.GetPrice(item, true);
-        Console.WriteLine(string.Join("\n", result.BreakDown));
         Assert.That(700000, Is.GreaterThan(result.Price));
     }
 
@@ -215,7 +212,6 @@ public class PartialCalcTests
         }, 100);
         await Service.CapAtCraftCost();
         var result = Service.GetPrice(item, true);
-        Console.WriteLine(string.Join("\n", result.BreakDown));
         Assert.That(600000, Is.GreaterThan(result.Price));
     }
 
@@ -250,7 +246,6 @@ public class PartialCalcTests
 
         await Service.CapAtCraftCost();
         var result = Service.GetPrice(item, true);
-        Console.WriteLine(string.Join("\n", result.BreakDown));
         Assert.That("ench.impaling 3: 787.5",Is.EqualTo(result.BreakDown[1].Replace(",", ".")));
     }
 
@@ -282,7 +277,6 @@ public class PartialCalcTests
         }, 100);
         await Service.CapAtCraftCost();
         var result = Service.GetPrice(item, true);
-        Console.WriteLine(string.Join("\n", result.BreakDown));
         // capped at 50k - no enchant from ench table is worth more than that
         Assert.That("ench.cleave 5: 50000.0",Is.EqualTo(result.BreakDown[1].Replace(",", ".")));
     }
@@ -327,7 +321,6 @@ public class PartialCalcTests
         });
         await Service.CapAtCraftCost();
         var result = Service.GetPrice(item, true);
-        Console.WriteLine(string.Join("\n", result.BreakDown));
         // capped at sum of essence cost
         Assert.That("upgrade_level 5: 7855750.0",Is.EqualTo(result.BreakDown[1].Replace(",", ".")));
     }
