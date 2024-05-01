@@ -27,7 +27,7 @@ public class AttributeController : ControllerBase
     {
         var allOptions = GetKuudraArmors();
         if (itemType != "kuudra")
-            allOptions = service.Lookups.Where(l => l.Key == itemType);
+            allOptions = GetGroup(itemType, false);
         return allOptions
             .Select(l => (l.Key, l.Value.Lookup.Where(r => r.Value.Lbin.Price > 0 && r.Key.Modifiers.Any(m => m.Key == leftAttrib) && r.Key.Modifiers.Any(m => m.Key == rightAttrib))
                 .OrderBy(r => r.Value.Lbin.Price).FirstOrDefault()))
@@ -44,15 +44,26 @@ public class AttributeController : ControllerBase
         return service.Lookups.Where(l => service.CrimsonArmors.Any(k => l.Key.StartsWith(k)));
     }
 
+    private IEnumerable<KeyValuePair<string, PriceLookup>> GetGroup(string tag, bool typeMatters = true)
+    {
+        var type = tag.Split('_').Last();
+        var position = tag.LastIndexOf('_');
+        if (position > 0)
+        {
+            tag = tag.Substring(0, position);
+        }
+        if (service.CrimsonArmors.Any(k => tag.StartsWith(k)))
+        {
+            return service.Lookups.Where(l => service.CrimsonArmors.Any(k => l.Key.StartsWith(k)) && (!typeMatters || l.Key.EndsWith(type)));
+        }
+        return service.Lookups.Where(l => l.Key.StartsWith(tag) && (!typeMatters || l.Key.EndsWith(type)));
+    }
+
     [Route("cheapest/{itemType}/{attribute}")]
     [HttpGet]
     public Dictionary<string, List<string>> GetCheapest(string itemType, string attribute, int startLevel = 1, int endLevel = 10)
     {
-        if (itemType.ToLower() != "kuudra")
-        {
-            throw new CoflnetException("unsuported", "Only kuudra is supported");
-        }
-        var allOptions = GetKuudraArmors()
+        var allOptions = GetGroup(itemType)
             .SelectMany(l => l.Value.Lookup.Where(r => r.Value.Lbin.Price > 0 && r.Key.Modifiers.Any(m => m.Key == attribute))
                 .SelectMany(r => r.Value.Lbins.Select(l => (int.Parse(r.Key.Modifiers.Where(m => m.Key == attribute).First().Value), l.AuctionId.ToString(), l.Price)).ToList()))
             .ToList();
