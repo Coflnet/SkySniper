@@ -426,7 +426,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (tagGroup.Item2 != 0)
             {
                 result.Median += tagGroup.Item2;
-                result.MedianKey += $"+star:{tagGroup.Item2}";
+                result.MedianKey += $"&comb";
             }
             return result;
         }
