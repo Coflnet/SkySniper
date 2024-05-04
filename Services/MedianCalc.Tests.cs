@@ -10,14 +10,26 @@ using NUnit.Framework;
 namespace Coflnet.Sky.Sniper.Services;
 public class MedianCalcTests
 {
+    private SniperService service;
+    [SetUp]
+    public void Setup()
+    {
+        service = new SniperService(null, null, NullLogger<SniperService>.Instance);
+    }
     [Test]
     public void LargeData()
     {
-        var service = new SniperService(null, null, null);
+        ReferenceAuctions bucket = LoadJsonReferences(SampleJson);
+        service.UpdateMedian(bucket);
+        Assert.That(54900000, Is.EqualTo(bucket.Price));
+    }
+
+    private static ReferenceAuctions LoadJsonReferences(string json)
+    {
         var bucket = new ReferenceAuctions();
         bucket.References = new ConcurrentQueue<ReferencePrice>();
-        var sample = JsonConvert.DeserializeObject<ReferencePrice[]>(SampleJson);
-        var dayDiff = SniperService.GetDay() - sample[0].Day;
+        var sample = JsonConvert.DeserializeObject<ReferencePrice[]>(json);
+        var dayDiff = SniperService.GetDay() - sample.Last().Day;
         foreach (var item in sample)
         {
             var adopted = new ReferencePrice()
@@ -25,18 +37,18 @@ public class MedianCalcTests
                 AuctionId = item.AuctionId,
                 Day = (short)(item.Day + dayDiff),
                 Price = item.Price,
-                Seller = item.Seller
+                Seller = item.Seller,
+                Buyer = item.Buyer
             };
             bucket.References.Enqueue(adopted);
         }
-        service.UpdateMedian(bucket);
-        Assert.That(54900000,Is.EqualTo(bucket.Price));
+
+        return bucket;
     }
 
     [Test]
     public void DedupsBuyer()
     {
-        var service = new SniperService(null, null, NullLogger<SniperService>.Instance);
         var random = new Random(1);
         var auction = new SaveAuction()
         {
@@ -62,6 +74,64 @@ public class MedianCalcTests
         Assert.That(2000,Is.EqualTo(service.Lookups.First().Value.Lookup.First().Value.Price));
     }
 
+    /// <summary>
+    /// real world example of manipulated portal
+    /// back and forth selling should be ignored
+    /// </summary>
+    [Test]
+    public void PortalSampleIsNotOvervalued()
+    {
+        ReferenceAuctions bucket = LoadJsonReferences(PortalSample);
+        service.UpdateMedian(bucket);
+        Assert.That(bucket.Price, Is.EqualTo(0));
+    }
+    private const string PortalSample =
+    """
+    [
+        {
+            "auctionId": -7278140679223593702,
+            "price": 200000000,
+            "day": 949,
+            "seller": 15975,
+            "buyer": -1461
+        },
+        {
+            "auctionId": 6836884872096665689,
+            "price": 200000000,
+            "day": 951,
+            "seller": -25965,
+            "buyer": 2103
+        },
+        {
+            "auctionId": 8092881010753573897,
+            "price": 200000000,
+            "day": 951,
+            "seller": 2103,
+            "buyer": -25965
+        },
+        {
+            "auctionId": 264493352913775978,
+            "price": 200000000,
+            "day": 951,
+            "seller": 28104,
+            "buyer": 2103
+        },
+        {
+            "auctionId": 8960060504682202984,
+            "price": 200000000,
+            "day": 951,
+            "seller": -25965,
+            "buyer": 28104
+        },
+        {
+            "auctionId": 6252479138994737017,
+            "price": 130000000,
+            "day": 952,
+            "seller": 2103,
+            "buyer": 16780
+        }
+        ]
+    """;
     private const string SampleJson =
     """
         [{

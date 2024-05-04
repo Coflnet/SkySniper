@@ -832,10 +832,15 @@ ORDER BY l.`AuctionId`  DESC;
             if (size < 4)
                 return; // can't have enough volume
             var buyerCounter = 0;
+            // check for back and forth selling
+            var buyerSellerCombos = bucket.References.GroupBy(a => a.Buyer + a.Seller)
+                .Where(g => g.Count() > 1)
+                .ToLookup(l => l.First().Seller);
             var deduplicated = bucket.References.Reverse()
+                .Where(d => !buyerSellerCombos.Contains(d.Seller) && !buyerSellerCombos.Contains(d.Buyer))
                 .OrderByDescending(b => b.Day)
                 .GroupBy(a => a.Seller)
-                .Select(a => a.First())  // only use one (the latest) price from each seller
+                .Select(a => a.OrderBy(ai => ai.Price).First())  // only use one (the cheapest) price from each seller
                 .GroupBy(a => a.Buyer == 0 ? buyerCounter++ : a.Buyer)
                 .Select(a => a.OrderBy(ai => ai.Price).First())  // only use cheapest price from each buyer 
                 .Take(60)
