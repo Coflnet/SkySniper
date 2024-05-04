@@ -44,13 +44,13 @@ public class AttributeController : ControllerBase
         return service.Lookups.Where(l => service.CrimsonArmors.Any(k => l.Key.StartsWith(k)));
     }
 
-    private IEnumerable<KeyValuePair<string, PriceLookup>> GetGroup(string tag, bool typeMatters = true)
+    public IEnumerable<KeyValuePair<string, PriceLookup>> GetGroup(string tag, bool typeMatters = true)
     {
         var type = tag.Split('_').Last();
         var position = tag.LastIndexOf('_');
         if (position > 0)
         {
-            tag = tag.Substring(0, position);
+            tag = tag.Substring(0, position + 1);
         }
         if (service.CrimsonArmors.Any(k => tag.StartsWith(k)))
         {
