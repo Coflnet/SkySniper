@@ -683,7 +683,7 @@ namespace Coflnet.Sky.Sniper.Services
         {
             service.AddSoldItem(highestValAuction);
             var anotherAuction = new SaveAuction(highestValAuction)
-            { UId = 563, HighestBidAmount = 5000, AuctioneerId = "00000", FlatenedNBT = highestValAuction.FlatenedNBT };
+            { UId = 563, HighestBidAmount = 5000, AuctioneerId = "10000", FlatenedNBT = highestValAuction.FlatenedNBT };
             anotherAuction.End = DateTime.UtcNow - TimeSpan.FromDays(1);
             service.AddSoldItem(anotherAuction);
             service.AddSoldItem(secondAuction);

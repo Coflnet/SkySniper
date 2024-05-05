@@ -831,20 +831,9 @@ ORDER BY l.`AuctionId`  DESC;
             var size = bucket.References.Count;
             if (size < 4)
                 return; // can't have enough volume
-            var buyerCounter = 0;
-            // check for back and forth selling
-            var buyerSellerCombos = bucket.References.GroupBy(a => a.Buyer + a.Seller)
-                .Where(g => g.Count() > 1)
-                .ToLookup(l => l.First().Seller);
-            var deduplicated = bucket.References.Reverse()
-                .Where(d => !buyerSellerCombos.Contains(d.Seller) && !buyerSellerCombos.Contains(d.Buyer))
-                .OrderByDescending(b => b.Day)
-                .GroupBy(a => a.Seller)
-                .Select(a => a.OrderBy(ai => ai.Price).First())  // only use one (the cheapest) price from each seller
-                .GroupBy(a => a.Buyer == 0 ? buyerCounter++ : a.Buyer)
-                .Select(a => a.OrderBy(ai => ai.Price).First())  // only use cheapest price from each buyer 
-                .Take(60)
-                .ToList();
+            List<ReferencePrice> deduplicated = ApplyAntiMarketManipulation(bucket);
+            DropUnderlistings(deduplicated);
+
             size = deduplicated.Count();
             if (size <= 3 || deduplicated.Count(d => d.Day >= GetDay() - 20) < 3 && !(keyCombo.Item2?.Key.IsClean() ?? false) && !IsMaxAttrib(keyCombo))
             {
@@ -939,6 +928,52 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var matchCount = keyCombo.key?.Key?.Modifiers?.Where(m => Constants.AttributeKeys.Contains(m.Key) && m.Value == "10").Count();
                 return matchCount == 2;
+            }
+
+            static void DropUnderlistings(List<ReferencePrice> deduplicated)
+            {
+                var bucketSize = deduplicated.Count();
+                var toRemove = new List<ReferencePrice>();
+                for (int i = 0; i < bucketSize; i++)
+                {
+                    var batch = deduplicated.Skip(i).Take(5).ToList();
+                    if (batch.Count < 3)
+                        break;
+                    var targetAuction = deduplicated[i];
+                    var hit = batch.Where(a => a.Buyer == targetAuction.Seller).FirstOrDefault();
+                    if (hit.AuctionId != default)
+                    {
+                        toRemove.Add(hit);
+                        continue;
+                    }
+                }
+                if (deduplicated.Count - toRemove.Count < 4)
+                {
+                    return;
+                }
+                foreach (var item in toRemove)
+                {
+                    deduplicated.Remove(item);
+                }
+            }
+
+            static List<ReferencePrice> ApplyAntiMarketManipulation(ReferenceAuctions bucket)
+            {
+                var buyerCounter = 0;
+                // check for back and forth selling
+                var buyerSellerCombos = bucket.References.GroupBy(a => a.Buyer + a.Seller)
+                    .Where(g => g.Count() > 1)
+                    .ToLookup(l => l.First().Seller);
+                var deduplicated = bucket.References.Reverse()
+                    .Where(d => !buyerSellerCombos.Contains(d.Seller) && !buyerSellerCombos.Contains(d.Buyer))
+                    .OrderByDescending(b => b.Day)
+                    .GroupBy(a => a.Seller)
+                    .Select(a => a.OrderBy(ai => ai.Price).First())  // only use one (the cheapest) price from each seller
+                    .GroupBy(a => a.Buyer == 0 ? buyerCounter++ : a.Buyer)
+                    .Select(a => a.OrderBy(ai => ai.Price).First())  // only use cheapest price from each buyer 
+                    .Take(60)
+                    .ToList();
+                return deduplicated;
             }
         }
 

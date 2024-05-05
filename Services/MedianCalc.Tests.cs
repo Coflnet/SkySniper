@@ -74,6 +74,14 @@ public class MedianCalcTests
         Assert.That(2000,Is.EqualTo(service.Lookups.First().Value.Lookup.First().Value.Price));
     }
 
+    [Test]
+    public void IgnoreFlips()
+    {
+        ReferenceAuctions bucket = LoadJsonReferences(FlipSample);
+        service.UpdateMedian(bucket);
+        Assert.That(bucket.Price, Is.EqualTo(30000000), "Both flips should be ignored for median");
+    }
+
     /// <summary>
     /// real world example of manipulated portal
     /// back and forth selling should be ignored
@@ -129,6 +137,54 @@ public class MedianCalcTests
             "day": 952,
             "seller": 2103,
             "buyer": 16780
+        }
+        ]
+    """;
+
+        private const string FlipSample =
+    """
+    [
+        {
+            "auctionId": 6256124353103244712,
+            "price": 79500000,
+            "day": 941,
+            "seller": 3229,
+            "buyer": 3966
+        },
+        {
+            "auctionId": 5416676501549248587,
+            "price": 50000000,
+            "day": 944,
+            "seller": -18023,
+            "buyer": -14356
+        },
+        {
+            "auctionId": -2245860291070239942,
+            "price": 1950000,
+            "day": 948,
+            "seller": 1672,
+            "buyer": 17385
+        },
+        {
+            "auctionId": 2378801729071542763,
+            "price": 1800000,
+            "day": 948,
+            "seller": 20682,
+            "buyer": -13029
+        },
+        {
+            "auctionId": -7040391235981127270,
+            "price": 30000000,
+            "day": 948,
+            "seller": 17385,
+            "buyer": 10048
+        },
+        {
+            "auctionId": 4544445791807361193,
+            "price": 29999000,
+            "day": 948,
+            "seller": -13029,
+            "buyer": 1
         }
         ]
     """;
