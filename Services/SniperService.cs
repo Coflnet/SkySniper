@@ -686,7 +686,15 @@ ORDER BY l.`AuctionId`  DESC;
                         loadedVal.Lookup.TryRemove(item, out _);
                 }
             }
-            var current = Lookups.AddOrUpdate(itemTag, loadedVal, (tag, value) =>
+            var current = Lookups.AddOrUpdate(itemTag, (id) =>
+            {
+                foreach (var item in loadedVal.Lookup)
+                {
+                    item.Value.References = new ConcurrentQueue<ReferencePrice>(item.Value.References.Where(r => r.Price > 0).OrderBy(r => r.Day));
+                    loadedVal.Lookup[item.Key] = item.Value;
+                }
+                return loadedVal;
+            }, (tag, value) =>
             {
                 foreach (var item in loadedVal.Lookup)
                 {
