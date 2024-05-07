@@ -767,7 +767,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var attributesOnAuction = auction.FlatenedNBT.Where(a => Constants.AttributeKeys.Contains(a.Key)).ToList();
                 if (attributesOnAuction.Count == 0)
                     return;
-                if (key.Enchants.Count > 1 || key.Modifiers.Count > 3)
+                if (key.Enchants.Count > 1 || key.Modifiers.Count > 2)
                     return; // only add attributes for (almost) clean items, one allowed for things that drop with extra enchants
                 var groupTag = GetAuctionGroupTag(auction.Tag);
                 var itemGroupTag = groupTag.Item1;
@@ -868,6 +868,8 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var breakdown = keyCombo.key.ValueBreakdown;
                 long limitedPrice = CapAtCraftCost(keyCombo.tag, medianPrice, keyCombo.key, bucket.Price);
+                // check higher value keys for lower price 
+                limitedPrice = CapPriceAtHigherLevelKey(keyCombo, limitedPrice);
                 if (limitedPrice > 0 && limitedPrice != bucket.Price)
                 {
                     medianPrice = limitedPrice;
@@ -974,6 +976,21 @@ ORDER BY l.`AuctionId`  DESC;
                     .Take(60)
                     .ToList();
                 return deduplicated;
+            }
+
+            long CapPriceAtHigherLevelKey((string tag, KeyWithValueBreakdown key) keyCombo, long limitedPrice)
+            {
+                var cheaperHigherValue = Lookups[keyCombo.tag].Lookup
+                    .Where(k => k.Value.Price < limitedPrice && k.Value.Price != 0
+                            && !k.Key.Modifiers.Any(m => m.Key == "virtual")
+                            && IsHigherValue(keyCombo.key, k.Key) && k.Key.Reforge == keyCombo.key.Key.Reforge)
+                    .OrderBy(b => b.Value.Price).Select(b => b.Value.Price).FirstOrDefault();
+                if (cheaperHigherValue != default && cheaperHigherValue < limitedPrice)
+                {
+                    limitedPrice = cheaperHigherValue;
+                }
+
+                return limitedPrice;
             }
         }
 

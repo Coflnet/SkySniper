@@ -507,6 +507,22 @@ namespace Coflnet.Sky.Sniper.Services
             var price = service.GetPrice(sample);
             Assert.That(5_000_000, Is.EqualTo(price.Median));
         }
+        [Test]
+        public void HigherValueCheckForLowerPrice()
+        {
+            var higherValue = Dupplicate(highestValAuction);
+            higherValue.Tag = "CRIMSON_CHESTPLATE";
+            higherValue.FlatenedNBT = new() { { "magic_find", "5" }, { "veteran", "4" } };
+            higherValue.HighestBidAmount = 10_000_000;
+            AddVolume(higherValue);
+            var lowerValue = Dupplicate(higherValue);
+            lowerValue.FlatenedNBT["magic_find"] = "3";
+            lowerValue.HighestBidAmount = 15_000_000;
+            AddVolume(lowerValue);
+            var sample = Dupplicate(lowerValue);
+            var price = service.GetPrice(sample);
+            Assert.That(price.Median, Is.EqualTo(10_000_000));
+        }
         /// <summary>
         /// Combined is always checked and should use the most recent if the bucket is big enough
         /// </summary>
@@ -1086,11 +1102,11 @@ namespace Coflnet.Sky.Sniper.Services
             firstAuction.Enchantments.Add(new(Enchantment.EnchantmentType.protection, 6));
             firstAuction.FlatenedNBT.Add("hpc", "15");
             firstAuction.HighestBidAmount = 32_000_000;
-            AddVolume(firstAuction);
 
             target.Enchantments.Clear();
             target.HighestBidAmount = 35_000_000;
             AddVolume(target);
+            AddVolume(firstAuction);
 
             var estimate = service.GetPrice(noVolume);
             Assert.That(35_000_000, Is.EqualTo(estimate.Median));
