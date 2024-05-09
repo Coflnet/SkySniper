@@ -83,6 +83,14 @@ public class MedianCalcTests
     }
 
     [Test]
+    public void TerrorChestplateMedian()
+    {
+        ReferenceAuctions bucket = LoadJsonReferences(TerroChestplateSample);
+        service.UpdateMedian(bucket);
+        Assert.That(bucket.Price, Is.EqualTo(57500000));
+    }
+
+    [Test]
     public void LowDropMedianLimit()
     {
         ReferenceAuctions bucket = LoadJsonReferences(LowDropMedian);
@@ -208,6 +216,131 @@ public class MedianCalcTests
             "buyer": 0
         }]
     """;
+
+    private const string TerroChestplateSample =
+    """
+        [{
+            "auctionId": -7527501475029030085,
+            "price": 110000000,
+            "day": 932,
+            "seller": -4267,
+            "buyer": 0
+        },
+        {
+            "auctionId": -5970723489250354072,
+            "price": 128000000,
+            "day": 933,
+            "seller": 24244,
+            "buyer": 0
+        },
+        {
+            "auctionId": -8043377983277264503,
+            "price": 99000000,
+            "day": 934,
+            "seller": 31195,
+            "buyer": 0
+        },
+        {
+            "auctionId": -7564931173395299960,
+            "price": 105000000,
+            "day": 938,
+            "seller": 25217,
+            "buyer": 29594
+        },
+        {
+            "auctionId": -5534639488087985413,
+            "price": 112000000,
+            "day": 939,
+            "seller": 1675,
+            "buyer": -12895
+        },
+        {
+            "auctionId": 4834515643280139978,
+            "price": 94000000,
+            "day": 940,
+            "seller": 312,
+            "buyer": 2118
+        },
+        {
+            "auctionId": -8331607608609323589,
+            "price": 113000000,
+            "day": 940,
+            "seller": -10525,
+            "buyer": -18586
+        },
+        {
+            "auctionId": 9067452782427709083,
+            "price": 80000000,
+            "day": 948,
+            "seller": -4554,
+            "buyer": -19896
+        },
+        {
+            "auctionId": -1936579432630648007,
+            "price": 85555555,
+            "day": 949,
+            "seller": 10811,
+            "buyer": -22895
+        },
+        {
+            "auctionId": -5770107610556793077,
+            "price": 65000000,
+            "day": 951,
+            "seller": 26446,
+            "buyer": 23443
+        },
+        {
+            "auctionId": 3455361164650038537,
+            "price": 69230000,
+            "day": 952,
+            "seller": 23443,
+            "buyer": -19024
+        },
+        {
+            "auctionId": 9149645891195398155,
+            "price": 69000000,
+            "day": 952,
+            "seller": -19481,
+            "buyer": 21217
+        },
+        {
+            "auctionId": -6555651574664982230,
+            "price": 65000000,
+            "day": 955,
+            "seller": 11577,
+            "buyer": -7735
+        },
+        {
+            "auctionId": -1448169863757344694,
+            "price": 498000,
+            "day": 956,
+            "seller": 9629,
+            "buyer": 24484
+        },
+        {
+            "auctionId": 29269359614874457,
+            "price": 57500000,
+            "day": 956,
+            "seller": -7569,
+            "buyer": -32017
+        },
+        {
+            "auctionId": -6564201068353299014,
+            "price": 59340000,
+            "day": 957,
+            "seller": -32017,
+            "buyer": 0
+        },
+
+
+        {
+            "auctionId": -3149981014479431397,
+            "price": 1500000,
+            "day": 957,
+            "seller": 7522,
+            "buyer": 0
+        }]
+        """;
 
         private const string FlipSample =
     """

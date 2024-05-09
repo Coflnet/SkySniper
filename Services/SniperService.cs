@@ -952,11 +952,11 @@ ORDER BY l.`AuctionId`  DESC;
                         break;
                     var targetAuction = deduplicated[i];
                     var hit = batch.Where(a => a.Buyer == targetAuction.Seller).FirstOrDefault();
-                    if (hit.AuctionId != default)
-                    {
-                        toRemove.Add(hit);
+                    if (hit.AuctionId == default)
                         continue;
-                    }
+                    if (i < 3 && batch.Take(3).Where(a => a.AuctionId != hit.AuctionId).Select(a => a.Price).Average() < hit.Price)
+                        continue;// skip if median would be pulled down, the point of this is to remove to low value
+                    toRemove.Add(hit);
                 }
                 if (deduplicated.Count - toRemove.Count < 4)
                 {
