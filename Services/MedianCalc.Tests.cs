@@ -82,6 +82,14 @@ public class MedianCalcTests
         Assert.That(bucket.Price, Is.EqualTo(30000000), "Both flips should be ignored for median");
     }
 
+    [Test]
+    public void LowDropMedianLimit()
+    {
+        ReferenceAuctions bucket = LoadJsonReferences(LowDropMedian);
+        service.UpdateMedian(bucket);
+        Assert.That(bucket.Price, Is.EqualTo(50000000));
+    }
+
     /// <summary>
     /// real world example of manipulated portal
     /// back and forth selling should be ignored
@@ -139,6 +147,66 @@ public class MedianCalcTests
             "buyer": 16780
         }
         ]
+    """;
+
+    private const string LowDropMedian =
+    """
+        [{
+            "auctionId": 2270766506477480217,
+            "price": 64000000,
+            "day": 891,
+            "seller": 26983,
+            "buyer": 0
+        },
+        {
+            "auctionId": -3902876673741236581,
+            "price": 46500000,
+            "day": 917,
+            "seller": 17673,
+            "buyer": 0
+        },
+        {
+            "auctionId": -4870748277545419096,
+            "price": 58178747,
+            "day": 930,
+            "seller": -22547,
+            "buyer": 0
+        },
+        {
+            "auctionId": -82296909508691448,
+            "price": 61000000,
+            "day": 930,
+            "seller": -32312,
+            "buyer": 0
+        },
+        {
+            "auctionId": -3625130011186531175,
+            "price": 54000000,
+            "day": 933,
+            "seller": -16422,
+            "buyer": 0
+        },
+        {
+            "auctionId": 3454623913310012187,
+            "price": 59000000,
+            "day": 938,
+            "seller": -16748,
+            "buyer": 0
+        },
+        {
+            "auctionId": -7189316192931376501,
+            "price": 50000000,
+            "day": 938,
+            "seller": 26405,
+            "buyer": 0
+        },
+        {
+            "auctionId": 4409215473139842457,
+            "price": 57,
+            "day": 953,
+            "seller": -26648,
+            "buyer": 0
+        }]
     """;
 
         private const string FlipSample =

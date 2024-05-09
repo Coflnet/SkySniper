@@ -853,7 +853,8 @@ ORDER BY l.`AuctionId`  DESC;
             var shortTermPrice = GetMedian(shortTermList);
             bucket.OldestRef = shortTermList.Take(4).Min(s => s.Day);
             if (shortTermList.Count >= 3 && bucket.OldestRef - shortTermList.First().Day <= -5
-                && shortTermList.First().AuctionId != shortTermList.OrderByDescending(o => o.Price).First().AuctionId)
+                && shortTermList.First().AuctionId != shortTermList.OrderByDescending(o => o.Price).First().AuctionId
+                && bucket.Volume > 0.25) // 5 day gaps are to be expected at ~0.2 volume
             {
                 // probably derpy or weird price drop
                 if (bucket.OldestRef == shortTermList.Skip(1).First().Day)
