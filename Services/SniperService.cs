@@ -530,7 +530,9 @@ ORDER BY l.`AuctionId`  DESC;
         {
             (var modVal, var modExp) = AdjustMedianForModifiers(result, itemKey, c, auction);
             (var enchal, var enchExp) = AdjustForMissingEnchants(result, itemKey, c);
-            var reforgediff = GetReforgeValue(c.Key.Reforge) - GetReforgeValue(itemKey.Reforge);
+            var reforgediff = 0L;
+            if (c.Key.Reforge != itemKey.Reforge)
+                reforgediff = GetReforgeValue(c.Key.Reforge) - GetReforgeValue(itemKey.Reforge) / 20;
             diffExp = modExp + enchExp;
             changeAmount = modVal + enchal + reforgediff;
         }
