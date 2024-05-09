@@ -44,6 +44,8 @@ public class AttributeController : ControllerBase
         return service.Lookups.Where(l => service.CrimsonArmors.Any(k => l.Key.StartsWith(k)));
     }
 
+    [Route("group/{tag}")]
+    [HttpGet]
     public IEnumerable<KeyValuePair<string, PriceLookup>> GetGroup(string tag, bool typeMatters = true)
     {
         var type = tag.Split('_').Last();
