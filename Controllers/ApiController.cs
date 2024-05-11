@@ -21,12 +21,14 @@ namespace Coflnet.Sky.Sniper.Controllers
         private readonly ILogger<SniperController> _logger;
         private readonly SniperService service;
         private readonly ITokenService tokenService;
+        private readonly ICraftCostService craftCostService;
 
-        public SniperController(ILogger<SniperController> logger, SniperService service, ITokenService tokenService)
+        public SniperController(ILogger<SniperController> logger, SniperService service, ITokenService tokenService, ICraftCostService craftCostService)
         {
             _logger = logger;
             this.service = service;
             this.tokenService = tokenService;
+            this.craftCostService = craftCostService;
         }
 
 
@@ -76,6 +78,14 @@ namespace Coflnet.Sky.Sniper.Controllers
             return itemIds.Select(i => Convert.ToBase64String(MessagePack.MessagePackSerializer.Serialize(service.Lookups[i])));
         }
 
+
+        [Route("dump/craftCost")]
+        [HttpGet]
+        public Dictionary<string, double> DumpCraftCost([FromHeader] string Authorization)
+        {
+            CountUsageAndValidate(Authorization);
+            return craftCostService.Costs;
+        }
         /// <summary>
         /// Retrieve item lookup state transfer
         /// </summary>

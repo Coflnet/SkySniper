@@ -11,13 +11,14 @@ namespace Coflnet.Sky.Sniper.Services;
 public interface ICraftCostService
 {
     bool TryGetCost(string itemId, out double cost);
+    Dictionary<string, double> Costs { get; }
 }
 
 public class CraftCostService : BackgroundService, ICraftCostService
 {
     private readonly ICraftsApi craftsApi;
     private readonly ILogger<CraftCostService> logger;
-    private readonly Dictionary<string, double> costs = new Dictionary<string, double>();
+    public Dictionary<string, double> Costs { get; private set; } = new Dictionary<string, double>();
 
     public CraftCostService(ICraftsApi craftsApi, ILogger<CraftCostService> logger)
     {
@@ -49,7 +50,7 @@ public class CraftCostService : BackgroundService, ICraftCostService
             }
             foreach (var craft in all)
             {
-                costs[craft.ItemId] = craft.CraftCost;
+                Costs[craft.ItemId] = craft.CraftCost;
                 if (craft.ItemId.EndsWith("GROWTH_5"))
                     logger.LogInformation("Cost for " + craft.ItemId + " is " + craft.CraftCost);
             }
@@ -61,7 +62,7 @@ public class CraftCostService : BackgroundService, ICraftCostService
 
     public bool TryGetCost(string itemId, out double cost)
     {
-        return costs.TryGetValue(itemId, out cost);
+        return Costs.TryGetValue(itemId, out cost);
     }
 }
 #nullable disable

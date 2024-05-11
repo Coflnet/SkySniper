@@ -25,11 +25,11 @@ namespace Coflnet.Sky.Sniper.Services
         List<LowPricedAuction> found = new();
         public class CraftCostMock : ICraftCostService
         {
-            public double Cost = 0;
+            public Dictionary<string, double> Costs { get; } = new();
+
             public bool TryGetCost(string itemId, out double cost)
             {
-                cost = Cost;
-                return true;
+                return Costs.TryGetValue(itemId, out cost);
             }
         }
         CraftCostMock craftCost;
@@ -1636,7 +1636,7 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void CapAtCraftCost()
         {
-            craftCost.Cost = 400;
+            craftCost.Costs[highestValAuction.Tag] = 400;
             highestValAuction.FlatenedNBT = new();
             var sample = Dupplicate(highestValAuction);
             sample.Count = 64;
@@ -1644,7 +1644,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(sample);
             var toTest = Dupplicate(sample);
             var estimate = service.GetPrice(toTest);
-            Assert.That(estimate.Median, Is.EqualTo(craftCost.Cost * sample.Count * 1.2));
+            Assert.That(estimate.Median, Is.EqualTo(400 * sample.Count * 1.2));
         }
 
         [Test]

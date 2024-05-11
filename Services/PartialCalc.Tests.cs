@@ -16,10 +16,11 @@ public class PartialCalcTests
     private Core.Services.HypixelItemService itemService = null!;
     private class CraftcostMock : ICraftCostService
     {
-        public Dictionary<string, double> Values = new();
+        public Dictionary<string, double> Costs { get; } = new();
+
         public bool TryGetCost(string itemId, out double cost)
         {
-            return Values.TryGetValue(itemId, out cost);
+            return Costs.TryGetValue(itemId, out cost);
         }
     }
     private class MayorMock : IMayorService
@@ -242,7 +243,7 @@ public class PartialCalcTests
                 new Core.Enchantment(Enchantment.EnchantmentType.aiming, 2)
             }
         }, 100);
-        craftcost.Values["ENCHANTMENT_IMPALING_5"] = 1500;
+        craftcost.Costs["ENCHANTMENT_IMPALING_5"] = 1500;
 
         await Service.CapAtCraftCost();
         var result = Service.GetPrice(item, true);
