@@ -35,7 +35,7 @@ public class PartialCalcTests
         craftcost = new CraftcostMock();
         itemService = new Core.Services.HypixelItemService(null, NullLogger<Core.Services.HypixelItemService>.Instance);
 
-        sniper = new SniperService(itemService, null, NullLogger<SniperService>.Instance);
+        sniper = new SniperService(itemService, null, NullLogger<SniperService>.Instance, null);
         Service = new PartialCalcService(
             sniper,
             craftcost,

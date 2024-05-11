@@ -185,12 +185,12 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 HigherValueLbinMapLookup.TryRemove(item.Key, out _);
             }
-            removeBefore = DateTime.UtcNow.AddHours(-0.5);
+            removeBefore = DateTime.UtcNow.AddMinutes(-0.10);
             foreach (var item in ClosetLbinMapLookup.Where(c => c.Value.addedAt < removeBefore).ToList())
             {
                 ClosetLbinMapLookup.TryRemove(item.Key, out _);
             }
-            removeBefore = DateTime.UtcNow.AddHours(-1);
+            removeBefore = DateTime.UtcNow.AddHours(-0.5);
             foreach (var item in ClosetMedianMapLookup.Where(c => c.Value.addedAt < removeBefore).ToList())
             {
                 ClosetMedianMapLookup.TryRemove(item.Key, out _);
@@ -231,6 +231,7 @@ namespace Coflnet.Sky.Sniper.Services
         };
         private readonly HypixelItemService itemService;
         private readonly ActivitySource activitySource;
+        private readonly ICraftCostService craftCostService;
         private readonly Dictionary<Core.Enchantment.EnchantmentType, byte> MinEnchantMap = new();
 
         /** NOTES
@@ -285,7 +286,7 @@ ORDER BY l.`AuctionId`  DESC;
         public static KeyValuePair<string, string> Ignore { get; } = new KeyValuePair<string, string>(string.Empty, string.Empty);
 
 
-        public SniperService(HypixelItemService itemService, ActivitySource activitySource, ILogger<SniperService> logger)
+        public SniperService(HypixelItemService itemService, ActivitySource activitySource, ILogger<SniperService> logger, ICraftCostService craftCostService)
         {
 
             this.FoundSnipe += la =>
@@ -336,6 +337,7 @@ ORDER BY l.`AuctionId`  DESC;
             this.itemService = itemService;
             this.activitySource = activitySource;
             this.logger = logger;
+            this.craftCostService = craftCostService;
         }
 
         public PriceEstimate GetPrice(SaveAuction auction)
@@ -1025,6 +1027,15 @@ ORDER BY l.`AuctionId`  DESC;
         {
             List<RankElem> breakdown = key.ValueBreakdown;
             var limitedPrice = 0L;
+            // stackables
+            if (key.Key.Enchants.Count() == 0 && key.Key.Modifiers.Count() == 0
+                && (craftCostService?.TryGetCost(tag, out double craftCost) ?? false) && craftCost > 0)
+            {
+                var stackSize = key.Key.Count;
+                var stackCost = craftCost * stackSize * 1.2;
+                if (stackCost < medianPrice)
+                    return (long)stackCost;
+            }
             // determine craft cost 
             if (Lookups.TryGetValue(tag, out var lookup) && !breakdown.Any(v => v.Value == 0) && breakdown.Count > 0)
             {

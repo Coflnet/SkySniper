@@ -38,7 +38,7 @@ public class AttributeControllerTests
     [Test]
     public void GroupDifferentCrimsonHelmets()
     {
-        var service = new Services.SniperService(null, null, null);
+        var service = new Services.SniperService(null, null, null, null);
         var lookup = new Models.PriceLookup()
         {
             Lookup = new(new Dictionary<Models.AuctionKey, Models.ReferenceAuctions>(){

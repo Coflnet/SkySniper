@@ -23,6 +23,16 @@ namespace Coflnet.Sky.Sniper.Services
         SaveAuction highestValAuction;
         SniperService service;
         List<LowPricedAuction> found = new();
+        public class CraftCostMock : ICraftCostService
+        {
+            public double Cost = 0;
+            public bool TryGetCost(string itemId, out double cost)
+            {
+                cost = Cost;
+                return true;
+            }
+        }
+        CraftCostMock craftCost;
         static readonly Random random = new Random(1);
         [SetUp]
         public void Setup()
@@ -57,7 +67,8 @@ namespace Coflnet.Sky.Sniper.Services
                 AuctioneerId = "12c144"
             };
             SniperService.MIN_TARGET = 0;
-            service = new SniperService(new(null, null), null, NullLogger<SniperService>.Instance);
+            craftCost = new CraftCostMock();
+            service = new SniperService(new(null, null), null, NullLogger<SniperService>.Instance, craftCost);
 
             found = new List<LowPricedAuction>();
             service.FoundSnipe += found.Add;
@@ -1601,6 +1612,39 @@ namespace Coflnet.Sky.Sniper.Services
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
             Assert.That(3000000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+        }
+
+        [Test]
+        public void CapValueAtFullStack()
+        {
+            highestValAuction.FlatenedNBT = new();
+            var biggerStack = Dupplicate(highestValAuction);
+            biggerStack.Count = 64;
+            biggerStack.HighestBidAmount = 1_000_000;
+            AddVolume(biggerStack);
+
+            var single = Dupplicate(highestValAuction);
+            single.Count = 5;
+            single.HighestBidAmount = 2_000_000;
+            AddVolume(single);
+
+            var toTest = Dupplicate(single);
+            var estimate = service.GetPrice(toTest);
+            Assert.That(estimate.Median, Is.EqualTo(1_000_000));
+        }
+
+        [Test]
+        public void CapAtCraftCost()
+        {
+            craftCost.Cost = 400;
+            highestValAuction.FlatenedNBT = new();
+            var sample = Dupplicate(highestValAuction);
+            sample.Count = 64;
+            sample.HighestBidAmount = 1_000_000;
+            AddVolume(sample);
+            var toTest = Dupplicate(sample);
+            var estimate = service.GetPrice(toTest);
+            Assert.That(estimate.Median, Is.EqualTo(craftCost.Cost * sample.Count * 1.2));
         }
 
         [Test]

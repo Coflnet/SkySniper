@@ -14,7 +14,7 @@ public class MedianCalcTests
     [SetUp]
     public void Setup()
     {
-        service = new SniperService(null, null, NullLogger<SniperService>.Instance);
+        service = new SniperService(null, null, NullLogger<SniperService>.Instance, null);
     }
     [Test]
     public void LargeData()

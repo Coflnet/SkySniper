@@ -22,7 +22,7 @@ public class AuctionkeyTests
     public void Setup()
     {
         itemService = new HypixelItemService(null, null);
-        service = new SniperService(itemService, null, NullLogger<SniperService>.Instance);
+        service = new SniperService(itemService, null, NullLogger<SniperService>.Instance, null);
     }
 
     [Test]

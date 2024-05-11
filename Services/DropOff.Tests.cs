@@ -24,7 +24,7 @@ public class DropOffTests
         {
             loaded = File.ReadAllText("Mock/boots.json");
         }
-        sniperService = new SniperService(new(null, null), null, NullLogger<SniperService>.Instance);
+        sniperService = new SniperService(new(null, null), null, NullLogger<SniperService>.Instance, null);
         var parsed = Newtonsoft.Json.JsonConvert.DeserializeObject<LookupLoad>(loaded);
         var xy =
                 parsed.Lookup.Where(l => l.Key.Contains("BLACK")).ToDictionary(l => ParseKey(l), l => l.Value);
