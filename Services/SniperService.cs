@@ -1028,13 +1028,16 @@ ORDER BY l.`AuctionId`  DESC;
             List<RankElem> breakdown = key.ValueBreakdown;
             var limitedPrice = 0L;
             // stackables
-            if (key.Key.Enchants.Count() == 0 && key.Key.Modifiers.Count() == 0
+            if (key.Key.Enchants.Count == 0 && key.Key.Modifiers.Count == 0
                 && (craftCostService?.TryGetCost(tag, out double craftCost) ?? false) && craftCost > 0)
             {
                 var stackSize = key.Key.Count;
                 var stackCost = craftCost * stackSize * 1.2;
                 if (stackCost < medianPrice)
+                {
+                    logger.LogInformation($"Capped {tag} at {stackCost} {stackSize} craft cost {craftCost} {key}");
                     return (long)stackCost;
+                }
             }
             // determine craft cost 
             if (Lookups.TryGetValue(tag, out var lookup) && !breakdown.Any(v => v.Value == 0) && breakdown.Count > 0)
