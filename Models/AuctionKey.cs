@@ -156,6 +156,9 @@ namespace Coflnet.Sky.Sniper.Models
                     matchValue -= modMatch.GetValueOrDefault(Math.Abs(mValue - value) * ImportanceFactor(m.Key));
                 else
                     matchValue -= modMatch.GetValueOrDefault(ImportanceFactor(m.Key));
+
+                if(modMatch.Modifier.Value != m.Value && m.Key == SniperService.PetItemKey && m.Value == SniperService.TierBoostShorthand)
+                    matchValue -= 108_000_000; // tier boost is very valuable
             }
             var reforge = keyvalue.FirstOrDefault(k => k.Reforge != default);
             if (reforge != default && reforge.Reforge != default)
