@@ -2351,7 +2351,7 @@ namespace Coflnet.Sky.Sniper.Services
             var flip = Dupplicate(highestValAuction);
             flip.StartingBid = 5;
             TestNewAuction(flip);
-            Assert.That(50000000, Is.EqualTo(found.Last().TargetPrice));
+            Assert.That(25000000, Is.EqualTo(found.Last().TargetPrice));
             Assert.That(0, Is.EqualTo(found.Last().DailyVolume));
         }
 

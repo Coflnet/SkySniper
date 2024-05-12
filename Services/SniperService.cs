@@ -174,6 +174,12 @@ namespace Coflnet.Sky.Sniper.Services
             new(new(){"MOLTEN_BRACELET"}, new (){new("lifeline", "mana_pool")}),
             new(new(){"GAUNTLET_OF_CONTAGION"}, new (){new("veteran", "mana_regeneration"),new("veteran", "breeze"),new("veteran", "mana_pool")}),
         ];
+
+        private readonly List<KeyValuePair<List<string>, List<string>>> AttributesToIgnoreOn = [
+            new(["VELVET_TOP_HAT","CASHMERE_JACKET", "SATIN_TROUSERS", "OXFORD_SHOES"],["color"]) // random https://hypixel-skyblock.fandom.com/wiki/Seymour%27s_Special_Armor
+        ];
+        private readonly Dictionary<string, string[]> AttributeToIgnoreOnLookup = new();
+
         public readonly Dictionary<string, List<KeyValuePair<string, string>>> ItemSpecificAttributeComboLookup = new();
         public readonly ConcurrentDictionary<string, HashSet<string>> AttributeComboLookup = new();
 
@@ -312,6 +318,13 @@ ORDER BY l.`AuctionId`  DESC;
                     var lookup = ItemSpecificAttributeComboLookup.GetValueOrDefault(item, new());
                     lookup.AddRange(elements.Value);
                     ItemSpecificAttributeComboLookup[item] = lookup;
+                }
+            }
+            foreach (var sample in AttributesToIgnoreOn)
+            {
+                foreach (var item in sample.Key)
+                {
+                    AttributeToIgnoreOnLookup[item] = sample.Value.ToArray();
                 }
             }
             foreach (var item in Constants.AttributeKeys)
@@ -1337,6 +1350,10 @@ ORDER BY l.`AuctionId`  DESC;
                 tier = ReduceRarity(tier);
             }
             enchants = RemoveNoEffectEnchants(auction, enchants);
+            if(auction.Tag != null && AttributeToIgnoreOnLookup.TryGetValue(auction.Tag, out var ignore))
+            {
+                modifiers.RemoveAll(m => ignore.Contains(m.Key));
+            }
 
             return Constructkey(auction, enchants, modifiers, shouldIncludeReforge, valueSubstracted, rankElems, tier);
         }
@@ -2574,7 +2591,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var allReferences = higherValueKeys.SelectMany(x => x.Value.References).ToList();
                 var referencePrice = allReferences
                                 .Select(r => r.Price).OrderBy(p => p).Skip(allReferences.Count / 4)
-                                .DefaultIfEmpty(targetPrice / 2).Min();
+                                .DefaultIfEmpty(targetPrice / 4).Min();
                 percentile = Math.Min(percentile, referencePrice);
                 percentile = Math.Min(percentile, lowestLbin);
                 if (lowestLbin > 10_000_000_000)

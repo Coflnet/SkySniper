@@ -494,6 +494,19 @@ public class AuctionkeyTests
         Assert.That(key.Modifiers.Any(x => x.Key == "dominance" && x.Value == "2"));
     }
 
+    [TestCase("ANYTHING", 1)]
+    [TestCase("CASHMERE_JACKET", 0)]
+    public void DropColorOnCashmereJacket(string tag, int expected)
+    {
+        var auction = new SaveAuction()
+        {
+            Tag = tag,
+            FlatenedNBT = new() { { "color", "01:01:01" } },
+        };
+        var key = service.KeyFromSaveAuction(auction);
+        Assert.That(expected,Is.EqualTo(key.Modifiers.Count));
+    }
+
     [Test]
     public void SpecialItemCombo()
     {
