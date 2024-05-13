@@ -2354,6 +2354,22 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(25000000, Is.EqualTo(found.Last().TargetPrice));
             Assert.That(0, Is.EqualTo(found.Last().DailyVolume));
         }
+        [Test]
+        public void ThunderChargeHasValue()
+        {
+            SetBazaarPrice("RECOMBOBULATOR_3000", 1_000_000);
+            highestValAuction.FlatenedNBT = new() { { "thunder_charge", "0" }, { "rarity_upgrades", "1" } };
+            highestValAuction.StartingBid = 0;
+            highestValAuction.HighestBidAmount = 20_000_000;
+            AddVolume(highestValAuction);
+            var higherValue = Dupplicate(highestValAuction);
+            higherValue.HighestBidAmount = 90_000_000;
+            higherValue.FlatenedNBT["thunder_charge"] = "1000000";
+            AddVolume(higherValue);
+
+            var price = service.GetPrice(higherValue);
+            Assert.That(price.Median, Is.EqualTo(81600000), "estimate for charge + recomb");
+        }
 
         [Test]
         public void SniperLimitedByMorePropLbin()

@@ -1593,6 +1593,8 @@ ORDER BY l.`AuctionId`  DESC;
                     sum += 20_000_000;
                 if (mod.Key == "winning_bid")
                     sum += (int)(float.Parse(mod.Value) * 8_000_000);
+                if(mod.Key == "thunder_charge")
+                    sum += 55_000_000 * int.Parse(mod.Value);
                 if (mod.Key == "baseStatBoostPercentage")
                     sum += (int)((float.Parse(mod.Value) - 45) * 500_000);
                 return new RankElem(mod, sum)
