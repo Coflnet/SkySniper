@@ -91,6 +91,7 @@ namespace Coflnet.Sky.Sniper.Services
             "raider_kills", // raiders axe
             "sword_kills",
             "yogsKilled", // yog armor
+            "mined_crops", // eg THEORETICAL_HOE_WARTS_3
             "ethermerge",
             "edition", // great spook stuff
             "hpc", // hot potato books
@@ -1053,7 +1054,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var stackSize = key.Key.Count;
                 var stackCost = craftCost * stackSize * 1.2;
-                if(stackCost < 500_000)
+                if (stackCost < 500_000)
                 {
                     stackCost *= 3; // allow higher limit for low cost items
                 }
@@ -1361,7 +1362,7 @@ ORDER BY l.`AuctionId`  DESC;
                 tier = ReduceRarity(tier);
             }
             enchants = RemoveNoEffectEnchants(auction, enchants);
-            if(auction.Tag != null && AttributeToIgnoreOnLookup.TryGetValue(auction.Tag, out var ignore))
+            if (auction.Tag != null && AttributeToIgnoreOnLookup.TryGetValue(auction.Tag, out var ignore))
             {
                 modifiers.RemoveAll(m => ignore.Contains(m.Key));
             }
@@ -1579,6 +1580,8 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     sum += 300_000 * (int)Math.Pow(2, int.Parse(mod.Value)) + 300_000;
                 }
+                if (mod.Key == "mined_crops")
+                    sum += 13_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
                 if (mod.Key == "color")
                     sum += 10_000_000;
                 if (Constants.AttributeKeys.Contains(mod.Key))
@@ -1604,7 +1607,7 @@ ORDER BY l.`AuctionId`  DESC;
                     sum += 20_000_000;
                 if (mod.Key == "winning_bid")
                     sum += (int)(float.Parse(mod.Value) * 8_000_000);
-                if(mod.Key == "thunder_charge")
+                if (mod.Key == "thunder_charge")
                     sum += 55_000_000 * int.Parse(mod.Value);
                 if (mod.Key == "baseStatBoostPercentage")
                     sum += (int)((float.Parse(mod.Value) - 45) * 500_000);
@@ -1788,6 +1791,8 @@ ORDER BY l.`AuctionId`  DESC;
                 return NormalizeNumberTo(s, 5_000, 2);
             if (s.Key == "thunder_charge")
                 return NormalizeNumberTo(s, 1_000_000, 5);
+            if (s.Key == "mined_crops")
+                return NormalizeNumberTo(s, 500_000_000);
             if (s.Key == "candyUsed")
             {
                 var expAmount = GetNumeric(flatten.FirstOrDefault(f => f.Key == "exp"));
