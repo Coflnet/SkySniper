@@ -1053,6 +1053,10 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var stackSize = key.Key.Count;
                 var stackCost = craftCost * stackSize * 1.2;
+                if(stackCost < 500_000)
+                {
+                    stackCost *= 3; // allow higher limit for low cost items
+                }
                 if (stackCost < medianPrice)
                 {
                     logger.LogInformation($"Capped {tag} at {stackCost} {stackSize} craft cost {craftCost} {key}");
