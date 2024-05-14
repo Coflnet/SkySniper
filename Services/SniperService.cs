@@ -100,10 +100,17 @@ namespace Coflnet.Sky.Sniper.Services
             "captured_player", // cake souls
             "handles_found", // NECRON ladder
             "RUNE_MUSIC",
+            "RUNE_MEOW_MUSIC",
             "RUNE_DRAGON",
             "RUNE_TIDAL",
             "RUNE_GRAND_SEARING",
             "RUNE_ENCHANT",
+            "RUNE_BARK_TUNES",
+            "RUNE_BARK_SMITTEN",
+            "RUNE_BARK_ICE_SKATES",
+            "RUNE_SPELLBOUND",
+            "RUNE_GRAND_FREEZING",
+            "RUNE_PRIMAL_FEAR",
             "is_shiny", // cosmetic effect on wither armor ~5% drop chance on Master Mode 7
         };
 
