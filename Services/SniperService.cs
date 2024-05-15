@@ -1067,7 +1067,7 @@ ORDER BY l.`AuctionId`  DESC;
             // determine craft cost 
             if (Lookups.TryGetValue(tag, out var lookup) && !breakdown.Any(v => v.Value == 0) && breakdown.Count > 0)
             {
-                var select = (tag.StartsWith("PET_") ?
+                var select = (IsPet(tag) ?
                     lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value.Price) :
                      lookup.Lookup.Values.Where(v => v.Price > 0).Select(v => v.Price)).ToList();
                 var count = select.Count;
@@ -1671,7 +1671,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static List<KeyValuePair<string, string>> AssignEmptyModifiers(SaveAuction auction)
         {
-            if (auction.Tag.StartsWith("PET_") && !auction.Tag.StartsWith("PET_ITEM") && !auction.Tag.StartsWith("PET_SKIN"))
+            if (IsPet( auction.Tag))
                 if (auction.FlatenedNBT.TryGetValue("heldItem", out var val) && val == "PET_ITEM_TIER_BOOST")
                     return new List<KeyValuePair<string, string>>(EmptyPetModifiers) { new(PetItemKey, TierBoostShorthand) };
                 else
@@ -1682,6 +1682,11 @@ ORDER BY l.`AuctionId`  DESC;
                 return auction.FlatenedNBT.Where(n => NeverDrop.Contains(n.Key)).ToList();
             else
                 return EmptyModifiers.ToList();
+        }
+
+        private static bool IsPet(string tag)
+        {
+            return tag.StartsWith("PET_") && !tag.StartsWith("PET_ITEM") && !tag.StartsWith("PET_SKIN");
         }
 
         private KeyValuePair<string, string> NormalizeData(KeyValuePair<string, string> s, string tag, Dictionary<string, string> flattenedNbt)

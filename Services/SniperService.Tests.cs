@@ -1644,7 +1644,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(sample);
             var toTest = Dupplicate(sample);
             var estimate = service.GetPrice(toTest);
-            Assert.That(estimate.Median, Is.EqualTo(400 * sample.Count * 1.2));
+            Assert.That(estimate.Median, Is.EqualTo(400 * sample.Count * 1.2 * 3));
         }
 
         [Test]
@@ -2353,6 +2353,22 @@ namespace Coflnet.Sky.Sniper.Services
             TestNewAuction(flip);
             Assert.That(25000000, Is.EqualTo(found.Last().TargetPrice));
             Assert.That(0, Is.EqualTo(found.Last().DailyVolume));
+        }
+        [Test]
+        public void CapMedianAtCleanPlusRecomb()
+        {
+            SetBazaarPrice("RECOMBOBULATOR_3000", 6_000_000);
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.StartingBid = 10_000_000;
+            highestValAuction.HighestBidAmount = 0;
+            AddVolume(highestValAuction);
+            var higherValue = Dupplicate(highestValAuction);
+            higherValue.StartingBid = 12_000_000;
+            higherValue.HighestBidAmount = 90_000_000;
+            higherValue.FlatenedNBT["rarity_upgrades"] = "1";
+            AddVolume(higherValue);
+            var price = service.GetPrice(higherValue);
+            Assert.That(price.Median, Is.EqualTo(16600000), "clean + recomb");
         }
         [Test]
         public void ThunderChargeHasValue()
