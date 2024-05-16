@@ -63,6 +63,7 @@ namespace Coflnet.Sky.Sniper.Services
                 FlatenedNBT = new System.Collections.Generic.Dictionary<string, string>() { { "skin", "bear" } },
                 StartingBid = 1000,
                 HighestBidAmount = 1000,
+                Category = Category.ARMOR,
                 UId = 5,
                 AuctioneerId = "12c144"
             };
@@ -2369,6 +2370,21 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(higherValue);
             var price = service.GetPrice(higherValue);
             Assert.That(price.Median, Is.EqualTo(16600000), "clean + recomb");
+        }
+        [TestCase(Category.ACCESSORIES, "sample", 1)]
+        [TestCase(Category.BLOCKS, "sample", 0)]
+        [TestCase(Category.MISC, "ROD_OF_THE_SEA", 1)]
+        public void DropRecombOnSkins(Category category, string tag, int found)
+        {
+            SetBazaarPrice("RECOMBOBULATOR_3000", 8_000_000);
+            highestValAuction.FlatenedNBT = new() { { "rarity_upgrades", "1" } };
+            highestValAuction.Category = category;
+            highestValAuction.Tag = tag;
+            highestValAuction.Tier = Tier.MYTHIC;
+            var key = service.KeyFromSaveAuction(highestValAuction);
+            Assert.That(key.Modifiers.Count(), Is.EqualTo(found));
+            if (found == 0)
+                Assert.That(key.Tier, Is.EqualTo(Tier.LEGENDARY));
         }
         [Test]
         public void ThunderChargeHasValue()

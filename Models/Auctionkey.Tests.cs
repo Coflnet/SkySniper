@@ -63,7 +63,7 @@ public class AuctionkeyTests
         var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new("test", "test") }.AsReadOnly() };
         var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>() { new("test", "test") }.AsReadOnly() };
         // by default reforge and tier match
-        Assert.That(key.Similarity(key),Is.EqualTo(keyB.Similarity(key)));
+        Assert.That(key.Similarity(key), Is.EqualTo(keyB.Similarity(key)));
     }
     [Test]
     public void SameModsDecreaseFurther()
@@ -85,7 +85,7 @@ public class AuctionkeyTests
         var key = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>().AsReadOnly() };
         var keyB = new AuctionKey() { Modifiers = new List<KeyValuePair<string, string>>().AsReadOnly() };
         // by default reforge and tier match
-        Assert.That(key.Similarity(key),Is.EqualTo(keyB.Similarity(key)));
+        Assert.That(key.Similarity(key), Is.EqualTo(keyB.Similarity(key)));
     }
 
     [Test]
@@ -100,7 +100,7 @@ public class AuctionkeyTests
     public void RecombCadyRelicLbinSimilarity()
     {
         // the issue likely has something to do with enrichments, TODO: add enrichments
-        var auctionA = new SaveAuction() { FlatenedNBT = new(), Tag = "CANDY_RELIC", Tier = Tier.LEGENDARY };
+        var auctionA = new SaveAuction() { FlatenedNBT = new(), Tag = "CANDY_RELIC", Tier = Tier.LEGENDARY, Category = Category.ACCESSORIES };
         var b = SniperServiceTests.Dupplicate(auctionA);
         b.FlatenedNBT.Add("rarity_upgrades", "1");
         b.Tier = Tier.MYTHIC;
@@ -117,7 +117,7 @@ public class AuctionkeyTests
             FlatenedNBT = new() { { "lifeline", "1" }, { "mana_regeneration", "1" } },
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.That(1,Is.EqualTo(key.Modifiers.Count));
+        Assert.That(1, Is.EqualTo(key.Modifiers.Count));
         Assert.That(key.Modifiers.Any(x => x.Key == "lifeline" && x.Value == "1"));
     }
     [Test]
@@ -129,7 +129,7 @@ public class AuctionkeyTests
             FlatenedNBT = new() { { "lifeline", "1" }, { "mana_pool", "1" } },
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.That(2,Is.EqualTo(key.Modifiers.Count));
+        Assert.That(2, Is.EqualTo(key.Modifiers.Count));
     }
     [Test]
     public void IgnoresBadEnchants()
@@ -149,7 +149,7 @@ public class AuctionkeyTests
              }
         };
         // by default reforge and tier match
-        Assert.That(key,Is.EqualTo(service.KeyFromSaveAuction(auction)));
+        Assert.That(key, Is.EqualTo(service.KeyFromSaveAuction(auction)));
     }
     [Test]
     public async Task UnlockedSlotsVsLegianSimilarity()
@@ -211,7 +211,7 @@ public class AuctionkeyTests
             Tier = Tier.MYTHIC
         };
         var key = service.KeyFromSaveAuction(baseAuction);
-        Assert.That("COMBAT_0,JASPER_0",Is.EqualTo(key.Modifiers.First().Value));
+        Assert.That("COMBAT_0,JASPER_0", Is.EqualTo(key.Modifiers.First().Value));
     }
 
     [Test]
@@ -223,15 +223,15 @@ public class AuctionkeyTests
             FlatenedNBT = new() { { "is_shiny", "1" } },
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.That(1,Is.EqualTo(key.Modifiers.Count));
+        Assert.That(1, Is.EqualTo(key.Modifiers.Count));
         Assert.That(key.Modifiers.Any(x => x.Key == "is_shiny" && x.Value == "1"));
         auction.Tag = "HYPERION";
         key = service.KeyFromSaveAuction(auction);
-        Assert.That(1,Is.EqualTo(key.Modifiers.Count));
+        Assert.That(1, Is.EqualTo(key.Modifiers.Count));
         Assert.That(key.Modifiers.Any(x => x.Key == "is_shiny" && x.Value == "1"));
         auction.Tag = "POWER_WITHER_LEGGINGS";
         key = service.KeyFromSaveAuction(auction);
-        Assert.That(0,Is.EqualTo(key.Modifiers.Count));
+        Assert.That(0, Is.EqualTo(key.Modifiers.Count));
     }
 
     [Test]
@@ -261,7 +261,7 @@ public class AuctionkeyTests
             Enchantments = new() { new(type, level) },
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.That(shouldIgnore,Is.EqualTo(key.Enchants.Count == 0));
+        Assert.That(shouldIgnore, Is.EqualTo(key.Enchants.Count == 0));
     }
 
     [TestCase(0)]
@@ -490,7 +490,7 @@ public class AuctionkeyTests
                                 {"mending", "2"} },
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.That(2,Is.EqualTo(key.Modifiers.Count));
+        Assert.That(2, Is.EqualTo(key.Modifiers.Count));
         Assert.That(key.Modifiers.Any(x => x.Key == "dominance" && x.Value == "2"));
     }
 
@@ -504,7 +504,7 @@ public class AuctionkeyTests
             FlatenedNBT = new() { { "color", "01:01:01" } },
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.That(expected,Is.EqualTo(key.Modifiers.Count));
+        Assert.That(expected, Is.EqualTo(key.Modifiers.Count));
     }
 
     [Test]
@@ -517,10 +517,10 @@ public class AuctionkeyTests
                                 {"mana_pool", "2"} },
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.That(1,Is.EqualTo(key.Modifiers.Count));
+        Assert.That(1, Is.EqualTo(key.Modifiers.Count));
         auction.Tag = "TERROR_LEGGINGS";
         key = service.KeyFromSaveAuction(auction);
-        Assert.That(2,Is.EqualTo(key.Modifiers.Count));
+        Assert.That(2, Is.EqualTo(key.Modifiers.Count));
     }
 
     [Test]
@@ -534,7 +534,7 @@ public class AuctionkeyTests
             Tag = "DEMONLORD_GAUNTLET"
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.That(0,Is.EqualTo(key.Enchants.Count));
+        Assert.That(0, Is.EqualTo(key.Enchants.Count));
     }
 
     [Test]
@@ -546,7 +546,7 @@ public class AuctionkeyTests
             Tag = "DEMONLORD_GAUNTLET"
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.That(1,Is.EqualTo(key.Enchants.Count));
+        Assert.That(1, Is.EqualTo(key.Enchants.Count));
     }
 
     [Test]
@@ -558,7 +558,7 @@ public class AuctionkeyTests
             Tag = "DEMONLORD_GAUNTLET"
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.That(0,Is.EqualTo(key.Enchants.Count));
+        Assert.That(0, Is.EqualTo(key.Enchants.Count));
     }
 
     [Test]
@@ -568,10 +568,10 @@ public class AuctionkeyTests
         var deserilaizedKey = JsonConvert.DeserializeObject<AuctionKey>(json);
         var originalKey = new AuctionKey(new() { new() { Type = EnchantmentType.cultivating, Lvl = 8 } }, ItemReferences.Reforge.Any, new() { new("rarity_upgrades", 1.ToString()) }, Tier.MYTHIC, 1);
         var key = MessagePackSerializer.Deserialize<AuctionKey>(MessagePackSerializer.Serialize(originalKey));
-        Assert.That(key,Is.EqualTo(deserilaizedKey), JsonConvert.SerializeObject(key));
-        Assert.That(key,Is.EqualTo(originalKey));
-        Assert.That(key.GetHashCode(),Is.EqualTo(deserilaizedKey.GetHashCode()));
-        Assert.That(key.GetHashCode(),Is.EqualTo(originalKey.GetHashCode()));
+        Assert.That(key, Is.EqualTo(deserilaizedKey), JsonConvert.SerializeObject(key));
+        Assert.That(key, Is.EqualTo(originalKey));
+        Assert.That(key.GetHashCode(), Is.EqualTo(deserilaizedKey.GetHashCode()));
+        Assert.That(key.GetHashCode(), Is.EqualTo(originalKey.GetHashCode()));
     }
 
     [Test]
@@ -676,6 +676,6 @@ public class AuctionkeyTests
         Assert.That(flip, Is.Null);
         service.TestNewAuction(baseAuction);
         // uses median of the different most similar sells
-        Assert.That(1_000_000,Is.EqualTo(flip.TargetPrice));
+        Assert.That(1_000_000, Is.EqualTo(flip.TargetPrice));
     }
 }

@@ -1067,7 +1067,7 @@ ORDER BY l.`AuctionId`  DESC;
             // determine craft cost 
             if (Lookups.TryGetValue(tag, out var lookup) && !breakdown.Any(v => v.Value == 0) && breakdown.Count > 0)
             {
-                var select = (IsPet(tag) ?
+                var select = (NBT.IsPet(tag) ?
                     lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value.Price) :
                      lookup.Lookup.Values.Where(v => v.Price > 0).Select(v => v.Price)).ToList();
                 var count = select.Count;
@@ -1365,6 +1365,11 @@ ORDER BY l.`AuctionId`  DESC;
             if (auction.Tag != null && AttributeToIgnoreOnLookup.TryGetValue(auction.Tag, out var ignore))
             {
                 modifiers.RemoveAll(m => ignore.Contains(m.Key));
+            }
+            if (modifiers.Any(m => m.Key == "rarity_upgrades") && !Constants.DoesRecombMatter(auction.Category, auction.Tag))
+            {
+                modifiers.RemoveAll(m => m.Key == "rarity_upgrades");
+                tier = ReduceRarity(tier);
             }
 
             return Constructkey(auction, enchants, modifiers, shouldIncludeReforge, valueSubstracted, rankElems, tier);
@@ -1671,7 +1676,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static List<KeyValuePair<string, string>> AssignEmptyModifiers(SaveAuction auction)
         {
-            if (IsPet( auction.Tag))
+            if (NBT.IsPet(auction.Tag))
                 if (auction.FlatenedNBT.TryGetValue("heldItem", out var val) && val == "PET_ITEM_TIER_BOOST")
                     return new List<KeyValuePair<string, string>>(EmptyPetModifiers) { new(PetItemKey, TierBoostShorthand) };
                 else
@@ -1684,10 +1689,6 @@ ORDER BY l.`AuctionId`  DESC;
                 return EmptyModifiers.ToList();
         }
 
-        private static bool IsPet(string tag)
-        {
-            return tag.StartsWith("PET_") && !tag.StartsWith("PET_ITEM") && !tag.StartsWith("PET_SKIN");
-        }
 
         private KeyValuePair<string, string> NormalizeData(KeyValuePair<string, string> s, string tag, Dictionary<string, string> flattenedNbt)
         {
