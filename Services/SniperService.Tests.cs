@@ -2372,9 +2372,10 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(price.Median, Is.EqualTo(16600000), "clean + recomb");
         }
         [TestCase(Category.ACCESSORIES, "sample", 1)]
-        [TestCase(Category.BLOCKS, "sample", 0)]
+        [TestCase(Category.BLOCKS, "sample", 0, Tier.LEGENDARY)]
         [TestCase(Category.MISC, "ROD_OF_THE_SEA", 1)]
-        public void DropRecombOnSkins(Category category, string tag, int found)
+        [TestCase(Category.MISC, "RUNE_FIERY_BURST", 0)] // runes stay same rarity
+        public void DropRecombOnSkins(Category category, string tag, int found, Tier tier = Tier.MYTHIC)
         {
             SetBazaarPrice("RECOMBOBULATOR_3000", 8_000_000);
             highestValAuction.FlatenedNBT = new() { { "rarity_upgrades", "1" } };
@@ -2383,8 +2384,7 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.Tier = Tier.MYTHIC;
             var key = service.KeyFromSaveAuction(highestValAuction);
             Assert.That(key.Modifiers.Count(), Is.EqualTo(found));
-            if (found == 0)
-                Assert.That(key.Tier, Is.EqualTo(Tier.LEGENDARY));
+            Assert.That(key.Tier, Is.EqualTo(tier));
         }
         [Test]
         public void ThunderChargeHasValue()

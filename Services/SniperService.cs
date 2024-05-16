@@ -1369,7 +1369,8 @@ ORDER BY l.`AuctionId`  DESC;
             if (modifiers.Any(m => m.Key == "rarity_upgrades") && !Constants.DoesRecombMatter(auction.Category, auction.Tag))
             {
                 modifiers.RemoveAll(m => m.Key == "rarity_upgrades");
-                tier = ReduceRarity(tier);
+                if (!auction.Tag.Contains("RUNE_"))
+                    tier = ReduceRarity(tier);
             }
 
             return Constructkey(auction, enchants, modifiers, shouldIncludeReforge, valueSubstracted, rankElems, tier);
