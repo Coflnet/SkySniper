@@ -5,6 +5,7 @@ using Coflnet.Sky.Crafts.Client.Api;
 using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 using System;
+using Coflnet.Sky.Core.Services;
 
 namespace Coflnet.Sky.Sniper.Services;
 
@@ -52,7 +53,9 @@ public class CraftCostService : BackgroundService, ICraftCostService
             foreach (var craft in all)
             {
                 Costs[craft.ItemId] = craft.CraftCost;
-                if (craft.ItemId.EndsWith("GROWTH_5"))
+                if (craft.Type == "carpentry")
+                    Costs[craft.ItemId] = Math.Min(craft.CraftCost, 10_000);
+                if (craft.ItemId.EndsWith("DESK"))
                     logger.LogInformation("Cost for " + craft.ItemId + " is " + craft.CraftCost);
             }
             logger.LogInformation("Updated craft costs for " + all.Count + " items");
