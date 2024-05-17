@@ -20,6 +20,7 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly IConfiguration config;
         private readonly ILogger<S3PersistanceManager> logger;
         private readonly AmazonS3Client s3Client;
+        private DateTime LastSave = DateTime.Now;
 
         public S3PersistanceManager(IConfiguration config, ILogger<S3PersistanceManager> logger)
         {
@@ -104,6 +105,9 @@ namespace Coflnet.Sky.Sniper.Services
 
         private async Task SaveLookup(string tag, PriceLookup lookup)
         {
+            var day = SniperService.GetDay();
+            if (!lookup.Lookup.Any(l => l.Value.References.Any(r => r.Day >= day)))
+                return; // has not changed in the last day
             using var itemStream = new MemoryStream();
             await MessagePackSerializer.SerializeAsync(itemStream, lookup);
             itemStream.Position = 0;
