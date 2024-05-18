@@ -2062,6 +2062,10 @@ ORDER BY l.`AuctionId`  DESC;
             var targetVolume = 11;
             var relevant = similar.Where(e => IsHigherValue(e.Key, topKey) && e.Key.Reforge == topKey.Reforge)
                 .ToList();
+            if (relevant.Count < 2)
+            {
+                return; // makes only sense if there is something combined
+            }
             // get enough relevant to build a median and try to get highest value (most enchantments and modifiers)
             var combined = relevant.SelectMany(r => r.Value.References.Select(ri => (ri, relevancy: (r.Key.Modifiers.Count + r.Key.Enchants.Count) * 10 + ri.Day)))
                                 .Reverse() // get the newest first
@@ -2092,7 +2096,9 @@ ORDER BY l.`AuctionId`  DESC;
             long GetCappedMedian(SaveAuction auction, KeyWithValueBreakdown fullKey, List<ReferencePrice> combined)
             {
                 var median = GetMedian(combined);
-                median = CapAtCraftCost(auction.Tag, median, fullKey, 0);
+                var shortTerm = GetMedian(combined.Take(5).ToList());
+                var group = GetAuctionGroupTag(auction.Tag);
+                median = CapAtCraftCost(group.tag, Math.Min(median, shortTerm), fullKey, 0);
                 return median;
             }
         }

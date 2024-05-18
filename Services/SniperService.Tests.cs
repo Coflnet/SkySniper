@@ -535,9 +535,7 @@ namespace Coflnet.Sky.Sniper.Services
             var price = service.GetPrice(sample);
             Assert.That(price.Median, Is.EqualTo(10_000_000));
         }
-        /// <summary>
-        /// Combined is always checked and should use the most recent if the bucket is big enough
-        /// </summary>
+
         [Test]
         public void HigherValueCheckUsesMostRecent()
         {
@@ -550,7 +548,7 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.HighestBidAmount = 5_000_000;
             TestNewAuction(highestValAuction);
             Assert.That(10_000_000, Is.EqualTo(found.Last().TargetPrice));
-            Assert.That(found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).Count(), Is.EqualTo(2), "one found direct one combined");
+            Assert.That(found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).Count(), Is.EqualTo(1));
         }
         [Test]
         public void WithTierBoostUsesLowerRarityForHigherValue()
