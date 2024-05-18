@@ -2506,6 +2506,20 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void CategoryGetsAddedWhenMissing()
+        {
+            highestValAuction.Category = Category.CONSUMABLES;
+            highestValAuction.FlatenedNBT = new() { { "rarity_upgrades", "1" } };
+            TestNewAuction(highestValAuction);
+            Assert.That(service.Lookups[highestValAuction.Tag].Category, Is.EqualTo(Category.CONSUMABLES));
+            highestValAuction.Category = Category.UNKNOWN;
+            AddVolume(highestValAuction);
+            var price = service.GetPrice(highestValAuction);
+            Assert.That(price.ItemKey, Is.Not.Contain("rarity"));
+            Assert.That(price.MedianKey, Is.Not.Contain("rarity"));
+        }
+
+        [Test]
         public void CleanAndEnchantLowerNoMatch()
         {
             highestValAuction.Enchantments = new List<Core.Enchantment>(){

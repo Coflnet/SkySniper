@@ -230,6 +230,10 @@ namespace Coflnet.Sky.Sniper.Services
                         logger.LogInformation($"New lowest lbin {auction.Uuid} {auction.StartingBid}");
                     }
                 }
+                if (Lookups.TryGetValue(auction.Tag, out var lookup) && lookup.Category == Category.UNKNOWN)
+                {
+                    lookup.Category = auction.Category;
+                }
             }
             logger.LogInformation($"Finished processing {count} lbin updates");
         }
@@ -379,6 +383,10 @@ ORDER BY l.`AuctionId`  DESC;
                 return result;
             }
             var l = lookup.Lookup;
+            if(auction.Category == Category.UNKNOWN)
+            {
+                auction.Category = lookup.Category;
+            }
             var itemKey = KeyFromSaveAuction(auction);
             result.ItemKey = itemKey.ToString();
 
@@ -1139,6 +1147,10 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 lookup = new PriceLookup();
                 Lookups[itemGroupTag] = lookup;
+            }
+            if(auction.Category == Category.UNKNOWN)
+            {
+                auction.Category = lookup.Category;
             }
             var key = KeyFromSaveAuction(auction);
             key.ValueSubstract += group.Item2;
