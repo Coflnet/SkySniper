@@ -2723,6 +2723,7 @@ ORDER BY l.`AuctionId`  DESC;
             props["refAge"] = refAge.ToString();
             props["server"] = ServerDnsName;
             props["refCount"] = bucket.References.Count.ToString();
+            props["oldRef"] = (GetDay() - (bucket.References?.Select(r => r.Day).FirstOrDefault(GetDay()) ?? GetDay())).ToString();
             props["volat"] = bucket.Volatility.ToString();
 
             FoundSnipe?.Invoke(new LowPricedAuction()

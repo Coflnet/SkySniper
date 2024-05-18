@@ -2050,6 +2050,37 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void PropertiesPassedExist()
+        {
+            var sales = new List<SaveAuction>();
+            // simulate 10 day sales
+            for (int i = 1; i < 11; i++)
+            {
+                var sample = Dupplicate(highestValAuction);
+                sample.HighestBidAmount = 1_000_000 * i;
+                sample.End = DateTime.UtcNow.AddDays(-10 + i);
+                sales.Add(sample);
+            }
+            foreach (var item in sales)
+            {
+                service.AddSoldItem(item);
+            }
+            service.FinishedUpdate();
+            service.TestNewAuction(highestValAuction);
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
+            Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
+            var metadata = estimate.AdditionalProps;
+            Assert.That(metadata["server"], Is.EqualTo(service.ServerDnsName));
+            Assert.That(metadata["refAge"], Is.EqualTo("2"));
+            Assert.That(metadata["refCount"], Is.EqualTo("10"));
+            Assert.That(metadata["volat"], Is.EqualTo("20"));
+            Assert.That(metadata["oldRef"], Is.EqualTo("9"));
+            Assert.That(metadata["reference"], Is.EqualTo(AuctionService.Instance.GetUuid(sales[9].UId)), 
+                            string.Join(",", sales.Select(s => AuctionService.Instance.GetUuid(s.UId))));
+            Assert.That(metadata["key"], Is.EqualTo(" Any [skin, bear] UNKNOWN 0"));
+        }
+
+        [Test]
         public void AttributeCombination()
         {
             highestValAuction.FlatenedNBT = new() { { "mana_pool", "7" } };
