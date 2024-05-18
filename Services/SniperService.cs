@@ -1321,6 +1321,7 @@ ORDER BY l.`AuctionId`  DESC;
             modifiers = auction.FlatenedNBT?.Where(n =>
                                    IncludeKeys.Contains(n.Key)
                                 || n.Value == "PERFECT"
+                                || n.Key.StartsWith("RUNE_")
                                 || IsSoul(n)) // admins
                             .OrderByDescending(n => n.Key)
                             .Select(i => NormalizeData(i, auction.Tag, auction.FlatenedNBT))
@@ -1769,8 +1770,10 @@ ORDER BY l.`AuctionId`  DESC;
                 if (val > 50)
                     return new KeyValuePair<string, string>("baseStatBoost", ">50");
             }
-
-
+            if(s.Key.StartsWith("RUNE_") && !IncludeKeys.Contains(s.Key) && !tag.Contains("RUNE_"))
+            {
+                return Ignore;
+            }
             return s;
         }
 

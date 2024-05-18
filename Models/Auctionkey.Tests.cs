@@ -372,6 +372,20 @@ public class AuctionkeyTests
             return new AuctionKey(null, ItemReferences.Reforge.Any, new() { new("DRAGON", amount) }, Tier.EPIC, 1);
         }
     }
+    [Test]
+    public void IncludeRuneLevelsOnRunes()
+    {
+        var auction = new SaveAuction()
+        {
+            Tag = "RUNE_SNOW",
+            FlatenedNBT = new() { { "RUNE_SNOW", "3" } },
+        };
+        var key = service.KeyFromSaveAuction(auction);
+        Assert.That(key.Modifiers.Any(x => x.Value == "3" && x.Key == "RUNE_SNOW"));
+        auction.Tag = "ARMOR";
+        key = service.KeyFromSaveAuction(auction);
+        Assert.That(key.Modifiers.Count, Is.EqualTo(0), "Ignore valueless rune on armor");
+    }
 
     [Test]
     public void EnderDragonAppart()
