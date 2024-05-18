@@ -1083,7 +1083,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var minValue = select.DefaultIfEmpty(0).OrderBy(v => v).Skip(count / 50).FirstOrDefault();
                 if (minValue == 0 || currentPrice == minValue)
                     return medianPrice;
-                if(tag.Contains("RUNE_"))
+                if (tag.Contains("RUNE_"))
                 {
                     return LimitRuneToFuseCost(medianPrice, breakdown, lookup);
                 }
@@ -1770,7 +1770,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (val > 50)
                     return new KeyValuePair<string, string>("baseStatBoost", ">50");
             }
-            if(s.Key.StartsWith("RUNE_") && !IncludeKeys.Contains(s.Key) && !tag.Contains("RUNE_"))
+            if (s.Key.StartsWith("RUNE_") && !IncludeKeys.Contains(s.Key) && !tag.Contains("RUNE_"))
             {
                 return Ignore;
             }
@@ -2076,7 +2076,8 @@ ORDER BY l.`AuctionId`  DESC;
                 Lbins = [lbinBucket.Lbin],
                 References = new(combined),
                 Price = combined.Count < 4 ? 0 : GetCappedMedian(auction, fullKey, combined),
-                OldestRef = (short)(GetDay() - 2)
+                OldestRef = (short)(GetDay() - 2),
+                Volatility = 90// mark as risky
             };
             // mark with extra value -3
             FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, l, fullKey, MIN_TARGET == 0 ? 0 : -3, props =>
@@ -2721,6 +2722,8 @@ ORDER BY l.`AuctionId`  DESC;
             }
             props["refAge"] = refAge.ToString();
             props["server"] = ServerDnsName;
+            props["refCount"] = bucket.References.Count.ToString();
+            props["volat"] = bucket.Volatility.ToString();
 
             FoundSnipe?.Invoke(new LowPricedAuction()
             {
@@ -2746,8 +2749,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             var dict = new Dictionary<string, string>() {
                 { "reference", AuctionService.Instance.GetUuid(reference) },
-                { "key", key.ToString() + (extraValue == 0 ? "" : $" +{extraValue}")},
-                { "volat", bucket.Volatility.ToString()}
+                { "key", key.ToString() + (extraValue == 0 ? "" : $" +{extraValue}")}
             };
             if (extraValue != 0)
                 dict["extraValue"] = extraValue.ToString();
