@@ -1942,7 +1942,7 @@ namespace Coflnet.Sky.Sniper.Services
                 {"exp",SniperService.PetExpMaxlevel.ToString()}
             };
             highestValAuction.HighestBidAmount = 5_000_000;
-            AddVolume(highestValAuction);
+            AddVolume(highestValAuction, 5);
             highestValAuction.FlatenedNBT["candyUsed"] = "0";
             var lowerExp = Dupplicate(highestValAuction);
             lowerExp.FlatenedNBT["exp"] = "0";
@@ -2016,6 +2016,22 @@ namespace Coflnet.Sky.Sniper.Services
 
             drill.FlatenedNBT["drill_part_engine"] = "component";
             return drill;
+        }
+        [Test]
+        public void CapMedianAt3xLowerLevelRune()
+        {
+            highestValAuction.FlatenedNBT = new() { { "RUNE_MUSIC", "1" } };
+            highestValAuction.Tag = "RUNE_MUSIC";
+            var higherLevel = Dupplicate(highestValAuction);
+            higherLevel.FlatenedNBT["RUNE_MUSIC"] = "3";
+            higherLevel.HighestBidAmount = 100_000_000;
+            var lowerLevel = Dupplicate(highestValAuction);
+            lowerLevel.FlatenedNBT["RUNE_MUSIC"] = "1";
+            lowerLevel.HighestBidAmount = 3_000_000;
+            AddVolume(lowerLevel);
+            AddVolume(higherLevel);
+            var price = service.GetPrice(higherLevel);
+            Assert.That(price.Median, Is.EqualTo(3_000_000 * 3.5 * 3.5), "should cap at 3x lower level rune");
         }
 
         [Test]

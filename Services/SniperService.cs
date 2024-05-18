@@ -1083,6 +1083,10 @@ ORDER BY l.`AuctionId`  DESC;
                 var minValue = select.DefaultIfEmpty(0).OrderBy(v => v).Skip(count / 50).FirstOrDefault();
                 if (minValue == 0 || currentPrice == minValue)
                     return medianPrice;
+                if(tag.Contains("RUNE_"))
+                {
+                    return LimitRuneToFuseCost(medianPrice, breakdown, lookup);
+                }
                 var modifierSum = breakdown.Select(v =>
                 {
                     if (!Constants.AttributeKeys.Contains(v.Modifier.Key))
@@ -1097,6 +1101,21 @@ ORDER BY l.`AuctionId`  DESC;
             if (limitedPrice > 0)
                 return limitedPrice;
             return medianPrice;
+
+            static long LimitRuneToFuseCost(long medianPrice, List<RankElem> breakdown, PriceLookup lookup)
+            {
+                // runes are fused and can't be crafted
+                if (breakdown.First().Modifier.Value == "1")
+                    return medianPrice;
+                var lvl1 = lookup.Lookup.Where(v => v.Key.Modifiers.FirstOrDefault().Value == "1").FirstOrDefault().Value?.Price;
+                if (lvl1 == null)
+                    return medianPrice;
+                var targetLevel = int.Parse(breakdown.First().Modifier.Value);
+                var targetPrice = lvl1 * Math.Pow(3.5, targetLevel - 1);
+                if (targetPrice < medianPrice)
+                    return (long)targetPrice;
+                return medianPrice;
+            }
         }
 
         private long AttributeValueEstimateForCap(string tag, RankElem v, List<RankElem> breakdown, PriceLookup lookup)
