@@ -42,6 +42,10 @@ namespace Coflnet.Sky.Sniper.Models
         public ReferencePrice Lbin => Lbins?.FirstOrDefault() ?? default;
 
         [IgnoreMember]
+        [JsonIgnore]
+        public short DeduplicatedReferenceCount;
+
+        [IgnoreMember]
         public float Volume => (float)(References.TryPeek(out ReferencePrice price)
                         ? (float)References.Count / (SniperService.GetDay() - price.Day + 1)
                         : 0);

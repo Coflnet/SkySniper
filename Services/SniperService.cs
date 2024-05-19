@@ -905,6 +905,7 @@ ORDER BY l.`AuctionId`  DESC;
             var medianPrice = Math.Min(shortTermPrice, longSpanPrice);
             bucket.Volatility = GetVolatility(bucket, shortTermPrice, medianPrice);
             bucket.HitsSinceCalculating = 0;
+            bucket.DeduplicatedReferenceCount = (short)deduplicated.Count();
             // get price of item without enchants and add enchant value 
             if (keyCombo != default)
             {
@@ -1005,8 +1006,8 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var buyerCounter = 0;
                 // check for back and forth selling
-                var buyerSellerCombos = bucket.References.GroupBy(a => a.Buyer + a.Seller)
-                    .Where(g => g.Count() > 1)
+                var buyerSellerCombos = bucket.References.GroupBy(a => a.Buyer > a.Seller ? a.Buyer << 15 + a.Seller : a.Seller << 15 + a.Buyer)
+                    .Where(g => g.Count() > 1 && !g.All(gi => gi.Seller == g.First().Seller))
                     .ToLookup(l => l.First().Seller);
                 var deduplicated = bucket.References.Reverse()
                     .Where(d => !buyerSellerCombos.Contains(d.Seller) && !buyerSellerCombos.Contains(d.Buyer))
@@ -2202,7 +2203,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (closest.Key.Count != auction.Count)
             {
                 var countDiff = closest.Key.Count - auction.Count;
-                var countDiffPrice = (long)(countDiff * targetPrice / closest.Key.Count);
+                var countDiffPrice = countDiff * targetPrice / closest.Key.Count;
                 targetPrice -= countDiffPrice;
                 props.Add("countDiff", $"{countDiff} ({countDiffPrice})");
                 logger.LogInformation($"Adjusting target price due to count diff {countDiff} {countDiffPrice} {targetPrice}");
@@ -2728,7 +2729,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             props["refAge"] = refAge.ToString();
             props["server"] = ServerDnsName;
-            props["refCount"] = bucket.References.Count.ToString();
+            props["refCount"] = bucket.DeduplicatedReferenceCount.ToString();
             props["oldRef"] = (GetDay() - (bucket.References?.Select(r => r.Day).FirstOrDefault(GetDay()) ?? GetDay())).ToString();
             props["volat"] = bucket.Volatility.ToString();
 

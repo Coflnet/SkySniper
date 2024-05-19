@@ -34,6 +34,7 @@ namespace Coflnet.Sky.Sniper.Services
         }
         CraftCostMock craftCost;
         static readonly Random random = new Random(1);
+        static long IdCounter = 0;
         [SetUp]
         public void Setup()
         {
@@ -389,9 +390,9 @@ namespace Coflnet.Sky.Sniper.Services
         {
             return new SaveAuction(origin)
             {
-                Uuid = random.Next().ToString(),
-                UId = random.Next(),
-                AuctioneerId = random.Next().ToString(),
+                Uuid = (IdCounter++).ToString().PadRight(8, '0'),
+                UId = IdCounter++,
+                AuctioneerId = ((short)(IdCounter++ % 20000)).ToString().PadRight(8, '0'),
                 FlatenedNBT = new Dictionary<string, string>(origin.FlatenedNBT),
                 Enchantments = origin.Enchantments == null ? null : new(origin.Enchantments)
             };
@@ -2057,6 +2058,8 @@ namespace Coflnet.Sky.Sniper.Services
                 var sample = Dupplicate(highestValAuction);
                 sample.HighestBidAmount = 1_000_000 * i;
                 sample.End = DateTime.UtcNow.AddDays(-10 + i);
+                if (i < 3)
+                    sample.AuctioneerId = "100010"; // simulate market manipulation
                 sales.Add(sample);
             }
             foreach (var item in sales)
@@ -2070,10 +2073,10 @@ namespace Coflnet.Sky.Sniper.Services
             var metadata = estimate.AdditionalProps;
             Assert.That(metadata["server"], Is.EqualTo(service.ServerDnsName));
             Assert.That(metadata["refAge"], Is.EqualTo("2"));
-            Assert.That(metadata["refCount"], Is.EqualTo("10"));
-            Assert.That(metadata["volat"], Is.EqualTo("20"));
+            Assert.That(metadata["refCount"], Is.EqualTo("9"));
+            Assert.That(metadata["volat"], Is.EqualTo("14"));
             Assert.That(metadata["oldRef"], Is.EqualTo("9"));
-            Assert.That(metadata["reference"], Is.EqualTo(AuctionService.Instance.GetUuid(sales[9].UId)), 
+            Assert.That(metadata["reference"], Is.EqualTo(AuctionService.Instance.GetUuid(sales[9].UId)),
                             string.Join(",", sales.Select(s => AuctionService.Instance.GetUuid(s.UId))));
             Assert.That(metadata["key"], Is.EqualTo(" Any [skin, bear] UNKNOWN 0"));
         }
