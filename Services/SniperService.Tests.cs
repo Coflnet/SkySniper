@@ -903,7 +903,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddSell(bucket, 30000000, 5);
             AddSell(bucket, 33400000, 5);
             AddSell(bucket, 31700000, 0);
-            Assert.That(30000000, Is.EqualTo(bucket.Price));
+            Assert.That(bucket.Price, Is.EqualTo(30850000));
             AddSell(bucket, 18500000, 0);
             Assert.That(25100000, Is.EqualTo(bucket.Price));
 
