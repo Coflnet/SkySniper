@@ -890,7 +890,8 @@ ORDER BY l.`AuctionId`  DESC;
                 && bucket.Volume > 0.25) // 5 day gaps are to be expected at ~0.2 volume
             {
                 // probably derpy or weird price drop
-                shortTermPrice = (shortTermList.OrderBy(s => s.Price).First().Price + shortTermPrice) / 2;
+                var reduced = (shortTermList.OrderBy(s => s.Price).First().Price + shortTermPrice) / 2;
+                shortTermPrice = Math.Max(shortTermPrice * 7 / 10, reduced);
             }
             // long term protects against market manipulation
             var longSpanPrice = GetMedian(deduplicated.Take(29).ToList());
