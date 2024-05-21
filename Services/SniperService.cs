@@ -2155,6 +2155,10 @@ ORDER BY l.`AuctionId`  DESC;
             var props = new Dictionary<string, string>() { { "closest", closest.Key.ToString() } };
             var missingModifiers = closest.Key.Modifiers.Where(m => !key.Modifiers.Contains(m)).ToList();
             long toSubstract = 0;
+            if(key.Modifiers.Any(m=>m.Value == TierBoostShorthand) && !closest.Key.Modifiers.Any(m=>m.Value == TierBoostShorthand))
+            {
+                toSubstract += GetCostForItem("PET_ITEM_TIER_BOOST");
+            }
             if (missingModifiers.Count > 0)
             {
                 toSubstract = GetPriceSumForModifiers(missingModifiers, key.Modifiers, auction);
