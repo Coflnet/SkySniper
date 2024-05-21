@@ -2303,26 +2303,27 @@ namespace Coflnet.Sky.Sniper.Services
             var price = service.GetPrice(highAttrib);
             Assert.That(2250000, Is.EqualTo(price.Median), price.MedianKey);
         }
-
+        /// <summary>
+        /// Gems are removed when storing and added back when retrieving
+        /// </summary>
         [Test]
         public void GemExtraValue()
         {
             highestValAuction.FlatenedNBT = new();
-            service.AddSoldItem(Dupplicate(highestValAuction));
-            service.AddSoldItem(Dupplicate(highestValAuction));
-            service.AddSoldItem(Dupplicate(highestValAuction));
-            service.AddSoldItem(Dupplicate(highestValAuction));
+            var referencePrice = Random.Shared.Next(10_000_000, 12_000_000);
+            highestValAuction.HighestBidAmount = referencePrice;
+            AddVolume(highestValAuction);
             service.FinishedUpdate();
             highestValAuction.FlatenedNBT = new Dictionary<string, string>()
             {
-                {"rarity_upgrades","1"},
-                {"JADE_0","PERFECT"},
                 {"AMBER_0","PERFECT"},
                 {"SAPPHIRE_0","PERFECT"},
                 {"TOPAZ_0","PERFECT"},
                 {"AMETHYST_0","PERFECT"},
                 {"uid","7c2447a6ad9d"}
             };
+            highestValAuction.StartingBid = Random.Shared.Next(10_000_000, 12_000_000);
+            highestValAuction.HighestBidAmount = 0;
 
             service.UpdateBazaar(new()
             {
@@ -2330,11 +2331,14 @@ namespace Coflnet.Sky.Sniper.Services
                 Products = new() { CreateGemPrice("JADE"), CreateGemPrice("AMBER"), CreateGemPrice("SAPPHIRE"), CreateGemPrice("TOPAZ"), CreateGemPrice("AMETHYST") }
             });
             service.TestNewAuction(highestValAuction);
-            Assert.That(7500000, Is.EqualTo(found.Last().TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
+            Assert.That(referencePrice + 6000000, Is.EqualTo(found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).First().TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
             service.FinishedUpdate();
             // lbin is now the starting bid of that auction
             var price = service.GetPrice(highestValAuction);
-            Assert.That(highestValAuction.StartingBid, Is.EqualTo(price.Lbin.Price), JsonConvert.SerializeObject(price));
+            Assert.That(price.Lbin.Price, Is.EqualTo(highestValAuction.StartingBid), JsonConvert.SerializeObject(price, Formatting.Indented));
+            highestValAuction.FlatenedNBT.Remove("AMBER_0");
+            price = service.GetPrice(highestValAuction);
+            Assert.That(price.Lbin.Price, Is.EqualTo(highestValAuction.StartingBid - 1500_000), JsonConvert.SerializeObject(price, Formatting.Indented));
         }
 
         [Test]

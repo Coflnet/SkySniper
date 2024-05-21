@@ -27,7 +27,7 @@ namespace Coflnet.Sky.Sniper.Services
         public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>(3, 2000);
 
         private readonly ConcurrentQueue<LogEntry> Logs = new ConcurrentQueue<LogEntry>();
-        private readonly ConcurrentQueue<(SaveAuction, ReferenceAuctions)> LbinUpdates = new();
+        private readonly ConcurrentQueue<(SaveAuction, ReferenceAuctions, AuctionKeyWithValue)> LbinUpdates = new();
         private readonly ConcurrentQueue<string> RecentSnipeUids = new();
         private readonly AuctionKey defaultKey = new AuctionKey();
         public SniperState State { get; set; } = SniperState.LoadingLbin;
@@ -216,9 +216,9 @@ namespace Coflnet.Sky.Sniper.Services
             var count = LbinUpdates.Count;
             while (LbinUpdates.TryDequeue(out var update))
             {
-                var (auction, bucket) = update;
-                var key = auction.Uuid;
-                var item = CreateReferenceFromAuction(auction);
+                var (auction, bucket, key) = update;
+                var extraValue = GetGemValue(auction, key);
+                var item = CreateReferenceFromAuction(auction, extraValue);
                 if (bucket.Lbins == null)
                     bucket.Lbins = new();
                 if (!bucket.Lbins.Contains(item))
@@ -2023,7 +2023,7 @@ ORDER BY l.`AuctionId`  DESC;
                         bucket = CreateAndAddBucket(auction, key);
                 }
                 if (i == 0)
-                    UpdateLbin(auction, bucket);
+                    UpdateLbin(auction, bucket, key);
                 if (triggerEvents)
                 {
                     long extraValue = GetExtraValue(auction, key) - itemGroupTag.Item2;
@@ -2710,9 +2710,9 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private void UpdateLbin(SaveAuction auction, ReferenceAuctions bucket)
+        private void UpdateLbin(SaveAuction auction, ReferenceAuctions bucket, AuctionKeyWithValue key)
         {
-            LbinUpdates.Enqueue((auction, bucket));
+            LbinUpdates.Enqueue((auction, bucket, key));
         }
 
         private bool FoundAFlip(SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, long targetPrice, Dictionary<string, string> props)
