@@ -115,9 +115,9 @@ namespace Coflnet.Sky.Sniper.Models
                     Console.WriteLine($"Key {item} has no value");
             }
 
-            var petDiffere = Math.Abs(this.Tier - key.Tier);
-            matchValue -= petDiffere * 11_000_000;
-            if (petDiffere > 0 && key.Modifiers.Any(m => m.Key == "exp"))
+            var tierDiffere = Math.Abs(this.Tier - key.Tier);
+            matchValue -= tierDiffere * 11_000_000;
+            if (tierDiffere > 0 && key.Modifiers.Any(m => m.Key == "exp"))
                 matchValue -= 100_000_000; // higher tier is very bad
             var countDiff = Math.Abs(this.Count - key.Count);
             matchValue -= countDiff * 1_000_000;

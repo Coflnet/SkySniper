@@ -90,6 +90,7 @@ namespace Coflnet.Sky.Sniper.Services
             "bow_kills", // huricane bow
             "raider_kills", // raiders axe
             "sword_kills",
+            "blood_god_kills",
             "yogsKilled", // yog armor
             "mined_crops", // eg THEORETICAL_HOE_WARTS_3
             "ethermerge",
@@ -1785,6 +1786,8 @@ ORDER BY l.`AuctionId`  DESC;
                     return Ignore;
             if (s.Key == "eman_kills")
                 return NormalizeGroupNumber(s, 10_000, 25_000, 50_000, 75_000, 100_000, 125_000, 150_000, 200_000);
+            if (s.Key == "blood_god_kills")
+                return NormalizeGroupNumber(s, 1_000_000, 10_000_000, 20_000_000, 100_000_000);
             if (s.Key.EndsWith("_kills"))
                 return NormalizeNumberTo(s, 10_000);
             if (s.Key == "yogsKilled")
@@ -1934,7 +1937,7 @@ ORDER BY l.`AuctionId`  DESC;
                     return new KeyValuePair<string, string>(s.Key, i.ToString());
                 }
             }
-            var highestGroup = groups.Length - 1;
+            var highestGroup = groups.Length;
             return new KeyValuePair<string, string>(s.Key, highestGroup.ToString());
         }
 
@@ -2155,7 +2158,7 @@ ORDER BY l.`AuctionId`  DESC;
             var props = new Dictionary<string, string>() { { "closest", closest.Key.ToString() } };
             var missingModifiers = closest.Key.Modifiers.Where(m => !key.Modifiers.Contains(m)).ToList();
             long toSubstract = 0;
-            if(key.Modifiers.Any(m=>m.Value == TierBoostShorthand) && !closest.Key.Modifiers.Any(m=>m.Value == TierBoostShorthand))
+            if (key.Modifiers.Any(m => m.Value == TierBoostShorthand) && !closest.Key.Modifiers.Any(m => m.Value == TierBoostShorthand))
             {
                 toSubstract += GetCostForItem("PET_ITEM_TIER_BOOST");
             }

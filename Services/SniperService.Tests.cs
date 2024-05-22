@@ -995,7 +995,8 @@ namespace Coflnet.Sky.Sniper.Services
         [TestCase(200, 1)]
         [TestCase(499, 1)]
         [TestCase(999, 2)]
-        [TestCase(999999, 3)]
+        [TestCase(1299, 3)]
+        [TestCase(999999, 4)]
         public void NormalizeGroupNumber(int val, int expectedGroup)
         {
             var simAttr = new KeyValuePair<string, string>("new_years_cake", val.ToString());
