@@ -1143,7 +1143,9 @@ ORDER BY l.`AuctionId`  DESC;
                 var secondType = tag.Split("_")[1];
                 options = CrimsonArmors.SelectMany(s => Lookups.TryGetValue(s + secondType, out var lookup) ? lookup.Lookup.AsEnumerable() : []);
             }
-            var values = options.Where(l => l.Value.Price > 0 && l.Key.Modifiers.Count == 1 && l.Key.Modifiers.Any(m => m.Key == v.Modifier.Key) && baseLevel > int.Parse(l.Key.Modifiers.First().Value))
+            var values = options.Where(l => l.Value.Price > 0 
+                            && (l.Key.Modifiers.Count == 2 && l.Key.Modifiers.Last().Key == "virtual" || l.Key.Modifiers.Count == 1) && l.Key.Modifiers.Any(m => m.Key == v.Modifier.Key) 
+                            && baseLevel > int.Parse(l.Key.Modifiers.First().Value))
                 .Select(l => l.Value.Price / Math.Pow(2, int.Parse(l.Key.Modifiers.First().Value)))
                 .ToList();
             var quarterPercentile = values.Count > 0 ? values.OrderBy(v => v).Skip(values.Count / 4).First() : 0;
@@ -2624,6 +2626,10 @@ ORDER BY l.`AuctionId`  DESC;
                 var referencePrice = allReferences
                                 .Select(r => r.Price).OrderBy(p => p).Skip(allReferences.Count / 4)
                                 .DefaultIfEmpty(targetPrice / 4).Min();
+                if (bucket.Price == 0 && bucket.References.Count > 2 && higherValueKeys.Count <= 2) // manip indicator
+                {
+                    percentile /= 5;
+                }
                 percentile = Math.Min(percentile, referencePrice);
                 percentile = Math.Min(percentile, lowestLbin);
                 if (lowestLbin > 10_000_000_000)

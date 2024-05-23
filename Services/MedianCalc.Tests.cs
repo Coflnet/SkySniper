@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Models;
@@ -60,18 +61,18 @@ public class MedianCalcTests
         for (int i = 0; i < 5; i++)
         {
             var copy = auction.Dupplicate();
-            copy.Bids = new (){new SaveBids() { Bidder = random.Next().ToString(), Amount = i * 1000 }};
+            copy.Bids = new() { new SaveBids() { Bidder = random.Next().ToString(), Amount = i * 1000 } };
             copy.HighestBidAmount = i * 1000;
             service.AddSoldItem(copy);
         }
         for (int i = 0; i < 10; i++)
         {
             var copy = auction.Dupplicate();
-            copy.Bids = new (){new SaveBids() { Bidder = "abcdef", Amount = 5000000 }};
+            copy.Bids = new() { new SaveBids() { Bidder = "abcdef", Amount = 5000000 } };
             copy.HighestBidAmount = 5000000;
             service.AddSoldItem(copy);
         }
-        Assert.That(2000,Is.EqualTo(service.Lookups.First().Value.Lookup.First().Value.Price));
+        Assert.That(2000, Is.EqualTo(service.Lookups.First().Value.Lookup.First().Value.Price));
     }
 
     [Test]
@@ -96,6 +97,56 @@ public class MedianCalcTests
         ReferenceAuctions bucket = LoadJsonReferences(LowDropMedian);
         service.UpdateMedian(bucket);
         Assert.That(bucket.Price, Is.EqualTo(50000000));
+    }
+    [Test]
+    public void BraceletLimit()
+    {
+        SaveAuction bare;
+        AuctionKeyWithValue key;
+        List<LowPricedAuction> flips;
+        SetupPlain(out bare, out key, out flips);
+        var sample = bare.Dupplicate();
+        sample.StartingBid = 10_000_000;
+        service.TestNewAuction(sample);
+        Assert.That(flips.Count, Is.EqualTo(1));
+        // median is 0 because anti manipulation, reference price is devided by 5
+        Assert.That(flips.First().TargetPrice, Is.EqualTo(80_000_000));
+
+        // craft cost can cap it lower
+        SetupPlain(out bare, out key, out flips);
+        sample.FlatenedNBT = new() { { "life_regeneration", "1" } };
+        sample.HighestBidAmount = 2_000_000;
+        service.AddSoldItem(sample.Dupplicate());
+        service.AddSoldItem(sample.Dupplicate());
+        service.AddSoldItem(sample.Dupplicate());
+        service.AddSoldItem(sample.Dupplicate()); // build median
+        service.FinishedUpdate();
+        sample = bare.Dupplicate();
+        sample.StartingBid = 1_000_000;
+        service.TestNewAuction(sample);
+        Assert.That(flips.First().TargetPrice, Is.EqualTo(7280000));
+
+        void SetupPlain(out SaveAuction bare, out AuctionKeyWithValue key, out List<LowPricedAuction> flips)
+        {
+            ReferenceAuctions bucket = LoadJsonReferences(NacklaceSample);
+            bare = new SaveAuction()
+            {
+                Tag = "THUNDERBOLT_NECKLACE",
+                StartingBid = 180_000_000,
+                End = DateTime.Now + TimeSpan.FromDays(1),
+                AuctioneerId = "000100",
+                Uuid = "000100",
+                FlatenedNBT = new() { { "life_regeneration", "2" } }
+            };
+            key = service.KeyFromSaveAuction(bare);
+            service.AddLookupData("THUNDERBOLT_NECKLACE", new() { Lookup = new(new Dictionary<AuctionKey, ReferenceAuctions>() { { key, bucket } }) });
+            service.TestNewAuction(bare);
+            service.FinishedUpdate();
+            flips = new List<LowPricedAuction>();
+            service.FoundSnipe += flips.Add;
+            service.UpdateMedian(bucket);
+            service.State = SniperState.Ready;
+        }
     }
 
     /// <summary>
@@ -155,6 +206,45 @@ public class MedianCalcTests
             "buyer": 16780
         }
         ]
+    """;
+
+    private const string NacklaceSample =
+    """
+    [{
+            "auctionId": 7626175173905406105,
+            "price": 1800000,
+            "day": 969,
+            "seller": -30444,
+            "buyer": 27755
+        },
+        {
+            "auctionId": 8709509529764403195,
+            "price": 400000000,
+            "day": 971,
+            "seller": -30734,
+            "buyer": 5654
+        },
+        {
+            "auctionId": -1251946910355872664,
+            "price": 400000000,
+            "day": 971,
+            "seller": 5654,
+            "buyer": -30734
+        },
+        {
+            "auctionId": -2876664507248205639,
+            "price": 400000000,
+            "day": 971,
+            "seller": -30734,
+            "buyer": 5654
+        },
+        {
+            "auctionId": -2200987455195264277,
+            "price": 400000000,
+            "day": 971,
+            "seller": 5654,
+            "buyer": -30734
+        }]
     """;
 
     private const string LowDropMedian =
@@ -342,8 +432,8 @@ public class MedianCalcTests
         }]
         """;
 
-        private const string FlipSample =
-    """
+    private const string FlipSample =
+"""
     [
         {
             "auctionId": 6256124353103244712,

@@ -2146,7 +2146,7 @@ namespace Coflnet.Sky.Sniper.Services
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
             // should be at about craft cost
-            Assert.That(21582500, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That(estimate.TargetPrice, Is.EqualTo(30980900), JsonConvert.SerializeObject(estimate.AdditionalProps));
 
             void CreateVolume(string attrib, int level, int cost)
             {
