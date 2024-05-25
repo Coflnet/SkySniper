@@ -388,7 +388,8 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 auction.Category = lookup.Category;
             }
-            var itemKey = DetailedKeyFromSaveAuction(auction);
+            var detailedKey = DetailedKeyFromSaveAuction(auction);
+            var itemKey = detailedKey.GetReduced(0);
             result.ItemKey = itemKey.ToString();
 
             // add back gem value
@@ -398,7 +399,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (result.Lbin.AuctionId == default && bucket.Lbin.AuctionId != default)
                 {
                     var lbinGemValue = gemVal;
-                    if (itemKey.Key.Modifiers.Any(m => m.Key == "pgems" && m.Value == "5"))
+                    if (itemKey.Modifiers.Any(m => m.Key == "pgems" && m.Value == "5"))
                     {// gems are already accounted for
                         lbinGemValue = 0;
                     }
@@ -419,7 +420,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var now = DateTime.UtcNow;
                 var res = ClosetMedianMapLookup
                             .GetOrAdd(((string, AuctionKey))(auction.Tag, itemKey),
-                                      _ => GetEstimatedMedian(auction, result, l, itemKey, gemVal, now));
+                                      _ => GetEstimatedMedian(auction, result, l, detailedKey, gemVal, now));
                 if (res.addedAt != now)
                 {
                     result.Median = res.result.Median;
@@ -443,7 +444,7 @@ ORDER BY l.`AuctionId`  DESC;
             var lbinCap = HigherValueLbinMapLookup.GetOrAdd(((string, AuctionKey))(auction.Tag, itemKey), a =>
             {
                 var higherValue = l.Where(k => k.Value.Lbin.Price != 0
-                                    && IsHigherValue(itemKey, k.Key) && k.Key.Reforge == itemKey.Key.Reforge);
+                                    && IsHigherValue(itemKey, k.Key) && k.Key.Reforge == itemKey.Reforge);
                 var MaxValue = higherValue.OrderBy(b => b.Value.Lbin.Price).FirstOrDefault();
                 if (MaxValue.Key == a.Item2)
                     return (default, DateTime.UtcNow); // best match is itself, skip
@@ -491,7 +492,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
 
                 if (Random.Shared.NextDouble() < 0.05)
-                    logger.LogInformation($"no match found for {auction.Tag} {itemKey} options: {l.Count} {c.Key}");
+                    logger.LogInformation($"no match found for {auction.Tag} {itemKey.Key} options: {l.Count} {c.Key}");
                 if (result.Median > 0)
                     break;
             }

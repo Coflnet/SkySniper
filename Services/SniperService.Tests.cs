@@ -1122,6 +1122,7 @@ namespace Coflnet.Sky.Sniper.Services
 
             var estimate = service.GetPrice(noVolume);
             Assert.That(estimate.Median, Is.EqualTo(35_000_000 + 688888), "add 1/9th of missing protection");
+            Assert.That(estimate.MedianKey, Is.EqualTo("growth=6,protection=6 Any [hotpc, 1],[upgrade_level, 6] UNKNOWN 0- 1-protection6+HV- Any [upgrade_level, 6] UNKNOWN 0"));
         }
 
         [Test]
