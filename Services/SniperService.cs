@@ -1153,6 +1153,10 @@ ORDER BY l.`AuctionId`  DESC;
                 .Select(l => l.Value.Price / Math.Pow(2, int.Parse(l.Key.Modifiers.First().Value)))
                 .ToList();
             var quarterPercentile = values.Count > 0 ? values.OrderBy(v => v).Skip(values.Count / 4).First() : 0;
+            if(v.Modifier.Key == "dominance" && v.Modifier.Value == "3")
+            {
+                logger.LogInformation($"dominance 3 {tag} {quarterPercentile} {values.Count} {JsonConvert.SerializeObject(values)}");
+            }
             return (long)(Math.Pow(2, baseLevel) * quarterPercentile * 1.20) + comboValue;
         }
 
