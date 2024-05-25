@@ -63,5 +63,10 @@ namespace Coflnet.Sky.Sniper.Models
                 ValueSubstract = valueSubstracted
             };
         }
+
+        public string ToString()
+        {
+            return $"{Key} - {SubstractedValue}";
+        }
     }
 }
