@@ -86,7 +86,7 @@ namespace Coflnet.Sky.Sniper.Services
             "zombie_kills", // slayer kills
             "spider_kills", // slayer kills
             "eman_kills", // slayer kills
-            "expertise_kills", // unkown kind of kills
+            "expertise_kills", // kills for expertise enchant counting sea creatures
             "bow_kills", // huricane bow
             "raider_kills", // raiders axe
             "sword_kills",
@@ -1143,8 +1143,8 @@ ORDER BY l.`AuctionId`  DESC;
                 var secondType = tag.Split("_")[1];
                 options = CrimsonArmors.SelectMany(s => Lookups.TryGetValue(s + secondType, out var lookup) ? lookup.Lookup.AsEnumerable() : []);
             }
-            var values = options.Where(l => l.Value.Price > 0 
-                            && (l.Key.Modifiers.Count == 2 && l.Key.Modifiers.Last().Key == "virtual" || l.Key.Modifiers.Count == 1) && l.Key.Modifiers.Any(m => m.Key == v.Modifier.Key) 
+            var values = options.Where(l => l.Value.Price > 0
+                            && (l.Key.Modifiers.Count == 2 && l.Key.Modifiers.Last().Key == "virtual" || l.Key.Modifiers.Count == 1) && l.Key.Modifiers.Any(m => m.Key == v.Modifier.Key)
                             && baseLevel > int.Parse(l.Key.Modifiers.First().Value))
                 .Select(l => l.Value.Price / Math.Pow(2, int.Parse(l.Key.Modifiers.First().Value)))
                 .ToList();
@@ -1576,7 +1576,9 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (mod.Key == "eman_kills")
                     sum += 3_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
-                if (mod.Key.EndsWith("_kills"))
+                else if (mod.Key == "expertise_kills")
+                    sum += 3_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
+                else if (mod.Key.EndsWith("_kills"))
                 {
                     sum += 300_000 * (int)Math.Pow(2, int.Parse(mod.Value)) + 300_000;
                 }
@@ -1790,6 +1792,8 @@ ORDER BY l.`AuctionId`  DESC;
                 return NormalizeGroupNumber(s, 10_000, 25_000, 50_000, 75_000, 100_000, 125_000, 150_000, 200_000);
             if (s.Key == "blood_god_kills")
                 return NormalizeGroupNumber(s, 1_000_000, 10_000_000, 20_000_000, 100_000_000);
+            if (s.Key == "expertise_kills")
+                return NormalizeGroupNumber(s, 5_500, 15_000);
             if (s.Key.EndsWith("_kills"))
                 return NormalizeNumberTo(s, 10_000);
             if (s.Key == "yogsKilled")

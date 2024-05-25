@@ -1618,7 +1618,7 @@ namespace Coflnet.Sky.Sniper.Services
             var biggerStack = Dupplicate(highestValAuction);
             biggerStack.Count = 3;
             biggerStack.HighestBidAmount = 100_000_000;
-            AddVolume(biggerStack);
+            AddVolume(biggerStack, 8);
 
             var single = Dupplicate(highestValAuction);
             single.Count = 1;
@@ -2248,7 +2248,7 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.Tag = "HYPERION";
             highestValAuction.FlatenedNBT = new();
             highestValAuction.HighestBidAmount = 100_000_000;
-            AddVolume(highestValAuction);
+            AddVolume(highestValAuction, 8);
             SetBazaarPrice("GIANT_FRAGMENT_LASER", 20_000);
             var scylla = Dupplicate(highestValAuction);
             scylla.StartingBid = 5;

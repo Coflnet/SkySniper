@@ -601,6 +601,19 @@ public class AuctionkeyTests
         Assert.That(key.ValueBreakdown.First().Value, Is.EqualTo(1_000_000));
     }
     [Test]
+    public void ValuesExpertiseCorrectly()
+    {
+        var auction = new SaveAuction()
+        {
+            FlatenedNBT = new() { { "expertise_kills", "11000" } },
+            Enchantments = new() { new(EnchantmentType.expertise, 9) },
+            Tag = "S"
+        };
+        SetBazaarPrice("ENCHANTMENT_EXPERTISE_1", 4_000_000);
+        var key = service.ValueKeyForTest(auction);
+        Assert.That(key.ValueBreakdown.First().Value, Is.EqualTo(6_000_000), JsonConvert.SerializeObject(key.ValueBreakdown));
+    }
+    [Test]
     public void ValueAssignedtoRecombobulator()
     {
         var price = Random.Shared.Next(1_000_000, 10_000_000);
