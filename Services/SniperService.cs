@@ -388,7 +388,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 auction.Category = lookup.Category;
             }
-            var itemKey = KeyFromSaveAuction(auction);
+            var itemKey = DetailedKeyFromSaveAuction(auction);
             result.ItemKey = itemKey.ToString();
 
             // add back gem value
@@ -398,7 +398,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (result.Lbin.AuctionId == default && bucket.Lbin.AuctionId != default)
                 {
                     var lbinGemValue = gemVal;
-                    if (itemKey.Modifiers.Any(m => m.Key == "pgems" && m.Value == "5"))
+                    if (itemKey.Key.Modifiers.Any(m => m.Key == "pgems" && m.Value == "5"))
                     {// gems are already accounted for
                         lbinGemValue = 0;
                     }
@@ -443,7 +443,7 @@ ORDER BY l.`AuctionId`  DESC;
             var lbinCap = HigherValueLbinMapLookup.GetOrAdd(((string, AuctionKey))(auction.Tag, itemKey), a =>
             {
                 var higherValue = l.Where(k => k.Value.Lbin.Price != 0
-                                    && IsHigherValue(itemKey, k.Key) && k.Key.Reforge == itemKey.Reforge);
+                                    && IsHigherValue(itemKey, k.Key) && k.Key.Reforge == itemKey.Key.Reforge);
                 var MaxValue = higherValue.OrderBy(b => b.Value.Lbin.Price).FirstOrDefault();
                 if (MaxValue.Key == a.Item2)
                     return (default, DateTime.UtcNow); // best match is itself, skip
@@ -464,7 +464,7 @@ ORDER BY l.`AuctionId`  DESC;
         }
 
 
-        private (PriceEstimate result, DateTime addedAt) GetEstimatedMedian(SaveAuction auction, PriceEstimate result, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKeyWithValue itemKey, long gemVal, DateTime now)
+        private (PriceEstimate result, DateTime addedAt) GetEstimatedMedian(SaveAuction auction, PriceEstimate result, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, KeyWithValueBreakdown itemKey, long gemVal, DateTime now)
         {
             closestMedianBruteCounter.Inc();
             foreach (var c in FindClosest(l, itemKey, auction.Tag))
@@ -476,7 +476,7 @@ ORDER BY l.`AuctionId`  DESC;
                     result.Median -= changeAmount;
                     result.MedianKey += diffExp;
                 }
-                foreach (var item in itemKey.Modifiers.Where(m => Constants.AttributeKeys.Contains(m.Key)))
+                foreach (var item in itemKey.Key.Modifiers.Where(m => Constants.AttributeKeys.Contains(m.Key)))
                 {
                     // "scrap for parts"
                     var key = VirtualAttributeKey(item);
@@ -498,13 +498,16 @@ ORDER BY l.`AuctionId`  DESC;
             if (result.Median > 0)
             {
                 // check lower value keys
-                var lowerValue = l.Where(k => IsHigherValue(k.Key, itemKey) && k.Key.Reforge == itemKey.Reforge);
+                var lowerValue = l.Where(k => IsHigherValue(k.Key, itemKey) && k.Key.Reforge == itemKey.Key.Reforge);
                 var MaxValue = lowerValue
                     .OrderByDescending(b => b.Value.Price).FirstOrDefault();
                 if (MaxValue.Value?.Price > result.Median)
                 {
                     result.Median = MaxValue.Value.Price;
                     result.MedianKey += $"+HV-{MaxValue.Key}";
+                    result.Median += itemKey.ValueBreakdown
+                        .Where(m => !MaxValue.Key.Modifiers.Contains(m.Modifier) && !MaxValue.Key.Enchants.Contains(m.Enchant))
+                        .Sum(m => m.IsEstimate ? m.Value / 20 : m.Value) / 9;
                 }
             }
             return (result, now);

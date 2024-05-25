@@ -1121,7 +1121,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(firstAuction);
 
             var estimate = service.GetPrice(noVolume);
-            Assert.That(35_000_000, Is.EqualTo(estimate.Median));
+            Assert.That(estimate.Median, Is.EqualTo(35_000_000 + 688888), "add 1/9th of missing protection");
         }
 
         [Test]
@@ -1849,7 +1849,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddUpdate(TimeSpan.FromMinutes(28), 50_000_000);
             AddUpdate(TimeSpan.FromMinutes(29), 50_000_000);
             CurrentValue().Should().Be(3_000_000, "should ignore expensive values in short frames");
-            AddUpdate(TimeSpan.FromMinutes(36.2), 6_000_000);
+            AddUpdate(TimeSpan.FromMinutes(36.5), 6_000_000);
             CurrentValue().Should().Be(3_500_000);
 
             void AddUpdate(TimeSpan toAdd, int sellPrice)
