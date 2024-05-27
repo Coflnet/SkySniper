@@ -2190,7 +2190,7 @@ namespace Coflnet.Sky.Sniper.Services
             toTest.FlatenedNBT["speed"] = "1";
             toTest.FlatenedNBT["dominance"] = "1";
             toTest.HighestBidAmount = 45_000_000;
-            AddVolume(toTest, 3);
+            AddVolume(toTest, 5);
             // lowest non 0 median should be used so here we insert lvl 3, lvl 1-1 is 0 because low volume
             toTest.FlatenedNBT["dominance"] = "3";
             toTest.HighestBidAmount = 50_000_000;
@@ -2198,13 +2198,23 @@ namespace Coflnet.Sky.Sniper.Services
             toTest.FlatenedNBT["speed"] = "7";
             toTest.FlatenedNBT["dominance"] = "7";
             toTest.HighestBidAmount = 80_000_000;
-            AddVolume(toTest);
+            AddVolume(toTest, 10);
             toTest.HighestBidAmount = 1_000_000;
             TestNewAuction(toTest);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
             // craft cost + combo value
-            Assert.That(76245000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That(71870000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+
+            highestValAuction.Tag = "ATTRIBUTE_SHARD";
+            // lower cost to upgrade via shard
+            var randomVal = Random.Shared.Next(10_000, 20_000);
+            CreateVolume("speed", 1, randomVal);
+            toTest.HighestBidAmount = 100_000_000;
+            AddVolume(toTest, 1); // refresh median with new cap
+            var price = service.GetPrice(toTest);
+            var capExtra = (long)(Math.Pow(2, 7) * randomVal * 1.20) / 2 * 11 / 10;
+            Assert.That(price.Median, Is.EqualTo(61310_000 + capExtra), JsonConvert.SerializeObject(price));
 
             void CreateVolume(string attrib, int level, int cost)
             {

@@ -1147,17 +1147,24 @@ ORDER BY l.`AuctionId`  DESC;
                 var secondType = tag.Split("_")[1];
                 options = CrimsonArmors.SelectMany(s => Lookups.TryGetValue(s + secondType, out var lookup) ? lookup.Lookup.AsEnumerable() : []);
             }
-            var values = options.Where(l => l.Value.Price > 0
-                            && (l.Key.Modifiers.Count == 2 && l.Key.Modifiers.Last().Key == "virtual" || l.Key.Modifiers.Count == 1) && l.Key.Modifiers.Any(m => m.Key == v.Modifier.Key)
-                            && baseLevel > int.Parse(l.Key.Modifiers.First().Value))
-                .Select(l => l.Value.Price / Math.Pow(2, int.Parse(l.Key.Modifiers.First().Value)))
-                .ToList();
-            var quarterPercentile = values.Count > 0 ? values.OrderBy(v => v).Skip(values.Count / 4).First() : 0;
-            if(v.Modifier.Key == "dominance" && v.Modifier.Value == "3")
+            double quarterPercentile = GetPercentile(v, baseLevel, options);
+            var shards = GetPercentile(v, baseLevel, Lookups.GetValueOrDefault("ATTRIBUTE_SHARD", new PriceLookup()).Lookup);
+            if(shards > 0 && shards < quarterPercentile)
             {
-                logger.LogInformation($"dominance 3 {tag} {quarterPercentile} {values.Count} {JsonConvert.SerializeObject(values)}");
+                quarterPercentile = shards;
             }
             return (long)(Math.Pow(2, baseLevel) * quarterPercentile * 1.20) + comboValue;
+
+            static double GetPercentile(RankElem v, int baseLevel, IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> options)
+            {
+                var values = options.Where(l => l.Value.Price > 0
+                                            && (l.Key.Modifiers.Count == 2 && l.Key.Modifiers.Last().Key == "virtual" || l.Key.Modifiers.Count == 1) && l.Key.Modifiers.Any(m => m.Key == v.Modifier.Key)
+                                            && baseLevel > int.Parse(l.Key.Modifiers.First().Value))
+                                .Select(l => l.Value.Price / Math.Pow(2, int.Parse(l.Key.Modifiers.First().Value)))
+                                .ToList();
+                var quarterPercentile = values.Count > 0 ? values.OrderBy(v => v).Skip(values.Count / 4).First() : 0;
+                return quarterPercentile;
+            }
         }
 
         private static List<ReferencePrice> GetShortTermBatch(List<ReferencePrice> deduplicated)
