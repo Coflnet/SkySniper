@@ -320,8 +320,11 @@ namespace Coflnet.Sky.Sniper.Controllers
                 .Where(l => l.Value.Price > 0)
                 .GroupBy(i =>
                 {
+                    var tier = i.Key.Tier;
+                    if (i.Key.Modifiers.Any(m => m.Value == SniperService.TierBoostShorthand))
+                        tier = SniperService.ReduceRarity(tier);
                     if (l.Key.StartsWith("PET_") && !l.Key.StartsWith("PET_ITEM_") && !l.Key.StartsWith("PET_SKIN_"))
-                        return $"{l.Key}_{i.Key.Tier}_{i.Key.Modifiers?.FirstOrDefault(m => m.Key == "exp").Value switch
+                        return $"{l.Key}_{tier}_{i.Key.Modifiers?.FirstOrDefault(m => m.Key == "exp").Value switch
                         {
                             "7" => 100,
                             "6" => 100,
