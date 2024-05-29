@@ -1077,31 +1077,31 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
             // determine craft cost 
-            if (Lookups.TryGetValue(tag, out var lookup) && !breakdown.Any(v => v.Value == 0) && breakdown.Count > 0)
+            if (!Lookups.TryGetValue(tag, out var lookup) || breakdown.Any(v => v.Value == 0) || breakdown.Count <= 0)
             {
-                var select = (NBT.IsPet(tag) ?
-                    lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value.Price) :
-                     lookup.Lookup.Values.Where(v => v.Price > 0).Select(v => v.Price)).ToList();
-                var count = select.Count;
-                // 2nd percentile to skip low volume outliers on complex items
-                var minValue = select.DefaultIfEmpty(0).OrderBy(v => v).Skip(count / 50).FirstOrDefault();
-                if (minValue == 0 || currentPrice == minValue)
-                    return medianPrice;
-                if (tag.Contains("RUNE_"))
-                {
-                    return LimitRuneToFuseCost(medianPrice, breakdown, lookup);
-                }
-                var modifierSum = breakdown.Select(v =>
-                {
-                    if (!Constants.AttributeKeys.Contains(v.Modifier.Key))
-                        return v.Value;
-                    return AttributeValueEstimateForCap(tag, v, breakdown, lookup);
-                }).Sum();
-                if (modifierSum > 0)
-                    limitedPrice = Math.Min(minValue + modifierSum * 11 / 10, medianPrice);
+                logger.LogInformation($"Could not cap, No lookup for {tag} keeping {currentPrice} on {key.Key}");
+                return Math.Min(medianPrice, currentPrice + 1000 + currentPrice / 100);
             }
-            else
-                logger.LogInformation($"Could not cap, No lookup for {tag}");
+            var select = (NBT.IsPet(tag) ?
+                lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value.Price) :
+                 lookup.Lookup.Values.Where(v => v.Price > 0).Select(v => v.Price)).ToList();
+            var count = select.Count;
+            // 2nd percentile to skip low volume outliers on complex items
+            var minValue = select.DefaultIfEmpty(0).OrderBy(v => v).Skip(count / 50).FirstOrDefault();
+            if (minValue == 0 || currentPrice == minValue)
+                return medianPrice;
+            if (tag.Contains("RUNE_"))
+            {
+                return LimitRuneToFuseCost(medianPrice, breakdown, lookup);
+            }
+            var modifierSum = breakdown.Select(v =>
+            {
+                if (!Constants.AttributeKeys.Contains(v.Modifier.Key))
+                    return v.Value;
+                return AttributeValueEstimateForCap(tag, v, breakdown, lookup);
+            }).Sum();
+            if (modifierSum > 0)
+                limitedPrice = Math.Min(minValue + modifierSum * 11 / 10, medianPrice);
             if (limitedPrice > 0)
                 return limitedPrice;
             return medianPrice;
@@ -1149,7 +1149,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             double quarterPercentile = GetPercentile(v, baseLevel, options);
             var shards = GetPercentile(v, baseLevel, Lookups.GetValueOrDefault("ATTRIBUTE_SHARD", new PriceLookup()).Lookup);
-            if(shards > 0 && shards < quarterPercentile)
+            if (shards > 0 && shards < quarterPercentile)
             {
                 quarterPercentile = shards;
             }
