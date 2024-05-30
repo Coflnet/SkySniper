@@ -1076,12 +1076,15 @@ ORDER BY l.`AuctionId`  DESC;
                     return (long)stackCost;
                 }
             }
-            // determine craft cost 
-            if (!Lookups.TryGetValue(tag, out var lookup) || breakdown.Any(v => v.Value == 0) || breakdown.Count <= 0)
+            if (breakdown.Any(v => v.Value == 0) || breakdown.Count <= 0)
+                return medianPrice; // can't cap nothin added, basically clean
+
+            if (!Lookups.TryGetValue(tag, out var lookup))
             {
                 logger.LogInformation($"Could not cap, No lookup for {tag} keeping {currentPrice} on {key.Key}");
-                return Math.Min(medianPrice, currentPrice + 1000 + currentPrice / 100);
+                return Math.Min(medianPrice, currentPrice + 10_000 + currentPrice / 100);
             }
+            // determine craft cost 
             var select = (NBT.IsPet(tag) ?
                 lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value.Price) :
                  lookup.Lookup.Values.Where(v => v.Price > 0).Select(v => v.Price)).ToList();
