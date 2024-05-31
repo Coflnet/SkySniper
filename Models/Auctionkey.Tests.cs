@@ -215,6 +215,22 @@ public class AuctionkeyTests
     }
 
     [Test]
+    public async Task CombineGemstoneSlotsWithUnlocked()
+    {
+        await itemService.GetItemsAsync();
+        var baseAuction = new SaveAuction()
+        {
+            Tag = "DIVAN_BOOTS",
+            Enchantments = new(),
+            FlatenedNBT = new() { { "gemstone_slots", "1" } },
+            ItemCreatedAt = new DateTime(2021, 1, 1),
+            Tier = Tier.MYTHIC
+        };
+        var key = service.KeyFromSaveAuction(baseAuction);
+        Assert.That(key.Modifiers, Is.EqualTo(new KeyValuePair<string, string>[]{new("unlocked_slots", "AMBER_0")}));
+    }
+
+    [Test]
     public void ShinyOnlyOnChestPlateAndHyperion()
     {
         var auction = new SaveAuction()

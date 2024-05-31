@@ -1351,6 +1351,11 @@ ORDER BY l.`AuctionId`  DESC;
                 && !auction.FlatenedNBT.ContainsKey("unlocked_slots"))
             {
                 var allUnlockable = itemService?.GetUnlockableSlots(auction.Tag).ToList();
+                if (auction.FlatenedNBT.TryGetValue("gemstone_slots", out var countString) && int.TryParse(countString, out var count))
+                {
+                    allUnlockable = allUnlockable.Take(count).ToList();
+                    modifiers.RemoveAll(m => m.Key == "gemstone_slots");
+                }
                 if (allUnlockable?.Count > 0)
                     modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", string.Join(",", allUnlockable.OrderBy(s => s))));
             }
