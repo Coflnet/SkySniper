@@ -609,12 +609,12 @@ public class AuctionkeyTests
     {
         var auction = new SaveAuction()
         {
-            FlatenedNBT = new() { { "farming_for_dummies_count", "1" } },
-            Tag = "FARMING_FOR_DUMMIES"
+            FlatenedNBT = new() { { "farming_for_dummies_count", "5" } },
+            Tag = "FARMING_DUMMIES"
         };
         SetBazaarPrice("FARMING_FOR_DUMMIES", 1_000_000);
         var key = service.ValueKeyForTest(auction);
-        Assert.That(key.ValueBreakdown.First().Value, Is.EqualTo(1_000_000));
+        Assert.That(key.ValueBreakdown.First().Value, Is.EqualTo(5_000_000));
     }
     [Test]
     public void ValuesExpertiseCorrectly()
