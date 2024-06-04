@@ -54,11 +54,13 @@ public class AttributeController : ControllerBase
         {
             tag = tag.Substring(0, position + 1);
         }
+        var shards = new KeyValuePair<string, PriceLookup>[] { 
+            new("ATTRIBUTE_SHARD", service.Lookups.GetValueOrDefault("ATTRIBUTE_SHARD", new PriceLookup())) };
         if (service.CrimsonArmors.Any(k => tag.StartsWith(k)))
         {
-            return service.Lookups.Where(l => service.CrimsonArmors.Any(k => l.Key.StartsWith(k)) && (!typeMatters || l.Key.EndsWith(type)));
+            return service.Lookups.Where(l => service.CrimsonArmors.Any(k => l.Key.StartsWith(k)) && (!typeMatters || l.Key.EndsWith(type))).Concat(shards);
         }
-        return service.Lookups.Where(l => l.Key.StartsWith(tag) && (!typeMatters || l.Key.EndsWith(type)));
+        return service.Lookups.Where(l => l.Key.StartsWith(tag) && (!typeMatters || l.Key.EndsWith(type))).Concat(shards);
     }
 
     [Route("cheapest/{itemType}/{attribute}")]

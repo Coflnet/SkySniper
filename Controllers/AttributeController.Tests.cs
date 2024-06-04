@@ -49,6 +49,6 @@ public class AttributeControllerTests
         service.Lookups.TryAdd("CRIMSON_HELMET", lookup);
         var controller = new AttributeController(null, service);
         var result = controller.GetGroup("AURORA_HELMET");
-        Assert.That(result.Count(), Is.EqualTo(2));
+        Assert.That(result.Count(), Is.EqualTo(3));
     }
 }
