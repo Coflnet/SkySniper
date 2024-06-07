@@ -114,8 +114,7 @@ namespace Coflnet.Sky.Sniper.Services
         private async Task SaveGroup(int key, List<KeyValuePair<string, PriceLookup>> list)
         {
             using var stream = new MemoryStream();
-            var options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
-            await MessagePackSerializer.SerializeAsync(stream, list, options);
+            await MessagePackSerializer.SerializeAsync(stream, list, GroupOptions());
             stream.Position = 0;
             var length = stream.Length;
             try
@@ -133,6 +132,11 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 logger.LogError(e, "failed to save group " + list.First().Key);
             }
+        }
+
+        private static MessagePackSerializerOptions GroupOptions()
+        {
+            return MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
         }
 
         private static int GetMd5HashCode(KeyValuePair<string, PriceLookup> l)
@@ -214,7 +218,7 @@ namespace Coflnet.Sky.Sniper.Services
         private async Task<List<KeyValuePair<string, PriceLookup>>> LoadGroup(int key)
         {
             using var result = await GetStreamForObject("group" + key);
-            return await MessagePackSerializer.DeserializeAsync<List<KeyValuePair<string, PriceLookup>>>(result);
+            return await MessagePackSerializer.DeserializeAsync<List<KeyValuePair<string, PriceLookup>>>(result, GroupOptions());
         }
 
         public async Task<ConcurrentDictionary<string, AttributeLookup>> GetWeigths()
