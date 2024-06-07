@@ -2655,6 +2655,27 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(0, Is.EqualTo(found.Count), JsonConvert.SerializeObject(found, Formatting.Indented));
         }
 
+        [Test]
+        public async Task CombineWithClosestKeyToGetMedian()
+        {
+            highestValAuction.Tag = "TERROR_CHESTPLATE";
+            highestValAuction.FlatenedNBT = new() { { "mana_pool", "3" } };
+            highestValAuction.HighestBidAmount = 2_000_000;
+            AddVolume(highestValAuction, 10);
+            var withLifeline = Dupplicate(highestValAuction);
+            withLifeline.FlatenedNBT["lifeline"] = "1";
+            withLifeline.FlatenedNBT["mana_pool"] = "2";
+            withLifeline.HighestBidAmount = 40_000_000;
+            AddVolume(withLifeline, 10);
+            var test = Dupplicate(withLifeline);
+            test.FlatenedNBT["mana_pool"] = "3";
+            test.HighestBidAmount = 1_900_000;
+            TestNewAuction(test);
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).LastOrDefault();
+            Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
+            Assert.That(40_000_000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+        }
+
         private static ProductInfo CreateGemPrice(string gemName)
         {
             return new()

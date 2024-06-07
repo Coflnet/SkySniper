@@ -164,10 +164,10 @@ namespace Coflnet.Sky.Sniper.Models
             if (reforge != default && reforge.Reforge != default)
             {
                 var match = self.FirstOrDefault(k => k.Reforge == reforge.Reforge);
-                if (match.Reforge == reforge.Reforge)
+                if (match?.Reforge == reforge.Reforge)
                     matchValue += match.Value;
                 else
-                    matchValue -= match.Value;
+                    matchValue -= match?.Value ?? 1_000;
             }
 
             return matchValue;

@@ -2084,7 +2084,7 @@ ORDER BY l.`AuctionId`  DESC;
         private void CheckCombined(SaveAuction auction, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, double lbinPrice, double medPrice, KeyWithValueBreakdown fullKey, RankElem topAttrib)
         {
             var topKey = fullKey.GetReduced(0);
-            var similar = l.Where(e => e.Key.Modifiers.Contains(topAttrib.Modifier) || e.Key.Enchants.Contains(topAttrib.Enchant)).ToList();
+            var similar = l.Where(e => topAttrib.Modifier.Key != default && !e.Key.Modifiers.Any(m=>m.Key == "virtual") || e.Key.Enchants.Contains(topAttrib.Enchant)).ToList();
             if (similar.Count == 1)
             {
                 // include all if no match otherwise
@@ -2092,6 +2092,8 @@ ORDER BY l.`AuctionId`  DESC;
             }
             var targetVolume = 11;
             var relevant = similar.Where(e => IsHigherValue(e.Key, topKey) && e.Key.Reforge == topKey.Reforge)
+                .OrderByDescending(e => e.Key.Modifiers.Count + e.Key.Enchants.Count)
+                .ThenByDescending(e => e.Key.Similarity(fullKey.Key, this, ComparisonValue(fullKey.Key.Enchants, fullKey.Key.Modifiers.ToList(), GetAuctionGroupTag(auction.Tag).tag, null).ToList(), fullKey.ValueBreakdown))
                 .ToList();
             if (relevant.Count < 2)
             {
