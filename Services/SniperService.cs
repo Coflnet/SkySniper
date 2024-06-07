@@ -934,39 +934,13 @@ ORDER BY l.`AuctionId`  DESC;
                     {
                         Count = 1
                     };
-                    if (Lookups.GetOrAdd(keyCombo.tag, new PriceLookup()).Lookup.TryGetValue(lowerCountKey, out var lowerCountBucket) && lowerCountBucket.Price != 0)
+                    if (Lookups.GetOrAdd(keyCombo.tag, new PriceLookup()).Lookup.TryGetValue(lowerCountKey, out var lowerCountBucket)
+                        && lowerCountBucket.Price != 0
+                        && lowerCountBucket.Price * keyCombo.Item2.Key.Count < medianPrice)
                     {
                         medianPrice = Math.Min(medianPrice, lowerCountBucket.Price * keyWithNoEnchants.Count);
 
                         logger.LogInformation($"Adjusted for count {keyCombo.tag} -> {medianPrice}  {keyWithNoEnchants} - {keyCombo.Item2.Key}");
-                    }
-                }
-                var enchantPrice = GetPriceSumForEnchants(keyCombo.Item2.Key.Enchants);
-                if (enchantPrice <= 0)
-                {
-                    // early return
-                    bucket.Price = medianPrice;
-                    return;
-                }
-                if (!Lookups.GetOrAdd(keyCombo.tag, new PriceLookup()).Lookup.TryGetValue(keyWithNoEnchants, out var clean))
-                {
-                    sellClosestSearch.Inc();
-                    var closest = FindClosest(Lookups[keyCombo.tag].Lookup, keyWithNoEnchants, keyCombo.tag)
-                            .Where(x => !keyCombo.Item2.Key.Modifiers.Except(x.Key.Modifiers).Any()).Take(5).ToList();
-                    if (closest.Count > 0)
-                        clean = closest.MinBy(m => m.Value.Price).Value;
-                }
-                var combined = (clean?.Price ?? 0) + enchantPrice;
-                if (enchantPrice != 0 && clean != default && clean.Price > 10_000 && clean.Volume > 1 && medianPrice > combined)
-                {
-                    if (clean.References.First().AuctionId == bucket.References.First().AuctionId)
-                        logger.LogInformation($"skipping enchant adjustment {keyCombo.tag} -> {medianPrice}  {keyWithNoEnchants} - {enchantPrice} {clean.Price} {clean.Volume} {keyCombo.Item2}");
-
-                    else
-                    {
-                        bucket.Price = Math.Min(medianPrice, combined);
-                        logger.LogInformation($"Adjusted for enchat cost {keyCombo.tag} -> {medianPrice}  {keyCombo.Item2} - {enchantPrice} {clean.Price} {clean.Volume} {keyWithNoEnchants}");
-                        return;
                     }
                 }
             }
