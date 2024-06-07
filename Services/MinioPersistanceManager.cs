@@ -76,6 +76,8 @@ namespace Coflnet.Sky.Sniper.Services
                     logger.LogError(e, "Could not load item twice " + itemTag);
                 }
             });
+            // trigger save for test, TODO: remove this again
+            await SaveGroups(service.Lookups);
         }
 
 
@@ -86,11 +88,7 @@ namespace Coflnet.Sky.Sniper.Services
             stream.Position = 0;
             logger.LogInformation("saving list" + stream.Length);
             // group by md5 hash
-            var grouped = lookups.GroupBy(l => GetMd5HashCode(l));
-            foreach (var group in grouped)
-            {
-                await SaveGroup(group.Key, group.ToList());
-            }
+            await SaveGroups(lookups);
             // upload to s3
             await s3Client.PutObjectAsync(new PutObjectRequest()
             {
@@ -108,6 +106,15 @@ namespace Coflnet.Sky.Sniper.Services
                 await SaveLookup(item.Key, item.Value);
             });
             Console.WriteLine();
+        }
+
+        private async Task SaveGroups(ConcurrentDictionary<string, PriceLookup> lookups)
+        {
+            var grouped = lookups.GroupBy(l => GetMd5HashCode(l));
+            foreach (var group in grouped)
+            {
+                await SaveGroup(group.Key, group.ToList());
+            }
         }
 
         private async Task SaveGroup(int key, List<KeyValuePair<string, PriceLookup>> list)
