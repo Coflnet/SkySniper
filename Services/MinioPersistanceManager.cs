@@ -44,37 +44,25 @@ namespace Coflnet.Sky.Sniper.Services
 
         public async Task LoadLookups(SniperService service)
         {
-            List<string> items = await GetIemIds();
-            logger.LogInformation("loaded item ids " + items.Count);
-            await Parallel.ForEachAsync(items, new ParallelOptions()
+            logger.LogInformation("loading groups ");
+            await Parallel.ForEachAsync(Enumerable.Range(0, 100), new ParallelOptions()
             {
                 MaxDegreeOfParallelism = 3
-            }, async (itemTag, cancleToken) =>
+            }, async (groupId, cancleToken) =>
             {
-                try
-                {
-                    PriceLookup lookup = new();
+                while (true)
                     try
                     {
-                        lookup = await LoadItem(itemTag);
-                        if (lookup.Lookup.Count > 500)
-                            logger.LogInformation("loaded " + itemTag + " " + lookup.Lookup.Count);
+                        var lookups = await LoadGroup(groupId);
+                        logger.LogInformation("loaded " + groupId + " " + lookups.Count);
+                        foreach (var lookup in lookups)
+                            service.AddLookupData(lookup.Key, lookup.Value);
                     }
-                    catch (Exception ex)
+                    catch (Exception e)
                     {
-                        await Task.Delay(5000);
-                        logger.LogError(ex, "Could not load item once " + itemTag);
-                        // retry
-                        lookup = await LoadItem(itemTag);
+                        await Task.Delay(200);
+                        logger.LogError(e, "Could not load group {groupId}, first item", groupId);
                     }
-                    service.AddLookupData(itemTag, lookup);
-                }
-                catch (Exception e)
-                {
-                    await Task.Delay(200);
-                    await SaveLookup(itemTag, new PriceLookup());
-                    logger.LogError(e, "Could not load item twice " + itemTag);
-                }
             });
             // trigger save for test, TODO: remove this again
             await SaveGroups(service.Lookups);
@@ -89,6 +77,7 @@ namespace Coflnet.Sky.Sniper.Services
             logger.LogInformation("saving list" + stream.Length);
             // group by md5 hash
             await SaveGroups(lookups);
+            return;
             // upload to s3
             await s3Client.PutObjectAsync(new PutObjectRequest()
             {
@@ -110,11 +99,16 @@ namespace Coflnet.Sky.Sniper.Services
 
         private async Task SaveGroups(ConcurrentDictionary<string, PriceLookup> lookups)
         {
-            var grouped = lookups.GroupBy(l => GetMd5HashCode(l));
+            IEnumerable<IGrouping<int, KeyValuePair<string, PriceLookup>>> grouped = GetGroups(lookups);
             foreach (var group in grouped)
             {
                 await SaveGroup(group.Key, group.ToList());
             }
+        }
+
+        public static IEnumerable<IGrouping<int, KeyValuePair<string, PriceLookup>>> GetGroups(ConcurrentDictionary<string, PriceLookup> lookups)
+        {
+            return lookups.GroupBy(l => GetMd5HashCode(l));
         }
 
         private async Task SaveGroup(int key, List<KeyValuePair<string, PriceLookup>> list)
@@ -215,6 +209,12 @@ namespace Coflnet.Sky.Sniper.Services
         {
             using var result = await GetStreamForObject(itemName);
             return await MessagePackSerializer.DeserializeAsync<PriceLookup>(result);
+        }
+
+        private async Task<List<KeyValuePair<string, PriceLookup>>> LoadGroup(int key)
+        {
+            using var result = await GetStreamForObject("group" + key);
+            return await MessagePackSerializer.DeserializeAsync<List<KeyValuePair<string, PriceLookup>>>(result);
         }
 
         public async Task<ConcurrentDictionary<string, AttributeLookup>> GetWeigths()

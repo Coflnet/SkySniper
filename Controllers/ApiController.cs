@@ -64,6 +64,15 @@ namespace Coflnet.Sky.Sniper.Controllers
             return Convert.ToBase64String(MessagePack.MessagePackSerializer.Serialize(service.Lookups[itemId]));
         }
 
+        [HttpGet]
+        [Route("lookup/group/{groupId}")]
+        public string GetLookupGroup(int groupId, [FromHeader] string Authorization)
+        {
+            CountUsageAndValidate(Authorization);
+            var grouped = S3PersistanceManager.GetGroups(service.Lookups).Where(g => g.Key == groupId);
+            return Convert.ToBase64String(MessagePackSerializer.Serialize(grouped, MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4Block)));
+        }
+
         /// <summary>
         /// Get multiple itemIds at once
         /// </summary>
