@@ -71,7 +71,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         public string GetLookupGroup(int groupId, [FromHeader] string Authorization)
         {
             CountUsageAndValidate(Authorization);
-            var grouped = S3PersistanceManager.GetGroups(service.Lookups).Where(g => g.Key == groupId);
+            var grouped = S3PersistanceManager.GetGroups(service.Lookups).Where(g => g.Key == groupId).ToList();
             return Convert.ToBase64String(MessagePackSerializer.Serialize(grouped, MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4Block)));
         }
 
