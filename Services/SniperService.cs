@@ -1072,7 +1072,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (stackCost < medianPrice)
                 {
-                    logger.LogInformation($"Capped {tag} at {stackCost} {stackSize} craft cost {craftCost} {key}");
+                    logger.LogDebug($"Capped {tag} at {stackCost} {stackSize} craft cost {craftCost} {key}");
                     return (long)stackCost;
                 }
             }
@@ -2084,7 +2084,7 @@ ORDER BY l.`AuctionId`  DESC;
         private void CheckCombined(SaveAuction auction, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, double lbinPrice, double medPrice, KeyWithValueBreakdown fullKey, RankElem topAttrib)
         {
             var topKey = fullKey.GetReduced(0);
-            var similar = l.Where(e => topAttrib.Modifier.Key != default && !e.Key.Modifiers.Any(m=>m.Key == "virtual") || e.Key.Enchants.Contains(topAttrib.Enchant)).ToList();
+            var similar = l.Where(e => topAttrib.Modifier.Key != default && !e.Key.Modifiers.Any(m => m.Key == "virtual") || e.Key.Enchants.Contains(topAttrib.Enchant)).ToList();
             if (similar.Count == 1)
             {
                 // include all if no match otherwise
