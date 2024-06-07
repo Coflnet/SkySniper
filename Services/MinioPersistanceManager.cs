@@ -57,6 +57,7 @@ namespace Coflnet.Sky.Sniper.Services
                         logger.LogInformation("loaded " + groupId + " " + lookups.Count);
                         foreach (var lookup in lookups)
                             service.AddLookupData(lookup.Key, lookup.Value);
+                        break;
                     }
                     catch (Exception e)
                     {
