@@ -2507,6 +2507,8 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     itemPrice = (long)item.BuySummery.OrderBy(s => s.PricePerUnit).First().PricePerUnit;
                 }
+                if (!BazaarPrices.ContainsKey(item.ProductId))
+                    BazaarPrices[item.ProductId] = itemPrice;
                 if (bucket.References.Count >= 5 && NotEnoughTimePassed(bazaar, bucket))
                     continue; // only sample prices every 10 minutes
                 bucket.References.Enqueue(new()
