@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Amazon.S3;
 using Amazon.S3.Model;
@@ -84,6 +85,12 @@ namespace Coflnet.Sky.Sniper.Services
             await MessagePackSerializer.SerializeAsync(stream, lookups.Keys.ToList());
             stream.Position = 0;
             logger.LogInformation("saving list" + stream.Length);
+            // group by md5 hash
+            var grouped = lookups.GroupBy(l => GetMd5HashCode(l));
+            foreach (var group in grouped)
+            {
+                await SaveGroup(group.Key, group.ToList());
+            }
             // upload to s3
             await s3Client.PutObjectAsync(new PutObjectRequest()
             {
@@ -101,6 +108,36 @@ namespace Coflnet.Sky.Sniper.Services
                 await SaveLookup(item.Key, item.Value);
             });
             Console.WriteLine();
+        }
+
+        private async Task SaveGroup(int key, List<KeyValuePair<string, PriceLookup>> list)
+        {
+            using var stream = new MemoryStream();
+            var options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
+            await MessagePackSerializer.SerializeAsync(stream, list, options);
+            stream.Position = 0;
+            var length = stream.Length;
+            try
+            {
+                var putResponse = await s3Client.PutObjectAsync(new PutObjectRequest()
+                {
+                    BucketName = "sky-sniper",
+                    Key = "group" + key,
+                    DisablePayloadSigning = true,
+                    InputStream = stream
+                });
+                Console.Write($" saved group {key} {length} {putResponse.HttpStatusCode}");
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, "failed to save group " + list.First().Key);
+            }
+        }
+
+        private static int GetMd5HashCode(KeyValuePair<string, PriceLookup> l)
+        {
+            // modulate the hash to get a number between 0 and 100
+            return Math.Abs(BitConverter.ToInt32(MD5.HashData(System.Text.Encoding.UTF8.GetBytes(l.Key)), 0) % 100);
         }
 
         private async Task SaveLookup(string tag, PriceLookup lookup)
