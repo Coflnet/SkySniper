@@ -73,6 +73,14 @@ namespace Coflnet.Sky.Sniper.Controllers
             return Convert.ToBase64String(MessagePackSerializer.Serialize(grouped, MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4Block)));
         }
 
+        [HttpGet]
+        [Route("lookup/groups")]
+        public Dictionary<int,string[]> GetLookupGroups()
+        {
+            var grouped = S3PersistanceManager.GetGroups(service.Lookups);
+            return grouped.ToDictionary(g => g.Key, g => g.Select(l => l.Key).ToArray());
+        }
+
         /// <summary>
         /// Get multiple itemIds at once
         /// </summary>
