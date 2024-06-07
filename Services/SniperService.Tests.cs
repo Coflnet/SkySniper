@@ -2721,6 +2721,11 @@ namespace Coflnet.Sky.Sniper.Services
             return Task.FromResult(new ConcurrentDictionary<string, AttributeLookup>());
         }
 
+        public Task<List<KeyValuePair<string, PriceLookup>>> LoadGroup(int groupId)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task LoadLookups(SniperService service)
         {
             return Task.CompletedTask;

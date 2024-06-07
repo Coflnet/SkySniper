@@ -216,7 +216,7 @@ namespace Coflnet.Sky.Sniper.Services
             return await MessagePackSerializer.DeserializeAsync<PriceLookup>(result);
         }
 
-        private async Task<List<KeyValuePair<string, PriceLookup>>> LoadGroup(int key)
+        public async Task<List<KeyValuePair<string, PriceLookup>>> LoadGroup(int key)
         {
             using var result = await GetStreamForObject("group" + key);
             return await MessagePackSerializer.DeserializeAsync<List<KeyValuePair<string, PriceLookup>>>(result, GroupOptions());

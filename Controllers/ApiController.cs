@@ -22,6 +22,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         private readonly SniperService service;
         private readonly ITokenService tokenService;
         private readonly ICraftCostService craftCostService;
+        private readonly IPersitanceManager persitanceManager;
 
         public SniperController(ILogger<SniperController> logger, SniperService service, ITokenService tokenService, ICraftCostService craftCostService)
         {
@@ -75,10 +76,18 @@ namespace Coflnet.Sky.Sniper.Controllers
 
         [HttpGet]
         [Route("lookup/groups")]
-        public Dictionary<int,string[]> GetLookupGroups()
+        public Dictionary<int, string[]> GetLookupGroups()
         {
             var grouped = S3PersistanceManager.GetGroups(service.Lookups);
             return grouped.ToDictionary(g => g.Key, g => g.Select(l => l.Key).ToArray());
+        }
+
+        [HttpGet]
+        [Route("group/{groupId}/{tag}/dump")]
+        public async Task<PriceLookup> GetGroupContent(int groupId, string tag)
+        {
+            var grouped = await persitanceManager.LoadGroup(groupId);
+            return grouped.Where(g => g.Key == tag).FirstOrDefault().Value;
         }
 
         /// <summary>
