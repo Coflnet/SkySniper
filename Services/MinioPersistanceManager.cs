@@ -65,8 +65,6 @@ namespace Coflnet.Sky.Sniper.Services
                         logger.LogError(e, "Could not load group {groupId}, first item", groupId);
                     }
             });
-            // trigger save for test, TODO: remove this again
-            await SaveGroups(service.Lookups);
         }
 
 
