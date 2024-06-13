@@ -919,7 +919,10 @@ ORDER BY l.`AuctionId`  DESC;
                 if (limitedPrice != bucket.Price)
                 {
                     if (limitedPrice == 0)
+                    {
                         logger.LogWarning($"Price capped {keyCombo.tag} -> {limitedPrice}  {keyCombo.key}");
+                        limitedPrice = 10;
+                    }
                     medianPrice = limitedPrice;
                     bucket.Price = medianPrice;
                     return;
