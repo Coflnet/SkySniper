@@ -916,8 +916,10 @@ ORDER BY l.`AuctionId`  DESC;
                 long limitedPrice = CapAtCraftCost(keyCombo.tag, medianPrice, keyCombo.key, bucket.Price);
                 // check higher value keys for lower price 
                 limitedPrice = CapPriceAtHigherLevelKey(keyCombo, limitedPrice);
-                if (limitedPrice > 0 && limitedPrice != bucket.Price)
+                if (limitedPrice != bucket.Price)
                 {
+                    if (limitedPrice == 0)
+                        logger.LogWarning($"Price capped {keyCombo.tag} -> {limitedPrice}  {keyCombo.key}");
                     medianPrice = limitedPrice;
                     bucket.Price = medianPrice;
                     return;

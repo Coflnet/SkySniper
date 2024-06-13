@@ -1669,6 +1669,22 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void CapVanillaItemCost()
+        {
+            service = new SniperService(null, null, NullLogger<SniperService>.Instance, new CraftCostService(null, null));
+            highestValAuction.FlatenedNBT = null;
+            var sample = Dupplicate(highestValAuction);
+            sample.Count = 62;
+            sample.Tag = "FLOWER_POT_ITEM";
+            sample.Tier = Tier.COMMON;
+            sample.HighestBidAmount = 100_000_000;
+            AddVolume(sample, 6);
+            var toTest = Dupplicate(sample);
+            var estimate = service.GetPrice(toTest);
+            Assert.That(estimate.Median, Is.EqualTo(36 * 62));
+        }
+
+        [Test]
         public void LbinSimilarity()
         {
             highestValAuction.StartingBid = 5;
