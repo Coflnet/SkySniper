@@ -228,7 +228,7 @@ namespace Coflnet.Sky.Sniper.Services
                     bucket.Lbins.Sort(ReferencePrice.Compare);
                     if (bucket.Lbins.First().AuctionId == item.AuctionId)
                     {
-                        logger.LogInformation($"New lowest lbin {auction.Uuid} {auction.StartingBid}");
+                        logger.LogInformation($"New lowest lbin {auction.Uuid} {auction.StartingBid} from {bucket.Lbins.Skip(1).FirstOrDefault().Price}");
                     }
                 }
                 if (Lookups.TryGetValue(auction.Tag, out var lookup) && lookup.Category == Category.UNKNOWN)
