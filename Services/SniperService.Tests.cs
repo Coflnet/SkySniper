@@ -499,7 +499,7 @@ namespace Coflnet.Sky.Sniper.Services
             sample.HighestBidAmount = 0;
             sample.StartingBid = 500;
             TestNewAuction(sample);
-            Assert.That(30_000_000, Is.EqualTo(found.Last().TargetPrice));
+            Assert.That(30_000_000, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
         }
         [Test]
         public void HigherValueCheckChecksSmallerValueForHigherPrice()
@@ -548,7 +548,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(highestValAuction, 6);
             highestValAuction.HighestBidAmount = 5_000_000;
             TestNewAuction(highestValAuction);
-            Assert.That(10_000_000, Is.EqualTo(found.Last().TargetPrice));
+            Assert.That(10_000_000, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
             Assert.That(found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).Count(), Is.EqualTo(1));
         }
         [Test]
@@ -628,6 +628,18 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void CapValueAtCraftCostRecombobulator()
         {
+            var sample = SetupCraftCost();
+            sample.HighestBidAmount = 95_000_000;
+            AddVolume(sample);
+            sample.HighestBidAmount = 0;
+            sample.StartingBid = 0;
+            TestNewAuction(sample);
+            Assert.That(found.FirstOrDefault(), Is.Not.Null, "there should be one found");
+            Assert.That(60203500, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice), "should be capped at sum of craft cost");
+        }
+
+        private SaveAuction SetupCraftCost()
+        {
             SetBazaarPrice("RECOMBOBULATOR_3000", 8_200_000);
             SetBazaarPrice("THE_ART_OF_WAR", 8_200_000);
             SetBazaarPrice("ETHERWARP_CONDUIT", 15_700_000);
@@ -643,14 +655,19 @@ namespace Coflnet.Sky.Sniper.Services
 
             highestValAuction.FlatenedNBT = new() { { "rarity_upgrades", "1" }, { "art_of_war_count", "1" }, { "hpc", "15" }, { "ethermerge", "1" } };
             highestValAuction.Reforge = ItemReferences.Reforge.warped_on_aote;
-            highestValAuction.HighestBidAmount = 95_000_000;
-            AddVolume(highestValAuction);
-            highestValAuction.HighestBidAmount = 0;
-            highestValAuction.StartingBid = 0;
-            TestNewAuction(highestValAuction);
-            Assert.That(found.FirstOrDefault(), Is.Not.Null, "there should be one found");
-            Assert.That(60203500, Is.EqualTo(found.Last().TargetPrice), "should be capped at sum of craft cost");
+            return highestValAuction;
         }
+
+        [Test]
+        public void CraftCostFinder()
+        {
+            var sample = SetupCraftCost();
+            sample.HighestBidAmount = 0;
+            sample.StartingBid = 10_000_000;
+            TestNewAuction(sample);
+            Assert.That(44_148_000, Is.EqualTo(found.Last().TargetPrice), "should target at craft cost");
+        }
+
         [Test]
         public void FallbackOnNomatchLevel2()
         {
@@ -838,7 +855,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.AddSoldItem(hundret);
             service.TestNewAuction(auction);
 
-            Assert.That(500_000, Is.EqualTo(found.Last().TargetPrice));
+            Assert.That(500_000, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
         }
 
         [Test]
@@ -2030,7 +2047,8 @@ namespace Coflnet.Sky.Sniper.Services
             var lowAssert = (LowPricedAuction s) =>
             {
                 found = s;
-                Assert.That(2000, Is.EqualTo(s.TargetPrice), "extra value should be added to price");
+                if (s.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN)
+                    Assert.That(2000, Is.EqualTo(s.TargetPrice), "extra value should be added to price");
             };
             service.FoundSnipe += lowAssert;
             service.TestNewAuction(Dupplicate(drill));
@@ -2082,7 +2100,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.State = SniperState.Ready;
             service.FinishedUpdate();
             service.TestNewAuction(highestValAuction);
-            Assert.That(0, Is.EqualTo(found.Count), "should not use raw rune" + JsonConvert.SerializeObject(found));
+            Assert.That(0, Is.EqualTo(found.Where(f => f.Finder != LowPricedAuction.FinderType.CraftCost).Count()), "should not use raw rune" + JsonConvert.SerializeObject(found));
         }
 
         [Test]

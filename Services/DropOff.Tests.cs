@@ -242,7 +242,7 @@ public class DropOffTests
     sniperService.TestNewAuction(item);
     Assert.That(found.Count, Is.GreaterThanOrEqualTo(1));
     // combines buckets to reach estimation
-    Assert.That(279629280 - 3, Is.EqualTo(found.Last().TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
+    Assert.That(279629280 - 3, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
   }
 
   [Test]

@@ -1064,12 +1064,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return Math.Min(medianPrice, currentPrice + 10_000 + currentPrice / 100);
             }
             // determine craft cost 
-            var select = (NBT.IsPet(tag) ?
-                lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value.Price) :
-                 lookup.Lookup.Values.Where(v => v.Price > 0).Select(v => v.Price)).ToList();
-            var count = select.Count;
-            // 2nd percentile to skip low volume outliers on complex items
-            var minValue = select.DefaultIfEmpty(0).OrderBy(v => v).Skip(count / 50).FirstOrDefault();
+            long minValue = GetCleanItemPrice(tag, key, lookup);
             if (minValue == 0 || currentPrice == minValue)
                 return medianPrice;
             if (tag.Contains("RUNE_"))
@@ -1102,6 +1097,17 @@ ORDER BY l.`AuctionId`  DESC;
                     return (long)targetPrice;
                 return medianPrice;
             }
+        }
+
+        private static long GetCleanItemPrice(string tag, KeyWithValueBreakdown key, PriceLookup lookup)
+        {
+            var select = (NBT.IsPet(tag) ?
+                            lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value.Price) :
+                             lookup.Lookup.Values.Where(v => v.Price > 0).Select(v => v.Price)).ToList();
+            var count = select.Count;
+            // 2nd percentile to skip low volume outliers on complex items
+            var minValue = select.DefaultIfEmpty(0).OrderBy(v => v).Skip(count / 50).FirstOrDefault();
+            return minValue;
         }
 
         private long AttributeValueEstimateForCap(string tag, RankElem v, List<RankElem> breakdown, PriceLookup lookup)
@@ -2056,6 +2062,22 @@ ORDER BY l.`AuctionId`  DESC;
             if (shouldTryToFindClosest && triggerEvents && this.State >= SniperState.Ready)
             {
                 TryFindClosestRisky(auction, l, ref lbinPrice, ref medPrice);
+            }
+            var componentsSum = basekey.ValueBreakdown.Sum(c => c.IsEstimate ? -long.MaxValue / 20 : c.Value);
+            if (componentsSum > medPrice / 4) // no need to check if sum is too low
+            {
+                var cleanCost = GetCleanItemPrice(itemGroupTag.tag, basekey, lookup);
+                var combined = (componentsSum + cleanCost) / 5 * 4;
+                if (combined / 1.3 > medPrice)
+                {
+                    var props = new Dictionary<string, string>
+                    {
+                        { "cleanCost", cleanCost.ToString() },
+                        { "componentsSum", componentsSum.ToString() },
+                        { "breakdown", JsonConvert.SerializeObject(basekey.ValueBreakdown) }
+                    };
+                    FoundAFlip(auction, new(), LowPricedAuction.FinderType.CraftCost, combined, props);
+                }
             }
             activity.Log($"BaseKey value {JsonConvert.SerializeObject(basekey.ValueBreakdown)}");
         }
