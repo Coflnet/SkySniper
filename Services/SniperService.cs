@@ -594,7 +594,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (missingModifiers.Count > 0)
             {
                 long median = GetPriceSumForModifiers(missingModifiers, itemKey.Modifiers, auction);
-                median += AdjustForAttributes(result.Median, itemKey, missingModifiers);
+                median += AdjustForAttributes(result.Median, itemKey, missingModifiers, auction);
                 if (median != 0)
                 {
                     return (median, $"- {string.Join(",", missingModifiers.Select(m => m.Value))}");
@@ -2197,7 +2197,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (missingModifiers.Count > 0)
             {
                 toSubstract = GetPriceSumForModifiers(missingModifiers, key.Modifiers, auction);
-                toSubstract += AdjustForAttributes(closest.Value.Price, key, missingModifiers);
+                toSubstract += AdjustForAttributes(closest.Value.Price, key, missingModifiers, auction);
                 var fromExp = GetValueDifferenceForExp(auction, closest.Key, l);
                 if (fromExp != 0)
                 {
@@ -2270,7 +2270,7 @@ ORDER BY l.`AuctionId`  DESC;
             FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, props);
         }
 
-        private long AdjustForAttributes(double medPrice, AuctionKey key, List<KeyValuePair<string, string>> missingModifiers)
+        private long AdjustForAttributes(double medPrice, AuctionKey key, List<KeyValuePair<string, string>> missingModifiers, SaveAuction auction)
         {
             var missingAttributes = missingModifiers.Where(m => Constants.AttributeKeys.Contains(m.Key)).ToList();
             if (missingAttributes.Count > 0)
@@ -2286,7 +2286,7 @@ ORDER BY l.`AuctionId`  DESC;
                     logger.LogInformation($"Adjusting target price due to attribute diff on {biggestDifference} {medPrice} {factor}");
                     return -(long)(medPrice * factor);
                 }
-                var keyhasCombo = AttributeComboLookup.TryGetValue(missingAttributes.Select(m => m.Key).First(), out var combo) && key.Modifiers.Any(m => combo.Contains(m.Key));
+                var keyhasCombo = missingModifiers.Any(m => HasAttributeCombo(m, auction.FlatenedNBT, auction.Tag));
                 var defaultDifference = (medPrice - Math.Pow(0.4, biggestDifference) * medPrice);
                 if (keyhasCombo)
                 {

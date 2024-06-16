@@ -1378,6 +1378,23 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That("mana_regeneration:1 (96000000)", Is.EqualTo(estimate.AdditionalProps["missingModifiers"]));
         }
         [Test]
+        public void StonksGodRollAttributeDifferenceItemSpecific()
+        {
+            highestValAuction.Tag = "MAGMA_LORD_BOOTS";
+            highestValAuction.FlatenedNBT = new() { { "veteran", "1" }, { "magic_find", "1" } };
+            var withBlazing = Dupplicate(highestValAuction);
+            withBlazing.HighestBidAmount = 100_000_000;
+            withBlazing.FlatenedNBT = new() { { "blazing_fortune", "1" }, { "magic_find", "1" } };
+            AddVolume(withBlazing);
+
+            TestNewAuction(highestValAuction);
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
+            // 96m for missing blazing_fortune (godroll), 10% for stonks
+            Assert.That(3600000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That("blazing_fortune:1 (96000000)", Is.EqualTo(estimate.AdditionalProps["missingModifiers"]));
+        }
+        [Test]
         public void StonksBigAttributeDifference()
         {
             highestValAuction.FlatenedNBT = new() { { "mana_pool", "1" } };
