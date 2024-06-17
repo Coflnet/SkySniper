@@ -1539,10 +1539,16 @@ ORDER BY l.`AuctionId`  DESC;
                 var sum = 0L;
                 foreach (var item in items)
                 {
-                    if (Lookups.TryGetValue(item.tag, out var lookup))
+                    if (!Lookups.TryGetValue(item.tag, out var lookup))
+                        continue;
+                    if (mod.Key.StartsWith("RUNE_"))
                     {
-                        sum += (lookup.Lookup.Values.FirstOrDefault(f => f.Price != 0)?.Price ?? 0) * item.amount;
+                        sum += lookup.Lookup.Where(f => f.Value.Price != 0)
+                            .OrderBy(v => (v.Key.Count + 1) * int.Parse(v.Key.Modifiers.First().Value))
+                            .FirstOrDefault().Value?.Price * item.amount ?? 0;
+                        continue;
                     }
+                    sum += (lookup.Lookup.Values.FirstOrDefault(f => f.Price != 0)?.Price ?? 0) * item.amount;
                 }
                 if (items.Count() > 0 && sum == 0)
                 {
@@ -2067,6 +2073,10 @@ ORDER BY l.`AuctionId`  DESC;
             if (componentsSum > medPrice / 4) // no need to check if sum is too low
             {
                 var cleanCost = GetCleanItemPrice(itemGroupTag.tag, basekey, lookup);
+                if (basekey.ValueBreakdown.Count == 1 && basekey.Key.Modifiers.FirstOrDefault(m => m.Key == itemGroupTag.tag).Key != default)
+                {
+                    cleanCost = 0; // breakdown already includes cheapest item (rune probably)
+                }
                 var combined = (componentsSum + cleanCost) / 5 * 4;
                 if (combined / 1.3 > medPrice)
                 {

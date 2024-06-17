@@ -45,7 +45,8 @@ namespace Coflnet.Sky.Sniper.Services
                 StartingBid = 900,
                 HighestBidAmount = 900,
                 UId = 4,
-                AuctioneerId = "12aaa"
+                AuctioneerId = "12aaa",
+                Count = 1
             };
             secondAuction = new SaveAuction()
             {
@@ -54,7 +55,8 @@ namespace Coflnet.Sky.Sniper.Services
                 StartingBid = 700,
                 HighestBidAmount = 700,
                 UId = 3,
-                AuctioneerId = "12bbb"
+                AuctioneerId = "12bbb",
+                Count = 1
             };
 
 
@@ -66,7 +68,8 @@ namespace Coflnet.Sky.Sniper.Services
                 HighestBidAmount = 1000,
                 Category = Category.ARMOR,
                 UId = 5,
-                AuctioneerId = "12c144"
+                AuctioneerId = "12c144",
+                Count = 1
             };
             SniperService.MIN_TARGET = 0;
             craftCost = new CraftCostMock();
@@ -669,6 +672,28 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void CapRuneCraftCostAtCorrectLevel()
+        {
+            highestValAuction.Tag = "RUNE_MUSIC";
+            var lvl3 = Dupplicate(highestValAuction);
+            lvl3.HighestBidAmount = 45_000_000;
+            lvl3.FlatenedNBT = new() { { "RUNE_MUSIC", "3" } };
+            AddVolume(lvl3);
+            var lvl1 = Dupplicate(lvl3);
+            lvl1.FlatenedNBT["RUNE_MUSIC"] = "1";
+            lvl1.HighestBidAmount = 5_000_000;
+            AddVolume(lvl1);
+            var sample = Dupplicate(lvl1);
+            sample.HighestBidAmount = 0;
+            sample.FlatenedNBT["RUNE_MUSIC"] = "2";
+            sample.StartingBid = 10_000;
+            TestNewAuction(sample);
+            var craftFind = found.Last(f => f.Finder == LowPricedAuction.FinderType.CraftCost);
+            Assert.That(craftFind, Is.Not.Null);
+            Assert.That(craftFind.TargetPrice, Is.EqualTo(12_000_000), "should target at craft cost");
+        }
+
+        [Test]
         public void FallbackOnNomatchLevel2()
         {
             AddVolume(highestValAuction);
@@ -1112,7 +1137,7 @@ namespace Coflnet.Sky.Sniper.Services
             drill.FlatenedNBT = new();
             var estimate = service.GetPrice(drill);
             Assert.That(9_000_000, Is.EqualTo(estimate.Median), "10m base - 1m component");
-            Assert.That(estimate.MedianKey, Is.EqualTo(" Any [drill_part_engine, component] UNKNOWN 0- component"));
+            Assert.That(estimate.MedianKey, Is.EqualTo(" Any [drill_part_engine, component] UNKNOWN 1- component"));
 
         }
 
@@ -1139,7 +1164,7 @@ namespace Coflnet.Sky.Sniper.Services
 
             var estimate = service.GetPrice(noVolume);
             Assert.That(estimate.Median, Is.EqualTo(35_000_000 + 688888), "add 1/9th of missing protection");
-            Assert.That(estimate.MedianKey, Is.EqualTo("growth=6,protection=6 Any [hotpc, 1],[upgrade_level, 6] UNKNOWN 0- 1-protection6+HV- Any [upgrade_level, 6] UNKNOWN 0"));
+            Assert.That(estimate.MedianKey, Is.EqualTo("growth=6,protection=6 Any [hotpc, 1],[upgrade_level, 6] UNKNOWN 1- 1-protection6+HV- Any [upgrade_level, 6] UNKNOWN 1"));
         }
 
         [Test]
@@ -1763,7 +1788,7 @@ namespace Coflnet.Sky.Sniper.Services
             SetBazaarPrice("ENCHANTMENT_SHARPNESS_7", 49_000_000);
             var price = service.GetPrice(highestValAuction);
             Assert.That(51000000, Is.EqualTo(price.Median));
-            Assert.That("sharpness=7 Any  UNKNOWN 0-sharpness7", Is.EqualTo(price.MedianKey));
+            Assert.That("sharpness=7 Any  UNKNOWN 1-sharpness7", Is.EqualTo(price.MedianKey));
         }
         [Test]
         public void AdjustForDifferentPetItemInLbin()
@@ -1958,7 +1983,7 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.Tier = Tier.VERY_SPECIAL;
             var price = service.GetPrice(highestValAuction);
             Assert.That(100_000_000, Is.EqualTo(price.Median));
-            Assert.That("growth=6,ultimate_legion=5 Any  UNKNOWN 0", Is.EqualTo(price.MedianKey));
+            Assert.That("growth=6,ultimate_legion=5 Any  UNKNOWN 1", Is.EqualTo(price.MedianKey));
         }
 
         [Test]
@@ -2150,7 +2175,7 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(metadata["oldRef"], Is.EqualTo("9"));
             Assert.That(metadata["reference"], Is.EqualTo(AuctionService.Instance.GetUuid(sales[9].UId)),
                             string.Join(",", sales.Select(s => AuctionService.Instance.GetUuid(s.UId))));
-            Assert.That(metadata["key"], Is.EqualTo(" Any [skin, bear] UNKNOWN 0"));
+            Assert.That(metadata["key"], Is.EqualTo(" Any [skin, bear] UNKNOWN 1"));
         }
 
         [Test]
