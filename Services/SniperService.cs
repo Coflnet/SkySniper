@@ -1005,9 +1005,11 @@ ORDER BY l.`AuctionId`  DESC;
 
             long CapPriceAtHigherLevelKey((string tag, KeyWithValueBreakdown key) keyCombo, long limitedPrice)
             {
+                var oldestDay = GetDay() - 1;
                 var cheaperHigherValue = Lookups[keyCombo.tag].Lookup
                     .Where(k => k.Value.Price < limitedPrice && k.Value.Price != 0
                             && !k.Key.Modifiers.Any(m => m.Key == "virtual")
+                            && k.Value.OldestRef >= oldestDay // only relevant if price dropped recently
                             && IsHigherValue(keyCombo.key, k.Key) && k.Key.Reforge == keyCombo.key.Key.Reforge)
                     .OrderBy(b => b.Value.Price).Select(b => b.Value.Price).FirstOrDefault();
                 if (cheaperHigherValue != default && cheaperHigherValue < limitedPrice)

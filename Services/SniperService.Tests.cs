@@ -555,6 +555,24 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).Count(), Is.EqualTo(1));
         }
         [Test]
+        public void CapAtHigherValueLimitRandomDropEffect()
+        {
+            var moreValue = Dupplicate(highestValAuction);
+            moreValue.FlatenedNBT = new() { { "skin", "SOME" } };
+            moreValue.HighestBidAmount = 10_000_000;
+            moreValue.End = DateTime.UtcNow - TimeSpan.FromDays(10);
+            AddVolume(moreValue);
+            var sample = Dupplicate(highestValAuction);
+            sample.HighestBidAmount = 5_000_000;
+            sample.FlatenedNBT = new();
+            AddVolume(sample);
+            moreValue.HighestBidAmount = 1_000_000;
+            AddVolume(moreValue, 2);
+            service.AddSoldItem(sample); // update median but should not use low volume
+            var estimate = service.GetPrice(sample);
+            Assert.That(5_000_000, Is.EqualTo(estimate.Median));
+        }
+        [Test]
         public void WithTierBoostUsesLowerRarityForHigherValue()
         {
             SetBazaarPrice("PET_ITEM_TIER_BOOST", 95_000_000);
@@ -1648,6 +1666,8 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
             Assert.That(28800000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
             Assert.That("upgrade_level:9 (68000000)", Is.EqualTo(estimate.AdditionalProps["missingModifiers"]), "Third and fourth master star combned cost 68000000");
+            var price = service.GetPrice(toTest);
+            Assert.That(32000000, Is.EqualTo(price.Median));
         }
 
         [Test]
