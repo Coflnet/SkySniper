@@ -2229,8 +2229,12 @@ ORDER BY l.`AuctionId`  DESC;
                         killPrice /= 2; // only half for adding kills
                     toSubstract += killPrice;
                 }
-
-                props.Add("missingModifiers", string.Join(",", missingModifiers.Select(m => $"{m.Key}:{m.Value}")) + $" ({toSubstract})");
+                var formatted = string.Join(",", missingModifiers.Select(m => $"{m.Key}:{m.Value}"));
+                if (toSubstract == 0)
+                {
+                    Console.WriteLine($"Could not find value to substract for {formatted} {auction.Uuid}");
+                }
+                props.Add("missingModifiers", formatted + $" ({toSubstract})");
             }
             var missingEnchants = closest.Key.Enchants.Where(m => !key.Enchants.Contains(m)).ToList();
             if (missingEnchants.Count > 0)
