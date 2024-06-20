@@ -2223,7 +2223,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     var killCount = int.Parse(killModifier.Value);
                     var present = key.Modifiers.FirstOrDefault(n => n.Key == killModifier.Key);
-                    var difference = killCount - int.Parse(present.Value);
+                    var difference = killCount - int.Parse(present.Value ?? "0");
                     var killPrice = difference * 1_000_000;
                     if (difference < 0)
                         killPrice /= 2; // only half for adding kills
