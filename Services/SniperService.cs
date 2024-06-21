@@ -2079,8 +2079,8 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     cleanCost = 0; // breakdown already includes cheapest item (rune probably)
                 }
-                var combined = (componentsSum + cleanCost) / 5 * 4;
-                if (combined / 1.3 > medPrice)
+                var combined = Math.Max((componentsSum + cleanCost) / 5 * 4, componentsSum + cleanCost - 15_000_000);
+                if (combined / 1.2 > medPrice || combined - auction.StartingBid > 10_000_000)
                 {
                     var props = new Dictionary<string, string>
                     {
