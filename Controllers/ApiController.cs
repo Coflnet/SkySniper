@@ -41,7 +41,7 @@ namespace Coflnet.Sky.Sniper.Controllers
             if (service.State >= SniperState.Ready)
                 return Ok();
             else
-                return StatusCode(503);
+                return StatusCode(503, service.State);
         }
 
         [HttpGet]

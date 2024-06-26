@@ -526,7 +526,7 @@ namespace Coflnet.Sky.Sniper.Services
                     await Task.Delay(2000, stoppingToken);
                 }
             Console.WriteLine("loaded lookup");
-            if (sniper.Lookups.FirstOrDefault().Value?.Lookup?.Select(l => l.Value.References.Count()).FirstOrDefault() > 0)
+            if (sniper.Lookups.FirstOrDefault().Value?.Lookup?.Select(l => l.Value.References.Count()).FirstOrDefault() > 0 && sniper.State < SniperState.Ready)
                 sniper.State = SniperState.LadingLookup;
             await KafkaConsumer.ConsumeBatch<SaveAuction>(ConsumerConfig, new string[] { config["TOPICS:SOLD_AUCTION"] }, async batch =>
             {
