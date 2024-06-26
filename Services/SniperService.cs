@@ -1546,7 +1546,7 @@ ORDER BY l.`AuctionId`  DESC;
                     if (mod.Key.StartsWith("RUNE_"))
                     {
                         sum += lookup.Lookup.Where(f => f.Value.Price != 0)
-                            .OrderBy(v => (v.Key.Count + 1) * int.Parse(v.Key.Modifiers.First().Value))
+                            .OrderBy(v => (v.Key.Count + 1) * (v.Key.Modifiers.Count == 0 ? 1 : int.Parse(v.Key.Modifiers.First().Value)))
                             .FirstOrDefault().Value?.Price * item.amount ?? 0;
                         continue;
                     }
