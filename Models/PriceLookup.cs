@@ -14,6 +14,8 @@ namespace Coflnet.Sky.Sniper.Models
         /// </summary>
         [Key(1)]
         public Category Category;
+        [Key(2)]
+        public float Volume;
     }
 
 }

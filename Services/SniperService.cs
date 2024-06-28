@@ -909,6 +909,7 @@ ORDER BY l.`AuctionId`  DESC;
             bucket.Volatility = GetVolatility(bucket, shortTermPrice, medianPrice);
             bucket.HitsSinceCalculating = 0;
             bucket.DeduplicatedReferenceCount = (short)deduplicated.Count();
+            NewMethod(keyCombo);
             // get price of item without enchants and add enchant value 
             if (keyCombo != default)
             {
@@ -1019,6 +1020,15 @@ ORDER BY l.`AuctionId`  DESC;
 
                 return limitedPrice;
             }
+        }
+
+        private void NewMethod((string tag, KeyWithValueBreakdown key) keyCombo)
+        {
+            if (keyCombo.tag == null || !Lookups.TryGetValue(keyCombo.tag, out var itemLookup))
+            {
+                return;
+            }
+            itemLookup.Volume = (float)itemLookup.Lookup.Sum(l => l.Value.References.Count) / 60;
         }
 
         private static byte GetVolatility(ReferenceAuctions bucket, long shortTermPrice, long medianPrice)
@@ -2052,7 +2062,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (triggerEvents)
                 {
                     long extraValue = GetExtraValue(auction, key) - itemGroupTag.Item2;
-                    if (FindFlip(auction, lbinPrice, medPrice, bucket, key, l, basekey, extraValue, props =>
+                    if (FindFlip(auction, lbinPrice, medPrice, bucket, key, lookup, basekey, extraValue, props =>
                     {
                         props["breakdown"] = JsonConvert.SerializeObject(basekey.ValueBreakdown);
                     }))
@@ -2065,7 +2075,7 @@ ORDER BY l.`AuctionId`  DESC;
             var topAttrib = basekey.ValueBreakdown.FirstOrDefault();
             if (topAttrib != default)
             {
-                CheckCombined(auction, l, lbinPrice, medPrice, basekey, topAttrib);
+                CheckCombined(auction, lookup, lbinPrice, medPrice, basekey, topAttrib);
             }
             if (shouldTryToFindClosest && triggerEvents && this.State >= SniperState.Ready)
             {
@@ -2094,9 +2104,10 @@ ORDER BY l.`AuctionId`  DESC;
             activity.Log($"BaseKey value {JsonConvert.SerializeObject(basekey.ValueBreakdown)}");
         }
 
-        private void CheckCombined(SaveAuction auction, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, double lbinPrice, double medPrice, KeyWithValueBreakdown fullKey, RankElem topAttrib)
+        private void CheckCombined(SaveAuction auction, PriceLookup lookup, double lbinPrice, double medPrice, KeyWithValueBreakdown fullKey, RankElem topAttrib)
         {
             var topKey = fullKey.GetReduced(0);
+            var l = lookup.Lookup;
             var similar = l.Where(e => topAttrib.Modifier.Key != default && !e.Key.Modifiers.Any(m => m.Key == "virtual") || e.Key.Enchants.Contains(topAttrib.Enchant)).ToList();
             if (similar.Count == 1)
             {
@@ -2130,7 +2141,7 @@ ORDER BY l.`AuctionId`  DESC;
                 Volatility = 90// mark as risky
             };
             // mark with extra value -3
-            FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, l, fullKey, MIN_TARGET == 0 ? 0 : -3, props =>
+            FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, lookup, fullKey, MIN_TARGET == 0 ? 0 : -3, props =>
             {
                 var total = 0;
                 props.Add("combined", string.Join(",", relevant.TakeWhile(c => (total += c.Value.References.Count) < targetVolume)
@@ -2386,11 +2397,12 @@ ORDER BY l.`AuctionId`  DESC;
                               double minMedPrice,
                               ReferenceAuctions bucket,
                               AuctionKeyWithValue key,
-                              ConcurrentDictionary<AuctionKey, ReferenceAuctions> l,
+                              PriceLookup lookup,
                               KeyWithValueBreakdown breakdown,
                               long extraValue = 0,
                               Action<Dictionary<string, string>> addProps = null)
         {
+            var l = lookup.Lookup;
             var expValue = GetValueDifferenceForExp(auction, key, l);
             var volume = bucket.Volume;
             var medianPrice = bucket.Price + extraValue;
@@ -2400,7 +2412,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 foundSnipe = PotentialSnipe(auction, lbinPrice, bucket, key, l, extraValue, breakdown);
             }
-            if (medianPrice > minMedPrice && BucketHasEnoughReferencesForPrice(bucket))
+            if (medianPrice > minMedPrice && BucketHasEnoughReferencesForPrice(bucket, lookup))
             {
                 long adjustedMedianPrice = CheckHigherValueKeyForLowerPrice(bucket, key, l, medianPrice);
                 Activity.Current.Log($"Bucket {key} has enough references {bucket.References.Count} and medianPrice > minMedPrice {medianPrice} > {minMedPrice} adjusted {adjustedMedianPrice} {extraValue} {expValue}");
@@ -2513,10 +2525,10 @@ ORDER BY l.`AuctionId`  DESC;
             return adjustedMedianPrice;
         }
 
-        private static bool BucketHasEnoughReferencesForPrice(ReferenceAuctions bucket)
+        private static bool BucketHasEnoughReferencesForPrice(ReferenceAuctions bucket, PriceLookup lookup)
         {
             // high value items need more volume to pop up
-            return bucket.Price < 280_000_000 || bucket.References.Count > 5;
+            return bucket.Price < 280_000_000 || bucket.References.Count > 5 || bucket.Volume  > lookup.Volume / 3;
         }
 
         public void UpdateBazaar(dev.BazaarPull bazaar)

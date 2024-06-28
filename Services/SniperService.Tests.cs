@@ -505,6 +505,23 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(30_000_000, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
         }
         [Test]
+        public void LowVolumeHighValueShowsUpVolumeCheck()
+        {
+            var sample = Dupplicate(highestValAuction);
+            sample.HighestBidAmount = 1_000_000_000;
+            sample.End = DateTime.UtcNow - TimeSpan.FromDays(30);
+            AddVolume(sample, 2);
+            sample.HighestBidAmount = 1_500_000_000;
+            sample.End = DateTime.UtcNow - TimeSpan.FromDays(10);
+            AddVolume(sample, 2);
+            sample.End = DateTime.UtcNow - TimeSpan.FromDays(5);
+            AddVolume(sample, 2);
+            sample.HighestBidAmount = 0;
+            sample.StartingBid = 1000;
+            TestNewAuction(sample);
+            Assert.That(1_500_000_000, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
+        }
+        [Test]
         public void HigherValueCheckChecksSmallerValueForHigherPrice()
         {
             var higherValue = Dupplicate(highestValAuction);
@@ -1524,7 +1541,7 @@ namespace Coflnet.Sky.Sniper.Services
         {
             var toTest = Dupplicate(a);
             service.FinishedUpdate();
-            service.State = SniperState.Ready;
+            service.State = SniperState.FullyLoaded;
             service.TestNewAuction(toTest);
             service.FinishedUpdate();
         }
