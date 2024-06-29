@@ -525,6 +525,7 @@ namespace Coflnet.Sky.Sniper.Services
         public void ChecksLowerValueAllAttributes()
         {
             var sample = Dupplicate(highestValAuction);
+            sample.Reforge = ItemReferences.Reforge.Magnetic;
             sample.FlatenedNBT = new() { { "farming_for_dummies_count", "1" }, { "hpc", "10" } };
             sample.Enchantments = [
                 new Enchantment(Enchantment.EnchantmentType.growth, 6),

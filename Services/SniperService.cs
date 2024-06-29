@@ -2179,12 +2179,14 @@ ORDER BY l.`AuctionId`  DESC;
                 Tier = auction.Tier,
                 Reforge = auction.Reforge
             };
-            var containing = l.Where(e => e.Value.Price > 0 && IsHigherValue(e.Key, key)).OrderByDescending(e => e.Value.Price).FirstOrDefault();
+            var containing = l.Where(e => e.Value.Price > 0 && (e.Key.Reforge == key.Reforge || e.Key.Reforge == ItemReferences.Reforge.Any) && IsHigherValue(e.Key, key))
+                        .OrderByDescending(e => e.Value.Price).FirstOrDefault();
             if (containing.Value == default)
                 return;
             FindFlip(auction, lbinPrice, medPrice, containing.Value, key, lookup, fullKey, 0, props =>
             {
-                props.Add("breakdown", JsonConvert.SerializeObject(fullKey.ValueBreakdown));
+                props.Add("fullKey", key.ToString());
+                props.Add("usedKey", containing.Key.ToString());
                 props.Add("by", "lowerfullkey");
             });
         }
