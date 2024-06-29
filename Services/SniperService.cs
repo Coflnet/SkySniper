@@ -1324,38 +1324,13 @@ ORDER BY l.`AuctionId`  DESC;
         }
         private KeyWithValueBreakdown DetailedKeyFromSaveAuction(SaveAuction auction)
         {
-            var enchants = new List<Models.Enchant>();
-            var modifiers = new List<KeyValuePair<string, string>>();
-
             var shouldIncludeReforge = Constants.RelevantReforges.Contains(auction.Reforge);
             long valueSubstracted = 0;
             bool removedRarity = false;
             List<RankElem> rankElems = [];
-            enchants = auction.Enchantments
-                ?.Where(e => MinEnchantMap.TryGetValue(e.Type, out byte value) && e.Level >= value)
-                .Select(e => new Models.Enchant() { Lvl = e.Level, Type = e.Type }).ToList();
-
-            modifiers = auction.FlatenedNBT?.Where(n =>
-                                   IncludeKeys.Contains(n.Key)
-                                || n.Value == "PERFECT"
-                                || n.Key.StartsWith("RUNE_")
-                                || IsSoul(n)) // admins
-                            .OrderByDescending(n => n.Key)
-                            .Select(i => NormalizeData(i, auction.Tag, auction.FlatenedNBT))
-                            .Where(i => i.Key != Ignore.Key).ToList();
-            if (auction.ItemCreatedAt < UnlockedIntroduction
-                // safe guard for when the creation date is wrong 
-                && !auction.FlatenedNBT.ContainsKey("unlocked_slots"))
-            {
-                var allUnlockable = itemService?.GetUnlockableSlots(auction.Tag).ToList();
-                if (auction.FlatenedNBT.TryGetValue("gemstone_slots", out var countString) && int.TryParse(countString, out var count))
-                {
-                    allUnlockable = allUnlockable.Take(count).ToList();
-                    modifiers.RemoveAll(m => m.Key == "gemstone_slots");
-                }
-                if (allUnlockable?.Count > 0)
-                    modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", string.Join(",", allUnlockable.OrderBy(s => s))));
-            }
+            List<Enchant> enchants;
+            List<KeyValuePair<string, string>> modifiers;
+            (enchants, modifiers) = SelectValuable(auction);
 
             (valueSubstracted, removedRarity, shouldIncludeReforge, rankElems) = CapKeyLength(enchants, modifiers, auction);
 
@@ -1388,6 +1363,35 @@ ORDER BY l.`AuctionId`  DESC;
             }
 
             return Constructkey(auction, enchants, modifiers, shouldIncludeReforge, valueSubstracted, rankElems, tier);
+        }
+
+        private (List<Enchant> enchants, List<KeyValuePair<string, string>> modifiers) SelectValuable(SaveAuction auction)
+        {
+            var enchants = auction.Enchantments
+                            ?.Where(e => MinEnchantMap.TryGetValue(e.Type, out byte value) && e.Level >= value)
+                            .Select(e => new Models.Enchant() { Lvl = e.Level, Type = e.Type }).ToList();
+            var modifiers = auction.FlatenedNBT?.Where(n =>
+                                   IncludeKeys.Contains(n.Key)
+                                || n.Value == "PERFECT"
+                                || n.Key.StartsWith("RUNE_")
+                                || IsSoul(n)) // admins
+                            .OrderByDescending(n => n.Key)
+                            .Select(i => NormalizeData(i, auction.Tag, auction.FlatenedNBT))
+                            .Where(i => i.Key != Ignore.Key).ToList();
+            if (auction.ItemCreatedAt < UnlockedIntroduction
+                // safe guard for when the creation date is wrong 
+                && !auction.FlatenedNBT.ContainsKey("unlocked_slots"))
+            {
+                var allUnlockable = itemService?.GetUnlockableSlots(auction.Tag).ToList();
+                if (auction.FlatenedNBT.TryGetValue("gemstone_slots", out var countString) && int.TryParse(countString, out var count))
+                {
+                    allUnlockable = allUnlockable.Take(count).ToList();
+                    modifiers.RemoveAll(m => m.Key == "gemstone_slots");
+                }
+                if (allUnlockable?.Count > 0)
+                    modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", string.Join(",", allUnlockable.OrderBy(s => s))));
+            }
+            return (enchants, modifiers);
         }
 
         private static KeyWithValueBreakdown Constructkey(SaveAuction auction, List<Enchant> enchants, List<KeyValuePair<string, string>> modifiers, bool shouldIncludeReforge, long valueSubstracted, List<RankElem> rankElems, Tier tier)
@@ -2076,6 +2080,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (topAttrib != default)
             {
                 CheckCombined(auction, lookup, lbinPrice, medPrice, basekey, topAttrib);
+                CheckLowerKeyFull(auction, lookup, lbinPrice, medPrice, basekey, l);
             }
             if (shouldTryToFindClosest && triggerEvents && this.State >= SniperState.Ready)
             {
@@ -2141,7 +2146,7 @@ ORDER BY l.`AuctionId`  DESC;
                 Volatility = 90// mark as risky
             };
             // mark with extra value -3
-            FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, lookup, fullKey, MIN_TARGET == 0 ? 0 : -3, props =>
+            var foundAndAbort = FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, lookup, fullKey, MIN_TARGET == 0 ? 0 : -3, props =>
             {
                 var total = 0;
                 props.Add("combined", string.Join(",", relevant.TakeWhile(c => (total += c.Value.References.Count) < targetVolume)
@@ -2158,6 +2163,30 @@ ORDER BY l.`AuctionId`  DESC;
                 median = CapAtCraftCost(group.tag, Math.Min(median, shortTerm), fullKey, 0);
                 return median;
             }
+        }
+
+        private void CheckLowerKeyFull(SaveAuction auction, PriceLookup lookup, double lbinPrice, double medPrice, KeyWithValueBreakdown fullKey, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
+        {
+            // check if complicated item
+            if (fullKey.ValueBreakdown.Count < 3)
+                return; // not complicated
+            (var enchant, var modifiers) = SelectValuable(auction);
+            var key = new AuctionKeyWithValue()
+            {
+                Count = 1,
+                Enchants = new(enchant ?? new()),
+                Modifiers = new(modifiers ?? new()),
+                Tier = auction.Tier,
+                Reforge = auction.Reforge
+            };
+            var containing = l.Where(e => e.Value.Price > 0 && IsHigherValue(e.Key, key)).OrderByDescending(e => e.Value.Price).FirstOrDefault();
+            if (containing.Value == default)
+                return;
+            FindFlip(auction, lbinPrice, medPrice, containing.Value, key, lookup, fullKey, 0, props =>
+            {
+                props.Add("breakdown", JsonConvert.SerializeObject(fullKey.ValueBreakdown));
+                props.Add("by", "lowerfullkey");
+            });
         }
 
         public static readonly HashSet<string> HyperionGroup = new() { "SCYLLA", "VALKYRIE", "NECRON_BLADE", "ASTRAEA" };
@@ -2528,7 +2557,7 @@ ORDER BY l.`AuctionId`  DESC;
         private static bool BucketHasEnoughReferencesForPrice(ReferenceAuctions bucket, PriceLookup lookup)
         {
             // high value items need more volume to pop up
-            return bucket.Price < 280_000_000 || bucket.References.Count > 5 || bucket.Volume  > lookup.Volume / 3;
+            return bucket.Price < 280_000_000 || bucket.References.Count > 5 || bucket.Volume > lookup.Volume / 3;
         }
 
         public void UpdateBazaar(dev.BazaarPull bazaar)

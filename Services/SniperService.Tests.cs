@@ -522,6 +522,36 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(1_500_000_000, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
         }
         [Test]
+        public void ChecksLowerValueAllAttributes()
+        {
+            var sample = Dupplicate(highestValAuction);
+            sample.FlatenedNBT = new() { { "farming_for_dummies_count", "1" }, { "hpc", "10" } };
+            sample.Enchantments = [
+                new Enchantment(Enchantment.EnchantmentType.growth, 6),
+                new Enchantment(Enchantment.EnchantmentType.protection, 6),
+                new Enchantment(Enchantment.EnchantmentType.mana_vampire, 4),
+                new Enchantment(Enchantment.EnchantmentType.ultimate_legion, 3),
+                ];
+            SetBazaarPrice("ENCHANTMENT_GROWTH_6", 6_200_000);
+            SetBazaarPrice("ENCHANTMENT_PROTECTION_6", 6_200_000);
+            SetBazaarPrice("ENCHANTMENT_MANA_VAMPIRE_4", 2_100_000);
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_LEGION_3", 1_800_000);
+            SetBazaarPrice("FUMING_POTATO_BOOK", 1_100_000);
+            SetBazaarPrice("HOT_POTATO_BOOK", 80_000);
+            SetBazaarPrice("FIRST_MASTER_STAR", 12_000_000);
+            SetBazaarPrice("FARMING_FOR_DUMMIES", 50_000_000);
+            
+            var lowerValue = Dupplicate(sample);
+            lowerValue.Enchantments = [new Enchantment(Enchantment.EnchantmentType.mana_vampire, 4)];
+            lowerValue.HighestBidAmount = 14_000_000;
+            AddVolume(lowerValue, 6);
+
+            TestNewAuction(sample);
+            var result = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+            Assert.That(14_000_000, Is.EqualTo(result.TargetPrice));
+            Assert.That(result.AdditionalProps.ContainsValue("lowerfullkey"));
+        }
+        [Test]
         public void HigherValueCheckChecksSmallerValueForHigherPrice()
         {
             var higherValue = Dupplicate(highestValAuction);
