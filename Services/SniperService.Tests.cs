@@ -541,7 +541,7 @@ namespace Coflnet.Sky.Sniper.Services
             SetBazaarPrice("HOT_POTATO_BOOK", 80_000);
             SetBazaarPrice("FIRST_MASTER_STAR", 12_000_000);
             SetBazaarPrice("FARMING_FOR_DUMMIES", 50_000_000);
-            
+
             var lowerValue = Dupplicate(sample);
             lowerValue.Enchantments = [new Enchantment(Enchantment.EnchantmentType.mana_vampire, 4)];
             lowerValue.HighestBidAmount = 14_000_000;
@@ -1646,6 +1646,14 @@ namespace Coflnet.Sky.Sniper.Services
             key.Modifiers.Should().Contain(new KeyValuePair<string, string>("talisman_enrichment", "yes"));
             var price = service.GetPrice(highestValAuction);
             price.Median.Should().Be(8_000_000);
+        }
+        [Test]
+        public void KeyHasValuationForEnrichment()
+        {
+            SetBazaarPrice("TALISMAN_ENRICHMENT_FEROCITY", 5_000_000);
+            highestValAuction.FlatenedNBT = new() { { "talisman_enrichment", "attack_speed" } };
+            var key = service.ValueKeyForTest(highestValAuction);
+            key.ValueBreakdown.Should().Contain(e => e.Value == 5_000_000);
         }
         [Test]
         public void StonksIncreaseForKills()
