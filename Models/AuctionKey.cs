@@ -112,7 +112,7 @@ namespace Coflnet.Sky.Sniper.Models
             foreach (var item in keyvalue.Where(k => k.Value == 0))
             {
                 if (Random.Shared.NextDouble() < 0.1)
-                    Console.WriteLine($"Key {item} has no value");
+                    Console.WriteLine($"Key {item} has no value on {key}");
             }
 
             var tierDiffere = Math.Abs(this.Tier - key.Tier);
