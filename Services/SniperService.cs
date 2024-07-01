@@ -1556,7 +1556,10 @@ ORDER BY l.`AuctionId`  DESC;
                 foreach (var item in items)
                 {
                     if (!Lookups.TryGetValue(item.tag, out var lookup))
+                    {
+                        sum += BazaarPrices.TryGetValue(item.tag, out var price) ? (long)price * item.amount : 0;
                         continue;
+                    }
                     if (mod.Key.StartsWith("RUNE_"))
                     {
                         sum += lookup.Lookup.Where(f => f.Value.Price != 0)

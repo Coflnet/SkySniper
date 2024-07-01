@@ -1656,6 +1656,14 @@ namespace Coflnet.Sky.Sniper.Services
             key.ValueBreakdown.Should().Contain(e => e.Value == 5_000_000);
         }
         [Test]
+        public void KeyHasValuationForRecomb()
+        {
+            SetBazaarPrice("RECOMBOBULATOR_3000", 8_000_000);
+            highestValAuction.FlatenedNBT = new() { { "rarity_upgrades", "1" } };
+            var key = service.ValueKeyForTest(highestValAuction);
+            key.ValueBreakdown.Should().Contain(e => e.Value == 8_000_000);
+        }
+        [Test]
         public void StonksIncreaseForKills()
         {
             highestValAuction.FlatenedNBT = new() { { "zombie_kills", "15000" } };
