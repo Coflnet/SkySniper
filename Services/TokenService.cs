@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
 using JWT.Algorithms;
 using JWT.Builder;
 using Microsoft.Extensions.Configuration;
@@ -19,14 +20,14 @@ public class TokenService : ITokenService
     private readonly string secret;
     private readonly string previousSecret;
 
-    private readonly ConcurrentDictionary<long, int> tokenUsages = new ();
+    private readonly ConcurrentDictionary<long, int> tokenUsages = new();
 
 
     public TokenService(IConfiguration config)
     {
         secret = config["JWT_SECRET"];
         previousSecret = config["OLD_JWT_SECRET"];
-        if(string.IsNullOrEmpty(previousSecret))
+        if (string.IsNullOrEmpty(previousSecret))
             previousSecret = secret;
     }
 
@@ -49,9 +50,9 @@ public class TokenService : ITokenService
     public bool HasTokenAccess(string token)
     {
         var data = VerifyToken(token);
-        var expires = (long)data["exp"];
+        var expires = ((JsonElement)data["exp"]).GetInt64();
         var secondsLeft = expires - DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var current = tokenUsages.AddOrUpdate((long)data["id"], 1, (k, v) => v + 1);
+        var current = tokenUsages.AddOrUpdate(((JsonElement)data["id"]).GetInt64(), 1, (k, v) => v + 1);
         return current < secondsLeft && secondsLeft > 0;
     }
 
