@@ -14,7 +14,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Coflnet.Sky.Sniper.Services
 {
-    public class SniperService
+    public partial class SniperService
     {
         public const string PetItemKey = "petItem";
         public const string TierBoostShorthand = "TIER_BOOST";
@@ -1259,44 +1259,6 @@ ORDER BY l.`AuctionId`  DESC;
         private static readonly System.Collections.ObjectModel.ReadOnlyCollection<KeyValuePair<string, string>> EmptyPetModifiers = new(new List<KeyValuePair<string, string>>() { new("candyUsed", "0"), new("exp", "0") });
         private static readonly DateTime UnlockedIntroduction = new DateTime(2021, 9, 4);
         private static readonly List<string> GemPurities = new() { "PERFECT", "FLAWLESS", "FINE", "ROUGH" };
-        public class RankElem
-        {
-            public long Value { get; set; }
-            public Models.Enchant Enchant { get; set; }
-            public KeyValuePair<string, string> Modifier { get; set; }
-            public ItemReferences.Reforge Reforge { get; set; }
-            public bool IsEstimate { get; set; }
-
-            public long GetValueOrDefault(double defaultVal)
-            {
-                if (Value == 0)
-                    return (long)defaultVal;
-                return Value;
-            }
-
-            public override string ToString()
-            {
-                return $"{Enchant} {Modifier} {Value}";
-            }
-
-            public RankElem(Models.Enchant enchant, long value)
-            {
-                Enchant = enchant;
-                Value = value;
-            }
-
-            public RankElem(KeyValuePair<string, string> modifier, long value)
-            {
-                Modifier = modifier;
-                Value = value;
-            }
-
-            public RankElem(ItemReferences.Reforge reforge, long value)
-            {
-                Reforge = reforge;
-                Value = value;
-            }
-        }
         public long EstStarCost(string item, int tier)
         {
             var items = itemService.GetStarIngredients(item, tier);
