@@ -2173,6 +2173,8 @@ ORDER BY l.`AuctionId`  DESC;
             // check if complicated item
             if (fullKey.ValueBreakdown.Count < 3)
                 return; // not complicated
+            if (auction.Tag.StartsWith("PET_"))
+                return; // eg Enderman gets cheaper at mythic for some reason
             (var enchant, var modifiers) = SelectValuable(auction);
             var key = new AuctionKeyWithValue()
             {
