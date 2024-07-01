@@ -1608,10 +1608,11 @@ ORDER BY l.`AuctionId`  DESC;
                     sum += 55_000_000 * int.Parse(mod.Value);
                 if (mod.Key == "baseStatBoostPercentage")
                     sum += (int)((float.Parse(mod.Value) - 45) * 500_000);
-                if (mod.Key == "rarity_upgrades")
+                if (mod.Key == "rarity_upgrades" && sum == 0)
                 {
+                    if(Random.Shared.NextDouble() < 0.01)
                     Console.WriteLine($"Rarity upgrade missing price {JsonConvert.SerializeObject(flatNbt)} {Environment.StackTrace}");
-                    sum += 7_000_000;
+                    sum += 8_000_000;
                 }
                 if (mod.Key == "hotpc")
                     sum += 3_000_000;

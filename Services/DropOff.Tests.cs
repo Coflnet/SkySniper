@@ -260,7 +260,6 @@ public class DropOffTests
       FlatenedNBT = new(new Dictionary<string, string>()
             {
                 { "color", "0:0:0" },
-                { "rarity_upgrades", "1" },
                 { "spider_kills", "100000" }
             }),
     };
