@@ -918,8 +918,7 @@ namespace Coflnet.Sky.Sniper.Services
             volumeLower.HighestBidAmount = 650_000_000;
             volumeLower.FlatenedNBT.Remove("heldItem");
             volumeLower.Tier = Tier.EPIC;
-            AddVolume(volumeLower); // double volume because high value
-            AddVolume(volumeLower);
+            AddVolume(volumeLower, 10);
             highestValAuction.StartingBid = 650000000;
             service.TestNewAuction(highestValAuction);
             Assert.That(found.FirstOrDefault(), Is.Null, JsonConvert.SerializeObject(found, Formatting.Indented));
@@ -1254,11 +1253,11 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void StonksSeparatesTierBoostedEnderDragon()
         {
-            SetBazaarPrice("PET_ITEM_TIER_BOOST", 10_000_000);
+            SetBazaarPrice("PET_ITEM_TIER_BOOST", 80_000_000);
             SetBazaarPrice("PET_SKIN_ENDER_DRAGON_BABY_BLUE", 251_000_000);
             highestValAuction.Tag = "PET_ENDER_DRAGON";
-            highestValAuction.FlatenedNBT = new() { { "skin", "ENDER_DRAGON_BABY_BLUE" } };
-            highestValAuction.HighestBidAmount = 100_000_000;
+            highestValAuction.FlatenedNBT = new() { { "skin", "ENDER_DRAGON_BABY_BLUE" }, {"exp","30000000"} };
+            highestValAuction.HighestBidAmount = 750_000_000;
             highestValAuction.Tier = Tier.LEGENDARY;
             var tierBoosted = Dupplicate(highestValAuction);
             tierBoosted.FlatenedNBT.Add("heldItem", "PET_ITEM_TIER_BOOST");
@@ -1267,8 +1266,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(highestValAuction, 8);
             SimulateNewAuction(tierBoosted);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
-            Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found, Formatting.Indented));
-            Assert.That(estimate.TargetPrice, Is.EqualTo(81000000), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That(estimate, Is.Null, JsonConvert.SerializeObject(found, Formatting.Indented));
         }
         [Test]
         public void DeductsForRarityDifference()

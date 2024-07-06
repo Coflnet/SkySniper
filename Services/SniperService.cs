@@ -1610,8 +1610,8 @@ ORDER BY l.`AuctionId`  DESC;
                     sum += (int)((float.Parse(mod.Value) - 45) * 500_000);
                 if (mod.Key == "rarity_upgrades" && sum == 0)
                 {
-                    if(Random.Shared.NextDouble() < 0.01)
-                    Console.WriteLine($"Rarity upgrade missing price {JsonConvert.SerializeObject(flatNbt)} {Environment.StackTrace}");
+                    if (Random.Shared.NextDouble() < 0.01)
+                        Console.WriteLine($"Rarity upgrade missing price {JsonConvert.SerializeObject(flatNbt)} {Environment.StackTrace}");
                     sum += 8_000_000;
                 }
                 if (mod.Key == "hotpc")
@@ -2210,6 +2210,8 @@ ORDER BY l.`AuctionId`  DESC;
                 });
                 return;
             }
+            if (auction.FlatenedNBT.Any(f => f.Value == "PET_ITEM_TIER_BOOST") && !closest.Key.Modifiers.Any(m => m.Key == PetItemKey))
+                return; // probably overvalues tier boost on enderdragon
             if (closest.Key == key)
                 return; // already found - or rather not - by median
             else
