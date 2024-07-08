@@ -1442,6 +1442,15 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(1000000, Is.EqualTo(price.Median));
         }
 
+        [Test]
+        public void StarredMidasKeepsWinningBid()
+        {
+            highestValAuction.FlatenedNBT = new(){{"winning_bid","22000000"}};
+            highestValAuction.Tag = "STARRED_MIDAS_SWORD";
+            var key = service.KeyFromSaveAuction(highestValAuction);
+            key.Modifiers.Count.Should().Be(1);
+        }
+
         /// <summary>
         /// The difference between godrolls and non godrolls is ~96%
         /// changed for https://github.com/Coflnet/SkySniper/issues/62

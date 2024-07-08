@@ -1707,7 +1707,7 @@ ORDER BY l.`AuctionId`  DESC;
                 else
                     return NormalizeNumberTo(s, PetExpMaxlevel / 6, 6);
             }
-            var generalNormalizations = NormalizeGeneral(s, tag?.StartsWith("MIDAS") ?? false,
+            var generalNormalizations = NormalizeGeneral(s, (tag?.StartsWith("MIDAS") ?? false) || (tag?.StartsWith("STARRED_MIDAS") ?? false),
                 flattenedNbt,
                 tag == "PET_GOLDEN_DRAGON"
                 );
@@ -2154,7 +2154,7 @@ ORDER BY l.`AuctionId`  DESC;
                 Tier = auction.Tier,
                 Reforge = auction.Reforge
             };
-            var containing = l.Where(e => e.Value.Price > 0 && (e.Key.Reforge == key.Reforge || e.Key.Reforge == ItemReferences.Reforge.Any) && IsHigherValue(e.Key, key))
+            var containing = l.Where(e => e.Value.Price > 0 && e.Value.References.Count > 5 && (e.Key.Reforge == key.Reforge || e.Key.Reforge == ItemReferences.Reforge.Any) && IsHigherValue(e.Key, key))
                         .OrderByDescending(e => e.Value.Price).FirstOrDefault();
             if (containing.Value == default)
                 return;
