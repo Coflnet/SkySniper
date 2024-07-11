@@ -921,7 +921,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (limitedPrice == 0)
                     {
-                        logger.LogWarning($"Price capped {keyCombo.tag} -> {limitedPrice}  {keyCombo.key}");
+                        logger.LogWarning($"Price capped {keyCombo.tag} -> {limitedPrice}  {keyCombo.key} {medianPrice} {bucket.Price}");
                         limitedPrice = 10;
                     }
                     medianPrice = limitedPrice;
