@@ -258,7 +258,7 @@ namespace Coflnet.Sky.Sniper.Services
             }
 
             var batchSize = 10_000;
-            var totalSize = RetrainService.IsManager ? 30_000_000 : 15_000_000;
+            var totalSize = RetrainService.IsManager ? 30_000_000 : 5_000_000;
             var allStart = maxId - totalSize;
             var differential = 10;
             logger.LogInformation("loading sell history " + allStart + " " + maxId + " " + batchSize);
