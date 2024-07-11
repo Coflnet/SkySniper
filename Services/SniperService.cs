@@ -1788,7 +1788,15 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (s.Key == "winning_bid")
                 if (isMiddas)
-                    return NormalizeNumberTo(s, 10_000_000, 10);
+                    if (flatten.ContainsKey("additional_coins"))
+                    {
+                        // combine with additional coins
+                        var additionalCoins = GetNumeric(flatten.FirstOrDefault(f => f.Key == "additional_coins"));
+                        var fullValue = (int)(double.Parse(s.Value) + additionalCoins + 1) / 50_000_000;
+                        return new KeyValuePair<string, string>("full_bid", fullValue.ToString());
+                    }
+                    else
+                        return NormalizeNumberTo(s, 10_000_000, 10);
                 else
                     return Ignore;
             if (s.Key == "eman_kills")
@@ -2177,7 +2185,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (HyperionGroup.Contains(itemGroupTag))
                 return ("HYPERION", GetPriceForItem("GIANT_FRAGMENT_LASER") * 8); // easily craftable from one into the other
-            if (itemGroupTag.StartsWith("STARRED_"))
+            if (itemGroupTag.StartsWith("STARRED_") && !itemGroupTag.Contains("MIDAS_")) // midas needs golden fragments which are expensive
                 // technically neds 8 for crafting but looses the value on craft so using 7
                 return (itemGroupTag.Substring(8), GetPriceForItem("LIVID_FRAGMENT") * 7);
             return (itemGroupTag, 0);

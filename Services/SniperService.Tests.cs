@@ -1443,12 +1443,12 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
-        public void StarredMidasKeepsWinningBid()
+        public void StarredMidasCombinesWinningBid()
         {
-            highestValAuction.FlatenedNBT = new(){{"winning_bid","22000000"}};
+            highestValAuction.FlatenedNBT = new(){{"winning_bid","220000000"}, {"additional_coins", "280000000"}};
             highestValAuction.Tag = "STARRED_MIDAS_SWORD";
             var key = service.KeyFromSaveAuction(highestValAuction);
-            key.Modifiers.Count.Should().Be(1);
+            key.Modifiers.First().Should().Be(new KeyValuePair<string, string>("full_bid", "10"));
         }
 
         /// <summary>
