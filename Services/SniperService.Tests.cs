@@ -618,8 +618,15 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(moreValue, 2);
             service.AddSoldItem(sample); // update median but should not use low volume
             var estimate = service.GetPrice(sample);
-            Assert.That(5_000_000, Is.EqualTo(estimate.Median));
+            Assert.That(estimate.Median, Is.EqualTo(5_000_000));
+
+            var bucket = service.Lookups[moreValue.Tag].Lookup.Where(l => l.Key.Modifiers.Count == 1).First().Value;
+            bucket.OldestRef += 11;
+            service.AddSoldItem(Dupplicate(sample)); // if newer should override it
+            estimate = service.GetPrice(sample);
+            Assert.That(estimate.Median, Is.EqualTo(1_000_000));
         }
+
         [Test]
         public void WithTierBoostUsesLowerRarityForHigherValue()
         {

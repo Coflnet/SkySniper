@@ -1006,7 +1006,7 @@ ORDER BY l.`AuctionId`  DESC;
 
             long CapPriceAtHigherLevelKey((string tag, KeyWithValueBreakdown key) keyCombo, long limitedPrice)
             {
-                var oldestDay = GetDay() - 1;
+                var oldestDay = bucket.OldestRef;
                 var cheaperHigherValue = Lookups[keyCombo.tag].Lookup
                     .Where(k => k.Value.Price < limitedPrice && k.Value.Price != 0
                             && !k.Key.Modifiers.Any(m => m.Key == "virtual")
