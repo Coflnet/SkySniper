@@ -91,6 +91,10 @@ public class AttributeFlipService : IAttributeFlipService
         {
             return;
         }
+        if(Flips.TryGetValue(cheapestLbin.Key, out var existingFlip) && existingFlip.FoundAt.AddMinutes(2) > DateTime.UtcNow)
+        {
+            return;
+        }
         logger.LogInformation($"Found potential flip for {flip.tag} {cheapestLbin.Key} to {key.Key} with {cheapestLbin.Value.Lbin.Price}");
         using var context = new HypixelContext();
         var auction = await context.Auctions.Where(a => a.UId == cheapestLbin.Value.Lbin.AuctionId).Select(u => u.Uuid).FirstOrDefaultAsync();
@@ -117,6 +121,18 @@ public class AttributeFlipService : IAttributeFlipService
                 Amount = 1,
                 Price = b.Value
             };
+            yield break;
+        }
+        if(b.Reforge != ItemReferences.Reforge.None)
+        {
+            yield return new AttributeFlip.Ingredient()
+            {
+                AttributeName = $"{b.Reforge}",
+                ItemId = null,
+                Amount = 1,
+                Price = b.Value
+            };
+            yield break;
         }
         if (mapper.TryGetIngredients(b.Modifier.Key, b.Modifier.Value, null, out var ingredients))
         {
