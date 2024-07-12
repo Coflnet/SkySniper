@@ -41,6 +41,7 @@ namespace Coflnet.Sky.Sniper.Services
                 }
             }
             await Task.Yield();
+            sniper.SummaryUpdate();
 
             foreach (var item in sniper.Lookups)
             {

@@ -14,11 +14,20 @@ public class AttributeController : ControllerBase
 {
     private readonly ILogger<AttributeController> _logger;
     private readonly SniperService service;
+    private readonly IAttributeFlipService flipService;
 
-    public AttributeController(ILogger<AttributeController> logger, SniperService service)
+    public AttributeController(ILogger<AttributeController> logger, SniperService service, IAttributeFlipService flipService)
     {
         _logger = logger;
         this.service = service;
+        this.flipService = flipService;
+    }
+
+    [Route("crafts")]
+    [HttpGet]
+    public IEnumerable<AttributeFlip> GetCrafts()
+    {
+        return flipService.Flips.Values;
     }
 
     [Route("combo/{leftAttrib}/{rightAttrib}")]
@@ -54,7 +63,7 @@ public class AttributeController : ControllerBase
         {
             tag = tag.Substring(0, position + 1);
         }
-        var shards = new KeyValuePair<string, PriceLookup>[] { 
+        var shards = new KeyValuePair<string, PriceLookup>[] {
             new("ATTRIBUTE_SHARD", service.Lookups.GetValueOrDefault("ATTRIBUTE_SHARD", new PriceLookup())) };
         if (service.CrimsonArmors.Any(k => tag.StartsWith(k)))
         {

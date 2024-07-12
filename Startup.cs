@@ -67,6 +67,7 @@ namespace Coflnet.Sky.Sniper
             services.AddSingleton<PartialCalcService>();
             services.AddSingleton<Kafka.KafkaCreator>();
             services.AddSingleton<HypixelItemService>();
+            services.AddSingleton<IAttributeFlipService, AttributeFlipService>();
             services.AddSingleton<System.Net.Http.HttpClient>();
             services.AddJaeger(Configuration);
             services.AddTransient<HypixelContext>(di=> new HypixelContext());

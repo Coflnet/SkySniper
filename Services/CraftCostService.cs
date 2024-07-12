@@ -15,7 +15,6 @@ public interface ICraftCostService
     bool TryGetCost(string itemId, out double cost);
     Dictionary<string, double> Costs { get; }
 }
-
 public class CraftCostService : BackgroundService, ICraftCostService
 {
     private readonly ICraftsApi craftsApi;

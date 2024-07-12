@@ -43,6 +43,9 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly Counter closestLbinBruteCounter = Metrics.CreateCounter("sky_sniper_closest_lbin_brute", "Number of brute force searches for closest median");
 
         public event Action<LowPricedAuction> FoundSnipe;
+        public event Action<PotentialCraftFlip> CappedKey;
+        public event Action<(SaveAuction, AuctionKeyWithValue)> OnSold;
+        public event Action OnSummaryUpdate;
         public readonly string ServerDnsName = Dns.GetHostName();
         public void MockFoundFlip(LowPricedAuction auction)
         {
@@ -366,6 +369,11 @@ ORDER BY l.`AuctionId`  DESC;
             this.craftCostService = craftCostService;
         }
 
+        public void SummaryUpdate()
+        {
+            OnSummaryUpdate?.Invoke();
+        }
+
         public PriceEstimate GetPrice(SaveAuction auction)
         {
             if (auction == null || auction.Tag == null)
@@ -643,7 +651,7 @@ ORDER BY l.`AuctionId`  DESC;
             return EmptyArray;
         }
 
-        private long GetPriceForItem(string item)
+        public long GetPriceForItem(string item)
         {
             if (Lookups.TryGetValue(item, out var lookup))
             {
@@ -826,6 +834,7 @@ ORDER BY l.`AuctionId`  DESC;
                     var toSubstractForLvl1 = auction.HighestBidAmount - auction.HighestBidAmount / power;
                     AddAuctionToBucket(auction, preventMedianUpdate, bucketForAttribute, (long)toSubstractForLvl1);
                 }
+                OnSold?.Invoke((auction, key));
             }
             catch (System.Exception e)
             {
@@ -1091,10 +1100,17 @@ ORDER BY l.`AuctionId`  DESC;
             }).Sum();
             if (modifierSum > 0)
             {
-                if (minValue + modifierSum * 11 / 10 < medianPrice
+                if (minValue + modifierSum * 1.08 < medianPrice
                     && key.Key.Modifiers.All(m => !Constants.AttributeKeys.Contains(m.Key))
                 )
                 {
+                    CappedKey?.Invoke(new(
+                         key,
+                         minValue,
+                         modifierSum,
+                         lookup,
+                         medianPrice
+                    ));
                     logger.LogInformation($"Could flip {tag} {key.Key} {minValue}+{modifierSum} =>{medianPrice}");
                 }
                 limitedPrice = Math.Min(minValue + modifierSum * 11 / 10, medianPrice);
