@@ -1091,7 +1091,9 @@ ORDER BY l.`AuctionId`  DESC;
             }).Sum();
             if (modifierSum > 0)
             {
-                if(minValue + modifierSum * 11 / 10 < medianPrice)
+                if (minValue + modifierSum * 11 / 10 < medianPrice
+                    && key.Key.Modifiers.All(m => !Constants.AttributeKeys.Contains(m.Key))
+                )
                 {
                     logger.LogInformation($"Could flip {tag} {key.Key} {minValue}+{modifierSum} =>{medianPrice}");
                 }
