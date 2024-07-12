@@ -1090,7 +1090,13 @@ ORDER BY l.`AuctionId`  DESC;
                 return AttributeValueEstimateForCap(tag, v, breakdown, lookup);
             }).Sum();
             if (modifierSum > 0)
+            {
+                if(minValue + modifierSum * 11 / 10 < medianPrice)
+                {
+                    logger.LogInformation($"Could flip {tag} {key.Key} {minValue}+{modifierSum} =>{medianPrice}");
+                }
                 limitedPrice = Math.Min(minValue + modifierSum * 11 / 10, medianPrice);
+            }
             if (limitedPrice > 0)
                 return limitedPrice;
             return medianPrice;
