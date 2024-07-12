@@ -91,6 +91,7 @@ public class AttributeFlipService : IAttributeFlipService
         {
             return;
         }
+        logger.LogInformation($"Found potential flip for {flip.tag} {cheapestLbin.Key} to {key.Key} with {cheapestLbin.Value.Lbin.Price}");
         using var context = new HypixelContext();
         var auction = await context.Auctions.Where(a => a.UId == cheapestLbin.Value.Lbin.AuctionId).Select(u => u.Uuid).FirstOrDefaultAsync();
         Flips[cheapestLbin.Key] = new AttributeFlip()
@@ -99,7 +100,9 @@ public class AttributeFlipService : IAttributeFlipService
             Ingredients = key.ValueBreakdown.SelectMany(b => NewMethod(b)).ToList(),
             StartingKey = cheapestLbin.Key,
             EndingKey = key.Key,
-            Target = medianPrice
+            Target = medianPrice,
+            EstimatedCraftingCost = modifierSum,
+            Tag = flip.tag
         };
     }
 
@@ -132,11 +135,12 @@ public class AttributeFlipService : IAttributeFlipService
     }
 }
 
-public record PotentialCraftFlip(KeyWithValueBreakdown FullKey, long Cheapest, long ModifierSum, PriceLookup Lookup, long MedianPrice);
+public record PotentialCraftFlip(string tag, KeyWithValueBreakdown FullKey, long Cheapest, long ModifierSum, PriceLookup Lookup, long MedianPrice);
 
 
 public class AttributeFlip
 {
+    public string Tag { get; set; } 
     public string AuctionToBuy { get; set; }
     public List<Ingredient> Ingredients { get; set; }
     public AuctionKey StartingKey { get; set; }

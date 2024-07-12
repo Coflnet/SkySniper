@@ -24,7 +24,13 @@ namespace Coflnet.Sky.Sniper.Controllers
         private readonly ICraftCostService craftCostService;
         private readonly IPersitanceManager persitanceManager;
 
-        public SniperController(ILogger<SniperController> logger, SniperService service, ITokenService tokenService, ICraftCostService craftCostService, IPersitanceManager persitanceManager)
+        public SniperController(
+            ILogger<SniperController> logger,
+            SniperService service,
+            ITokenService tokenService,
+            ICraftCostService craftCostService,
+            IAttributeFlipService attributeFlipService, // hook into events
+            IPersitanceManager persitanceManager)
         {
             _logger = logger;
             this.service = service;

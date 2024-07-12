@@ -1105,6 +1105,7 @@ ORDER BY l.`AuctionId`  DESC;
                 )
                 {
                     CappedKey?.Invoke(new(
+                        tag,
                          key,
                          minValue,
                          modifierSum,
