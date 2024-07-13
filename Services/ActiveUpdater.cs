@@ -41,7 +41,6 @@ namespace Coflnet.Sky.Sniper.Services
                 }
             }
             await Task.Yield();
-            sniper.SummaryUpdate();
 
             foreach (var item in sniper.Lookups)
             {
@@ -82,6 +81,7 @@ namespace Coflnet.Sky.Sniper.Services
                     intermediateRefresh = null;
                 });
 
+            sniper.SummaryUpdate();
             if (RecentUpdates.Peek().Time >= DateTime.UtcNow - TimeSpan.FromMinutes(3))
                 return;
             Console.WriteLine("Removing old update data");
