@@ -36,8 +36,11 @@ namespace Coflnet.Sky.Sniper
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-
-            services.AddControllers().AddNewtonsoftJson();
+            services.AddControllers().AddNewtonsoftJson(options =>
+            {
+                options.SerializerSettings.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
+            });
+            services.AddSwaggerGenNewtonsoftSupport();
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "SkySniper", Version = "v1" });
@@ -70,7 +73,7 @@ namespace Coflnet.Sky.Sniper
             services.AddSingleton<IAttributeFlipService, AttributeFlipService>();
             services.AddSingleton<System.Net.Http.HttpClient>();
             services.AddJaeger(Configuration);
-            services.AddTransient<HypixelContext>(di=> new HypixelContext());
+            services.AddTransient<HypixelContext>(di => new HypixelContext());
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
