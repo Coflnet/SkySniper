@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Coflnet.Sky.Core;
+using Coflnet.Sky.Core.Services;
 using Coflnet.Sky.Sniper.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -22,12 +23,13 @@ public class AttributeFlipService : IAttributeFlipService
     SniperService sniperService;
     ILogger<AttributeFlipService> logger;
     private readonly PropertyMapper mapper = new();
+    HypixelItemService hypixelItemService;
 
 
     public ConcurrentDictionary<(string, AuctionKey), AttributeFlip> Flips { get; } = new();
     Channel<PotentialCraftFlip> potentialCraftFlips = Channel.CreateBounded<PotentialCraftFlip>(200);
 
-    public AttributeFlipService(SniperService sniperService, ILogger<AttributeFlipService> logger)
+    public AttributeFlipService(SniperService sniperService, ILogger<AttributeFlipService> logger, HypixelItemService hypixelItemService)
     {
         this.sniperService = sniperService;
         sniperService.CappedKey += c =>
@@ -48,6 +50,7 @@ public class AttributeFlipService : IAttributeFlipService
             Task.Run(Update);
         };
         this.logger = logger;
+        this.hypixelItemService = hypixelItemService;
     }
 
     public async Task Update()
@@ -88,6 +91,10 @@ public class AttributeFlipService : IAttributeFlipService
         var modifierSum = flip.ModifierSum;
         var lookup = flip.Lookup;
         var medianPrice = flip.MedianPrice;
+        if(key.Modifiers.Any(m=>m.Key.ToLower().EndsWith("kills")))
+        {
+            return; // can't buy kills
+        }
         if (!lookup.Lookup.TryGetValue(key, out var matchingBaucket))
             return;
         if (matchingBaucket.Volume < 2)
@@ -107,7 +114,7 @@ public class AttributeFlipService : IAttributeFlipService
         Flips[(flip.tag, cheapestLbin.Key)] = new AttributeFlip()
         {
             AuctionToBuy = auction,
-            Ingredients = flip.FullKey.ValueBreakdown.SelectMany(b => NewMethod(b)).ToList(),
+            Ingredients = flip.FullKey.ValueBreakdown.SelectMany(b => NewMethod(flip.tag, b)).ToList(),
             StartingKey = cheapestLbin.Key,
             EndingKey = (AuctionKey)key,
             Target = medianPrice,
@@ -117,7 +124,7 @@ public class AttributeFlipService : IAttributeFlipService
         };
     }
 
-    private IEnumerable<AttributeFlip.Ingredient> NewMethod(SniperService.RankElem b)
+    private IEnumerable<AttributeFlip.Ingredient> NewMethod(string tag, SniperService.RankElem b)
     {
         if (b.Enchant.Type != 0)
         {
@@ -141,6 +148,27 @@ public class AttributeFlipService : IAttributeFlipService
             };
             yield break;
         }
+        if (b.Modifier.Key == "unlocked_slots")
+        {
+            yield return new AttributeFlip.Ingredient()
+            {
+                AttributeName = $"Unlock gemstone slots {b.Modifier.Value}",
+                ItemId = null,
+                Amount = 1,
+                Price = b.Value
+            };
+        }
+        if(b.Modifier.Key == "upgrade_level")
+        {
+            yield return new AttributeFlip.Ingredient()
+            {
+                AttributeName = $"Upgrade stars to {b.Modifier.Value}",
+                ItemId = null,
+                Amount = 1,
+                Price = b.Value
+            };
+        }
+
         if (mapper.TryGetIngredients(b.Modifier.Key, b.Modifier.Value, null, out var ingredients))
         {
             foreach (var ingredient in ingredients.GroupBy(s => s))
