@@ -90,7 +90,7 @@ public class AttributeFlipService : IAttributeFlipService
         var medianPrice = flip.MedianPrice;
         if (!lookup.Lookup.TryGetValue(key, out var matchingBaucket))
             return;
-        if (matchingBaucket.Volume < 3)
+        if (matchingBaucket.Volume < 2)
             return;
         var cheapestLbin = lookup.Lookup.Where(l => l.Value.Lbin.AuctionId != default && l.Value.Lbin.Price > l.Value.Price / 2).MinBy(l => l.Value.Lbin.Price);
         if (cheapestLbin.Value.Lbin.Price > cheapest)
@@ -112,7 +112,8 @@ public class AttributeFlipService : IAttributeFlipService
             EndingKey = (AuctionKey)key,
             Target = medianPrice,
             EstimatedCraftingCost = modifierSum,
-            Tag = flip.tag
+            Tag = flip.tag,
+            Volume = matchingBaucket.Volume
         };
     }
 
@@ -170,6 +171,7 @@ public class AttributeFlip
     public long Target { get; set; }
     public long EstimatedCraftingCost { get; set; }
     public DateTime FoundAt { get; set; } = DateTime.UtcNow;
+    public float Volume { get; internal set; }
 
     public class Ingredient
     {
