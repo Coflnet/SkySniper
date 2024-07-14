@@ -681,10 +681,10 @@ ORDER BY l.`AuctionId`  DESC;
             result.LastSale = bucket.References.LastOrDefault();
         }
 
-        internal void Move(string tag, long auctionId, AuctionKey from, AuctionKey to)
+        internal void Move(string tag, long auctionId, AuctionKey from, string toTag, AuctionKey to)
         {
             var oldBucket = Lookups[tag].Lookup[from];
-            var newBucket = GetOrAdd(to, Lookups[tag]);
+            var newBucket = GetOrAdd(to, Lookups[toTag]);
 
             var toChange = oldBucket.References.Where(e => e.AuctionId == auctionId).First();
             var newList = oldBucket.References.Where(e => e.AuctionId != auctionId).ToList();
@@ -2206,7 +2206,7 @@ ORDER BY l.`AuctionId`  DESC;
         /// </summary>
         /// <param name="auction"></param>
         /// <returns></returns>
-        private (string tag, long costSubstract) GetAuctionGroupTag(string itemGroupTag)
+        public (string tag, long costSubstract) GetAuctionGroupTag(string itemGroupTag)
         {
             if (HyperionGroup.Contains(itemGroupTag))
                 return ("HYPERION", GetPriceForItem("GIANT_FRAGMENT_LASER") * 8); // easily craftable from one into the other

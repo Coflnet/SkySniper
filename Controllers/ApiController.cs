@@ -328,6 +328,7 @@ namespace Coflnet.Sky.Sniper.Controllers
             foreach (var item in auctions)
             {
                 var key = service.KeyFromSaveAuction(item);
+                var group = service.GetAuctionGroupTag(item.Tag);
                 var actual = toCheck[item.UId];
                 if (key == actual.Key)
                     continue;
@@ -339,7 +340,7 @@ namespace Coflnet.Sky.Sniper.Controllers
                     Reference = actual.r
                 });
 
-                service.Move(tag, actual.r.AuctionId, actual.Key, key);
+                service.Move(tag, actual.r.AuctionId, actual.Key, group.tag, key);
             }
             return result;
         }
