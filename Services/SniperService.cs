@@ -2210,7 +2210,8 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (HyperionGroup.Contains(itemGroupTag))
                 return ("HYPERION", GetPriceForItem("GIANT_FRAGMENT_LASER") * 8); // easily craftable from one into the other
-            if (itemGroupTag.StartsWith("STARRED_") && !itemGroupTag.Contains("MIDAS_")) // midas needs golden fragments which are expensive
+            if (itemGroupTag.StartsWith("STARRED_") 
+                && !itemGroupTag.Contains("MIDAS_") && !itemGroupTag.StartsWith("STARRED_DAEDALUS_AXE")) // midas and daedalus needs golden fragments which are expensive
                 // technically neds 8 for crafting but looses the value on craft so using 7
                 return (itemGroupTag.Substring(8), GetPriceForItem("LIVID_FRAGMENT") * 7);
             return (itemGroupTag, 0);

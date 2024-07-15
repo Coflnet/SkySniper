@@ -11,6 +11,7 @@ using Coflnet.Sky.Core;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using MessagePack;
+using Amazon.S3.Model;
 
 namespace Coflnet.Sky.Sniper.Controllers
 {
@@ -253,6 +254,10 @@ namespace Coflnet.Sky.Sniper.Controllers
             });
         }
 
+        /// <summary>
+        /// Reorders modifiers to find matches faster
+        /// </summary>
+        /// <returns></returns>
         [Route("migrate")]
         [HttpPost]
         public async Task Migrate()
@@ -335,6 +340,7 @@ namespace Coflnet.Sky.Sniper.Controllers
                 // yikes
                 result.Add(new()
                 {
+                    Tag = group.tag,
                     New = key,
                     Old = actual.Key,
                     Reference = actual.r
@@ -394,6 +400,7 @@ namespace Coflnet.Sky.Sniper.Controllers
             public AuctionKey Old { get; set; }
             public AuctionKey New { get; set; }
             public ReferencePrice Reference { get; set; }
+            public string Tag { get; set; }
         }
 
         /// <summary>
