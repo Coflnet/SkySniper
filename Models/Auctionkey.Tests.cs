@@ -179,6 +179,23 @@ public class AuctionkeyTests
         // by default reforge and tier match
         Assert.That(originkey.Similarity(targetKey), Is.GreaterThan(originkey.Similarity(badKey)));
     }
+    [Test]
+    public async Task ScavengerRemovedForDungeon()
+    {
+        await itemService.GetItemsAsync();
+        var baseAuction = new SaveAuction()
+        {
+            Enchantments = new() { new(EnchantmentType.scavenger, 5) },
+            FlatenedNBT = new(),
+            Tier = Tier.MYTHIC,
+            Tag = "ZOMBIE_COMMANDER_WHIP"
+        };
+        var key = service.KeyFromSaveAuction(baseAuction);
+        Assert.That(key.Enchants.Count, Is.EqualTo(1));
+        baseAuction.Tag = "ZOMBIE_SWORD";
+        key = service.KeyFromSaveAuction(baseAuction);
+        Assert.That(1, Is.EqualTo(key.Enchants.Count));
+    }
 
     [Test]
     public void Lvl103isNotbucket0()
@@ -227,7 +244,7 @@ public class AuctionkeyTests
             Tier = Tier.MYTHIC
         };
         var key = service.KeyFromSaveAuction(baseAuction);
-        Assert.That(key.Modifiers, Is.EqualTo(new KeyValuePair<string, string>[]{new("unlocked_slots", "AMBER_0")}));
+        Assert.That(key.Modifiers, Is.EqualTo(new KeyValuePair<string, string>[] { new("unlocked_slots", "AMBER_0") }));
     }
 
     [Test]

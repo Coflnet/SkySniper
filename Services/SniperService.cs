@@ -1676,7 +1676,7 @@ ORDER BY l.`AuctionId`  DESC;
             return reforgeValue;
         }
 
-        private static List<Models.Enchant> RemoveNoEffectEnchants(SaveAuction auction, List<Models.Enchant> ench)
+        private List<Models.Enchant> RemoveNoEffectEnchants(SaveAuction auction, List<Models.Enchant> ench)
         {
             if (auction.Tag == null)
                 return ench;
@@ -1689,6 +1689,8 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (!auction.Tag.EndsWith("KATANA"))
                 ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.ender_slayer, 6);
+            if (itemService?.IsDungeonItemSync(auction.Tag) ?? false)
+                ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.scavenger);
             return ench;
         }
 
@@ -2210,7 +2212,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (HyperionGroup.Contains(itemGroupTag))
                 return ("HYPERION", GetPriceForItem("GIANT_FRAGMENT_LASER") * 8); // easily craftable from one into the other
-            if (itemGroupTag.StartsWith("STARRED_") 
+            if (itemGroupTag.StartsWith("STARRED_")
                 && !itemGroupTag.Contains("MIDAS_") && !itemGroupTag.StartsWith("STARRED_DAEDALUS_AXE")) // midas and daedalus needs golden fragments which are expensive
                 // technically neds 8 for crafting but looses the value on craft so using 7
                 return (itemGroupTag.Substring(8), GetPriceForItem("LIVID_FRAGMENT") * 7);
