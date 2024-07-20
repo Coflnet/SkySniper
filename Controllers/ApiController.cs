@@ -356,6 +356,30 @@ namespace Coflnet.Sky.Sniper.Controllers
             return result;
         }
 
+        [Route("{tag}/{start}/{end}")]
+        [HttpDelete]
+        public async Task<int> DeleteReferencesBetween(string tag, DateTime start, DateTime end)
+        {
+            var startDay = SniperService.GetDay(start);
+            var endDay = SniperService.GetDay(end);
+            var removedSum = 0;
+            if(startDay > endDay)
+            {
+                (endDay, startDay) = (startDay, endDay);
+            }
+            if (endDay - startDay > 100)
+            {
+                return -1;
+            }
+            foreach (var lookup in service.Lookups[tag].Lookup)
+            {
+                var countBefore = lookup.Value.References.Count;
+                lookup.Value.References = new(lookup.Value.References.Where(r => r.Day < startDay || r.Day > endDay));
+                removedSum += countBefore - lookup.Value.References.Count;
+            }
+            return removedSum;
+        }
+
         [Route("prices/clean")]
         [HttpGet]
         [ResponseCache(Duration = 1800, Location = ResponseCacheLocation.Any, NoStore = false)]
