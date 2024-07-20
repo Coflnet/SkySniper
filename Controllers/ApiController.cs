@@ -321,7 +321,9 @@ namespace Coflnet.Sky.Sniper.Controllers
         public async Task<List<Result>> Reassign(string tag, string value)
         {
             var toChange = Search(tag, value).ToList();
-            var toCheck = service.Lookups[tag].Lookup.Where(l => toChange.Contains(l.Key)).SelectMany(l => l.Value.References.Select(r => (l.Key, r))).ToDictionary(r => r.r.AuctionId, r => r);
+            var toCheck = service.Lookups[tag].Lookup.Where(l => toChange.Contains(l.Key)).SelectMany(l => l.Value.References.Select(r => (l.Key, r)))
+                .GroupBy(r => r.r.AuctionId)
+                .ToDictionary(r => r.Key, r => r.ToList());
             List<SaveAuction> auctions = null;
             using (var context = new HypixelContext())
             {
@@ -334,19 +336,22 @@ namespace Coflnet.Sky.Sniper.Controllers
             {
                 var key = service.KeyFromSaveAuction(item);
                 var group = service.GetAuctionGroupTag(item.Tag);
-                var actual = toCheck[item.UId];
-                if (key == actual.Key)
-                    continue;
-                // yikes
-                result.Add(new()
+                var actualList = toCheck[item.UId];
+                foreach (var actual in actualList)
                 {
-                    Tag = group.tag,
-                    New = key,
-                    Old = actual.Key,
-                    Reference = actual.r
-                });
+                    if (key == actual.Key)
+                        continue;
+                    // yikes
+                    result.Add(new()
+                    {
+                        Tag = group.tag,
+                        New = key,
+                        Old = actual.Key,
+                        Reference = actual.r
+                    });
 
-                service.Move(tag, actual.r.AuctionId, actual.Key, group.tag, key);
+                    service.Move(tag, actual.r.AuctionId, actual.Key, group.tag, key);
+                }
             }
             return result;
         }

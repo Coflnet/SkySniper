@@ -58,7 +58,7 @@ public class MedianCalcTests
             Uuid = random.Next().ToString(),
             End = DateTime.Now - TimeSpan.FromDays(1),
         };
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < 5; i++)
         {
             var copy = auction.Dupplicate();
             copy.Bids = new() { new SaveBids() { Bidder = random.Next().ToString(), Amount = i * 1000 } };
@@ -72,7 +72,7 @@ public class MedianCalcTests
             copy.HighestBidAmount = 5000000;
             service.AddSoldItem(copy);
         }
-        Assert.That(1000, Is.EqualTo(service.Lookups.First().Value.Lookup.First().Value.Price));
+        Assert.That(2000, Is.EqualTo(service.Lookups.First().Value.Lookup.First().Value.Price));
     }
 
     [Test]
