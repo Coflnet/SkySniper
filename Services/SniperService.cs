@@ -2132,7 +2132,7 @@ ORDER BY l.`AuctionId`  DESC;
                 .OrderByDescending(e => e.Key.Modifiers.Count + e.Key.Enchants.Count)
                 .ThenByDescending(e => e.Key.Similarity(fullKey.Key, this, ComparisonValue(fullKey.Key.Enchants, fullKey.Key.Modifiers.ToList(), GetAuctionGroupTag(auction.Tag).tag, null).ToList(), fullKey.ValueBreakdown))
                 .ToList();
-            if (relevant.Count < 2)
+            if (relevant.Count < 2 || relevant.First().Value.References.Count > targetVolume)
             {
                 return; // makes only sense if there is something combined
             }
@@ -2151,7 +2151,7 @@ ORDER BY l.`AuctionId`  DESC;
                 References = new(combined),
                 Price = combined.Count < 4 ? 0 : GetCappedMedian(auction, fullKey, combined),
                 OldestRef = (short)(GetDay() - 2),
-                Volatility = 90// mark as risky
+                Volatility = 123// mark as risky
             };
             // mark with extra value -3
             var foundAndAbort = FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, lookup, fullKey, MIN_TARGET == 0 ? 0 : -3, props =>

@@ -1263,7 +1263,7 @@ namespace Coflnet.Sky.Sniper.Services
             SetBazaarPrice("PET_ITEM_TIER_BOOST", 80_000_000);
             SetBazaarPrice("PET_SKIN_ENDER_DRAGON_BABY_BLUE", 251_000_000);
             highestValAuction.Tag = "PET_ENDER_DRAGON";
-            highestValAuction.FlatenedNBT = new() { { "skin", "ENDER_DRAGON_BABY_BLUE" }, {"exp","30000000"} };
+            highestValAuction.FlatenedNBT = new() { { "skin", "ENDER_DRAGON_BABY_BLUE" }, { "exp", "30000000" } };
             highestValAuction.HighestBidAmount = 750_000_000;
             highestValAuction.Tier = Tier.LEGENDARY;
             var tierBoosted = Dupplicate(highestValAuction);
@@ -1452,7 +1452,7 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void StarredMidasCombinesWinningBid()
         {
-            highestValAuction.FlatenedNBT = new(){{"winning_bid","220000000"}, {"additional_coins", "280000000"}};
+            highestValAuction.FlatenedNBT = new() { { "winning_bid", "220000000" }, { "additional_coins", "280000000" } };
             highestValAuction.Tag = "STARRED_MIDAS_SWORD";
             var key = service.KeyFromSaveAuction(highestValAuction);
             key.Modifiers.First().Should().Be(new KeyValuePair<string, string>("full_bid", "10"));
@@ -2829,8 +2829,9 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(0, Is.EqualTo(found.Count), JsonConvert.SerializeObject(found, Formatting.Indented));
         }
 
-        [Test]
-        public async Task CombineWithClosestKeyToGetMedian()
+        [TestCase(10, 40_000_000)] // at 10 volume the two buckets are combined 
+        [TestCase(12, 2_000_000)] // bucket is not combined as the original has sufficient volume 
+        public async Task CombineWithClosestKeyToGetMedian(int refCount, int expectedEstimate)
         {
             highestValAuction.Tag = "TERROR_CHESTPLATE";
             highestValAuction.FlatenedNBT = new() { { "mana_pool", "3" } };
@@ -2840,14 +2841,14 @@ namespace Coflnet.Sky.Sniper.Services
             withLifeline.FlatenedNBT["lifeline"] = "1";
             withLifeline.FlatenedNBT["mana_pool"] = "2";
             withLifeline.HighestBidAmount = 40_000_000;
-            AddVolume(withLifeline, 10);
+            AddVolume(withLifeline, refCount);
             var test = Dupplicate(withLifeline);
             test.FlatenedNBT["mana_pool"] = "3";
             test.HighestBidAmount = 1_900_000;
             TestNewAuction(test);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).LastOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
-            Assert.That(40_000_000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That(estimate.TargetPrice, Is.EqualTo(expectedEstimate), JsonConvert.SerializeObject(estimate.AdditionalProps));
         }
 
         private static ProductInfo CreateGemPrice(string gemName)
