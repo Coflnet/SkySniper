@@ -480,6 +480,24 @@ namespace Coflnet.Sky.Sniper.Services
             var foundFlip = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER).Last().TargetPrice;
             Assert.That(1_000_000_000, Is.EqualTo(foundFlip), JsonConvert.SerializeObject(found, Formatting.Indented));
         }
+        /// <summary>
+        /// https://discord.com/channels/267680588666896385/1264680179624706050/1264685231063961753
+        /// </summary>
+        [Test]
+        public void EpicSpiritIsNotCappedAtHigherValueLegendary()
+        {
+            highestValAuction.Tier = Tier.LEGENDARY;
+            highestValAuction.Tag = "PET_SPIRIT";
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.HighestBidAmount = 1_000_000;
+            AddVolume(highestValAuction);
+            var epic = Dupplicate(highestValAuction);
+            epic.Tier = Tier.EPIC;
+            epic.HighestBidAmount = 5_000_000;
+            AddVolume(epic);
+            var price = service.GetPrice(epic);
+            Assert.That(price.Median, Is.EqualTo(5_000_000));
+        }
         [Test]
         public void SniperLowVolumeHigherValueCheckSeperatesSkins()
         {

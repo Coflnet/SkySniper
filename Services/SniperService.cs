@@ -452,7 +452,7 @@ ORDER BY l.`AuctionId`  DESC;
             var lbinCap = HigherValueLbinMapLookup.GetOrAdd(((string, AuctionKey))(auction.Tag, itemKey), a =>
             {
                 var higherValue = l.Where(k => k.Value.Lbin.Price != 0
-                                    && IsHigherValue(itemKey, k.Key) && k.Key.Reforge == itemKey.Reforge);
+                                    && IsHigherValue(auction.Tag, itemKey, k.Key) && k.Key.Reforge == itemKey.Reforge);
                 var MaxValue = higherValue.OrderBy(b => b.Value.Lbin.Price).FirstOrDefault();
                 if (MaxValue.Key == a.Item2)
                     return (default, DateTime.UtcNow); // best match is itself, skip
@@ -507,7 +507,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (result.Median > 0)
             {
                 // check lower value keys
-                var lowerValue = l.Where(k => IsHigherValue(k.Key, itemKey) && k.Key.Reforge == itemKey.Key.Reforge);
+                var lowerValue = l.Where(k => IsHigherValue(auction.Tag, k.Key, itemKey) && k.Key.Reforge == itemKey.Key.Reforge);
                 var MaxValue = lowerValue
                     .OrderByDescending(b => b.Value.Price).FirstOrDefault();
                 if (MaxValue.Value?.Price > result.Median)
@@ -1020,7 +1020,7 @@ ORDER BY l.`AuctionId`  DESC;
                     .Where(k => k.Value.Price < limitedPrice && k.Value.Price != 0
                             && !k.Key.Modifiers.Any(m => m.Key == "virtual")
                             && k.Value.OldestRef >= oldestDay // only relevant if price dropped recently
-                            && IsHigherValue(keyCombo.key, k.Key) && k.Key.Reforge == keyCombo.key.Key.Reforge)
+                            && IsHigherValue(keyCombo.tag, keyCombo.key, k.Key) && k.Key.Reforge == keyCombo.key.Key.Reforge)
                     .OrderBy(b => b.Value.Price).Select(b => b.Value.Price).FirstOrDefault(limitedPrice);
                 if (cheaperHigherValue != default && cheaperHigherValue < limitedPrice)
                 {
@@ -2128,7 +2128,8 @@ ORDER BY l.`AuctionId`  DESC;
                 similar = l.ToList();
             }
             var targetVolume = 11;
-            var relevant = similar.Where(e => IsHigherValue(e.Key, topKey) && e.Key.Reforge == topKey.Reforge)
+            var relevant = similar.Where(e => IsHigherValue(auction.Tag, e.Key, topKey) 
+                                && e.Key.Reforge == topKey.Reforge)
                 .OrderByDescending(e => e.Key.Modifiers.Count + e.Key.Enchants.Count)
                 .ThenByDescending(e => e.Key.Similarity(fullKey.Key, this, ComparisonValue(fullKey.Key.Enchants, fullKey.Key.Modifiers.ToList(), GetAuctionGroupTag(auction.Tag).tag, null).ToList(), fullKey.ValueBreakdown))
                 .ToList();
@@ -2189,7 +2190,9 @@ ORDER BY l.`AuctionId`  DESC;
                 Tier = auction.Tier,
                 Reforge = auction.Reforge
             };
-            var containing = l.Where(e => e.Value.Price > 0 && e.Value.References.Count > 5 && (e.Key.Reforge == key.Reforge || e.Key.Reforge == ItemReferences.Reforge.Any) && IsHigherValue(e.Key, key))
+            var containing = l.Where(e => e.Value.Price > 0 && e.Value.References.Count > 5 
+                            && (e.Key.Reforge == key.Reforge || e.Key.Reforge == ItemReferences.Reforge.Any) 
+                            && IsHigherValue(auction.Tag, e.Key, key))
                         .OrderByDescending(e => e.Value.Price).FirstOrDefault();
             if (containing.Value == default)
                 return;
@@ -2721,7 +2724,7 @@ ORDER BY l.`AuctionId`  DESC;
 
                 // no references, check against all lbins
                 // all key modifiers and enchants need to be in the reference bucket or higher
-                var higherValueKeys = l.Where(x => IsHigherValue(key, x.Key)).ToList();
+                var higherValueKeys = l.Where(x => IsHigherValue(auction.Tag, key, x.Key)).ToList();
                 var lowestLbin = higherValueKeys
                                 .Where(x => x.Value.Lbin.Price > 0 && x.Value.Lbin.Price < bucket.Lbin.Price)
                                 .Select(x => x.Value.Lbin.Price).DefaultIfEmpty(long.MaxValue).Min();
@@ -2753,9 +2756,10 @@ ORDER BY l.`AuctionId`  DESC;
             return FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
         }
 
-        private static bool IsHigherValue(AuctionKey baseKey, AuctionKey toCheck)
+        private static bool IsHigherValue(string tag, AuctionKey baseKey, AuctionKey toCheck)
         {
             return baseKey.Tier <= toCheck.Tier
+                    && (toCheck.Tier != Tier.LEGENDARY || tag != "PET_SPIRIT")
                     && baseKey.Count <= toCheck.Count
                     && baseKey.Modifiers.All(m => toCheck.Modifiers.Any(other => other.Key == m.Key
                                             && (other.Value == m.Value ||
