@@ -188,10 +188,10 @@ public class AuctionkeyTests
             Enchantments = new() { new(EnchantmentType.scavenger, 5) },
             FlatenedNBT = new(),
             Tier = Tier.MYTHIC,
-            Tag = "ZOMBIE_COMMANDER_WHIP"
+            Tag = "SILENT_DEATH"
         };
         var key = service.KeyFromSaveAuction(baseAuction);
-        Assert.That(key.Enchants.Count, Is.EqualTo(1));
+        Assert.That(key.Enchants.Count, Is.EqualTo(0));
         baseAuction.Tag = "ZOMBIE_SWORD";
         key = service.KeyFromSaveAuction(baseAuction);
         Assert.That(1, Is.EqualTo(key.Enchants.Count));
