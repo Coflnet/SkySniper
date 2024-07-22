@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Core.Services;
 using Coflnet.Sky.Sniper.Services;
+using FluentAssertions;
 using MessagePack;
 using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
@@ -179,8 +180,9 @@ public class AuctionkeyTests
         // by default reforge and tier match
         Assert.That(originkey.Similarity(targetKey), Is.GreaterThan(originkey.Similarity(badKey)));
     }
-    [Test]
-    public async Task ScavengerRemovedForDungeon()
+    [TestCase("SILENT_DEATH", "ZOMBIE_SWORD")]
+    [TestCase("ZOMBIE_KNIGHT_SWORD", "ASPECT_OF_THE_END")]
+    public async Task ScavengerRemovedForDungeon(string dropOn, string keepOn)
     {
         await itemService.GetItemsAsync();
         var baseAuction = new SaveAuction()
@@ -188,13 +190,14 @@ public class AuctionkeyTests
             Enchantments = new() { new(EnchantmentType.scavenger, 5) },
             FlatenedNBT = new(),
             Tier = Tier.MYTHIC,
-            Tag = "SILENT_DEATH"
+            Tag = dropOn
         };
-        var key = service.KeyFromSaveAuction(baseAuction);
-        Assert.That(key.Enchants.Count, Is.EqualTo(0));
-        baseAuction.Tag = "ZOMBIE_SWORD";
-        key = service.KeyFromSaveAuction(baseAuction);
-        Assert.That(1, Is.EqualTo(key.Enchants.Count));
+        var key = service.ValueKeyForTest(baseAuction);
+        Assert.That(key.Key.Enchants.Count, Is.EqualTo(0));
+        key.ValueBreakdown.Should().BeEmpty();
+        baseAuction.Tag = keepOn;
+        key = service.ValueKeyForTest(baseAuction);
+        Assert.That(1, Is.EqualTo(key.Key.Enchants.Count));
     }
 
     [Test]

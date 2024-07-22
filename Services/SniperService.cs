@@ -1337,7 +1337,12 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 tier = ReduceRarity(tier);
             }
-            enchants = RemoveNoEffectEnchants(auction, enchants);
+            var reducedEnchants = RemoveNoEffectEnchants(auction, enchants);
+            if (reducedEnchants.Count < enchants.Count)
+            {
+                rankElems = rankElems.Where(r => r.Enchant.Type == default || reducedEnchants.Any(re => re.Type == r.Enchant.Type)).ToList();
+                enchants = reducedEnchants;
+            }
             if (auction.Tag != null && AttributeToIgnoreOnLookup.TryGetValue(auction.Tag, out var ignore))
             {
                 modifiers.RemoveAll(m => ignore.Contains(m.Key));
@@ -2130,7 +2135,7 @@ ORDER BY l.`AuctionId`  DESC;
                 similar = l.ToList();
             }
             var targetVolume = 11;
-            var relevant = similar.Where(e => IsHigherValue(auction.Tag, e.Key, topKey) 
+            var relevant = similar.Where(e => IsHigherValue(auction.Tag, e.Key, topKey)
                                 && e.Key.Reforge == topKey.Reforge)
                 .OrderByDescending(e => e.Key.Modifiers.Count + e.Key.Enchants.Count)
                 .ThenByDescending(e => e.Key.Similarity(fullKey.Key, this, ComparisonValue(fullKey.Key.Enchants, fullKey.Key.Modifiers.ToList(), GetAuctionGroupTag(auction.Tag).tag, null).ToList(), fullKey.ValueBreakdown))
@@ -2192,8 +2197,8 @@ ORDER BY l.`AuctionId`  DESC;
                 Tier = auction.Tier,
                 Reforge = auction.Reforge
             };
-            var containing = l.Where(e => e.Value.Price > 0 && e.Value.References.Count > 5 
-                            && (e.Key.Reforge == key.Reforge || e.Key.Reforge == ItemReferences.Reforge.Any) 
+            var containing = l.Where(e => e.Value.Price > 0 && e.Value.References.Count > 5
+                            && (e.Key.Reforge == key.Reforge || e.Key.Reforge == ItemReferences.Reforge.Any)
                             && IsHigherValue(auction.Tag, e.Key, key))
                         .OrderByDescending(e => e.Value.Price).FirstOrDefault();
             if (containing.Value == default)
