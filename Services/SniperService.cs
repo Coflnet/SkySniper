@@ -1691,6 +1691,8 @@ ORDER BY l.`AuctionId`  DESC;
                 ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.ender_slayer, 6);
             if (itemService?.IsDungeonItemSync(auction.Tag) ?? false)
                 ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.scavenger);
+            if (auction.Tag == "STONK_PICKAXE")
+                ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.efficiency, 6);
             return ench;
         }
 
