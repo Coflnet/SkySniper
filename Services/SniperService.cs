@@ -2067,7 +2067,6 @@ ORDER BY l.`AuctionId`  DESC;
                         }
                         lbinPrice *= Math.Pow(1.15, bucket.HitsSinceCalculating);
                         medPrice *= Math.Pow(1.25, bucket.HitsSinceCalculating);
-                        bucket.HitsSinceCalculating++;
                         shouldTryToFindClosest = true;
                         break; // don't use most similar until key lenght limit is added
                     }
@@ -2859,6 +2858,13 @@ ORDER BY l.`AuctionId`  DESC;
             props["oldRef"] = (GetDay() - (bucket.References?.Select(r => r.Day).FirstOrDefault(GetDay()) ?? GetDay())).ToString();
             props["volat"] = bucket.Volatility.ToString();
 
+            if (type == LowPricedAuction.FinderType.SNIPER_MEDIAN && bucket.HitsSinceCalculating < 10
+                && IsProbablyNotBait(auction, targetPrice))
+            {
+                targetPrice = (long)(targetPrice / Math.Pow(1.05, bucket.HitsSinceCalculating));
+                bucket.HitsSinceCalculating++;
+            }
+
             FoundSnipe?.Invoke(new LowPricedAuction()
             {
                 Auction = auction,
@@ -2877,6 +2883,11 @@ ORDER BY l.`AuctionId`  DESC;
                 Finder = type
             });
             return true;
+
+            static bool IsProbablyNotBait(SaveAuction auction, long targetPrice)
+            {
+                return targetPrice < auction.StartingBid * 10;
+            }
         }
 
         private static Dictionary<string, string> CreateReference(long reference, AuctionKey key, long extraValue, ReferenceAuctions bucket)
