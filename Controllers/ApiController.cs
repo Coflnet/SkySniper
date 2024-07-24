@@ -113,11 +113,10 @@ namespace Coflnet.Sky.Sniper.Controllers
         }
 
 
-        [Route("dump/craftCost")]
+        [Route("craftCost")]
         [HttpGet]
-        public Dictionary<string, double> DumpCraftCost([FromHeader] string Authorization)
+        public Dictionary<string, double> DumpCraftCost()
         {
-            CountUsageAndValidate(Authorization);
             return craftCostService.Costs;
         }
         /// <summary>
