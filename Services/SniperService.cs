@@ -2274,6 +2274,11 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 toSubstract = GetPriceSumForModifiers(missingModifiers, key.Modifiers, auction);
                 toSubstract += AdjustForAttributes(closest.Value.Price, key, missingModifiers, auction);
+                if(toSubstract < 0)
+                {
+                    Console.WriteLine($"Negative value to substract for {string.Join(",", missingModifiers.Select(m => $"{m.Key}:{m.Value}"))} {auction.Uuid}");
+                    toSubstract = Math.Abs(toSubstract);
+                }
                 var fromExp = GetValueDifferenceForExp(auction, closest.Key, l);
                 if (fromExp != 0)
                 {
