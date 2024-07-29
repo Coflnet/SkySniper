@@ -1634,6 +1634,8 @@ ORDER BY l.`AuctionId`  DESC;
                     sum += 20_000_000;
                 if (mod.Key == "winning_bid")
                     sum += (int)(float.Parse(mod.Value) * 8_000_000);
+                if (mod.Key == "full_bid")
+                    sum += (int)(float.Parse(mod.Value) * 50_000_000);
                 if (mod.Key == "thunder_charge")
                     sum += 55_000_000 * int.Parse(mod.Value);
                 if (mod.Key == "baseStatBoostPercentage")
@@ -2274,7 +2276,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 toSubstract = GetPriceSumForModifiers(missingModifiers, key.Modifiers, auction);
                 toSubstract += AdjustForAttributes(closest.Value.Price, key, missingModifiers, auction);
-                if(toSubstract < 0)
+                if (toSubstract < 0)
                 {
                     Console.WriteLine($"Negative value to substract for {string.Join(",", missingModifiers.Select(m => $"{m.Key}:{m.Value}"))} {auction.Uuid}");
                     toSubstract = Math.Abs(toSubstract);
