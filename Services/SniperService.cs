@@ -2764,9 +2764,9 @@ ORDER BY l.`AuctionId`  DESC;
                     Activity.Current.Log($"Reduced to craft cost {reduced}");
                 }
                 Activity.Current.Log($"No references, checking all lbins {percentile} {lowestLbin} {referencePrice}");
-                props["referencePrice"] = referencePrice.toString();
-                props["percentile"] = percentile.toString();
-                props["lowestLbin"] = lowestLbin.toString();
+                props["referencePrice"] = referencePrice.ToString();
+                props["percentile"] = percentile.ToString();
+                props["lowestLbin"] = lowestLbin.ToString();
             }
             targetPrice = Math.Min(targetPrice, percentile);
             return FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
