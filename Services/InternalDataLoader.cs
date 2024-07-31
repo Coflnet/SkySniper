@@ -198,6 +198,7 @@ namespace Coflnet.Sky.Sniper.Services
             try
             {
                 int topId = 0;
+                HashSet<long> ActiveLookup = new HashSet<long>();
                 using (var context = new HypixelContext())
                 {
                     topId = (await context.Auctions.MaxAsync(a => a.Id)) - 5_000_000;
@@ -211,6 +212,7 @@ namespace Coflnet.Sky.Sniper.Services
                     {
                         sniper.TestNewAuction(item, false);
                         count++;
+                        ActiveLookup.Add(item.UId);
                     }
                     sniper.FinishedUpdate();
                     logger.LogInformation("finished loading active auctions " + count);
@@ -229,8 +231,20 @@ namespace Coflnet.Sky.Sniper.Services
                     {
                         sniper.AddSoldItem(item, true);
                         count++;
+                        ActiveLookup.Remove(item.UId);
                     }
                     logger.LogInformation("finished loading sold auctions " + count);
+                }
+                foreach (var item in sniper.Lookups.SelectMany(l => l.Value.Lookup))
+                {
+                    foreach (var auction in item.Value.Lbins.ToList())
+                    {
+                        if (!ActiveLookup.Contains(auction.AuctionId))
+                        {
+                            item.Value.Lbins.Remove(auction);
+                            logger.LogInformation("removed inactive " + auction.AuctionId);
+                        }
+                    }
                 }
 
                 foreach (var item in sniper.Lookups)
