@@ -45,10 +45,20 @@ namespace Coflnet.Sky.Sniper.Models
         [JsonIgnore]
         public short DeduplicatedReferenceCount;
 
+        private float _volume;
         [IgnoreMember]
-        public float Volume => (float)(References.TryPeek(out ReferencePrice price)
-                        ? (float)References.Count / (SniperService.GetDay() - price.Day + 1)
-                        : 0);
+        public float Volume
+        {
+            get
+            {
+                if (_volume != 0)
+                    return _volume;
+                return (float)(References.TryPeek(out ReferencePrice price)
+                    ? (float)References.Count / (SniperService.GetDay() - price.Day + 1)
+                    : 0);
+            }
+            set => _volume = value;
+        }
     }
 
 }

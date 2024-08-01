@@ -917,6 +917,7 @@ ORDER BY l.`AuctionId`  DESC;
             var medianPrice = Math.Min(shortTermPrice, longSpanPrice);
             bucket.Volatility = GetVolatility(bucket, shortTermPrice, medianPrice);
             bucket.HitsSinceCalculating = 0;
+            bucket.Volume = deduplicated.Count() / (GetDay() - deduplicated.OrderBy(d => d.Day).First().Day + 1);
             bucket.DeduplicatedReferenceCount = (short)deduplicated.Count();
             NewMethod(keyCombo);
             // get price of item without enchants and add enchant value 

@@ -94,7 +94,7 @@ public class DropOffTests
     };
     sniperService.State = SniperState.Ready;
     sniperService.TestNewAuction(testAuction);
-    Assert.That(found.All(f=>f.TargetPrice < 8_550_000), JsonConvert.SerializeObject(found, Formatting.Indented));
+    Assert.That(found.All(f => f.TargetPrice < 8_550_000), JsonConvert.SerializeObject(found, Formatting.Indented));
 
   }
 

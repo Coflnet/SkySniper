@@ -133,7 +133,7 @@ public class MedianCalcTests
             {
                 Tag = "THUNDERBOLT_NECKLACE",
                 StartingBid = 180_000_000,
-                End = DateTime.Now + TimeSpan.FromDays(1),
+                End = DateTime.Now + TimeSpan.FromDays(-1),
                 AuctioneerId = "000100",
                 Uuid = "000100",
                 FlatenedNBT = new() { { "life_regeneration", "2" } }
@@ -159,6 +159,19 @@ public class MedianCalcTests
         ReferenceAuctions bucket = LoadJsonReferences(PortalSample);
         service.UpdateMedian(bucket);
         Assert.That(bucket.Price, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void IgnoredBackAndWorthSellingExcludedFromVolume()
+    {
+        ReferenceAuctions bucket = LoadJsonReferences(PortalSample);
+        bucket.References.Enqueue(new () { AuctionId = 1, Day = SniperService.GetDay(), Price = 2_000, Seller = 1, Buyer = 2 });
+        bucket.References.Enqueue(new () { AuctionId = 2, Day = SniperService.GetDay(), Price = 2_200, Seller = 2, Buyer = 3 });
+        bucket.References.Enqueue(new () { AuctionId = 3, Day = SniperService.GetDay(), Price = 2_000, Seller = 3, Buyer = 1 });
+
+        service.UpdateMedian(bucket);
+        Assert.That(bucket.Price, Is.EqualTo(2_200));
+        Assert.That(bucket.Volume, Is.EqualTo(1));
     }
     private const string PortalSample =
     """
