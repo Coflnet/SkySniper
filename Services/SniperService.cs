@@ -2406,7 +2406,6 @@ ORDER BY l.`AuctionId`  DESC;
                     if (missingModifiers.Count > 1)
                         baseFactor = 1.35;
                     var factor = Math.Pow(baseFactor, Math.Abs(biggestDifference)) - 1;
-                    logger.LogInformation($"Adjusting target price due to attribute diff on {biggestDifference} {medPrice} {factor}");
                     return -(long)(medPrice * factor);
                 }
                 var keyhasCombo = missingModifiers.Any(m => HasAttributeCombo(m, auction.FlatenedNBT, auction.Tag));
