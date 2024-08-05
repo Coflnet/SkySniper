@@ -247,14 +247,7 @@ namespace Coflnet.Sky.Sniper.Services
                     }
                 }
 
-                foreach (var item in sniper.Lookups)
-                {
-                    foreach (var bucket in item.Value.Lookup)
-                    {
-                        // make sure all medians are up to date
-                        sniper.UpdateMedian(bucket.Value, (item.Key, sniper.GetBreakdownKey(bucket.Key, item.Key)));
-                    }
-                }
+                UpdateAllMedian();
             }
             catch (Exception e)
             {
@@ -426,7 +419,7 @@ namespace Coflnet.Sky.Sniper.Services
                 {
                     try
                     {
-                        sniper.UpdateMedian(item.Value);
+                        sniper.UpdateMedian(item.Value, (lookup.Key, sniper.GetBreakdownKey(item.Key, lookup.Key)));
                     }
                     catch (System.Exception e)
                     {
