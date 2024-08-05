@@ -27,24 +27,36 @@ public class MedianCalcTests
 
     private static ReferenceAuctions LoadJsonReferences(string json)
     {
+        var sample = JsonConvert.DeserializeObject<ReferencePrice[]>(json);
+        ReferenceAuctions bucket = PutReferencesInBucket(sample);
+
+        return bucket;
+    }
+
+    private static ReferenceAuctions PutReferencesInBucket(ReferencePrice[] sample)
+    {
         var bucket = new ReferenceAuctions();
         bucket.References = new ConcurrentQueue<ReferencePrice>();
-        var sample = JsonConvert.DeserializeObject<ReferencePrice[]>(json);
         var dayDiff = SniperService.GetDay() - sample.Last().Day;
         foreach (var item in sample)
         {
-            var adopted = new ReferencePrice()
-            {
-                AuctionId = item.AuctionId,
-                Day = (short)(item.Day + dayDiff),
-                Price = item.Price,
-                Seller = item.Seller,
-                Buyer = item.Buyer
-            };
+            ReferencePrice adopted = AdjustDay(dayDiff, item);
             bucket.References.Enqueue(adopted);
         }
 
         return bucket;
+    }
+
+    private static ReferencePrice AdjustDay(int dayDiff, ReferencePrice item)
+    {
+        return new ReferencePrice()
+        {
+            AuctionId = item.AuctionId,
+            Day = (short)(item.Day + dayDiff),
+            Price = item.Price,
+            Seller = item.Seller,
+            Buyer = item.Buyer
+        };
     }
 
     [Test]
@@ -162,12 +174,42 @@ public class MedianCalcTests
     }
 
     [Test]
+    public void MedianLimitedByMedianLbin()
+    {
+        var bucket = JsonConvert.DeserializeObject<ReferenceAuctions>(LbinDropSample);
+        var adjusted = PutReferencesInBucket(bucket.References.ToArray());
+        var dayDiff = SniperService.GetDay() - bucket.References.Last().Day;
+        foreach (var item in bucket.Lbins)
+        {
+            ReferencePrice adopted = AdjustDay(dayDiff, item);
+            adjusted.Lbins.Add(adopted);
+        }
+        service.UpdateMedian(adjusted);
+        var bare = new SaveAuction()
+        {
+            Tag = "DYE_NYANZA",
+            StartingBid = 180_000_000,
+            End = DateTime.Now + TimeSpan.FromDays(1),
+            AuctioneerId = "000100",
+            Uuid = "000100",
+            FlatenedNBT = []
+        };
+        var key = service.KeyFromSaveAuction(bare);
+        service.Lookups["DYE_NYANZA"] = new(){Lookup = new(new Dictionary<AuctionKey, ReferenceAuctions>() { { key, adjusted } })};
+        List<LowPricedAuction> flips = new();
+        service.FoundSnipe += flips.Add;
+        service.TestNewAuction(bare);
+        service.FinishedUpdate();
+        Assert.That(flips.First(f=>f.Finder== LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice, Is.EqualTo(1350_000_000));
+    }
+
+    [Test]
     public void IgnoredBackAndWorthSellingExcludedFromVolume()
     {
         ReferenceAuctions bucket = LoadJsonReferences(PortalSample);
-        bucket.References.Enqueue(new () { AuctionId = 1, Day = SniperService.GetDay(), Price = 2_000, Seller = 1, Buyer = 2 });
-        bucket.References.Enqueue(new () { AuctionId = 2, Day = SniperService.GetDay(), Price = 2_200, Seller = 2, Buyer = 3 });
-        bucket.References.Enqueue(new () { AuctionId = 3, Day = SniperService.GetDay(), Price = 2_000, Seller = 3, Buyer = 1 });
+        bucket.References.Enqueue(new() { AuctionId = 1, Day = SniperService.GetDay(), Price = 2_000, Seller = 1, Buyer = 2 });
+        bucket.References.Enqueue(new() { AuctionId = 2, Day = SniperService.GetDay(), Price = 2_200, Seller = 2, Buyer = 3 });
+        bucket.References.Enqueue(new() { AuctionId = 3, Day = SniperService.GetDay(), Price = 2_000, Seller = 3, Buyer = 1 });
 
         service.UpdateMedian(bucket);
         Assert.That(bucket.Price, Is.EqualTo(2_200));
@@ -443,6 +485,91 @@ public class MedianCalcTests
             "seller": 7522,
             "buyer": 0
         }]
+        """;
+
+    private const string LbinDropSample =
+        """
+            {"references":[{
+                "auctionId": -1315403493071137448,
+                "price": 1880000000,
+                    "day": 1040,
+                    "seller": -31001,
+                    "buyer": -832
+                },
+                {
+                    "auctionId": 5887142684324954953,
+                    "price": 2059999000,
+                    "day": 1040,
+                    "seller": -14209,
+                    "buyer": 7803
+                },
+                {
+                    "auctionId": -1220969875094463031,
+                    "price": 1705712656,
+                    "day": 1041,
+                    "seller": 28015,
+                    "buyer": 21688
+                },
+                {
+                    "auctionId": 5844703361014534667,
+                    "price": 1500000000,
+                    "day": 1041,
+                    "seller": 7803,
+                    "buyer": -11173
+                },
+                {
+                    "auctionId": 1161483913175227803,
+                    "price": 1475000000,
+                    "day": 1041,
+                    "seller": 21688,
+                    "buyer": 17146
+                },
+                {
+                    "auctionId": -6001875131109209783,
+                    "price": 1200000000,
+                    "day": 1042,
+                    "seller": -11173,
+                    "buyer": -10662
+                }
+            ],
+            "oldestRef": 1042,
+            "lbins": [
+                {
+                    "auctionId": 2845389508689271178,
+                    "price": 1160000000,
+                    "day": 1056,
+                    "seller": 1522,
+                    "buyer": 0
+                },
+                {
+                    "auctionId": -9097057862076068245,
+                    "price": 1340000000,
+                    "day": 1056,
+                    "seller": -28657,
+                    "buyer": 0
+                },
+                {
+                    "auctionId": 7305505674336939352,
+                    "price": 1350000000,
+                    "day": 1056,
+                    "seller": 21688,
+                    "buyer": 0
+                },
+                {
+                    "auctionId": -4796842577665116744,
+                    "price": 1460199000,
+                    "day": 1046,
+                    "seller": -11173,
+                    "buyer": 0
+                },
+                {
+                    "auctionId": -2635734077317869013,
+                    "price": 1600000000,
+                    "day": 1055,
+                    "seller": -7210,
+                    "buyer": 0
+                }
+                ]}
         """;
 
     private const string FlipSample =

@@ -919,6 +919,11 @@ ORDER BY l.`AuctionId`  DESC;
                 longSpanPrice = deduplicated.OrderBy(d => d.Price).Take((int)Math.Max(deduplicated.Count() * 0.25, 1)).Max(d => d.Price);
             }
             var medianPrice = Math.Min(shortTermPrice, longSpanPrice);
+            var lbinMedian = bucket.Lbins.Where(l => l.Price > medianPrice / 2 && l.Day > GetDay() + 5).OrderBy(l => l.Price).Skip(2).FirstOrDefault();
+            if(lbinMedian.AuctionId != default)
+            {
+                medianPrice = Math.Min(medianPrice, lbinMedian.Price);
+            }
             bucket.Volatility = GetVolatility(lookup, bucket, shortTermPrice, medianPrice);
             bucket.HitsSinceCalculating = 0;
             bucket.Volume = deduplicated.Count() / (GetDay() - deduplicated.OrderBy(d => d.Day).First().Day + 1);
@@ -1042,7 +1047,7 @@ ORDER BY l.`AuctionId`  DESC;
 
             void GetCleanPriceLookup((string tag, KeyWithValueBreakdown key) keyCombo, out PriceLookup lookup, out Dictionary<short, long> cleanPriceLookup, out bool isCleanitem)
             {
-                if(keyCombo == default)
+                if (keyCombo == default)
                 {
                     lookup = default;
                     cleanPriceLookup = default;
@@ -1250,7 +1255,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static long GetMedian(List<ReferencePrice> deduplicated, Dictionary<short, long> cleanPricePerDay)
         {
-            var today = cleanPricePerDay?.GetValueOrDefault(GetDay()) ?? cleanPricePerDay?.GetValueOrDefault((short)(GetDay() -1))  ?? 0;
+            var today = cleanPricePerDay?.GetValueOrDefault(GetDay()) ?? cleanPricePerDay?.GetValueOrDefault((short)(GetDay() - 1)) ?? 0;
             return (long)deduplicated
                 .OrderByDescending(b => SelectAdjustedPrice(cleanPricePerDay, b, today))
                 .Skip(deduplicated.Count / 2)
