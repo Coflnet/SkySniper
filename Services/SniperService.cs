@@ -1679,7 +1679,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (mod.Key == "rarity_upgrades" && sum == 0)
                 {
                     if (Random.Shared.NextDouble() < 0.01)
-                        Console.WriteLine($"Rarity upgrade missing price {JsonConvert.SerializeObject(flatNbt)} {Environment.StackTrace}");
+                        Console.WriteLine($"Rarity upgrade missing price {JsonConvert.SerializeObject(flatNbt)}\n{JsonConvert.SerializeObject(items)} {Environment.StackTrace}");
                     sum += 8_000_000;
                 }
                 if (mod.Key == "hotpc")
