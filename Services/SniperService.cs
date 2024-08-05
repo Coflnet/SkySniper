@@ -897,7 +897,11 @@ ORDER BY l.`AuctionId`  DESC;
             }
             // short term protects against price drops after updates
             List<ReferencePrice> shortTermList = GetShortTermBatch(deduplicated).OrderByDescending(b => b.Day).ToList();
-            var shortTermPrice = GetMedian(shortTermList);
+            PriceLookup lookup;
+            Dictionary<short, long> cleanPriceLookup;
+            bool isCleanitem;
+            GetCleanPriceLookup(keyCombo, out lookup, out cleanPriceLookup, out isCleanitem);
+            var shortTermPrice = GetMedian(shortTermList, cleanPriceLookup);
             bucket.OldestRef = shortTermList.Take(4).Min(s => s.Day);
             if (shortTermList.Count >= 3 && bucket.OldestRef - shortTermList.First().Day <= -5
                 && shortTermList.First().AuctionId != shortTermList.OrderByDescending(o => o.Price).First().AuctionId
@@ -908,18 +912,18 @@ ORDER BY l.`AuctionId`  DESC;
                 shortTermPrice = Math.Max(shortTermPrice * 7 / 10, reduced);
             }
             // long term protects against market manipulation
-            var longSpanPrice = GetMedian(deduplicated.Take(29).ToList());
+            var longSpanPrice = GetMedian(deduplicated.Take(29).ToList(), cleanPriceLookup);
             if (deduplicated.All(d => d.Day >= GetDay()))
             {
                 // all prices are from today, use 25th percentile instead
                 longSpanPrice = deduplicated.OrderBy(d => d.Price).Take((int)Math.Max(deduplicated.Count() * 0.25, 1)).Max(d => d.Price);
             }
             var medianPrice = Math.Min(shortTermPrice, longSpanPrice);
-            bucket.Volatility = GetVolatility(bucket, shortTermPrice, medianPrice);
+            bucket.Volatility = GetVolatility(lookup, bucket, shortTermPrice, medianPrice);
             bucket.HitsSinceCalculating = 0;
             bucket.Volume = deduplicated.Count() / (GetDay() - deduplicated.OrderBy(d => d.Day).First().Day + 1);
             bucket.DeduplicatedReferenceCount = (short)deduplicated.Count();
-            NewMethod(keyCombo);
+            PreCalculateVolume(keyCombo);
             // get price of item without enchants and add enchant value 
             if (keyCombo != default)
             {
@@ -950,7 +954,7 @@ ORDER BY l.`AuctionId`  DESC;
                     {
                         Count = 1
                     };
-                    if (Lookups.GetOrAdd(keyCombo.tag, new PriceLookup()).Lookup.TryGetValue(lowerCountKey, out var lowerCountBucket)
+                    if (lookup.Lookup.TryGetValue(lowerCountKey, out var lowerCountBucket)
                         && lowerCountBucket.Price != 0
                         && lowerCountBucket.Price * keyCombo.Item2.Key.Count < medianPrice)
                     {
@@ -959,6 +963,11 @@ ORDER BY l.`AuctionId`  DESC;
                         logger.LogInformation($"Adjusted for count {keyCombo.tag} -> {medianPrice}  {keyWithNoEnchants} - {keyCombo.Item2.Key}");
                     }
                 }
+            }
+            if (isCleanitem)
+            {
+                lookup.CleanPricePerDay ??= new();
+                lookup.CleanPricePerDay[shortTermList.OrderByDescending(s => s.Day).First().Day] = medianPrice;
             }
             bucket.Price = medianPrice;
 
@@ -1030,9 +1039,29 @@ ORDER BY l.`AuctionId`  DESC;
 
                 return limitedPrice;
             }
+
+            void GetCleanPriceLookup((string tag, KeyWithValueBreakdown key) keyCombo, out PriceLookup lookup, out Dictionary<short, long> cleanPriceLookup, out bool isCleanitem)
+            {
+                if(keyCombo == default)
+                {
+                    lookup = default;
+                    cleanPriceLookup = default;
+                    isCleanitem = false;
+                    return;
+                }
+                lookup = Lookups.GetOrAdd(keyCombo.tag, new PriceLookup());
+                cleanPriceLookup = lookup.CleanPricePerDay;
+                if (lookup.CleanKey?.Count == default && lookup.Lookup.Count > 1)
+                {
+                    lookup.CleanKey = lookup.Lookup.Where(l => !l.Key.Modifiers.Any(m => m.Key == "virtual")).OrderByDescending(l => l.Value.Volume - l.Key.Modifiers.Count * 5).Select(l => l.Key).FirstOrDefault();
+                }
+                isCleanitem = keyCombo.key?.Key == lookup.CleanKey;
+                if (lookup.CleanKey == default || isCleanitem)
+                    cleanPriceLookup = new(); // no change to clean price itself
+            }
         }
 
-        private void NewMethod((string tag, KeyWithValueBreakdown key) keyCombo)
+        private void PreCalculateVolume((string tag, KeyWithValueBreakdown key) keyCombo)
         {
             if (keyCombo.tag == null || !Lookups.TryGetValue(keyCombo.tag, out var itemLookup))
             {
@@ -1041,12 +1070,12 @@ ORDER BY l.`AuctionId`  DESC;
             itemLookup.Volume = (float)itemLookup.Lookup.Sum(l => l.Value.References.Count) / 60;
         }
 
-        private static byte GetVolatility(ReferenceAuctions bucket, long shortTermPrice, long medianPrice)
+        private static byte GetVolatility(PriceLookup lookup, ReferenceAuctions bucket, long shortTermPrice, long medianPrice)
         {
-            var oldMedian = GetMedian(bucket.References.AsEnumerable().Reverse().Take(5).ToList());
+            var oldMedian = GetMedian(bucket.References.AsEnumerable().Reverse().Take(5).ToList(), lookup?.CleanPricePerDay);
             var secondNewestMedian = 0L;
             if (bucket.References.Count > 8)
-                secondNewestMedian = GetMedian(bucket.References.AsEnumerable().Skip(5).Take(5).ToList());
+                secondNewestMedian = GetMedian(bucket.References.AsEnumerable().Skip(5).Take(5).ToList(), lookup?.CleanPricePerDay);
             var medianList = new float[] { oldMedian, secondNewestMedian, medianPrice, shortTermPrice }.OrderByDescending(m => m).ToList();
             var mean = medianList.Average();
             medianList = medianList.Select(m => m / mean).ToList();
@@ -1219,13 +1248,19 @@ ORDER BY l.`AuctionId`  DESC;
             return (GetOrAdd(key, lookup), key);
         }
 
-        private static long GetMedian(List<ReferencePrice> deduplicated)
+        private static long GetMedian(List<ReferencePrice> deduplicated, Dictionary<short, long> cleanPricePerDay)
         {
-            return deduplicated
-                .OrderByDescending(b => b.Price)
+            var today = cleanPricePerDay?.GetValueOrDefault(GetDay()) ?? cleanPricePerDay?.GetValueOrDefault((short)(GetDay() -1))  ?? 0;
+            return (long)deduplicated
+                .OrderByDescending(b => SelectAdjustedPrice(cleanPricePerDay, b, today))
                 .Skip(deduplicated.Count / 2)
-                .Select(b => b.Price)
+                .Select(b => SelectAdjustedPrice(cleanPricePerDay, b, today))
                 .First();
+
+            static float SelectAdjustedPrice(Dictionary<short, long> cleanPricePerDay, ReferencePrice b, long today)
+            {
+                return b.Price - (today != 0 && cleanPricePerDay.TryGetValue(b.Day, out var clean) ? clean - today : 0);
+            }
         }
 
         private ReferenceAuctions CreateAndAddBucket(SaveAuction auction, AuctionKey key)
@@ -2175,8 +2210,8 @@ ORDER BY l.`AuctionId`  DESC;
 
             long GetCappedMedian(SaveAuction auction, KeyWithValueBreakdown fullKey, List<ReferencePrice> combined)
             {
-                var median = GetMedian(combined);
-                var shortTerm = GetMedian(combined.Take(5).ToList());
+                var median = GetMedian(combined, []);
+                var shortTerm = GetMedian(combined.Take(5).ToList(), new());
                 var group = GetAuctionGroupTag(auction.Tag);
                 median = CapAtCraftCost(group.tag, Math.Min(median, shortTerm), fullKey, 0);
                 return median;

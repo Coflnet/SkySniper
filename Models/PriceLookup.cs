@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using Coflnet.Sky.Core;
 using MessagePack;
 
@@ -16,6 +17,14 @@ namespace Coflnet.Sky.Sniper.Models
         public Category Category;
         [Key(2)]
         public float Volume;
+
+        [Key(3)]
+        public Dictionary<short, long> CleanPricePerDay = new();
+        /// <summary>
+        /// Clean key (like dropped, usually with highest volume)
+        /// </summary>
+        [Key(4)]
+        public AuctionKey CleanKey;
     }
 
 }

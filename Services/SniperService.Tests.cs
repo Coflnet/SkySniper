@@ -1230,6 +1230,44 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(estimate.MedianKey, Is.EqualTo(" Any [drill_part_engine, component] UNKNOWN 1- component"));
 
         }
+        [Test]
+        public void AdjustMedianBasedOnCleanAvg()
+        {
+            highestValAuction.FlatenedNBT = new();
+            var clean = Dupplicate(highestValAuction);
+            var expensive = Dupplicate(highestValAuction);
+            expensive.HighestBidAmount = 20_000_000;
+            expensive.Enchantments = new List<Core.Enchantment>(){
+                new Core.Enchantment(Enchantment.EnchantmentType.sharpness, 7)
+            };
+            clean.HighestBidAmount = 10_000_000;
+            for (int i = 0; i < 5; i++)
+            {
+                clean.End = DateTime.UtcNow - TimeSpan.FromDays(5 - i);
+                expensive.End = DateTime.UtcNow - TimeSpan.FromDays(5 - i);
+                AddVolume(clean);
+                AddVolume(expensive, 1);
+            }
+            clean.End = DateTime.UtcNow;
+            clean.HighestBidAmount = 5_000_000;
+            AddVolume(clean);
+            expensive.End = DateTime.UtcNow;
+            UpdateAllMedianFromUpdate();
+            var price = service.GetPrice(expensive);
+            price.Median.Should().Be(15_000_000);
+
+            // equivilent to InternalDataLoader update all active
+            void UpdateAllMedianFromUpdate()
+            {
+                foreach (var lookup in service.Lookups)
+                {
+                    foreach (var item in lookup.Value.Lookup)
+                    {
+                        service.UpdateMedian(item.Value,(lookup.Key, service.GetBreakdownKey(item.Key, lookup.Key)));
+                    }
+                }
+            }
+        }
 
         [Test]
         public void ChecksLowerKeysForHigherPrice()

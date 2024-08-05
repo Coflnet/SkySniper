@@ -26,7 +26,7 @@ public class DropOffTests
       loaded = File.ReadAllText("Mock/boots.json");
     }
     sniperService = new SniperService(new(null, null), null, NullLogger<SniperService>.Instance, null);
-    var parsed = Newtonsoft.Json.JsonConvert.DeserializeObject<LookupLoad>(loaded);
+    var parsed = JsonConvert.DeserializeObject<LookupLoad>(loaded);
     var xy =
             parsed.Lookup.Where(l => l.Key.Contains("BLACK")).ToDictionary(l => ParseKey(l), l => l.Value);
     var converted = new PriceLookup()
@@ -71,7 +71,7 @@ public class DropOffTests
   public void Manip()
   {
     var text = File.ReadAllText("Mock/manipulation.json");
-    var parsed = Newtonsoft.Json.JsonConvert.DeserializeObject<LookupLoad>(text);
+    var parsed = JsonConvert.DeserializeObject<LookupLoad>(text);
     var xy =
             parsed.Lookup.ToDictionary(l => ParseKey(l), l => l.Value);
     var converted = new PriceLookup()
@@ -224,7 +224,7 @@ public class DropOffTests
           "RUNE_TIDAL": "3"
         }}
         """;
-    var item = Newtonsoft.Json.JsonConvert.DeserializeObject<ApiSaveAuction>(json);
+    var item = JsonConvert.DeserializeObject<ApiSaveAuction>(json);
     // ultimate_refrigerate=5,growth=7,protection=7,mana_vampire=10 Any [artOfPeaceApplied, 1],[COMBAT_0, PERFECT],[dye_item, DYE_PURE_BLACK],[hotpc, 1],[rarity_upgrades, 1],[RUNE_TIDAL, 3]
     SetBazaarPrice("FIRST_MASTER_STAR", 13_000_000);
     SetBazaarPrice("DYE_PURE_BLACK", 337_000_000);
