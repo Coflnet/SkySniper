@@ -921,7 +921,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             var medianPrice = Math.Min(shortTermPrice, longSpanPrice);
             var lbinMedian = bucket.Lbins.Where(l => l.Price > medianPrice / 2 && l.Day > GetDay() + 5).OrderBy(l => l.Price).Skip(2).FirstOrDefault();
-            if(lbinMedian.AuctionId != default)
+            if (lbinMedian.AuctionId != default)
             {
                 medianPrice = Math.Min(medianPrice, lbinMedian.Price);
             }
@@ -1653,7 +1653,7 @@ ORDER BY l.`AuctionId`  DESC;
                     sum += 13_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
                 if (mod.Key == "color")
                     sum += 10_000_000;
-                if(mod.Key == "blocksBroken")
+                if (mod.Key == "blocksBroken")
                     sum += 1_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
                 if (Constants.AttributeKeys.Contains(mod.Key))
                 {
@@ -1744,7 +1744,7 @@ ORDER BY l.`AuctionId`  DESC;
                 ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.scavenger);
             if (auction.Tag == "STONK_PICKAXE")
                 ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.efficiency, 6);
-            if(auction.Tag.StartsWith("PROMISING_"))
+            if (auction.Tag.StartsWith("PROMISING_"))
                 ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.efficiency);
             return ench;
         }
@@ -2397,7 +2397,8 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (closest.Key.Tier > auction.Tier && auction.FlatenedNBT.Any(f => f.Key == "exp"))
             {
-                var tierDifference = (long)(closest.Value.Price * 0.45);
+                var stepsDiff = closest.Key.Tier - auction.Tier;
+                var tierDifference = (long)(closest.Value.Price * 0.9 - closest.Value.Price / Math.Pow(5, Math.Abs(stepsDiff)));
                 targetPrice -= tierDifference;
                 props.Add("tierVal", $"{closest.Key.Tier} -> {auction.Tier} ({tierDifference})");
             }

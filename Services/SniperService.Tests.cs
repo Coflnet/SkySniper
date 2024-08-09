@@ -1331,21 +1331,22 @@ namespace Coflnet.Sky.Sniper.Services
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.That(estimate, Is.Null, JsonConvert.SerializeObject(found, Formatting.Indented));
         }
-        [Test]
-        public void DeductsForRarityDifference()
+        [TestCase(Tier.EPIC, 40000000)]
+        [TestCase(Tier.LEGENDARY, 8000000)]
+        public void DeductsForRarityDifference(Tier tier, long targetEstimate)
         {
             SetBazaarPrice("PET_SKIN_SCATHA_DARK", 50_000_000);
             highestValAuction.FlatenedNBT = new() { { "skin", "SCATHA_DARK" }, { "exp", "30000000" } };
             highestValAuction.Tier = Tier.RARE;
             var epic = Dupplicate(highestValAuction);
             epic.HighestBidAmount = 200_000_000;
-            epic.Tier = Tier.EPIC;
+            epic.Tier = tier;
             AddVolume(epic);
             SimulateNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
-            Assert.That(90000000, Is.EqualTo(estimate.TargetPrice), "should half estimated value for tier difference");
-            Assert.That("EPIC -> RARE (90000000)", Is.EqualTo(estimate.AdditionalProps["tierVal"]));
+            Assert.That(estimate.TargetPrice, Is.EqualTo(targetEstimate), "should half estimated value for tier difference");
+            Assert.That($"{tier} -> RARE ({epic.HighestBidAmount * 0.9 -targetEstimate})", Is.EqualTo(estimate.AdditionalProps["tierVal"]));
         }
         [Test]
         public void PartiallyAddsEnchants()
