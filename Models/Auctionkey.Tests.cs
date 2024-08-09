@@ -650,6 +650,20 @@ public class AuctionkeyTests
         Assert.That(key.ValueBreakdown.First().Value, Is.EqualTo(6_000_000), JsonConvert.SerializeObject(key.ValueBreakdown));
     }
     [Test]
+    public void BlocksBrokenUsedInsteadOfEfficiencyOnPromisingAxe()
+    {
+        var auction = new SaveAuction()
+        {
+            FlatenedNBT = new() { { "blocksBroken", "21000" } },
+            Enchantments = new() { new(EnchantmentType.expertise, 9) },
+            Tag = "S"
+        };
+        var key = service.ValueKeyForTest(auction);
+        key.ValueBreakdown.First().Value.Should().Be(2_000_000);
+        key.ValueBreakdown.First().Modifier.Key.Should().Be("blocksBroken");
+        key.ValueBreakdown.Count.Should().Be(1);
+    }
+    [Test]
     public void ValueAssignedtoRecombobulator()
     {
         var price = Random.Shared.Next(1_000_000, 10_000_000);

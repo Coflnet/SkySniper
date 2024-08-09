@@ -96,6 +96,7 @@ namespace Coflnet.Sky.Sniper.Services
             "blood_god_kills",
             "yogsKilled", // yog armor
             "mined_crops", // eg THEORETICAL_HOE_WARTS_3
+            "blocksBroken", // promising (pick)axe
             "ethermerge",
             "edition", // great spook stuff
             "hpc", // hot potato books
@@ -1652,6 +1653,8 @@ ORDER BY l.`AuctionId`  DESC;
                     sum += 13_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
                 if (mod.Key == "color")
                     sum += 10_000_000;
+                if(mod.Key == "blocksBroken")
+                    sum += 1_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
                 if (Constants.AttributeKeys.Contains(mod.Key))
                 {
                     sum += 200_000 * (long)Math.Pow(2, int.Parse(mod.Value)) + 600_000;
@@ -1741,6 +1744,8 @@ ORDER BY l.`AuctionId`  DESC;
                 ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.scavenger);
             if (auction.Tag == "STONK_PICKAXE")
                 ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.efficiency, 6);
+            if(auction.Tag.StartsWith("PROMISING_"))
+                ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.efficiency);
             return ench;
         }
 
@@ -1890,6 +1895,8 @@ ORDER BY l.`AuctionId`  DESC;
                 return NormalizeNumberTo(s, 1_000_000, 5);
             if (s.Key == "mined_crops")
                 return NormalizeNumberTo(s, 500_000_000);
+            if (s.Key == "blocksBroken")
+                return NormalizeNumberTo(s, 20_000, 2);
             if (s.Key == "candyUsed")
             {
                 var expAmount = GetNumeric(flatten.FirstOrDefault(f => f.Key == "exp"));
