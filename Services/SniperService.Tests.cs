@@ -1035,9 +1035,9 @@ namespace Coflnet.Sky.Sniper.Services
             AddSell(bucket, 30000000, 5);
             AddSell(bucket, 33400000, 5);
             AddSell(bucket, 31700000, 0);
-            Assert.That(bucket.Price, Is.EqualTo(30850000));
+            Assert.That(bucket.Price, Is.EqualTo(30566666));
             AddSell(bucket, 18500000, 0);
-            Assert.That(25100000, Is.EqualTo(bucket.Price));
+            Assert.That(bucket.Price, Is.EqualTo(22900000)); // besides the derpy logic also affected by trend adjustment
 
             void AddSell(ReferenceAuctions bucket, int amount, int daysAgo)
             {

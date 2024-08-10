@@ -28,7 +28,6 @@ namespace Coflnet.Sky.Sniper.Services
 
         private readonly ConcurrentQueue<LogEntry> Logs = new ConcurrentQueue<LogEntry>();
         private readonly ConcurrentQueue<(SaveAuction, ReferenceAuctions, AuctionKeyWithValue)> LbinUpdates = new();
-        private readonly ConcurrentQueue<string> RecentSnipeUids = new();
         private readonly AuctionKey defaultKey = new AuctionKey();
         public SniperState State { get; set; } = SniperState.LoadingLbin;
         private readonly PropertyMapper mapper = new();
@@ -909,7 +908,7 @@ ORDER BY l.`AuctionId`  DESC;
                 && bucket.Volume > 0.25) // 5 day gaps are to be expected at ~0.2 volume
             {
                 // probably derpy or weird price drop
-                var reduced = (shortTermList.OrderBy(s => s.Price).First().Price + shortTermPrice) / 2;
+                var reduced = (shortTermList.OrderBy(s => s.Price).First().Price + shortTermPrice * 2) / 3;
                 shortTermPrice = Math.Max(shortTermPrice * 7 / 10, reduced);
             }
             // long term protects against market manipulation
@@ -924,8 +923,9 @@ ORDER BY l.`AuctionId`  DESC;
             if (lbinMedian.AuctionId != default)
             {
                 medianPrice = Math.Min(medianPrice, lbinMedian.Price);
+                shortTermPrice = Math.Min(shortTermPrice, lbinMedian.Price);
             }
-            bucket.Volatility = GetVolatility(lookup, bucket, shortTermPrice, medianPrice);
+            (bucket.Volatility, medianPrice) = GetVolatility(lookup, bucket, shortTermPrice, longSpanPrice);
             bucket.HitsSinceCalculating = 0;
             bucket.Volume = deduplicated.Count() / (GetDay() - deduplicated.OrderBy(d => d.Day).First().Day + 1);
             bucket.DeduplicatedReferenceCount = (short)deduplicated.Count();
@@ -1076,20 +1076,29 @@ ORDER BY l.`AuctionId`  DESC;
             itemLookup.Volume = (float)itemLookup.Lookup.Sum(l => l.Value.References.Count) / 60;
         }
 
-        private static byte GetVolatility(PriceLookup lookup, ReferenceAuctions bucket, long shortTermPrice, long medianPrice)
+        private static (byte,long) GetVolatility(PriceLookup lookup, ReferenceAuctions bucket, long shortTermPrice, long longTerm)
         {
             var oldMedian = GetMedian(bucket.References.AsEnumerable().Reverse().Take(5).ToList(), lookup?.CleanPricePerDay);
             var secondNewestMedian = 0L;
             if (bucket.References.Count > 8)
                 secondNewestMedian = GetMedian(bucket.References.AsEnumerable().Skip(5).Take(5).ToList(), lookup?.CleanPricePerDay);
-            var medianList = new float[] { oldMedian, secondNewestMedian, medianPrice, shortTermPrice }.OrderByDescending(m => m).ToList();
+            var medianList = new float[] { oldMedian, secondNewestMedian, longTerm, shortTermPrice }.OrderByDescending(m => m).ToList();
             var mean = medianList.Average();
             medianList = medianList.Select(m => m / mean).ToList();
             mean = medianList.Average();
             var variance = medianList.Select(m => Math.Pow(m - mean, 2)).Sum() / medianList.Count;
             var volatility = Math.Sqrt(variance);
             var volatilityReduced = (byte)Math.Clamp(volatility * 100, -120, 120);
-            return volatilityReduced;
+            var newMedian = Math.Min(shortTermPrice, longTerm);
+            // check if trend is downwards
+            if(longTerm > secondNewestMedian && secondNewestMedian > shortTermPrice)
+            {
+                var difference = secondNewestMedian - shortTermPrice;
+                newMedian = newMedian - difference;
+                Console.WriteLine($"Trend downwards {bucket.Price} {shortTermPrice} {longTerm} {secondNewestMedian} {difference} {newMedian}");
+            }
+
+            return (volatilityReduced, newMedian);
         }
 
         private long CapAtCraftCost(string tag, long medianPrice, KeyWithValueBreakdown key, long currentPrice)
