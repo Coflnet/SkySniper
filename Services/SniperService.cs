@@ -973,7 +973,8 @@ ORDER BY l.`AuctionId`  DESC;
             if (isCleanitem)
             {
                 lookup.CleanPricePerDay ??= new();
-                lookup.CleanPricePerDay[shortTermList.OrderByDescending(s => s.Day).First().Day] = medianPrice;
+                if (medianPrice > 0)
+                    lookup.CleanPricePerDay[shortTermList.OrderByDescending(s => s.Day).First().Day] = medianPrice;
             }
             bucket.Price = medianPrice;
 
@@ -1076,7 +1077,7 @@ ORDER BY l.`AuctionId`  DESC;
             itemLookup.Volume = (float)itemLookup.Lookup.Sum(l => l.Value.References.Count) / 60;
         }
 
-        private static (byte,long) GetVolatility(PriceLookup lookup, ReferenceAuctions bucket, long shortTermPrice, long longTerm)
+        private static (byte, long) GetVolatility(PriceLookup lookup, ReferenceAuctions bucket, long shortTermPrice, long longTerm)
         {
             var oldMedian = GetMedian(bucket.References.AsEnumerable().Reverse().Take(5).ToList(), lookup?.CleanPricePerDay);
             var secondNewestMedian = 0L;
@@ -1091,7 +1092,7 @@ ORDER BY l.`AuctionId`  DESC;
             var volatilityReduced = (byte)Math.Clamp(volatility * 100, -120, 120);
             var newMedian = Math.Min(shortTermPrice, longTerm);
             // check if trend is downwards
-            if(longTerm > secondNewestMedian && secondNewestMedian > shortTermPrice)
+            if (longTerm > secondNewestMedian && secondNewestMedian > shortTermPrice)
             {
                 var difference = secondNewestMedian - shortTermPrice;
                 newMedian = newMedian - difference;
@@ -1274,7 +1275,7 @@ ORDER BY l.`AuctionId`  DESC;
 
             static float SelectAdjustedPrice(Dictionary<short, long> cleanPricePerDay, ReferencePrice b, long today)
             {
-                return b.Price - (today != 0 && cleanPricePerDay.TryGetValue(b.Day, out var clean) ? clean - today : 0);
+                return b.Price - (today != 0 && cleanPricePerDay.TryGetValue(b.Day, out var clean) && clean > 0 ? clean - today : 0);
             }
         }
 
@@ -2257,7 +2258,7 @@ ORDER BY l.`AuctionId`  DESC;
             };
             var containing = l.Where(e => e.Value.Price > 0 && e.Value.References.Count > 5
                             && (e.Key.Reforge == key.Reforge || e.Key.Reforge == ItemReferences.Reforge.Any)
-                            && e.Value.References.Where(r=>r.Day != 1047).Count() > 5
+                            && e.Value.References.Where(r => r.Day != 1047).Count() > 5
                             && IsHigherValue(auction.Tag, e.Key, key))
                         .OrderByDescending(e => e.Value.Price).FirstOrDefault();
             if (containing.Value == default)
