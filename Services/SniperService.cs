@@ -1101,9 +1101,11 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var difference = secondNewestMedian - shortTermPrice;
                 var inPercent = (float)difference / shortTermPrice;
-                if (difference > 0 && newMedian > difference)
+                if (difference > 0 && newMedian > difference && inPercent < 0.4)
+                {
                     newMedian = newMedian - (long)(newMedian * inPercent);
-                Console.WriteLine($"Trend downwards {bucket.References.First().AuctionId} - {bucket.Price} {shortTermPrice} {longTerm} {secondNewestMedian} diff:{difference} {inPercent}% {newMedian}");
+                    Console.WriteLine($"Trend downwards {bucket.References.First().AuctionId} - {bucket.Price} {shortTermPrice} {longTerm} {secondNewestMedian} diff:{difference} {inPercent}% {newMedian}");
+                }
             }
 
             return (volatilityReduced, newMedian);
