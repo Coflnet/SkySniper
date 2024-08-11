@@ -617,7 +617,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return 0;
             return missingModifiers.Select(m =>
             {
-                if(Constants.AttributeKeys.Contains(m.Key) 
+                if (Constants.AttributeKeys.Contains(m.Key)
                     || m.Key == "exp" || m.Key == "candyUsed" || m.Key.EndsWith("kills"))
                 {
                     return 0;
@@ -1098,11 +1098,13 @@ ORDER BY l.`AuctionId`  DESC;
             var volatilityReduced = (byte)Math.Clamp(volatility * 100, -120, 120);
             var newMedian = Math.Min(shortTermPrice, longTerm);
             // check if trend is downwards
-            if (longTerm > secondNewestMedian && secondNewestMedian > shortTermPrice)
+            if (oldMedian > shortTermPrice && longTerm > secondNewestMedian && secondNewestMedian > shortTermPrice)
             {
                 var difference = secondNewestMedian - shortTermPrice;
-                newMedian = newMedian - difference;
-                Console.WriteLine($"Trend downwards {bucket.Price} {shortTermPrice} {longTerm} {secondNewestMedian} {difference} {newMedian}");
+                var inPercent = (float)difference / shortTermPrice;
+                if (difference > 0)
+                    newMedian = newMedian - (long)(newMedian * inPercent);
+                Console.WriteLine($"Trend downwards {bucket.Price} {shortTermPrice} {longTerm} {secondNewestMedian} diff:{difference} {inPercent}% {newMedian}");
             }
 
             return (volatilityReduced, newMedian);
