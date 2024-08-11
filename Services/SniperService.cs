@@ -1097,17 +1097,21 @@ ORDER BY l.`AuctionId`  DESC;
             var volatility = Math.Sqrt(variance);
             var volatilityReduced = (byte)Math.Clamp(volatility * 100, -120, 120);
             var newMedian = Math.Min(shortTermPrice, longTerm);
-            // check if trend is downwards
-            if (oldMedian > shortTermPrice && longTerm > secondNewestMedian && secondNewestMedian > shortTermPrice)
+            if (IsTrendDownwards(shortTermPrice, longTerm, oldMedian, secondNewestMedian))
             {
                 var difference = secondNewestMedian - shortTermPrice;
                 var inPercent = (float)difference / shortTermPrice;
-                if (difference > 0)
+                if (difference > 0 && newMedian > difference)
                     newMedian = newMedian - (long)(newMedian * inPercent);
-                Console.WriteLine($"Trend downwards {bucket.Price} {shortTermPrice} {longTerm} {secondNewestMedian} diff:{difference} {inPercent}% {newMedian}");
+                Console.WriteLine($"Trend downwards {bucket.References.First().AuctionId} - {bucket.Price} {shortTermPrice} {longTerm} {secondNewestMedian} diff:{difference} {inPercent}% {newMedian}");
             }
 
             return (volatilityReduced, newMedian);
+
+            static bool IsTrendDownwards(long shortTermPrice, long longTerm, long oldMedian, long secondNewestMedian)
+            {
+                return oldMedian > shortTermPrice && longTerm > secondNewestMedian && secondNewestMedian > shortTermPrice;
+            }
         }
 
         private long CapAtCraftCost(string tag, long medianPrice, KeyWithValueBreakdown key, long currentPrice)
