@@ -617,12 +617,18 @@ ORDER BY l.`AuctionId`  DESC;
                 return 0;
             return missingModifiers.Select(m =>
             {
-                var items = GetItemKeysForModifier(modifiers, auction.FlatenedNBT, auction.Tag, m)
-                                .Where(m => m.Item1 != null).ToList();
-                var sum = items.Select(i => GetPriceForItem(i.Item1)).DefaultIfEmpty(0).Sum();
-                if (items.Count > 0 && sum == 0)
+                if(Constants.AttributeKeys.Contains(m.Key) 
+                    || m.Key == "exp" || m.Key == "candyUsed" || m.Key.EndsWith("kills"))
+                {
+                    return 0;
+                }
+                var elem = ModifierEstimate(modifiers.ToList(), auction.Tag, auction.FlatenedNBT, m);
+                if (elem.Value == 0)
+                {
+                    Console.WriteLine($"Missing modifier value {m.Key} {m.Value} {auction.Uuid}");
                     return 4_000_000_000; // not found potentially very valuable
-                return sum;
+                }
+                return elem.Value;
             }).Sum();
         }
 
@@ -1595,117 +1601,7 @@ ORDER BY l.`AuctionId`  DESC;
 
             var handler = (KeyValuePair<string, string> mod) =>
             {
-                var items = GetItemKeysForModifier(modifiers, flatNbt, tag, mod);
-                var sum = 0L;
-                foreach (var item in items)
-                {
-                    if (!Lookups.TryGetValue(item.tag, out var lookup))
-                    {
-                        sum += BazaarPrices.TryGetValue(item.tag, out var price) ? (long)price * item.amount : 0;
-                        continue;
-                    }
-                    if (mod.Key.StartsWith("RUNE_"))
-                    {
-                        sum += lookup.Lookup.Where(f => f.Value.Price != 0)
-                            .OrderBy(v => (v.Key.Count + 1) * (v.Key.Modifiers.Count == 0 ? 1 : int.Parse(v.Key.Modifiers.First().Value)))
-                            .FirstOrDefault().Value?.Price * item.amount ?? 0;
-                        continue;
-                    }
-                    sum += (lookup.Lookup.Values.FirstOrDefault(f => f.Price != 0)?.Price ?? 0) * item.amount;
-                }
-                if (items.Count() > 0 && sum == 0)
-                {
-                    // sum += 2_000_000; // would not have been stored if it was cheaper but is apparently currently missing
-                }
-                if (mod.Key == "upgrade_level")
-                {
-                    sum += EstStarCost(tag, int.Parse(mod.Value));
-                }
-                if (mod.Key == "unlocked_slots")
-                {
-                    var present = mod.Value.Split(',').ToList();
-                    var costs = itemService.GetSlotCostSync(tag, new(), present);
-                    foreach (var cost in costs.Item1)
-                    {
-                        if (cost.Type.ToLower() == "item")
-                            sum += GetPriceForItem(cost.ItemId) * cost.Amount ?? 1;
-                        else
-                            sum += cost.Coins;
-                    }
-                    if (costs.unavailable.Count() > 0)
-                    {
-                        modifiers.RemoveAll(m => m.Key == "unlocked_slots");
-                        var remaining = present.Except(costs.unavailable);
-                        if (remaining.Count() > 0)
-                            modifiers.Add(new(mod.Key, string.Join(",", remaining.OrderBy(s => s))));
-                    }
-                }
-                if (mod.Key == "scroll_count")
-                {
-                    sum += (GetPriceForItem("IMPLOSION_SCROLL") + GetPriceForItem("SHADOW_WARP_SCROLL") + GetPriceForItem("WITHER_SHIELD_SCROLL")) / 3 * int.Parse(mod.Value);
-                }
-                // early return if we have a value before estimates
-                if (sum > 0 || mod.Key == null)
-                    return new RankElem(mod, sum);
-                if (mod.Key == "pgems")
-                {
-                    sum += 100_000_000;
-                }
-                if (mod.Key == "eman_kills")
-                    sum += 3_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
-                else if (mod.Key == "expertise_kills")
-                    sum += 3_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
-                else if (mod.Key.EndsWith("_kills"))
-                {
-                    sum += 300_000 * (int)Math.Pow(2, int.Parse(mod.Value)) + 300_000;
-                }
-                if (mod.Key == "mined_crops")
-                    sum += 13_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
-                if (mod.Key == "color")
-                    sum += 10_000_000;
-                if (mod.Key == "blocksBroken")
-                    sum += 1_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
-                if (Constants.AttributeKeys.Contains(mod.Key))
-                {
-                    sum += 200_000 * (long)Math.Pow(2, int.Parse(mod.Value)) + 600_000;
-                    if (modifiers.Any(m => m.Key != mod.Key && Constants.AttributeKeys.Contains(m.Key)))
-                        sum += 50_000_000; // godroll
-                }
-                if (IsSoul(mod))
-                {
-                    sum += 3_000_000 * (int)Math.Pow(1.5, int.Parse(mod.Value));
-                }
-                if (mod.Key == "exp")
-                {
-                    var factor = Math.Max(GetPriceForItem(tag) / 6, 10_000_000);
-                    sum += (int)(factor * (float.Parse(mod.Value) + 1));
-                }
-                if (mod.Key == "candyUsed")
-                    sum += Math.Max(GetPriceForItem(tag) / 6, 10_000_000); // for skined pets important
-                if (mod.Key == "is_shiny")
-                    sum += 88_000_000;
-                if (mod.Key == "party_hat_color")
-                    sum += 20_000_000;
-                if (mod.Key == "winning_bid")
-                    sum += (int)(float.Parse(mod.Value) * 8_000_000);
-                if (mod.Key == "full_bid")
-                    sum += (int)(float.Parse(mod.Value) * 50_000_000);
-                if (mod.Key == "thunder_charge")
-                    sum += 55_000_000 * int.Parse(mod.Value);
-                if (mod.Key == "baseStatBoostPercentage")
-                    sum += (int)((float.Parse(mod.Value) - 45) * 500_000);
-                if (mod.Key == "rarity_upgrades" && sum == 0)
-                {
-                    if (Random.Shared.NextDouble() < 0.01)
-                        Console.WriteLine($"Rarity upgrade missing price {JsonConvert.SerializeObject(flatNbt)}\n{JsonConvert.SerializeObject(items)} {Environment.StackTrace}");
-                    sum += 8_000_000;
-                }
-                if (mod.Key == "hotpc")
-                    sum += 3_000_000;
-                return new RankElem(mod, sum)
-                {
-                    IsEstimate = true
-                };
+                return ModifierEstimate(modifiers, tag, flatNbt, mod);
             };
             var valuePerModifier = modifiers?.Select(m =>
             {
@@ -1727,6 +1623,121 @@ ORDER BY l.`AuctionId`  DESC;
             else if (valuePerModifier != null)
                 combined = valuePerModifier;
             return combined;
+        }
+
+        private RankElem ModifierEstimate(List<KeyValuePair<string, string>> modifiers, string tag, Dictionary<string, string> flatNbt, KeyValuePair<string, string> mod)
+        {
+            var items = GetItemKeysForModifier(modifiers, flatNbt, tag, mod);
+            var sum = 0L;
+            foreach (var item in items)
+            {
+                if (!Lookups.TryGetValue(item.tag, out var lookup))
+                {
+                    sum += BazaarPrices.TryGetValue(item.tag, out var price) ? (long)price * item.amount : 0;
+                    continue;
+                }
+                if (mod.Key.StartsWith("RUNE_"))
+                {
+                    sum += lookup.Lookup.Where(f => f.Value.Price != 0)
+                        .OrderBy(v => (v.Key.Count + 1) * (v.Key.Modifiers.Count == 0 ? 1 : int.Parse(v.Key.Modifiers.First().Value)))
+                        .FirstOrDefault().Value?.Price * item.amount ?? 0;
+                    continue;
+                }
+                sum += (lookup.Lookup.Values.FirstOrDefault(f => f.Price != 0)?.Price ?? 0) * item.amount;
+            }
+            if (items.Count() > 0 && sum == 0)
+            {
+                // sum += 2_000_000; // would not have been stored if it was cheaper but is apparently currently missing
+            }
+            if (mod.Key == "upgrade_level")
+            {
+                sum += EstStarCost(tag, int.Parse(mod.Value));
+            }
+            if (mod.Key == "unlocked_slots")
+            {
+                var present = mod.Value.Split(',').ToList();
+                var costs = itemService.GetSlotCostSync(tag, new(), present);
+                foreach (var cost in costs.Item1)
+                {
+                    if (cost.Type.ToLower() == "item")
+                        sum += GetPriceForItem(cost.ItemId) * cost.Amount ?? 1;
+                    else
+                        sum += cost.Coins;
+                }
+                if (costs.unavailable.Count() > 0)
+                {
+                    modifiers.RemoveAll(m => m.Key == "unlocked_slots");
+                    var remaining = present.Except(costs.unavailable);
+                    if (remaining.Count() > 0)
+                        modifiers.Add(new(mod.Key, string.Join(",", remaining.OrderBy(s => s))));
+                }
+            }
+            if (mod.Key == "scroll_count")
+            {
+                sum += (GetPriceForItem("IMPLOSION_SCROLL") + GetPriceForItem("SHADOW_WARP_SCROLL") + GetPriceForItem("WITHER_SHIELD_SCROLL")) / 3 * int.Parse(mod.Value);
+            }
+            // early return if we have a value before estimates
+            if (sum > 0 || mod.Key == null)
+                return new RankElem(mod, sum);
+            if (mod.Key == "pgems")
+            {
+                sum += 100_000_000;
+            }
+            if (mod.Key == "eman_kills")
+                sum += 3_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
+            else if (mod.Key == "expertise_kills")
+                sum += 3_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
+            else if (mod.Key.EndsWith("_kills"))
+            {
+                sum += 300_000 * (int)Math.Pow(2, int.Parse(mod.Value)) + 300_000;
+            }
+            if (mod.Key == "mined_crops")
+                sum += 13_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
+            if (mod.Key == "color")
+                sum += 10_000_000;
+            if (mod.Key == "blocksBroken")
+                sum += 1_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
+            if (Constants.AttributeKeys.Contains(mod.Key))
+            {
+                sum += 200_000 * (long)Math.Pow(2, int.Parse(mod.Value)) + 600_000;
+                if (modifiers.Any(m => m.Key != mod.Key && Constants.AttributeKeys.Contains(m.Key)))
+                    sum += 50_000_000; // godroll
+            }
+            if (IsSoul(mod))
+            {
+                sum += 3_000_000 * (int)Math.Pow(1.5, int.Parse(mod.Value));
+            }
+            if (mod.Key == "exp")
+            {
+                var factor = Math.Max(GetPriceForItem(tag) / 6, 10_000_000);
+                sum += (int)(factor * (float.Parse(mod.Value) + 1));
+            }
+            if (mod.Key == "candyUsed")
+                sum += Math.Max(GetPriceForItem(tag) / 6, 10_000_000); // for skined pets important
+            if (mod.Key == "is_shiny")
+                sum += 88_000_000;
+            if (mod.Key == "party_hat_color")
+                sum += 20_000_000;
+            if (mod.Key == "winning_bid")
+                sum += (int)(float.Parse(mod.Value) * 8_000_000);
+            if (mod.Key == "full_bid")
+                sum += (int)(float.Parse(mod.Value) * 50_000_000);
+            if (mod.Key == "thunder_charge")
+                sum += 55_000_000 * int.Parse(mod.Value);
+            if (mod.Key == "baseStatBoostPercentage")
+                sum += (int)((float.Parse(mod.Value) - 45) * 500_000);
+            if (mod.Key == "rarity_upgrades" && sum == 0)
+            {
+                if (Random.Shared.NextDouble() < 0.01)
+                    Console.WriteLine($"Rarity upgrade missing price {JsonConvert.SerializeObject(flatNbt)}\n{JsonConvert.SerializeObject(items)} {Environment.StackTrace}");
+                sum += 8_000_000;
+            }
+            if (mod.Key == "hotpc")
+                sum += 3_000_000;
+            return new RankElem(mod, sum)
+            {
+                IsEstimate = true
+            };
         }
 
         private long GetReforgeValue(ItemReferences.Reforge reforge)
@@ -2301,7 +2312,8 @@ ORDER BY l.`AuctionId`  DESC;
             if (auction.Tag == "NEW_YEAR_CAKE")
                 return; // can't use closest for years
             // special case for items that have no reference bucket, search using most similar
-            var key = KeyFromSaveAuction(auction);
+            var detailedKey = DetailedKeyFromSaveAuction(auction);
+            var key = detailedKey.GetReduced(0);
             var closest = FindClosestTo(l, key, auction.Tag);
             medPrice *= 1.10; // increase price a bit to account for the fact that we are not using the exact same item
             if (closest.Value == null)

@@ -1514,6 +1514,20 @@ namespace Coflnet.Sky.Sniper.Services
             var key = service.KeyFromSaveAuction(highestValAuction);
             key.Modifiers.First().Should().Be(new KeyValuePair<string, string>("full_bid", "10"));
         }
+        [Test]
+        public void StonksSubstractsWinningBidDif()
+        {
+            highestValAuction.FlatenedNBT = new() { { "winning_bid", "220000000" } };
+            highestValAuction.Tag = "STARRED_MIDAS_SWORD";
+            highestValAuction.HighestBidAmount = 200_000_000;
+            AddVolume(highestValAuction);
+            highestValAuction.HighestBidAmount = 200_000_000;
+            highestValAuction.FlatenedNBT = new() { { "winning_bid", "77620000" } };
+            TestNewAuction(highestValAuction);
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
+            Assert.That(estimate.TargetPrice, Is.EqualTo(108_000_000), JsonConvert.SerializeObject(estimate.AdditionalProps));
+        }
 
         /// <summary>
         /// The difference between godrolls and non godrolls is ~96%
