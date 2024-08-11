@@ -1907,7 +1907,7 @@ ORDER BY l.`AuctionId`  DESC;
                         return new KeyValuePair<string, string>("full_bid", fullValue.ToString());
                     }
                     else
-                        return NormalizeNumberTo(s, 10_000_000, 10);
+                        return NormalizeNumberTo(s, 10_000_000, 50);
                 else
                     return Ignore;
             if (s.Key == "eman_kills")
