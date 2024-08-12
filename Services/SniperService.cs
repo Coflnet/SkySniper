@@ -951,7 +951,12 @@ ORDER BY l.`AuctionId`  DESC;
                         limitedPrice = 10;
                     }
                     medianPrice = limitedPrice;
-                    bucket.Price = medianPrice;
+                    if (medianPrice < 0)
+                    {
+                        logger.LogWarning($"Negative price {keyCombo.tag} -> {limitedPrice}  {keyCombo.key} {medianPrice} {bucket.Price}");
+                    }
+                    else
+                        bucket.Price = medianPrice;
                     return;
                 }
 
@@ -982,7 +987,12 @@ ORDER BY l.`AuctionId`  DESC;
                 if (medianPrice > 0)
                     lookup.CleanPricePerDay[shortTermList.OrderByDescending(s => s.Day).First().Day] = medianPrice;
             }
-            bucket.Price = medianPrice;
+            if (medianPrice < 0)
+            {
+                logger.LogWarning($"Negative price {keyCombo.tag} -> {medianPrice}  {keyCombo.key} {shortTermPrice} {longSpanPrice}");
+            }
+            else
+                bucket.Price = medianPrice;
 
             bool IsMaxAttrib((string tag, KeyWithValueBreakdown key) keyCombo)
             {
