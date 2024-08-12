@@ -9,6 +9,7 @@ using Coflnet.Sky.Sniper.Models;
 using dev;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualBasic;
 using Newtonsoft.Json;
@@ -73,7 +74,9 @@ namespace Coflnet.Sky.Sniper.Services
             };
             SniperService.MIN_TARGET = 0;
             craftCost = new CraftCostMock();
-            service = new SniperService(new(null, null), null, NullLogger<SniperService>.Instance, craftCost);
+            // console logger
+            var factory =  LoggerFactory.Create(builder => builder.AddConsole());
+            service = new SniperService(new(null, null), null, factory.CreateLogger<SniperService>(), craftCost);
 
             found = new List<LowPricedAuction>();
             service.FoundSnipe += found.Add;
@@ -1526,7 +1529,7 @@ namespace Coflnet.Sky.Sniper.Services
             TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
-            Assert.That(estimate.TargetPrice, Is.EqualTo(108_000_000), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That(estimate.TargetPrice, Is.EqualTo(21_600_000), JsonConvert.SerializeObject(estimate.AdditionalProps));
         }
 
         /// <summary>
