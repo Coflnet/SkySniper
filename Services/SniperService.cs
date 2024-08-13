@@ -1301,8 +1301,8 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 if (today == 0 || !cleanPricePerDay.TryGetValue(b.Day, out var clean))
                     return b.Price;
-                var percentDiff = (float)(b.Price - clean) / clean;
-                return b.Price - (clean > today ? Math.Min(clean - today, percentDiff * b.Price) : 0);
+                var percentDiff = (float)(today - clean) / clean;
+                return b.Price - (clean > today ? Math.Min(clean - today, b.Price - percentDiff * b.Price) : 0);
             }
         }
 
