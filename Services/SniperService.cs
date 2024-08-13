@@ -1299,7 +1299,10 @@ ORDER BY l.`AuctionId`  DESC;
 
             static float SelectAdjustedPrice(Dictionary<short, long> cleanPricePerDay, ReferencePrice b, long today)
             {
-                return b.Price - (today != 0 && cleanPricePerDay.TryGetValue(b.Day, out var clean) && clean > 0 ? clean - today : 0);
+                if (today == 0 || !cleanPricePerDay.TryGetValue(b.Day, out var clean))
+                    return b.Price;
+                var percentDiff = (float)(b.Price - clean) / clean;
+                return b.Price - (clean > 0 ? Math.Min(clean - today, percentDiff * b.Price) : 0);
             }
         }
 
