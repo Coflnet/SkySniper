@@ -2290,9 +2290,10 @@ ORDER BY l.`AuctionId`  DESC;
                 Tier = auction.Tier,
                 Reforge = auction.Reforge
             };
+            var today = GetDay();
             var containing = l.Where(e => e.Value.Price > 0 && e.Value.References.Count > 5
                             && (e.Key.Reforge == key.Reforge || e.Key.Reforge == ItemReferences.Reforge.Any)
-                            && e.Value.References.Where(r => r.Day != 1047).Count() > 5
+                            && e.Value.References.Where(r => r.Day != 1047).Count() > 5 && e.Value.References.Any(r => r.Day >= today - 2)
                             && IsHigherValue(auction.Tag, e.Key, key))
                         .OrderByDescending(e => e.Value.Price).FirstOrDefault();
             if (containing.Value == default)
