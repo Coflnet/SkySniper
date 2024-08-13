@@ -2279,6 +2279,8 @@ ORDER BY l.`AuctionId`  DESC;
                 return; // not complicated
             if (auction.Tag.StartsWith("PET_"))
                 return; // eg Enderman gets cheaper at mythic for some reason
+            if(auction.Tag.StartsWith("STARRED_MIDAS_"))
+                return; // midas references were only recently split
             (var enchant, var modifiers) = SelectValuable(auction);
             var key = new AuctionKeyWithValue()
             {
