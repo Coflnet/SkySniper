@@ -1035,6 +1035,8 @@ ORDER BY l.`AuctionId`  DESC;
                 var buyerSellerCombos = bucket.References.GroupBy(a => a.Buyer > a.Seller ? a.Buyer << 15 + a.Seller : a.Seller << 15 + a.Buyer)
                     .Where(g => g.Count() > 1 && !g.All(gi => gi.Seller == g.First().Seller))
                     .ToLookup(l => l.First().Seller);
+                var isPersonManipulating = bucket.References.OrderByDescending(r => r.Price).Take(bucket.References.Count / 2)
+                            .GroupBy(r => r.Seller).Where(g => g.Count() >= Math.Max(bucket.References.Count / 3, 3)).OrderByDescending(g => g.Count()).Select(g => g.First().Seller).FirstOrDefault();
                 var deduplicated = bucket.References.Reverse()
                     .Where(d => !buyerSellerCombos.Contains(d.Seller) && !buyerSellerCombos.Contains(d.Buyer))
                     .OrderByDescending(b => b.Day)
@@ -1044,6 +1046,18 @@ ORDER BY l.`AuctionId`  DESC;
                     .Select(a => a.OrderBy(ai => ai.Price).First())  // only use cheapest price from each buyer 
                     .Take(60)
                     .ToList();
+                if (isPersonManipulating != default)
+                {
+                    for (int i = 0; i < deduplicated.Count; i++)
+                    {
+                        if (deduplicated[i].Seller == isPersonManipulating)
+                        {
+                            var elem = deduplicated[i];
+                            elem.Price /= 2;
+                            deduplicated[i] = elem;
+                        }
+                    }
+                }
                 return deduplicated;
             }
 
@@ -2280,7 +2294,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return; // not complicated
             if (auction.Tag.StartsWith("PET_"))
                 return; // eg Enderman gets cheaper at mythic for some reason
-            if(auction.Tag.StartsWith("STARRED_MIDAS_"))
+            if (auction.Tag.StartsWith("STARRED_MIDAS_"))
                 return; // midas references were only recently split
             (var enchant, var modifiers) = SelectValuable(auction);
             var key = new AuctionKeyWithValue()

@@ -173,6 +173,18 @@ public class MedianCalcTests
         Assert.That(bucket.Price, Is.EqualTo(0));
     }
 
+    /// <summary>
+    /// Irl trader moves money through the same item and shold be ignored because he is most of the sells above the median
+    /// Using 0.5x of his lowest sale as reference
+    /// </summary>
+    [Test]
+    public void GlacialScytheAntiManipulation()
+    {
+        ReferenceAuctions bucket = LoadJsonReferences(GlacialScytheSample);
+        service.UpdateMedian(bucket);
+        Assert.That(bucket.Price, Is.EqualTo(99558488));
+    }
+
     [Test]
     public void MedianLimitedByMedianLbin()
     {
@@ -195,12 +207,12 @@ public class MedianCalcTests
             FlatenedNBT = []
         };
         var key = service.KeyFromSaveAuction(bare);
-        service.Lookups["DYE_NYANZA"] = new(){Lookup = new(new Dictionary<AuctionKey, ReferenceAuctions>() { { key, adjusted } })};
+        service.Lookups["DYE_NYANZA"] = new() { Lookup = new(new Dictionary<AuctionKey, ReferenceAuctions>() { { key, adjusted } }) };
         List<LowPricedAuction> flips = new();
         service.FoundSnipe += flips.Add;
         service.TestNewAuction(bare);
         service.FinishedUpdate();
-        Assert.That(flips.First(f=>f.Finder== LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice, Is.EqualTo(1350_000_000));
+        Assert.That(flips.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice, Is.EqualTo(1350_000_000));
     }
 
     [Test]
@@ -261,6 +273,90 @@ public class MedianCalcTests
             "buyer": 16780
         }
         ]
+    """;
+
+
+    private const string GlacialScytheSample =
+    """
+    [
+        {
+            "auctionId": 4020836841702215851,
+            "price": 220240442,
+            "day": 994,
+            "seller": -20267,
+            "buyer": 0
+        },
+        {
+            "auctionId": -2270585272559252613,
+            "price": 211734696,
+            "day": 1024,
+            "seller": -20267,
+            "buyer": 11344
+        },
+        {
+            "auctionId": -4787987846722082038,
+            "price": 193463985,
+            "day": 1028,
+            "seller": -20267,
+            "buyer": -25726
+        },
+        {
+            "auctionId": -8209096686535755701,
+            "price": 225523770,
+            "day": 1036,
+            "seller": -366,
+            "buyer": -12571
+        },
+        {
+            "auctionId": 5469785141746872779,
+            "price": 173856124,
+            "day": 1039,
+            "seller": -20267,
+            "buyer": 5875
+        },
+        {
+            "auctionId": -3793096646597804501,
+            "price": 180009764,
+            "day": 1043,
+            "seller": -20267,
+            "buyer": -30221
+        },
+        {
+            "auctionId": -4734344319201572776,
+            "price": 179678755,
+            "day": 1048,
+            "seller": -20267,
+            "buyer": -17595
+        },
+        {
+            "auctionId": 7675932848496993704,
+            "price": 66638813,
+            "day": 1049,
+            "seller": -17595,
+            "buyer": 2103
+        },
+        {
+            "auctionId": 6144904731850084216,
+            "price": 75367558,
+            "day": 1049,
+            "seller": 2103,
+            "buyer": -31838
+        },
+        {
+            "auctionId": 4733466244300888522,
+            "price": 177033833,
+            "day": 1051,
+            "seller": -19322,
+            "buyer": 26607
+        },
+        {
+            "auctionId": -739731391836618360,
+            "price": 99558485,
+            "day": 1053,
+            "seller": -31838,
+            "buyer": 19884
+        }
+    ]
     """;
 
     private const string NacklaceSample =
