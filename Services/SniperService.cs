@@ -1757,7 +1757,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (mod.Key == "winning_bid")
                 sum += (int)(float.Parse(mod.Value) * 8_000_000);
             if (mod.Key == "full_bid")
-                sum += (int)(float.Parse(mod.Value) * 50_000_000);
+                sum += (int)(float.Parse(mod.Value) * 45_000_000);
             if (mod.Key == "thunder_charge")
                 sum += 55_000_000 * int.Parse(mod.Value);
             if (mod.Key == "baseStatBoostPercentage")
@@ -1927,7 +1927,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (s.Key == "winning_bid")
                 if (isMiddas)
-                    if (flatten.ContainsKey("additional_coins"))
+                    if (flatten.ContainsKey("additional_coins") || s.Value.Length > 8)
                     {
                         // combine with additional coins
                         var additionalCoins = GetNumeric(flatten.FirstOrDefault(f => f.Key == "additional_coins"));

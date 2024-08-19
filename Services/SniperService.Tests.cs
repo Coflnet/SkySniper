@@ -1524,12 +1524,27 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.Tag = "STARRED_MIDAS_SWORD";
             highestValAuction.HighestBidAmount = 200_000_000;
             AddVolume(highestValAuction);
-            highestValAuction.HighestBidAmount = 200_000_000;
-            highestValAuction.FlatenedNBT = new() { { "winning_bid", "77620000" } };
+            highestValAuction.HighestBidAmount = 10_000_000;
+            highestValAuction.FlatenedNBT = new() { { "winning_bid", "107620000" } };
             TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
-            Assert.That(estimate.TargetPrice, Is.EqualTo(21_600_000), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That(estimate.TargetPrice, Is.EqualTo(18_000_000), JsonConvert.SerializeObject(estimate.AdditionalProps));
+        }
+        [Test]
+        public void PriceCappedAtHigherWinningBid()
+        {
+            highestValAuction.FlatenedNBT = new() { { "winning_bid", "220000000" } };
+            highestValAuction.Tag = "STARRED_MIDAS_SWORD";
+            highestValAuction.Tier = Tier.MYTHIC;
+            highestValAuction.HighestBidAmount = 150_000_000;
+            AddVolume(highestValAuction);
+            highestValAuction.HighestBidAmount = 200_000_000;
+            highestValAuction.FlatenedNBT = new() { { "winning_bid", "107620000" } };
+            AddVolume(highestValAuction);
+            var estimate = service.GetPrice(highestValAuction);
+            Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
+            Assert.That(estimate.Median, Is.EqualTo(150_000_000), JsonConvert.SerializeObject(estimate));
         }
 
         /// <summary>
