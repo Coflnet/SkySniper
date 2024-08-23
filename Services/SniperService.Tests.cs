@@ -73,6 +73,7 @@ namespace Coflnet.Sky.Sniper.Services
                 Count = 1
             };
             SniperService.MIN_TARGET = 0;
+            SniperService.StartTime = new DateTime(2021, 9, 25);
             craftCost = new CraftCostMock();
             // console logger
             var factory =  LoggerFactory.Create(builder => builder.AddConsole());

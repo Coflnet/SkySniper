@@ -6,6 +6,7 @@ using Coflnet.Sky.Core;
 using Coflnet.Sky.Core.Services;
 using Coflnet.Sky.Sniper.Models;
 using dev;
+using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
 using NUnit.Framework;
@@ -88,6 +89,29 @@ public class DropOffTests
         sniperService.State = SniperState.Ready;
         sniperService.TestNewAuction(testAuction);
         Assert.That(found.All(f => f.TargetPrice < 8_550_000), JsonConvert.SerializeObject(found, Formatting.Indented));
+    }
+
+    [Test]
+    public void SkinLowVolumeMedianTimeLimit()
+    {
+        PriceLookup converted = LoadLookupMock("skin-adjustment.json");
+        var Difference = DateTime.UtcNow - new DateTime(2024, 8, 12);
+        SniperService.StartTime = new DateTime(2021, 9, 25) + Difference;
+        sniperService.AddLookupData("PET_SKIN_BAT_VAMPIRE", converted);
+        sniperService.UpdateMedian(converted.Lookup.Last().Value);
+        var testAuction = new SaveAuction()
+        {
+            Tag = "PET_SKIN_BAT_VAMPIRE",
+            StartingBid = 900_000,
+            UId = 4,
+            AuctioneerId = "12aaa",
+            Tier = Tier.MYTHIC,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(testAuction);
+        found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN)
+            .First().TargetPrice.Should().Be(150000000);
     }
 
     private static PriceLookup LoadLookupMock(string mockFileName)

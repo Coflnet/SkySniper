@@ -919,7 +919,8 @@ ORDER BY l.`AuctionId`  DESC;
                 shortTermPrice = Math.Max(shortTermPrice * 7 / 10, reduced);
             }
             // long term protects against market manipulation
-            var longSpanPrice = GetMedian(deduplicated.Take(29).ToList(), cleanPriceLookup);
+            var monthSpan = deduplicated.Where(d => d.Day >= GetDay() - 30).ToList();
+            var longSpanPrice = monthSpan.Count > 5 ? GetMedian(monthSpan, cleanPriceLookup) : GetMedian(deduplicated.Take(29).ToList(), cleanPriceLookup);
             if (deduplicated.All(d => d.Day >= GetDay()))
             {
                 // all prices are from today, use 25th percentile instead
