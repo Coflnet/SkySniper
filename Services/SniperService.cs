@@ -27,6 +27,7 @@ namespace Coflnet.Sky.Sniper.Services
         public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>(3, 2000);
 
         private readonly ConcurrentQueue<LogEntry> Logs = new ConcurrentQueue<LogEntry>();
+        public static readonly DeferredLogger deferred = new();
         private readonly ConcurrentQueue<(SaveAuction, ReferenceAuctions, AuctionKeyWithValue)> LbinUpdates = new();
         private readonly AuctionKey defaultKey = new AuctionKey();
         public SniperState State { get; set; } = SniperState.LoadingLbin;
@@ -626,7 +627,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var elem = ModifierEstimate(modifiers.ToList(), auction.Tag, auction.FlatenedNBT, m);
                 if (elem.Value == 0)
                 {
-                    Console.WriteLine($"Missing modifier value {m.Key} {m.Value} {auction.Uuid}");
+                    deferred.Log($"Missing modifier value {m.Key} {m.Value} {auction.Uuid}");
                     return 4_000_000_000; // not found potentially very valuable
                 }
                 return elem.Value;
@@ -1130,7 +1131,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (difference > 0 && newMedian > difference && inPercent < 0.4)
                 {
                     newMedian = newMedian - (long)(newMedian * inPercent);
-                    Console.WriteLine($"Trend downwards {bucket.References.First().AuctionId} - {bucket.Price} {shortTermPrice} {longTerm} {secondNewestMedian} diff:{difference} {inPercent}% {newMedian}");
+                    deferred.Log($"Trend downwards {bucket.References.First().AuctionId} - {bucket.Price} {shortTermPrice} {longTerm} {secondNewestMedian} diff:{difference} {inPercent}% {newMedian}");
                 }
             }
 
@@ -1766,7 +1767,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (mod.Key == "rarity_upgrades" && sum == 0)
             {
                 if (Random.Shared.NextDouble() < 0.01)
-                    Console.WriteLine($"Rarity upgrade missing price {JsonConvert.SerializeObject(flatNbt)}\n{JsonConvert.SerializeObject(items)} {Environment.StackTrace}");
+                    deferred.Log($"Rarity upgrade missing price {JsonConvert.SerializeObject(flatNbt)}\n{JsonConvert.SerializeObject(items)} {Environment.StackTrace}");
                 sum += 8_000_000;
             }
             if (mod.Key == "hotpc")
@@ -2110,7 +2111,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             catch (Exception)
             {
-                Console.WriteLine($"could not parse {s.Key} {s.Value}");
+                deferred.Log($"could not parse {s.Key} {s.Value}");
                 throw;
             }
         }
@@ -2389,7 +2390,7 @@ ORDER BY l.`AuctionId`  DESC;
                 toSubstract += AdjustForAttributes(closest.Value.Price, key, missingModifiers, auction);
                 if (toSubstract < 0)
                 {
-                    Console.WriteLine($"Negative value to substract for {string.Join(",", missingModifiers.Select(m => $"{m.Key}:{m.Value}"))} {auction.Uuid}");
+                    deferred.Log($"Negative value to substract for {string.Join(",", missingModifiers.Select(m => $"{m.Key}:{m.Value}"))} {auction.Uuid}");
                     toSubstract = Math.Abs(toSubstract);
                 }
                 var fromExp = GetValueDifferenceForExp(auction, closest.Key, l);
@@ -2414,7 +2415,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var formatted = string.Join(",", missingModifiers.Select(m => $"{m.Key}:{m.Value}"));
                 if (toSubstract == 0)
                 {
-                    Console.WriteLine($"Could not find value to substract for {formatted} {auction.Uuid}");
+                    deferred.Log($"Could not find value to substract for {formatted} {auction.Uuid}");
                 }
                 props.Add("missingModifiers", formatted + $" ({toSubstract})");
             }
@@ -2956,6 +2957,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var finderName = result.Finder == LowPricedAuction.FinderType.UNKOWN ? "NF" : result.Finder.ToString();
                 logger.LogInformation($"Info: {finderName} {result.Uuid} {result.Median} \t{result.LBin} {result.Volume} {result.Key}");
             }
+            deferred.PrintQueue();
         }
 
         private void UpdateLbin(SaveAuction auction, ReferenceAuctions bucket, AuctionKeyWithValue key)
