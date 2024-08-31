@@ -70,11 +70,6 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 while (!stoppingToken.IsCancellationRequested)
                 {
-                    if(DateTime.UtcNow < new DateTime(2024,9,1))
-                    {
-                        await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken).ConfigureAwait(false);
-                        continue;
-                    }
                     await LoadActiveAuctions(stoppingToken).ConfigureAwait(false);
                     await Task.Delay(TimeSpan.FromMinutes(30), stoppingToken).ConfigureAwait(false);
                     await partialCalcService.Load();
