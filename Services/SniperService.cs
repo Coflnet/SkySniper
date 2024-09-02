@@ -1199,7 +1199,6 @@ ORDER BY l.`AuctionId`  DESC;
                          lookup,
                          medianPrice
                     ));
-                    logger.LogInformation($"Could flip {tag} {key.Key} {minValue}+{modifierSum} =>{medianPrice}");
                 }
                 limitedPrice = Math.Min(minValue + modifierSum * 11 / 10, medianPrice);
             }
