@@ -727,7 +727,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var value = loadedVal.Lookup.GetValueOrDefault(item);
                 if (value == null)
                     continue;
-                if (value.References.Count == 0 && value.Lbins.Count == 0 || value.References.All(r=>r.Day == 1047) // lost nbt data that day
+                if (value.References.Count == 0 && value.Lbins.Count == 0 || value.References.All(r => r.Day == 1047) // lost nbt data that day
                     || value.References.All(r => r.Day < GetDay() - 21) && !item.IsClean())
                     loadedVal.Lookup.TryRemove(item, out _); // unimportant
             }
@@ -1390,8 +1390,6 @@ ORDER BY l.`AuctionId`  DESC;
                     sum += (int)cost * ingred.amount;
                 else
                 {
-                    if (Random.Shared.NextDouble() < 0.01)
-                        logger.LogInformation($"Missing bazaar price for {ingred.itemId}");
                     sum += 1_000_000;
                 }
             }
@@ -1679,6 +1677,11 @@ ORDER BY l.`AuctionId`  DESC;
                     sum += lookup.Lookup.Where(f => f.Value.Price != 0)
                         .OrderBy(v => (v.Key.Count + 1) * (v.Key.Modifiers.Count == 0 ? 1 : int.Parse(v.Key.Modifiers.First().Value)))
                         .FirstOrDefault().Value?.Price * item.amount ?? 0;
+                    if (tag.Contains("RUNE") && sum < 500_000)
+                    {
+                        // do not remove rune levels from runes
+                        sum = 0;
+                    }
                     continue;
                 }
                 sum += (lookup.Lookup.Values.FirstOrDefault(f => f.Price != 0)?.Price ?? 0) * item.amount;
