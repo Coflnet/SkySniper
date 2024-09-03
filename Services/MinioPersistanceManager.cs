@@ -45,6 +45,7 @@ namespace Coflnet.Sky.Sniper.Services
         public async Task LoadLookups(SniperService service)
         {
             logger.LogInformation("loading groups ");
+            var attempts = 0;
             await Parallel.ForEachAsync(Enumerable.Range(0, 100), new ParallelOptions()
             {
                 MaxDegreeOfParallelism = 3
@@ -63,6 +64,9 @@ namespace Coflnet.Sky.Sniper.Services
                     {
                         await Task.Delay(200);
                         logger.LogError(e, "Could not load group {groupId}, first item", groupId);
+                        attempts++;
+                        if (attempts > 1000)
+                            break;
                     }
             });
         }
