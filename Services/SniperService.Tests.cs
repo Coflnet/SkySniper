@@ -763,7 +763,10 @@ namespace Coflnet.Sky.Sniper.Services
             sample.HighestBidAmount = 0;
             sample.StartingBid = 10_000_000;
             TestNewAuction(sample);
-            Assert.That(44_148_000, Is.EqualTo(found.Last().TargetPrice), "should target at craft cost");
+            Assert.That(found.Last().TargetPrice, Is.EqualTo(44787250), "should target at craft cost");
+            Assert.That(found.Last().Finder, Is.EqualTo(LowPricedAuction.FinderType.CraftCost));
+            found.Last().AdditionalProps["breakdown"].Should()
+                .Match("{\"ethermerge\":16100000,\"aoteStone\":10000000,\"rarity_upgrades\":8200000,\"art_of_war_count\":8200000,\"hotpc\":7685000}");
         }
 
         [Test]
@@ -785,7 +788,7 @@ namespace Coflnet.Sky.Sniper.Services
             TestNewAuction(sample);
             var craftFind = found.Last(f => f.Finder == LowPricedAuction.FinderType.CraftCost);
             Assert.That(craftFind, Is.Not.Null);
-            Assert.That(craftFind.TargetPrice, Is.EqualTo(12_000_000), "should target at craft cost");
+            Assert.That(craftFind.TargetPrice, Is.EqualTo(12_750_000), "should target at craft cost");
         }
 
         [Test]

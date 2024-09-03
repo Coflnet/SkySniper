@@ -1716,6 +1716,10 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 sum += (GetPriceForItem("IMPLOSION_SCROLL") + GetPriceForItem("SHADOW_WARP_SCROLL") + GetPriceForItem("WITHER_SHIELD_SCROLL")) / 3 * int.Parse(mod.Value);
             }
+            if (mod.Key == "winning_bid")
+                sum += (int)(float.Parse(mod.Value) * 8_000_000);
+            if (mod.Key == "full_bid")
+                sum += (int)(float.Parse(mod.Value) * 45_000_000);
             // early return if we have a value before estimates
             if (sum > 0 || mod.Key == null)
                 return new RankElem(mod, sum);
@@ -1758,10 +1762,6 @@ ORDER BY l.`AuctionId`  DESC;
                 sum += 88_000_000;
             if (mod.Key == "party_hat_color")
                 sum += 20_000_000;
-            if (mod.Key == "winning_bid")
-                sum += (int)(float.Parse(mod.Value) * 8_000_000);
-            if (mod.Key == "full_bid")
-                sum += (int)(float.Parse(mod.Value) * 45_000_000);
             if (mod.Key == "thunder_charge")
                 sum += 55_000_000 * int.Parse(mod.Value);
             if (mod.Key == "baseStatBoostPercentage")
@@ -2211,22 +2211,38 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 TryFindClosestRisky(auction, l, ref lbinPrice, ref medPrice);
             }
-            var componentsSum = basekey.ValueBreakdown.Sum(c => c.IsEstimate ? -long.MaxValue / 20 : c.Value);
-            if (componentsSum > medPrice / 4) // no need to check if sum is too low
+
+            var componentGuess = basekey.ValueBreakdown.Sum(c => c.IsEstimate ? -long.MaxValue / 20 : c.Value);
+            if (componentGuess > medPrice / 4) // no need to check if sum is too low
             {
+                var valueLookup = basekey.ValueBreakdown.ToDictionary(v =>
+                {
+                    if (v.Modifier.Key != default)
+                        return v.Modifier.Key;
+                    if (v.Reforge != default)
+                        return v.Reforge.ToString();
+                    return v.Enchant.Type.ToString();
+                }, c => c.IsEstimate ? c.Value / 20 : c.Value);
                 var cleanCost = GetCleanItemPrice(itemGroupTag.tag, basekey, lookup);
                 if (basekey.ValueBreakdown.Count == 1 && basekey.Key.Modifiers.FirstOrDefault(m => m.Key == itemGroupTag.tag).Key != default)
                 {
                     cleanCost = 0; // breakdown already includes cheapest item (rune probably)
                 }
-                var combined = Math.Max((componentsSum + cleanCost) / 5 * 4, componentsSum + cleanCost - 15_000_000);
-                if (combined / 1.2 > medPrice || combined - auction.StartingBid > 10_000_000)
+                var componentSum = valueLookup.Select(v => (long)(v.Key switch
+                {
+                    "skin" => auction.Tag.StartsWith("PET") ? 0.5 : 0.4,
+                    "ultimate_fatal_tempo" => 0.65,
+                    "rarity_upgrades" => 0.5,
+                    _ => 0.85
+                } * v.Value)).Sum();
+                var combined = componentSum + cleanCost;
+                if (combined / 1.1 > medPrice || combined - auction.StartingBid > 10_000_000)
                 {
                     var props = new Dictionary<string, string>
                     {
                         { "cleanCost", cleanCost.ToString() },
-                        { "componentsSum", componentsSum.ToString() },
-                        { "breakdown", JsonConvert.SerializeObject(basekey.ValueBreakdown) }
+                        { "componentsSum", componentGuess.ToString() },
+                        { "breakdown", JsonConvert.SerializeObject(valueLookup) }
                     };
                     FoundAFlip(auction, new(), LowPricedAuction.FinderType.CraftCost, combined, props);
                 }
