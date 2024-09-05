@@ -2885,7 +2885,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (lowestLbin > 10_000_000_000)
                 {
                     Activity.Current.Log($"Reduced because no higher value lbin");
-                    percentile = Math.Min(percentile, targetPrice * 17 / 18);
+                    percentile = Math.Min(percentile, targetPrice * 96 / 100);
                     props["noHigherLbin"] = percentile.ToString();
                 }
                 var reduced = CapAtCraftCost(auction.Tag, percentile, breakdown, 0);
