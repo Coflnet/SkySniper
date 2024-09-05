@@ -492,6 +492,12 @@ public class PartialCalcService
             {
                 foreach (var attrib in item.Value.Values)
                 {
+                    if(attrib.Value.Count > 1000)
+                    {
+                        logger.LogInformation($"Too many values {item.Key} {attrib.Key} {attrib.Value.Count}");
+                        attrib.Value.Clear();
+                        continue;
+                    }
                     foreach (var val in attrib.Value.Keys)
                     {
                         if (val is string x)
@@ -581,6 +587,7 @@ public class ItemBreakDown
         Flatten.Remove("item_durability");
         Flatten.Remove("compact_blocks");
         Flatten.Remove("farmed_cultivating");
+        Flatten.Remove("uniqueId");
         foreach (var attrib in Flatten.OrderBy(x => x.Key).ToList())
         {
             if (!Constants.AttributeKeys.Contains(attrib.Key))
@@ -594,7 +601,7 @@ public class ItemBreakDown
         Flatten.Remove("boss_tier");
 
         Flatten.Remove("champion_combat_xp");
-        foreach (var item in Flatten.Where(f => f.Key.EndsWith(".uuid") || f.Key.EndsWith("_gem") || f.Key.EndsWith("_0")).ToList())
+        foreach (var item in Flatten.Where(f => f.Key.EndsWith(".uuid") || f.Key.EndsWith("_gem") || f.Key.EndsWith("_0") || f.Key.EndsWith("_1") || f.Key.EndsWith("_2")).ToList())
         {
             Flatten.Remove(item.Key);
         }
