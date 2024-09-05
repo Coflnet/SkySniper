@@ -2929,7 +2929,7 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.Tag = "TERROR_CHESTPLATE";
             highestValAuction.FlatenedNBT = new() { { "mana_pool", "3" } };
             highestValAuction.HighestBidAmount = 2_000_000;
-            AddVolume(highestValAuction, 10);
+            AddVolume(highestValAuction, refCount);
             var withLifeline = Dupplicate(highestValAuction);
             withLifeline.FlatenedNBT["lifeline"] = "1";
             withLifeline.FlatenedNBT["mana_pool"] = "2";

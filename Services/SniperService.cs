@@ -1070,6 +1070,7 @@ ORDER BY l.`AuctionId`  DESC;
                     .Where(k => k.Value.Price < limitedPrice && k.Value.Price != 0
                             && !k.Key.Modifiers.Any(m => m.Key == "virtual")
                             && k.Value.OldestRef >= oldestDay // only relevant if price dropped recently
+                            && k.Value.DeduplicatedReferenceCount > 3 && k.Value.Price > limitedPrice / 20
                             && IsHigherValue(keyCombo.tag, keyCombo.key, k.Key) && k.Key.Reforge == keyCombo.key.Key.Reforge)
                     .OrderBy(b => b.Value.Price).Select(b => b.Value.Price).FirstOrDefault(limitedPrice);
                 if (cheaperHigherValue != default && cheaperHigherValue < limitedPrice)
