@@ -319,12 +319,13 @@ namespace Coflnet.Sky.Sniper.Services
             logger.LogInformation("loading aote from db");
             var id = ItemDetails.Instance.GetItemIdForTag(targetTag);
             if (totalStart == default)
-                totalStart = DateTime.UtcNow - TimeSpan.FromDays(300);
+                totalStart = DateTime.UtcNow - TimeSpan.FromDays(100);
 
             var samples = new List<SaveAuction>();
-            for (var start = totalStart; start < DateTime.UtcNow; start += TimeSpan.FromDays(10))
+            var tickSize =  TimeSpan.FromDays(2);
+            for (var start = totalStart; start < DateTime.UtcNow; start += tickSize)
             {
-                var end = start + TimeSpan.FromDays(10);
+                var end = start + tickSize;
                 samples.AddRange(await LoadpartialBatch(context, id, start, end, stoppinToken, samples));
                 if (samples.Count > 5000)
                 {
