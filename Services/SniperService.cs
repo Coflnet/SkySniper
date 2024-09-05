@@ -1502,7 +1502,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         public KeyWithValueBreakdown GetBreakdownKey(AuctionKey key, string tag)
         {
-            var virtualAuction = new SaveAuction() { Reforge = key.Reforge, Tier = key.Tier, Tag = tag, Count = key.Count };
+            var virtualAuction = new SaveAuction() { Reforge = key.Reforge, Tier = key.Tier, Tag = tag, Count = key.Count, FlatenedNBT = key.Modifiers.ToDictionary() };
             var capped = CapKeyLength(key.Enchants.ToList(), key.Modifiers.ToList(), virtualAuction, 0);
             return Constructkey(virtualAuction, [.. key.Enchants], key.Modifiers.ToList(), capped.includeReforge, capped.valueSubstracted, capped.ranked, key.Tier);
         }
@@ -1769,7 +1769,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (mod.Key == "rarity_upgrades" && sum == 0)
             {
                 if (Random.Shared.NextDouble() < 0.01)
-                    deferred.Log($"Rarity upgrade missing price {JsonConvert.SerializeObject(flatNbt)}\n{JsonConvert.SerializeObject(items)} {Environment.StackTrace}");
+                    deferred.Log($"Rarity upgrade missing price {JsonConvert.SerializeObject(flatNbt)}\n{JsonConvert.SerializeObject(items)} ");
                 sum += 8_000_000;
             }
             if (mod.Key == "hotpc")
@@ -2885,7 +2885,8 @@ ORDER BY l.`AuctionId`  DESC;
                 if (lowestLbin > 10_000_000_000)
                 {
                     Activity.Current.Log($"Reduced because no higher value lbin");
-                    percentile = Math.Min(percentile, targetPrice * 9 / 10);
+                    percentile = Math.Min(percentile, targetPrice * 17 / 18);
+                    props["noHigherLbin"] = percentile.ToString();
                 }
                 var reduced = CapAtCraftCost(auction.Tag, percentile, breakdown, 0);
                 if (reduced > 0)
