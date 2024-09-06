@@ -1720,9 +1720,9 @@ ORDER BY l.`AuctionId`  DESC;
                 sum += (GetPriceForItem("IMPLOSION_SCROLL") + GetPriceForItem("SHADOW_WARP_SCROLL") + GetPriceForItem("WITHER_SHIELD_SCROLL")) / 3 * int.Parse(mod.Value);
             }
             if (mod.Key == "winning_bid")
-                sum += (int)(float.Parse(mod.Value) * 8_000_000);
+                sum += (int)(float.Parse(mod.Value) * 10_000_000);
             if (mod.Key == "full_bid")
-                sum += (int)(float.Parse(mod.Value) * 45_000_000);
+                sum += (int)(float.Parse(mod.Value) * 48_000_000);
             // early return if we have a value before estimates
             if (sum > 0 || mod.Key == null)
                 return new RankElem(mod, sum);

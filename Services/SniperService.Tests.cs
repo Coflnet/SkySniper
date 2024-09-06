@@ -1508,7 +1508,7 @@ namespace Coflnet.Sky.Sniper.Services
             TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
-            Assert.That(estimate.TargetPrice, Is.EqualTo(18_000_000), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That(estimate.TargetPrice, Is.EqualTo(7_200_000), JsonConvert.SerializeObject(estimate.AdditionalProps));
         }
         [Test]
         public void PriceCappedAtHigherWinningBid()
