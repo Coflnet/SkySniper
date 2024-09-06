@@ -951,6 +951,8 @@ namespace Coflnet.Sky.Sniper.Services
             service.TestNewAuction(auction);
 
             Assert.That(500_000, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
+            var price = service.GetPrice(auction);
+            Assert.That(price.Median, Is.EqualTo(503_333));
         }
 
         [Test]

@@ -603,17 +603,17 @@ ORDER BY l.`AuctionId`  DESC;
             var missingModifiers = closest.Key.Modifiers.Where(m => !itemKey.Modifiers.Contains(m)).ToList();
             if (missingModifiers.Count > 0)
             {
-                long median = GetPriceSumForModifiers(missingModifiers, itemKey.Modifiers, auction);
-                median += AdjustForAttributes(result.Median, itemKey, missingModifiers, auction);
-                if (median != 0)
+                long toSubstract = GetPriceSumForModifiers(missingModifiers, itemKey.Modifiers, auction, true);
+                toSubstract += AdjustForAttributes(result.Median, itemKey, missingModifiers, auction);
+                if (toSubstract != 0)
                 {
-                    return (median, $"- {string.Join(",", missingModifiers.Select(m => m.Value))}");
+                    return (toSubstract, $"- {string.Join(",", missingModifiers.Select(m => m.Value))}");
                 }
             }
             return (0, string.Empty);
         }
 
-        private long GetPriceSumForModifiers(List<KeyValuePair<string, string>> missingModifiers, IEnumerable<KeyValuePair<string, string>> modifiers, SaveAuction auction)
+        private long GetPriceSumForModifiers(List<KeyValuePair<string, string>> missingModifiers, IEnumerable<KeyValuePair<string, string>> modifiers, SaveAuction auction, bool calculate = false)
         {
             if (missingModifiers == null)
                 return 0;
@@ -630,6 +630,8 @@ ORDER BY l.`AuctionId`  DESC;
                     deferred.Log($"Missing modifier value {m.Key} {m.Value} {auction.Uuid}");
                     return 4_000_000_000; // not found potentially very valuable
                 }
+                if(calculate && elem.IsEstimate)
+                    return elem.Value / 20;
                 return elem.Value;
             }).Sum();
         }
@@ -1775,6 +1777,17 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (mod.Key == "hotpc")
                 sum += 3_000_000;
+            if (mod.Key == "new_years_cake")
+                sum += int.Parse(mod.Value) switch {
+                    < 20 => 20_000_000,
+                    69 => 10_000_000,
+                    < 120 => 2_000_000,
+                    _ => 600_000,
+                };
+            if (mod.Key == "party_hat_emoji")
+                sum += 8_000_000;
+            if (mod.Key == "edition")
+                sum += 8_000_000;
             return new RankElem(mod, sum)
             {
                 IsEstimate = true
