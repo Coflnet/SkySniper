@@ -82,33 +82,6 @@ namespace Coflnet.Sky.Sniper.Services
             found = new List<LowPricedAuction>();
             service.FoundSnipe += found.Add;
         }
-        //[Test] disable for closest to clean test
-        public void UsesLbinFirst()
-        {
-            var found = new List<LowPricedAuction>();
-            service.FoundSnipe += found.Add;
-            service.State = SniperState.Ready;
-
-            AddVolume(highestValAuction);
-            service.AddSoldItem(Dupplicate(firstAuction));
-
-
-            service.TestNewAuction(firstAuction);
-            Assert.That(1000, Is.EqualTo(found.First().TargetPrice));
-            Assert.That(LowPricedAuction.FinderType.SNIPER_MEDIAN, Is.EqualTo(found.First().Finder));
-            service.FinishedUpdate();
-            service.TestNewAuction(secondAuction);
-            var flip = found.Skip(2).First();
-            Assert.That(900, Is.EqualTo(flip.TargetPrice));
-            Assert.That(LowPricedAuction.FinderType.SNIPER, Is.EqualTo(flip.Finder));
-            // first is sold
-            service.AddSoldItem(firstAuction);
-            service.TestNewAuction(secondAuction);
-            Assert.That(LowPricedAuction.FinderType.STONKS, Is.EqualTo(found.Last().Finder));
-            Assert.That(LowPricedAuction.FinderType.SNIPER_MEDIAN, Is.EqualTo(found.AsEnumerable().Reverse().Skip(1).First().Finder));
-            Assert.That(810, Is.EqualTo(found.Last().TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
-        }
-
 
         /// <summary>
         /// Checks that sold auction is removed from lbin list
