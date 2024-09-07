@@ -630,7 +630,7 @@ ORDER BY l.`AuctionId`  DESC;
                     deferred.Log($"Missing modifier value {m.Key} {m.Value} {auction.Uuid}");
                     return 4_000_000_000; // not found potentially very valuable
                 }
-                if(calculate && elem.IsEstimate)
+                if (calculate && elem.IsEstimate)
                     return elem.Value / 20;
                 return elem.Value;
             }).Sum();
@@ -953,7 +953,7 @@ ORDER BY l.`AuctionId`  DESC;
                     if (limitedPrice == 0)
                     {
                         logger.LogWarning($"Price capped {keyCombo.tag} -> {limitedPrice}  {keyCombo.key} {medianPrice} {bucket.Price}");
-                        limitedPrice = 10;
+                        limitedPrice = 11;
                     }
                     medianPrice = limitedPrice;
                     if (medianPrice < 0)
@@ -1231,8 +1231,9 @@ ORDER BY l.`AuctionId`  DESC;
                             lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value.Price) :
                              lookup.Lookup.Values.Where(v => v.Price > 0).Select(v => v.Price)).ToList();
             var count = select.Count;
+            var median = select.DefaultIfEmpty(0).OrderBy(v => v).Skip(count / 3).FirstOrDefault();
             // 2nd percentile to skip low volume outliers on complex items
-            var minValue = select.DefaultIfEmpty(0).OrderBy(v => v).Skip(count / 50).FirstOrDefault();
+            var minValue = select.DefaultIfEmpty(0).Where(o => o > median / 20).OrderBy(v => v).Skip(count / 50).FirstOrDefault();
             return minValue;
         }
 
@@ -1778,7 +1779,8 @@ ORDER BY l.`AuctionId`  DESC;
             if (mod.Key == "hotpc")
                 sum += 3_000_000;
             if (mod.Key == "new_years_cake")
-                sum += int.Parse(mod.Value) switch {
+                sum += int.Parse(mod.Value) switch
+                {
                     < 20 => 20_000_000,
                     69 => 10_000_000,
                     < 120 => 2_000_000,
