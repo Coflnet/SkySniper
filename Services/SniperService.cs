@@ -2249,6 +2249,7 @@ ORDER BY l.`AuctionId`  DESC;
                     "skin" => auction.Tag.StartsWith("PET") ? 0.5 : 0.4,
                     "ultimate_fatal_tempo" => 0.65,
                     "rarity_upgrades" => 0.5,
+                    "upgrade_level" => 0.8,
                     _ => 0.85
                 } * v.Value)).Sum();
                 var combined = componentSum + cleanCost;
