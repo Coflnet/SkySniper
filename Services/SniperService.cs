@@ -2220,6 +2220,7 @@ ORDER BY l.`AuctionId`  DESC;
             var topAttrib = basekey.ValueBreakdown.FirstOrDefault();
             if (topAttrib != default)
             {
+                medPrice = auction.StartingBid * 1.06 + itemGroupTag.Item2;
                 CheckCombined(auction, lookup, lbinPrice, medPrice, basekey, topAttrib);
                 CheckLowerKeyFull(auction, lookup, lbinPrice, medPrice, basekey, l);
             }
