@@ -925,7 +925,7 @@ ORDER BY l.`AuctionId`  DESC;
             var monthSpan = deduplicated.Where(d => d.Day >= GetDay() - 30).ToList();
             var longSpanPrice = monthSpan.Count switch
             {
-                > 20 => GetMedian(monthSpan.Where(d => d.Day >= GetDay() - 10).ToList(), cleanPriceLookup),
+                > 24 => GetMedian(monthSpan.Where(d => d.Day >= GetDay() - 10).ToList(), cleanPriceLookup),
                 > 5 => GetMedian(monthSpan, cleanPriceLookup),
                 _ => GetMedian(deduplicated.Take(29).ToList(), cleanPriceLookup)
             };
@@ -1315,6 +1315,11 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static long GetMedian(List<ReferencePrice> deduplicated, Dictionary<short, long> cleanPricePerDay)
         {
+            if (deduplicated.Count == 0)
+            {
+                // can get here if there are no sells in the last 10 days in a bucket that has more than 20 in the last month (sus, so no median is fine)
+                return 0;
+            }
             var today = cleanPricePerDay?.GetValueOrDefault(GetDay()) ?? cleanPricePerDay?.GetValueOrDefault((short)(GetDay() - 1)) ?? 0;
             return (long)deduplicated
                 .OrderByDescending(b => SelectAdjustedPrice(cleanPricePerDay, b, today))
