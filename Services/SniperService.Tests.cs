@@ -83,6 +83,12 @@ namespace Coflnet.Sky.Sniper.Services
             service.FoundSnipe += found.Add;
         }
 
+        [TearDown]
+        public void TearDown()
+        {
+            SniperService.MIN_TARGET = 200_000;
+        }
+
         /// <summary>
         /// Checks that sold auction is removed from lbin list
         /// </summary>

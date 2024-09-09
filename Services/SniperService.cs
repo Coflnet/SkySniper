@@ -2876,7 +2876,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return false;
             var percentile = long.MaxValue;
 
-            if (bucket.Price == 0 || bucket.Volume < 20)
+            if (bucket.Price == 0 || bucket.Volume < 10)
             {
                 // check for 80th percentile from references
                 var subsetSize = 20;
@@ -2898,7 +2898,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var allReferences = higherValueKeys.SelectMany(x => x.Value.References).ToList();
                 var referencePrice = allReferences
                                 .Select(r => r.Price).OrderBy(p => p).Skip(allReferences.Count / 4)
-                                .DefaultIfEmpty(targetPrice / 4).Min();
+                                .DefaultIfEmpty(targetPrice / 4).Min() * Math.Max(1, allReferences.Count / 20);
                 if (bucket.Price == 0 && bucket.References.Count > 2 && higherValueKeys.Count <= 2) // manip indicator
                 {
                     percentile /= 5;
