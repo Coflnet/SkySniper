@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Coflnet.Sky.Core;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
 
 namespace Coflnet.Sky.Sniper.Controllers;
 [ApiController]
@@ -29,5 +30,14 @@ public class AuctionController : ControllerBase
         var uid = AuctionService.Instance.GetId(auctionUuid);
         var auction = db.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments).FirstOrDefault(a => a.UId == uid);
         return service.KeyFromSaveAuction(auction);
+    }
+
+    [Route("relevantItems")]
+    [HttpGet]
+    public List<string> GetRelevantItems()
+    {
+        return service.Lookups.Where(l => l.Value.Lookup.Any(i => i.Value.Price > 12_000_000 && l.Value.Lookup.Count > 3))
+            .OrderByDescending(l=>l.Value.Lookup.Sum(i=>i.Value.Price * i.Value.Volume))
+            .Select(l => l.Key).ToList();
     }
 }
