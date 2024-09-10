@@ -21,7 +21,7 @@ public class DropOffTests
     [SetUp]
     public void Setup()
     {
-        var path = "Mock/boots.json";
+        SniperService.StartTime = new DateTime(2021, 9, 25);
         if (loaded == null)
         {
             loaded = File.ReadAllText("Mock/boots.json");
@@ -89,6 +89,30 @@ public class DropOffTests
         sniperService.State = SniperState.Ready;
         sniperService.TestNewAuction(testAuction);
         Assert.That(found.All(f => f.TargetPrice < 8_550_000), JsonConvert.SerializeObject(found, Formatting.Indented));
+    }
+    [TestCase(9, 55999039)]
+    [TestCase(10, 58332333)]
+    public void SniperEstimate(byte volumeOverride, long target)
+    {
+        PriceLookup converted = LoadLookupMock("potato-talisman.json");
+        SniperService.StartTime += TimeSpan.FromDays(10000);
+        sniperService.AddLookupData("POTATO_TALISMAN", converted);
+        var testAuction = new SaveAuction()
+        {
+            Tag = "POTATO_TALISMAN",
+            FlatenedNBT = new(),
+            StartingBid = 900_000,
+            HighestBidAmount = 0,
+            UId = 4,
+            AuctioneerId = "12aaa",
+            Tier = Tier.COMMON,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        converted.Lookup.Where(l => l.Key.Modifiers.Count == 0).First().Value.Volume = volumeOverride;
+        sniperService.TestNewAuction(testAuction);
+        var sniper = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
+        sniper.TargetPrice.Should().Be(target);
     }
 
     [Test]
