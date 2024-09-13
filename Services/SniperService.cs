@@ -952,6 +952,10 @@ ORDER BY l.`AuctionId`  DESC;
                 var breakdown = keyCombo.key.ValueBreakdown;
                 long limitedPrice = CapAtCraftCost(keyCombo.tag, medianPrice, keyCombo.key, bucket.Price);
                 var craftCostCap = limitedPrice;
+                if(limitedPrice == 0)
+                {
+                    limitedPrice = medianPrice;
+                }
                 // check higher value keys for lower price 
                 limitedPrice = CapPriceAtHigherLevelKey(keyCombo, limitedPrice);
                 if (limitedPrice != bucket.Price)
