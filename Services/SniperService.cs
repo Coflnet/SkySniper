@@ -2488,7 +2488,6 @@ ORDER BY l.`AuctionId`  DESC;
                 var countDiffPrice = countDiff * targetPrice / closest.Key.Count;
                 targetPrice -= countDiffPrice;
                 props.Add("countDiff", $"{countDiff} ({countDiffPrice})");
-                logger.LogInformation($"Adjusting target price due to count diff {countDiff} {countDiffPrice} {targetPrice}");
             }
             // adjust price of reforge 
             if (closest.Key.Reforge != auction.Reforge)
@@ -2501,7 +2500,6 @@ ORDER BY l.`AuctionId`  DESC;
                     closestItemCost = 2_000_000; // estimated cost for missing items
                 }
                 var reforgeDifference = closestItemCost + closestDetails.Item2 - (GetCostForItem(auctionDetails.Item1) - auctionDetails.Item2) / 2;
-                logger.LogInformation($"Adjusting target price due to reforge {closestDetails.Item1} {closestDetails.Item2} {auctionDetails.Item1} {auctionDetails.Item2} {reforgeDifference}");
                 targetPrice -= reforgeDifference;
                 props.Add("reforge", $"{closest.Key.Reforge} -> {auction.Reforge} ({reforgeDifference})");
             }
