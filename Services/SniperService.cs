@@ -951,13 +951,14 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var breakdown = keyCombo.key.ValueBreakdown;
                 long limitedPrice = CapAtCraftCost(keyCombo.tag, medianPrice, keyCombo.key, bucket.Price);
+                var craftCostCap = limitedPrice;
                 // check higher value keys for lower price 
                 limitedPrice = CapPriceAtHigherLevelKey(keyCombo, limitedPrice);
                 if (limitedPrice != bucket.Price)
                 {
                     if (limitedPrice == 0)
                     {
-                        logger.LogWarning($"Price capped {keyCombo.tag} -> {limitedPrice}  {keyCombo.key} {medianPrice} {bucket.Price}");
+                        logger.LogWarning($"Price capped {keyCombo.tag} -> {limitedPrice} ({craftCostCap}) {keyCombo.key.Key} {medianPrice} {bucket.Price}");
                         limitedPrice = 11;
                     }
                     medianPrice = limitedPrice;
