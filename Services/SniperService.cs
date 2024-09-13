@@ -952,7 +952,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var breakdown = keyCombo.key.ValueBreakdown;
                 long limitedPrice = CapAtCraftCost(keyCombo.tag, medianPrice, keyCombo.key, bucket.Price);
                 var craftCostCap = limitedPrice;
-                if(limitedPrice == 0)
+                if (limitedPrice == 0)
                 {
                     limitedPrice = medianPrice;
                 }
@@ -2948,6 +2948,7 @@ ORDER BY l.`AuctionId`  DESC;
                                                 && other.Value.Any(c => new char[] { ' ', ',' }.Contains(c))
                                             )
                                             && MatchesTierBoostOrLowerTier(baseKey, toCheck, m))
+                                                || InvertedValueKey.Contains(m.Key) && !toCheck.Modifiers.Any(other => other.Key == m.Key)
                                             )
                     && baseKey.Enchants.All(e => toCheck.Enchants.Any(other => other.Type == e.Type && other.Lvl >= e.Lvl));
 

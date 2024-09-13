@@ -76,7 +76,7 @@ namespace Coflnet.Sky.Sniper.Services
             SniperService.StartTime = new DateTime(2021, 9, 25);
             craftCost = new CraftCostMock();
             // console logger
-            var factory =  LoggerFactory.Create(builder => builder.AddConsole());
+            var factory = LoggerFactory.Create(builder => builder.AddConsole());
             service = new SniperService(new(null, null), null, factory.CreateLogger<SniperService>(), craftCost);
 
             found = new List<LowPricedAuction>();
@@ -658,7 +658,7 @@ namespace Coflnet.Sky.Sniper.Services
         {
             var higherValue = Dupplicate(highestValAuction);
             higherValue.Tag = "PET_LION";
-            higherValue.FlatenedNBT = new() { { "exp", "27000000" } };
+            higherValue.FlatenedNBT = new() { { "exp", "27000000" }, { "candyUsed", "0" } };
             higherValue.HighestBidAmount = 20_000_000;
             AddVolume(higherValue);
             TestNewAuction(higherValue);
@@ -1251,7 +1251,7 @@ namespace Coflnet.Sky.Sniper.Services
                 {
                     foreach (var item in lookup.Value.Lookup)
                     {
-                        service.UpdateMedian(item.Value,(lookup.Key, service.GetBreakdownKey(item.Key, lookup.Key)));
+                        service.UpdateMedian(item.Value, (lookup.Key, service.GetBreakdownKey(item.Key, lookup.Key)));
                     }
                 }
             }
@@ -1334,7 +1334,7 @@ namespace Coflnet.Sky.Sniper.Services
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
             Assert.That(estimate.TargetPrice, Is.EqualTo(targetEstimate), "should half estimated value for tier difference");
-            Assert.That($"{tier} -> RARE ({epic.HighestBidAmount * 0.9 -targetEstimate})", Is.EqualTo(estimate.AdditionalProps["tierVal"]));
+            Assert.That($"{tier} -> RARE ({epic.HighestBidAmount * 0.9 - targetEstimate})", Is.EqualTo(estimate.AdditionalProps["tierVal"]));
         }
         [Test]
         public void PartiallyAddsEnchants()
