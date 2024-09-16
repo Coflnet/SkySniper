@@ -150,6 +150,8 @@ namespace Coflnet.Sky.Sniper.Services
             {"mana_regeneration", 2},
             {"mending", 3},
             {"dominance", 3},
+            {"trophy_hunter", 5},
+            {"fisherman", 5},
             {"magic_find", 2},
             {"veteran", 4},
             {"lifeline", 3} // low volume but valuable
@@ -1823,21 +1825,12 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (auction.Tag == null)
                 return ench;
-            if (auction.Tag.Contains("GAUNTLET") || auction.Tag.Contains("DRILL"))
-                ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.ultimate_wise);
-            if (auction.Tag.StartsWith("DIVAN_"))
-            {
-                ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.ultimate_legion);
-                ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.ultimate_wisdom);
-            }
-            if (!auction.Tag.EndsWith("KATANA"))
-                ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.ender_slayer, 6);
             if (itemService?.IsDungeonItemSync(auction.Tag) ?? false)
                 ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.scavenger);
-            if (auction.Tag == "STONK_PICKAXE")
-                ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.efficiency, 6);
-            if (auction.Tag.StartsWith("PROMISING_"))
-                ench = RemoveEnchantFromKey(ench, Enchantment.EnchantmentType.efficiency);
+            foreach (var item in mapper.IrrelevantOn(auction.Tag))
+            {
+                ench = RemoveEnchantFromKey(ench, item.Item1, item.level);
+            }
             return ench;
         }
 
@@ -2245,7 +2238,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
 
             var componentGuess = basekey.ValueBreakdown.Sum(c => c.IsEstimate ? -long.MaxValue / 20 : c.Value);
-            if (componentGuess > medPrice / 4) // no need to check if sum is too low
+            if (componentGuess > medPrice / 8) // no need to check if sum is too low
             {
                 var valueLookup = basekey.ValueBreakdown.ToDictionary(v =>
                 {
