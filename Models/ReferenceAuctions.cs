@@ -44,6 +44,8 @@ namespace Coflnet.Sky.Sniper.Models
         [IgnoreMember]
         [JsonIgnore]
         public short DeduplicatedReferenceCount;
+        [IgnoreMember]
+        public long RiskyEstimate;
 
         private float _volume;
         [IgnoreMember]

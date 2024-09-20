@@ -700,7 +700,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(highestValAuction);
             highestValAuction.HighestBidAmount = 5000;
             service.TestNewAuction(highestValAuction);
-            Assert.That(1000000, Is.EqualTo(found.Last().TargetPrice));
+            Assert.That(1000000, Is.EqualTo(found.Last(f=>f.Finder != LowPricedAuction.FinderType.STONKS).TargetPrice));
         }
         [Test]
         public void CapValueAtCraftCostRecombobulator()

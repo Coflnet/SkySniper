@@ -960,6 +960,18 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 // check higher value keys for lower price 
                 limitedPrice = CapPriceAtHigherLevelKey(keyCombo, limitedPrice);
+
+                if (size > 40)
+                {
+                    var riskyLongTerm = GetMedian(monthSpan.Where(d => d.Day >= GetDay() - 10).ToList(), cleanPriceLookup, 3f);
+                    var riskyShort = GetMedian(monthSpan.Where(d => d.Day >= GetDay() - 2).ToList(), cleanPriceLookup, 3f);
+                    var marketManipLimit = limitedPrice * 4 / 3 + 1_000_000;
+                    bucket.RiskyEstimate = Math.Min(Math.Min(riskyShort, riskyLongTerm), marketManipLimit);
+                }
+                else
+                {
+                    bucket.RiskyEstimate = limitedPrice;
+                }
                 if (limitedPrice != bucket.Price)
                 {
                     if (limitedPrice == 0)
@@ -1320,7 +1332,7 @@ ORDER BY l.`AuctionId`  DESC;
             return (GetOrAdd(key, lookup), key);
         }
 
-        private static long GetMedian(List<ReferencePrice> deduplicated, Dictionary<short, long> cleanPricePerDay)
+        private static long GetMedian(List<ReferencePrice> deduplicated, Dictionary<short, long> cleanPricePerDay, float skipAdjust = 2)
         {
             if (deduplicated.Count == 0)
             {
@@ -1330,7 +1342,7 @@ ORDER BY l.`AuctionId`  DESC;
             var today = cleanPricePerDay?.GetValueOrDefault(GetDay()) ?? cleanPricePerDay?.GetValueOrDefault((short)(GetDay() - 1)) ?? 0;
             return (long)deduplicated
                 .OrderByDescending(b => SelectAdjustedPrice(cleanPricePerDay, b, today))
-                .Skip(deduplicated.Count / 2)
+                .Skip((int)(deduplicated.Count / skipAdjust))
                 .Select(b => SelectAdjustedPrice(cleanPricePerDay, b, today))
                 .First();
 
@@ -2648,6 +2660,15 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 addProps?.Invoke(props);
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, adjustedMedianPrice + extraValue + expValue, props);
+            }
+            if (medianPrice - auction.StartingBid < 2_000_000 && bucket.RiskyEstimate > minMedPrice)
+            {
+                var referenceAuctionId = bucket.References.LastOrDefault().AuctionId;
+                var props = CreateReference(referenceAuctionId, key, extraValue, bucket);
+                AddMedianSample(bucket.References, props);
+                addProps?.Invoke(props);
+                props.Add("riskyEst", "true");
+                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.STONKS, bucket.RiskyEstimate + extraValue + expValue, props);
             }
             else
             {
