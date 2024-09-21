@@ -245,6 +245,12 @@ public class MedianCalcTests
         service.FinishedUpdate();
         Assert.That(flips.First(f => f.Finder == LowPricedAuction.FinderType.STONKS).TargetPrice, Is.EqualTo(27700000));
         Assert.That(bucket.RiskyEstimate, Is.EqualTo(27700000));
+        var dupplicate = bare.Dupplicate();
+        flips.Clear();
+        service.TestNewAuction(dupplicate);
+        service.FinishedUpdate();
+        // max 5% over lbin
+        Assert.That(flips.First(f => f.Finder == LowPricedAuction.FinderType.STONKS).TargetPrice, Is.EqualTo(23100000));
     }
 
     [Test]

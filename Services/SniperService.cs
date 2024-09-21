@@ -2661,14 +2661,18 @@ ORDER BY l.`AuctionId`  DESC;
                 addProps?.Invoke(props);
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, adjustedMedianPrice + extraValue + expValue, props);
             }
-            if (medianPrice - auction.StartingBid < 2_000_000 && bucket.RiskyEstimate > minMedPrice)
+            if (medianPrice - auction.StartingBid < 2_000_000 && bucket.RiskyEstimate > minMedPrice
+                && (bucket.Lbin.AuctionId == default || bucket.Lbin.Price * 1.05 > lbinPrice))
             {
                 var referenceAuctionId = bucket.References.LastOrDefault().AuctionId;
                 var props = CreateReference(referenceAuctionId, key, extraValue, bucket);
                 AddMedianSample(bucket.References, props);
                 addProps?.Invoke(props);
                 props.Add("riskyEst", "true");
-                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.STONKS, bucket.RiskyEstimate + extraValue + expValue, props);
+                var target = bucket.RiskyEstimate + extraValue + expValue;
+                if (bucket.Lbin.Price != 0)
+                    target = (long)Math.Min(target, bucket.Lbin.Price * 1.05);
+                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.STONKS, target, props);
             }
             else
             {
