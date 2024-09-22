@@ -20,6 +20,9 @@
     <PackageReference Include="JWT" Version="10.1.1" />
     <PackageReference Include="Coflnet.Sky.Crafts.Client" Version="0.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="8.0.8" />
+    <PackageReference Include="Microsoft.ML" Version="3.0.1" />
+    <PackageReference Include="Microsoft.ML.FastTree" Version="3.0.1" />
+    <PackageReference Include="Microsoft.ML.TensorFlow" Version="3.0.1" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
