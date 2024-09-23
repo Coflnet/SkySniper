@@ -98,6 +98,7 @@ namespace Coflnet.Sky.Sniper.Services
             "yogsKilled", // yog armor
             "mined_crops", // eg THEORETICAL_HOE_WARTS_3
             "blocksBroken", // promising (pick)axe
+            "collected_coins", // crown of avarice
             "ethermerge",
             "edition", // great spook stuff
             "hpc", // hot potato books
@@ -1819,6 +1820,8 @@ ORDER BY l.`AuctionId`  DESC;
                 sum += 8_000_000;
             if (mod.Key == "edition")
                 sum += 8_000_000;
+            if(mod.Key == "collected_coins")
+                sum += 10_000_000 * int.Parse(mod.Value) +1;
             return new RankElem(mod, sum)
             {
                 IsEstimate = true
@@ -1994,6 +1997,8 @@ ORDER BY l.`AuctionId`  DESC;
                 return NormalizeNumberTo(s, 500_000_000);
             if (s.Key == "blocksBroken")
                 return NormalizeNumberTo(s, 20_000, 2);
+            if(s.Key == "collected_coins")
+                return NormalizeGroupNumber(s, 100_000_000, 1_000_000_000);
             if (s.Key == "candyUsed")
             {
                 var expAmount = GetNumeric(flatten.FirstOrDefault(f => f.Key == "exp"));

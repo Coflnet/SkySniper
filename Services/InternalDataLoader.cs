@@ -428,6 +428,7 @@ namespace Coflnet.Sky.Sniper.Services
                     }
                 }
             }
+            logger.LogInformation("updated all median");
         }
 
         private async Task LoadSellsBatch(int batchSize, int batchStart, CancellationToken stoppinToken)
@@ -467,7 +468,7 @@ namespace Coflnet.Sky.Sniper.Services
         /// <returns></returns>
         public bool ShouldAuctionBeIncluded(SaveAuction item, ConcurrentQueue<ReferencePrice> references)
         {
-            return references.Select(d => d.Day).DefaultIfEmpty(default).Min() < SniperService.GetDay(item.End) || references.Count < 12;
+            return references.Select(d => d.Day).DefaultIfEmpty(default).Min() < SniperService.GetDay(item.End) || references.Count < 15;
         }
 
         private async Task ActiveUpdater(CancellationToken stoppingToken)
