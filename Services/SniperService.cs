@@ -953,6 +953,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (keyCombo != default)
             {
                 var breakdown = keyCombo.key.ValueBreakdown;
+                var volatMedian = medianPrice;
                 long limitedPrice = CapAtCraftCost(keyCombo.tag, medianPrice, keyCombo.key, bucket.Price);
                 var craftCostCap = limitedPrice;
                 if (limitedPrice == 0)
@@ -977,7 +978,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (limitedPrice == 0)
                     {
-                        logger.LogWarning($"Price capped {keyCombo.tag} -> {limitedPrice} ({craftCostCap}) {keyCombo.key.Key} {medianPrice} {bucket.Price}");
+                        logger.LogWarning($"Price capped {keyCombo.tag} -> {limitedPrice} ({craftCostCap}) {keyCombo.key.Key} {medianPrice} {bucket.Price} - {volatMedian} {shortTermPrice} {longSpanPrice}");
                         limitedPrice = 11;
                     }
                     medianPrice = limitedPrice;
