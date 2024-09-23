@@ -2908,15 +2908,14 @@ namespace Coflnet.Sky.Sniper.Services
         public async Task CombineWithClosestKeyToGetMedian(int refCount, int expectedEstimate)
         {
             highestValAuction.Tag = "TERROR_CHESTPLATE";
-            highestValAuction.FlatenedNBT = new() { { "mana_pool", "3" } };
+            highestValAuction.FlatenedNBT = new() { { "mana_pool", "3" }, {"lifeline","1"} };
             highestValAuction.HighestBidAmount = 2_000_000;
             AddVolume(highestValAuction, refCount);
-            var withLifeline = Dupplicate(highestValAuction);
-            withLifeline.FlatenedNBT["lifeline"] = "1";
-            withLifeline.FlatenedNBT["mana_pool"] = "2";
-            withLifeline.HighestBidAmount = 40_000_000;
-            AddVolume(withLifeline, refCount);
-            var test = Dupplicate(withLifeline);
+            var lowerLevel = Dupplicate(highestValAuction);
+            lowerLevel.FlatenedNBT["mana_pool"] = "2";
+            lowerLevel.HighestBidAmount = 40_000_000;
+            AddVolume(lowerLevel, refCount);
+            var test = Dupplicate(lowerLevel);
             test.FlatenedNBT["mana_pool"] = "3";
             test.HighestBidAmount = 1_900_000;
             TestNewAuction(test);

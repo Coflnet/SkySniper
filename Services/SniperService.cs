@@ -2315,12 +2315,16 @@ ORDER BY l.`AuctionId`  DESC;
                 similar = l.ToList();
             }
             var targetVolume = 11;
+            if(lookup.Lookup.TryGetValue(topKey, out var topBucket) && topBucket.References.Count >= targetVolume)
+            {
+                return; // enough references in previous check
+            }
             var relevant = similar.Where(e => IsHigherValue(auction.Tag, e.Key, topKey)
                                 && e.Key.Reforge == topKey.Reforge)
                 .OrderByDescending(e => e.Key.Modifiers.Count + e.Key.Enchants.Count)
-                .ThenByDescending(e => e.Key.Similarity(fullKey.Key, this, ComparisonValue(fullKey.Key.Enchants, fullKey.Key.Modifiers.ToList(), GetAuctionGroupTag(auction.Tag).tag, null).ToList(), fullKey.ValueBreakdown))
+                .ThenByDescending(e => ComparisonValue(e.Key.Enchants, e.Key.Modifiers.ToList(), GetAuctionGroupTag(auction.Tag).tag, null).Sum(s=>s.Value))
                 .ToList();
-            if (relevant.Count < 2 || relevant.First().Value.References.Count > targetVolume)
+            if (relevant.Count < 2)
             {
                 return; // makes only sense if there is something combined
             }

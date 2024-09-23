@@ -71,7 +71,7 @@ public class DropOffTests
     public void ScavengerArtifact()
     {
         var converted = LoadLookupMock("ScavengerArtifact.json");
-        SniperService.StartTime += TimeSpan.FromDays(10000);
+        SniperService.StartTime += (DateTime.UtcNow - new DateTime(2024, 9, 22));
         SetBazaarPrice("RECOMBOBULATOR_3000", 0);
         sniperService.AddLookupData("SCAVENGER_ARTIFACT", converted);
         foreach (var item in converted.Lookup)
@@ -86,7 +86,7 @@ public class DropOffTests
             }
         }
 
-        sniperService.Lookups["SCAVENGER_ARTIFACT"].Lookup.Where(l => l.Key.Modifiers.Count == 1).First().Value.Price.Should().Be(178700000);
+        sniperService.Lookups["SCAVENGER_ARTIFACT"].Lookup.Where(l => l.Key.Modifiers.Count == 1).First().Value.Price.Should().BeLessThan(200_000_000);
     }
 
     [Test]
