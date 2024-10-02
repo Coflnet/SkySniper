@@ -745,7 +745,7 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(found.Last().TargetPrice, Is.EqualTo(44787250), "should target at craft cost");
             Assert.That(found.Last().Finder, Is.EqualTo(LowPricedAuction.FinderType.CraftCost));
             found.Last().AdditionalProps["breakdown"].Should()
-                .Match("{\"ethermerge\":16100000,\"aoteStone\":10000000,\"rarity_upgrades\":8200000,\"art_of_war_count\":8200000,\"hotpc\":7685000}");
+                .Match("{\"ethermerge\":16100000,\"aote_stone\":10000000,\"rarity_upgrades\":8200000,\"art_of_war_count\":8200000,\"hotpc\":7685000}");
         }
 
         [Test]
