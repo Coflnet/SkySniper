@@ -1832,7 +1832,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (mod.Key == "edition")
                 sum += 8_000_000;
             if (mod.Key == "collected_coins")
-                sum += 10_000_000 * int.Parse(mod.Value) + 1;
+                sum += 100_000_000 * int.Parse(mod.Value) + 1_000_000;
             return new RankElem(mod, sum)
             {
                 IsEstimate = true
