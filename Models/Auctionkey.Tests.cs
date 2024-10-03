@@ -663,8 +663,8 @@ public class AuctionkeyTests
         key.ValueBreakdown.First().Modifier.Key.Should().Be("blocksBroken");
         key.ValueBreakdown.Count.Should().Be(1);
     }
-    [TestCase(100_020_000, 121_000_000)]
-    [TestCase(1_000_000_000, 1201_000_000)]
+    [TestCase(100_020_000, 201_000_000)]
+    [TestCase(1_000_000_000, 2001_000_000)]
     public void CollectedCoinsScaleExponentially(int value, long valuation)
     {
         var auction = new SaveAuction()

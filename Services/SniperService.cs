@@ -1832,7 +1832,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (mod.Key == "edition")
                 sum += 8_000_000;
             if (mod.Key == "collected_coins")
-                sum += 100_000_000 * int.Parse(mod.Value) + 1_000_000;
+                sum += (long)(20_000_000 * Math.Pow(10, int.Parse(mod.Value)) + 1_000_000);
             return new RankElem(mod, sum)
             {
                 IsEstimate = true
@@ -2315,14 +2315,14 @@ ORDER BY l.`AuctionId`  DESC;
                 similar = l.ToList();
             }
             var targetVolume = 11;
-            if(lookup.Lookup.TryGetValue(topKey, out var topBucket) && topBucket.References.Count >= targetVolume)
+            if (lookup.Lookup.TryGetValue(topKey, out var topBucket) && topBucket.References.Count >= targetVolume)
             {
                 return; // enough references in previous check
             }
             var relevant = similar.Where(e => IsHigherValue(auction.Tag, e.Key, topKey)
                                 && e.Key.Reforge == topKey.Reforge)
                 .OrderByDescending(e => e.Key.Modifiers.Count + e.Key.Enchants.Count)
-                .ThenByDescending(e => ComparisonValue(e.Key.Enchants, e.Key.Modifiers.ToList(), GetAuctionGroupTag(auction.Tag).tag, null).Sum(s=>s.Value))
+                .ThenByDescending(e => ComparisonValue(e.Key.Enchants, e.Key.Modifiers.ToList(), GetAuctionGroupTag(auction.Tag).tag, null).Sum(s => s.Value))
                 .ToList();
             if (relevant.Count < 2)
             {
