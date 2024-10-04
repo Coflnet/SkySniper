@@ -1459,7 +1459,6 @@ ORDER BY l.`AuctionId`  DESC;
 
             (valueSubstracted, removedRarity, shouldIncludeReforge, rankElems) = CapKeyLength(enchants, modifiers, auction);
 
-
             if (enchants == null)
                 enchants = new List<Models.Enchant>();
             var tier = auction.Tier;
@@ -1974,6 +1973,8 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 return Ignore;
             }
+            if (s.Key == "color" && (flattenedNbt.ContainsKey("dye_item") || itemService.GetDefaultColorAndCategory(tag).color == s.Value.Replace(':', ',')))
+                return Ignore;
             return s;
         }
 

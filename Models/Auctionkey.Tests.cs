@@ -675,6 +675,30 @@ public class AuctionkeyTests
         key.ValueBreakdown.First().Value.Should().Be(valuation);
     }
     [Test]
+    public async Task DropDefaultColor()
+    {
+        await itemService.GetItemsAsync();
+        var auction = new SaveAuction()
+        {
+            FlatenedNBT = new() { { "color", "0:0:255" } },
+            Tag = "LAPIS_ARMOR_LEGGINGS"
+        };
+        var key = service.ValueKeyForTest(auction);
+        key.Key.Modifiers.Count.Should().Be(0);
+    }
+    [Test]
+    public void DropColorIfDyeItem()
+    {
+        var auction = new SaveAuction()
+        {
+            FlatenedNBT = new() { { "color", "0:0:255" }, { "dye_item", "TEST" } },
+            Tag = "LAPIS_ARMOR_LEGGINGS"
+        };
+        SetBazaarPrice("TEST", 200_000);
+        var key = service.ValueKeyForTest(auction);
+        key.Key.Modifiers.Count.Should().Be(0);
+    }
+    [Test]
     public void ValueAssignedtoRecombobulator()
     {
         var price = Random.Shared.Next(1_000_000, 10_000_000);
