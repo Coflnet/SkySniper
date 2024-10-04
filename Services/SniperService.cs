@@ -3061,7 +3061,7 @@ ORDER BY l.`AuctionId`  DESC;
             var refAge = (GetDay() - bucket.OldestRef);
             if (bucket.OldestRef != 0 && (refAge > 60 || State < SniperState.FullyLoaded && refAge > 5))
             {
-                Activity.Current.Log("References too old");
+                Activity.Current.Log($"References too old {refAge} {State}");
                 return false; // too old
             }
             props["refAge"] = refAge.ToString();
