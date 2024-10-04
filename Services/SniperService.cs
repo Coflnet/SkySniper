@@ -3059,7 +3059,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (targetPrice < MIN_TARGET || targetPrice < auction.StartingBid * 1.03)
                 return false; // to low
             var refAge = (GetDay() - bucket.OldestRef);
-            if (bucket.OldestRef != 0 && (refAge > 60 || State < SniperState.FullyLoaded && refAge > 5))
+            if (bucket.OldestRef != 0 && (refAge > 60 && IsNotClean(auction) || State < SniperState.FullyLoaded && refAge > 5))
             {
                 Activity.Current.Log($"References too old {refAge} {State}");
                 return false; // too old
@@ -3100,6 +3100,11 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 return targetPrice < auction.StartingBid * 10;
             }
+        }
+
+        private static bool IsNotClean(SaveAuction auction)
+        {
+            return auction.Enchantments.Count > 0 || auction.FlatenedNBT.Any(f => !f.Key.Contains("uid"));
         }
 
         private static Dictionary<string, string> CreateReference(long reference, AuctionKey key, long extraValue, ReferenceAuctions bucket)
