@@ -700,7 +700,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(highestValAuction);
             highestValAuction.HighestBidAmount = 5000;
             service.TestNewAuction(highestValAuction);
-            Assert.That(1000000, Is.EqualTo(found.Last(f=>f.Finder != LowPricedAuction.FinderType.STONKS).TargetPrice));
+            Assert.That(1000000, Is.EqualTo(found.Last(f => f.Finder != LowPricedAuction.FinderType.STONKS).TargetPrice));
         }
         [Test]
         public void CapValueAtCraftCostRecombobulator()
@@ -746,6 +746,20 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(found.Last().Finder, Is.EqualTo(LowPricedAuction.FinderType.CraftCost));
             found.Last().AdditionalProps["breakdown"].Should()
                 .Match("{\"ethermerge\":16100000,\"aote_stone\":10000000,\"rarity_upgrades\":8200000,\"art_of_war_count\":8200000,\"hotpc\":7685000}");
+        }
+
+        [Test]
+        public void CraftCostOfRunesNotInflated()
+        {
+            var auction = highestValAuction.Dupplicate();
+            auction.Tag = "UNIQUE_RUNE_GRAND_FREEZING";
+            auction.FlatenedNBT = new() { { "RUNE_GRAND_FREEZING", "3" } };
+            auction.HighestBidAmount = 45_000_000;
+            AddVolume(auction);
+            auction.HighestBidAmount = 10;
+            TestNewAuction(auction);
+            var craftCost = found.Last(f => f.Finder == LowPricedAuction.FinderType.CraftCost);
+            Assert.That(craftCost.TargetPrice, Is.EqualTo(45_000_000), "should target at craft cost" + JsonConvert.SerializeObject(craftCost, Formatting.Indented));
         }
 
         [Test]
@@ -2908,7 +2922,7 @@ namespace Coflnet.Sky.Sniper.Services
         public async Task CombineWithClosestKeyToGetMedian(int refCount, int expectedEstimate)
         {
             highestValAuction.Tag = "TERROR_CHESTPLATE";
-            highestValAuction.FlatenedNBT = new() { { "mana_pool", "3" }, {"lifeline","1"} };
+            highestValAuction.FlatenedNBT = new() { { "mana_pool", "3" }, { "lifeline", "1" } };
             highestValAuction.HighestBidAmount = 2_000_000;
             AddVolume(highestValAuction, refCount);
             var lowerLevel = Dupplicate(highestValAuction);
