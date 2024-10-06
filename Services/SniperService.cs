@@ -203,7 +203,7 @@ namespace Coflnet.Sky.Sniper.Services
         public void FinishedUpdate()
         {
             ProcessLbins();
-            var removeBefore = DateTime.UtcNow.AddHours(-3);
+            var removeBefore = DateTime.UtcNow.AddMinutes(-10);
             foreach (var item in HigherValueLbinMapLookup.Where(c => c.Value.addedAt < removeBefore).ToList())
             {
                 HigherValueLbinMapLookup.TryRemove(item.Key, out _);
