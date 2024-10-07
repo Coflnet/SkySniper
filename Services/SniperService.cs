@@ -2298,6 +2298,7 @@ ORDER BY l.`AuctionId`  DESC;
                 "ultimate_fatal_tempo" => 0.65,
                 "rarity_upgrades" => 0.5,
                 "upgrade_level" => 0.8,
+                "talisman_enrichment" => 0.10,
                 _ => 0.85
             } * v.Value)).Sum();
             if (cleanCost == componentGuess)
