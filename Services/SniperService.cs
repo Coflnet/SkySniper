@@ -1856,6 +1856,8 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 ench = RemoveEnchantFromKey(ench, item.Item1, item.level);
             }
+            if (auction.Tag.StartsWith("ENCHANTED_BOOK_BUNDLE_"))
+                ench = new(); // book bundles themselfs are equivilient to the enchants
             return ench;
         }
 

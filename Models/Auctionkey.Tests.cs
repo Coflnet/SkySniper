@@ -675,6 +675,19 @@ public class AuctionkeyTests
         key.ValueBreakdown.First().Value.Should().Be(valuation);
     }
     [Test]
+    public async Task DropEnchantmentsFromBundle()
+    {
+        await itemService.GetItemsAsync();
+        var auction = new SaveAuction()
+        {
+            FlatenedNBT = new() ,
+            Enchantments = new() { new(EnchantmentType.ultimate_the_one, 4) },
+            Tag = "ENCHANTED_BOOK_BUNDLE_THE_ONE"
+        };
+        var key = service.ValueKeyForTest(auction);
+        key.Key.Enchants.Count.Should().Be(0);
+    }
+    [Test]
     public async Task DropDefaultColor()
     {
         await itemService.GetItemsAsync();
