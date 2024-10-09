@@ -750,6 +750,8 @@ ORDER BY l.`AuctionId`  DESC;
                 foreach (var item in loadedVal.Lookup)
                 {
                     item.Value.References = new ConcurrentQueue<ReferencePrice>(item.Value.References.Where(r => r.Price > 0).OrderBy(r => r.Day));
+                    if (item.Key.Count == 0 && item.Key.Tier == Tier.UNKNOWN && item.Value.References.Count == 0)
+                        continue;
                     loadedVal.Lookup[item.Key] = item.Value;
                 }
                 return loadedVal;
@@ -760,6 +762,8 @@ ORDER BY l.`AuctionId`  DESC;
                     if (!value.Lookup.TryGetValue(item.Key, out ReferenceAuctions existingBucket))
                     {
                         item.Value.References = new ConcurrentQueue<ReferencePrice>(item.Value.References.Where(r => r.Price > 0).OrderBy(r => r.Day));
+                        if (item.Key.Count == 0 && item.Key.Tier == Tier.UNKNOWN && item.Value.References.Count == 0)
+                            continue;
                         value.Lookup[item.Key] = item.Value;
                         continue;
                     }
@@ -2530,6 +2534,8 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var countDiff = closest.Key.Count - auction.Count;
                 var countDiffPrice = countDiff * targetPrice / closest.Key.Count;
+                if (countDiff < 0)
+                    countDiffPrice /= 2; // only half for adding items
                 targetPrice -= countDiffPrice;
                 props.Add("countDiff", $"{countDiff} ({countDiffPrice})");
             }
