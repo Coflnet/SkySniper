@@ -1786,7 +1786,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (mod.Key == "mined_crops")
                 sum += 13_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
             if (mod.Key == "color")
-                sum += 10_000_000;
+                sum += 50_000_000; // if its default its removed
             if (mod.Key == "blocksBroken")
                 sum += 1_000_000 * (int)Math.Pow(2, int.Parse(mod.Value));
             if (Constants.AttributeKeys.Contains(mod.Key))
