@@ -56,7 +56,7 @@ public class CraftCostService : BackgroundService, ICraftCostService
                 if (craft.Type == "carpentry")
                     Costs[craft.ItemId] = Math.Min(craft.CraftCost, 10_000);
                 if (craft.ItemId.EndsWith("DESK"))
-                    logger.LogInformation("Cost for " + craft.ItemId + " is " + craft.CraftCost);
+                    logger.LogInformation($"Cost for { craft.ItemId} is {craft.CraftCost}, set to {Costs[craft.ItemId]} {craft.Type}");
             }
             logger.LogInformation("Updated craft costs for " + all.Count + " items");
             await Task.Delay(TimeSpan.FromHours(1), stoppingToken);

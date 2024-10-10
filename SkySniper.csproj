@@ -15,11 +15,11 @@
 
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.S3" Version="3.7.403.6" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.404.4" />
     <PackageReference Include="Coflnet.Sky.Mayor.Client" Version="0.3.2" />
     <PackageReference Include="JWT" Version="10.1.1" />
     <PackageReference Include="Coflnet.Sky.Crafts.Client" Version="0.3.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="8.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="8.0.10" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Release'">

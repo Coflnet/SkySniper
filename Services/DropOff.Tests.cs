@@ -17,6 +17,15 @@ public class DropOffTests
     string loaded = null;
     SniperService sniperService;
     List<LowPricedAuction> found;
+    private class MockCraftCostService : ICraftCostService
+    {
+        public Dictionary<string, double> Costs { get; } = new();
+        public bool TryGetCost(string itemId, out double cost)
+        {
+            return Costs.TryGetValue(itemId, out cost);
+        }
+    }
+    private ICraftCostService craftCostService = new MockCraftCostService();
 
     [SetUp]
     public void Setup()
@@ -26,7 +35,7 @@ public class DropOffTests
         {
             loaded = File.ReadAllText("Mock/boots.json");
         }
-        sniperService = new SniperService(new(null, null), null, NullLogger<SniperService>.Instance, null);
+        sniperService = new SniperService(new(null, null), null, NullLogger<SniperService>.Instance, craftCostService);
         var parsed = JsonConvert.DeserializeObject<LookupLoad>(loaded);
         var xy =
                 parsed.Lookup.Where(l => l.Key.Contains("BLACK")).ToDictionary(l => ParseKey(l), l => l.Value);
@@ -87,6 +96,27 @@ public class DropOffTests
         }
 
         sniperService.Lookups["SCAVENGER_ARTIFACT"].Lookup.Where(l => l.Key.Modifiers.Count == 1).First().Value.Price.Should().BeLessThan(200_000_000);
+    }
+    [Test]
+    public void DeskMedian()
+    {
+        var converted = LoadLookupMock("DESK.json");
+        SniperService.StartTime += (DateTime.UtcNow - new DateTime(2024, 10, 10)) - TimeSpan.FromDays(10_000);
+        sniperService.AddLookupData("DESK", converted);
+        craftCostService.Costs["DESK"] = 10_000;
+        foreach (var item in converted.Lookup)
+        {
+            try
+            {
+                sniperService.UpdateMedian(item.Value, ("DESK", sniperService.GetBreakdownKey(item.Key, "DESK")));
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+        }
+
+        sniperService.Lookups["DESK"].Lookup.Where(l => l.Key.Count == 1).First().Value.Price.Should().Be(36_000);
     }
 
     [Test]

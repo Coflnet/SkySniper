@@ -936,7 +936,8 @@ ORDER BY l.`AuctionId`  DESC;
                 > 5 => GetMedian(monthSpan, cleanPriceLookup),
                 _ => GetMedian(deduplicated.Take(29).ToList(), cleanPriceLookup)
             };
-            if (deduplicated.All(d => d.Day >= GetDay()))
+            var today = GetDay();
+            if (deduplicated.All(d => d.Day >= today))
             {
                 // all prices are from today, use 25th percentile instead
                 longSpanPrice = deduplicated.OrderBy(d => d.Price).Take((int)Math.Max(deduplicated.Count() * 0.25, 1)).Max(d => d.Price);
@@ -2723,8 +2724,6 @@ ORDER BY l.`AuctionId`  DESC;
 
             void LogNonFlip(SaveAuction auction, ReferenceAuctions bucket, AuctionKey key, long extraValue, float volume, long medianPrice, string v = null)
             {
-                if (auction.UId % 10 == 0)
-                    Console.Write("p");
                 if (volume == 0 || bucket.Lbin.Price == 0 || bucket.Price == 0 || bucket.Price > MIN_TARGET)
                     Logs.Enqueue(new LogEntry()
                     {
