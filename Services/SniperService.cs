@@ -706,8 +706,8 @@ ORDER BY l.`AuctionId`  DESC;
             if (!newBucket.References.Contains(toChange))
                 newBucket.References.Enqueue(toChange);
 
-            UpdateMedian(oldBucket);
-            UpdateMedian(newBucket);
+            UpdateMedian(oldBucket, (GetAuctionGroupTag(tag).tag, GetBreakdownKey(from, tag)));
+            UpdateMedian(newBucket, (GetAuctionGroupTag(toTag).tag, GetBreakdownKey(to, tag)));
         }
 
         public IEnumerable<long> GetReferenceUids(SaveAuction auction)
@@ -1016,6 +1016,10 @@ ORDER BY l.`AuctionId`  DESC;
                         logger.LogInformation($"Adjusted for count {keyCombo.tag} -> {medianPrice}  {keyWithNoEnchants} - {keyCombo.Item2.Key}");
                     }
                 }
+            }
+            else
+            {
+                logger.LogWarning($"No key combo {bucket.Price} {bucket.References.First().AuctionId}");
             }
             if (isCleanitem)
             {
@@ -2854,7 +2858,7 @@ ORDER BY l.`AuctionId`  DESC;
                 });
                 if (bucket.Price == 0)
                     bucket.Price = (long)itemPrice;
-                UpdateMedian(bucket);
+                UpdateMedian(bucket, default);
                 CapBucketSize(bucket);
 
                 // make sure higher enchants are higher value
