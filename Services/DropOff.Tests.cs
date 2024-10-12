@@ -101,13 +101,14 @@ public class DropOffTests
     public void DeskMedian()
     {
         var converted = LoadLookupMock("DESK.json");
-        SniperService.StartTime += (DateTime.UtcNow - new DateTime(2024, 10, 10)) - TimeSpan.FromDays(10_000);
+        SniperService.StartTime += -TimeSpan.FromDays(10_000);
         sniperService.AddLookupData("DESK", converted);
-        craftCostService.Costs["DESK"] = 10_000;
         foreach (var item in converted.Lookup)
         {
             try
             {
+                sniperService.UpdateMedian(item.Value, ("DESK", sniperService.GetBreakdownKey(item.Key, "DESK")));
+                craftCostService.Costs["DESK"] = 10_000;
                 sniperService.UpdateMedian(item.Value, ("DESK", sniperService.GetBreakdownKey(item.Key, "DESK")));
             }
             catch (Exception e)
@@ -115,8 +116,9 @@ public class DropOffTests
                 Console.WriteLine(e);
             }
         }
-
-        sniperService.Lookups["DESK"].Lookup.Where(l => l.Key.Count == 1).First().Value.Price.Should().Be(36_000);
+        var desk = sniperService.Lookups["DESK"].Lookup.Where(l => l.Key.Count == 1).First();
+        Console.WriteLine(string.Join(',', converted.Lookup.Keys.Select(k => k.ToString())) + " " + desk.Value.Price);
+        desk.Value.Price.Should().Be(36_000);
     }
 
     [Test]

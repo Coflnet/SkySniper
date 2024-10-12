@@ -979,22 +979,21 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     bucket.RiskyEstimate = limitedPrice;
                 }
-                if (limitedPrice != bucket.Price)
+
+                if (limitedPrice == 0)
                 {
-                    if (limitedPrice == 0)
-                    {
-                        logger.LogWarning($"Price capped {keyCombo.tag} -> {limitedPrice} ({craftCostCap}) {keyCombo.key.Key} {medianPrice} {bucket.Price} - {volatMedian} {shortTermPrice} {longSpanPrice}");
-                        limitedPrice = 11;
-                    }
-                    medianPrice = limitedPrice;
-                    if (medianPrice < 0)
-                    {
-                        logger.LogWarning($"Negative price {keyCombo.tag} -> {limitedPrice}  {keyCombo.key} {medianPrice} {bucket.Price}");
-                    }
-                    else
-                        bucket.Price = medianPrice;
-                    return;
+                    logger.LogWarning($"Price capped {keyCombo.tag} -> {limitedPrice} ({craftCostCap}) {keyCombo.key.Key} {medianPrice} {bucket.Price} - {volatMedian} {shortTermPrice} {longSpanPrice}");
+                    limitedPrice = 11;
                 }
+                medianPrice = limitedPrice;
+                if (medianPrice < 0)
+                {
+                    logger.LogWarning($"Negative price {keyCombo.tag} -> {limitedPrice}  {keyCombo.key} {medianPrice} {bucket.Price}");
+                }
+                else
+                    bucket.Price = medianPrice;
+                // return;
+
 
                 var keyWithNoEnchants = new AuctionKey(keyCombo.Item2)
                 {

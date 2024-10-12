@@ -16,6 +16,7 @@ public class MedianCalcTests
     public void Setup()
     {
         service = new SniperService(null, null, NullLogger<SniperService>.Instance, null);
+        SniperService.StartTime = new DateTime(2021, 9, 25);
     }
     [Test]
     public void LargeData()
@@ -70,7 +71,7 @@ public class MedianCalcTests
             Uuid = random.Next().ToString(),
             End = DateTime.Now - TimeSpan.FromDays(1),
         };
-        for (int i = 0; i < 5; i++)
+        for (int i = 1; i < 6; i++)
         {
             var copy = auction.Dupplicate();
             copy.Bids = new() { new SaveBids() { Bidder = random.Next().ToString(), Amount = i * 1000 } };
