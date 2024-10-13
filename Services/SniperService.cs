@@ -2761,6 +2761,8 @@ ORDER BY l.`AuctionId`  DESC;
                     var expValue = (long)(perExp * (exp - 1 - accountedExp));
                     if (exp > 11_600_000 && expValue > 0) // only block upwards price changes
                         return 0; // bad effect with so many exp
+                    if (exp > 8_000_000 && expValue > 0)
+                        return expValue / 2; // graceful reduce
                     return expValue;
                 }
 

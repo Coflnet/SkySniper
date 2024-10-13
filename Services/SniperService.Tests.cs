@@ -2214,7 +2214,7 @@ namespace Coflnet.Sky.Sniper.Services
 
 
         [TestCase(4300000, 4821272)]
-        [TestCase(8400000, 5468132)]
+        [TestCase(8400000, 5234066)]
         [TestCase(20_400000, 5_000_000)]
         public void MedianAdjustForBucketExpDiff(int exp, int expectedPrice)
         {
