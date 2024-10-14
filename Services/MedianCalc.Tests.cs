@@ -85,7 +85,7 @@ public class MedianCalcTests
             copy.HighestBidAmount = 5000000;
             service.AddSoldItem(copy);
         }
-        Assert.That(2000, Is.EqualTo(service.Lookups.First().Value.Lookup.First().Value.Price));
+        Assert.That(3000, Is.EqualTo(service.Lookups.First().Value.Lookup.First().Value.Price));
     }
 
     [Test]

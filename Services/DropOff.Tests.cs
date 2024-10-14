@@ -120,6 +120,20 @@ public class DropOffTests
         Console.WriteLine(string.Join(',', converted.Lookup.Keys.Select(k => k.ToString())) + " " + desk.Value.Price);
         desk.Value.Price.Should().Be(36_000);
     }
+    [Test]
+    public void ScarfUnderValue()
+    {
+        var converted = LoadLookupMock("SCARF.json");
+        SniperService.StartTime += -TimeSpan.FromDays(10_000);
+        sniperService.AddLookupData("SCARF", converted);
+        foreach (var item in converted.Lookup)
+        {
+            sniperService.UpdateMedian(item.Value, ("SCARF", sniperService.GetBreakdownKey(item.Key, "SCARF")));
+        }
+        var desk = sniperService.Lookups["SCARF"].Lookup.Where(l => l.Key.Count == 1 && l.Key.Modifiers.Count == 0).First();
+        Console.WriteLine(string.Join(',', converted.Lookup.Keys.Select(k => k.ToString())) + " " + desk.Value.Price);
+        desk.Value.Price.Should().Be(1300000);
+    }
 
     [Test]
     public void Manip()

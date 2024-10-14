@@ -1108,10 +1108,12 @@ ORDER BY l.`AuctionId`  DESC;
                             && k.Value.OldestRef >= oldestDay // only relevant if price dropped recently
                             && k.Value.DeduplicatedReferenceCount > 3 && k.Value.Price > limitedPrice / 20
                             && IsHigherValue(keyCombo.tag, keyCombo.key, k.Key) && k.Key.Reforge == keyCombo.key.Key.Reforge)
-                    .OrderBy(b => b.Value.Price).Select(b => b.Value.Price).FirstOrDefault(limitedPrice);
-                if (cheaperHigherValue != default && cheaperHigherValue < limitedPrice)
+                    .OrderBy(b => b.Value.Price).FirstOrDefault();
+                if (cheaperHigherValue.Value != default 
+                    && cheaperHigherValue.Key != keyCombo.key.Key
+                    && cheaperHigherValue.Value.Price < limitedPrice)
                 {
-                    limitedPrice = cheaperHigherValue;
+                    limitedPrice = cheaperHigherValue.Value.Price;
                 }
 
                 return limitedPrice;
