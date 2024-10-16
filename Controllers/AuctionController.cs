@@ -37,7 +37,16 @@ public class AuctionController : ControllerBase
     public List<string> GetRelevantItems()
     {
         return service.Lookups.Where(l => l.Value.Lookup.Any(i => i.Value.Price > 12_000_000 && l.Value.Lookup.Count > 3))
-            .OrderByDescending(l=>l.Value.Lookup.Sum(i=>i.Value.Price * i.Value.Volume))
+            .OrderByDescending(l => l.Value.Lookup.Sum(i => i.Value.Price * i.Value.Volume))
             .Select(l => l.Key).ToList();
+    }
+
+    [Route("lbins")]
+    [HttpGet]
+    public Dictionary<string, ReferencePrice> GetLowestBins()
+    {
+        return service.Lookups.Where(l => l.Value.Lookup.Any(li => li.Value.Lbins.Count > 0))
+            .ToDictionary(l => l.Key, l => l.Value.Lookup.Select(i => i.Value.Lbin)
+                                            .Where(i => i.Price > 0).MinBy(i => i.Price));
     }
 }
