@@ -117,22 +117,51 @@ public class DropOffTests
             }
         }
         var desk = sniperService.Lookups["DESK"].Lookup.Where(l => l.Key.Count == 1).First();
-        Console.WriteLine(string.Join(',', converted.Lookup.Keys.Select(k => k.ToString())) + " " + desk.Value.Price);
         desk.Value.Price.Should().Be(36_000);
     }
     [Test]
     public void ScarfUnderValue()
     {
         var converted = LoadLookupMock("SCARF.json");
-        SniperService.StartTime += -TimeSpan.FromDays(10_000);
+        SniperService.StartTime += -TimeSpan.FromDays(10_000) + (DateTime.UtcNow - new DateTime(2024, 10, 14));
         sniperService.AddLookupData("SCARF", converted);
         foreach (var item in converted.Lookup)
         {
             sniperService.UpdateMedian(item.Value, ("SCARF", sniperService.GetBreakdownKey(item.Key, "SCARF")));
         }
-        var desk = sniperService.Lookups["SCARF"].Lookup.Where(l => l.Key.Count == 1 && l.Key.Modifiers.Count == 0).First();
-        Console.WriteLine(string.Join(',', converted.Lookup.Keys.Select(k => k.ToString())) + " " + desk.Value.Price);
-        desk.Value.Price.Should().Be(1300000);
+        var scarf = sniperService.Lookups["SCARF"].Lookup.Where(l => l.Key.Count == 1 && l.Key.Modifiers.Count == 0).First();
+        scarf.Value.Price.Should().Be(1300000);
+    }
+    /// <summary>
+    /// Real world example, craft cost did not use the correct clean price
+    /// </summary>
+    [Test]
+    public void PickaxeCraftCost()
+    {
+        var converted = LoadLookupMock("Pickaxe.json");
+        SniperService.StartTime += -TimeSpan.FromDays(10_000) + (DateTime.UtcNow - new DateTime(2024, 10, 17));
+        sniperService.AddLookupData("DIAMOND_PICKAXE", converted);
+        foreach (var item in converted.Lookup)
+        {
+            sniperService.UpdateMedian(item.Value, ("DIAMOND_PICKAXE", sniperService.GetBreakdownKey(item.Key, "DIAMOND_PICKAXE")));
+        }
+        SetBazaarPrice("SIL_EX", 5_500_000);
+        var testAuction = new SaveAuction()
+        {
+            Tag = "DIAMOND_PICKAXE",
+            FlatenedNBT = [],
+            Enchantments = [new Enchantment() { Type = Enchantment.EnchantmentType.efficiency, Level = 10 }],
+            StartingBid = 900_000,
+            HighestBidAmount = 0,
+            UId = 4,
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(testAuction);
+        var pickaxe = found.First(f => f.Finder == LowPricedAuction.FinderType.CraftCost);
+        pickaxe.TargetPrice.Should().Be(23475000L);
     }
 
     [Test]

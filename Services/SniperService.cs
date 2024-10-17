@@ -1274,12 +1274,13 @@ ORDER BY l.`AuctionId`  DESC;
         private static long GetCleanItemPrice(string tag, KeyWithValueBreakdown key, PriceLookup lookup)
         {
             var select = (NBT.IsPet(tag) ?
-                            lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value.Price) :
-                             lookup.Lookup.Values.Where(v => v.Price > 0).Select(v => v.Price)).ToList();
+                            lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value) :
+                             lookup.Lookup.Values.Where(v => v.Price > 0)).ToList();
             var count = select.Count;
-            var median = select.DefaultIfEmpty(0).OrderBy(v => v).Skip(count / 3).FirstOrDefault();
+            var median = select.Select(v=>v.Price).DefaultIfEmpty(0).OrderBy(v => v).Skip(count / 3).FirstOrDefault();
             // 2nd percentile to skip low volume outliers on complex items
-            var minValue = select.DefaultIfEmpty(0).Where(o => o > median / 20).OrderBy(v => v).Skip(count / 50).FirstOrDefault();
+            var minValue = select.Where(o => o.Price > median / 20 || o.References.Count > 60).Select(o=>o.Price)
+                        .OrderBy(v => v).Skip(count / 50).DefaultIfEmpty(0).FirstOrDefault();
             return minValue;
         }
 
