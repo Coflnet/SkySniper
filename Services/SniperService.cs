@@ -1109,7 +1109,7 @@ ORDER BY l.`AuctionId`  DESC;
                             && k.Value.DeduplicatedReferenceCount > 3 && k.Value.Price > limitedPrice / 20
                             && IsHigherValue(keyCombo.tag, keyCombo.key, k.Key) && k.Key.Reforge == keyCombo.key.Key.Reforge)
                     .OrderBy(b => b.Value.Price).FirstOrDefault();
-                if (cheaperHigherValue.Value != default 
+                if (cheaperHigherValue.Value != default
                     && cheaperHigherValue.Key != keyCombo.key.Key
                     && cheaperHigherValue.Value.Price < limitedPrice)
                 {
@@ -1161,10 +1161,19 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static (byte, long) GetVolatility(PriceLookup lookup, ReferenceAuctions bucket, long shortTermPrice, long longTerm)
         {
-            var oldMedian = GetMedian(bucket.References.AsEnumerable().Reverse().Take(5).ToList(), lookup?.CleanPricePerDay);
+            var oldMedian = GetMedian(bucket.References.AsEnumerable().Take(5).ToList(), lookup?.CleanPricePerDay);
             var secondNewestMedian = 0L;
             if (bucket.References.Count > 8)
-                secondNewestMedian = GetMedian(bucket.References.AsEnumerable().Skip(5).Take(5).ToList(), lookup?.CleanPricePerDay);
+            {
+                var secondSample = bucket.References.AsEnumerable().Reverse().Skip(5).Take(5).ToList();
+                secondNewestMedian = GetMedian(secondSample, lookup?.CleanPricePerDay);
+            }
+            var thirdMedian = 0L;
+            if (bucket.References.Count > 11)
+            {
+                var thirdSample = bucket.References.AsEnumerable().Reverse().Skip(9).Take(4).ToList();
+                thirdMedian = GetMedian(thirdSample, lookup?.CleanPricePerDay);
+            }
             var medianList = new float[] { oldMedian, secondNewestMedian, longTerm, shortTermPrice }.OrderByDescending(m => m).ToList();
             var mean = medianList.Average();
             medianList = medianList.Select(m => m / mean).ToList();
@@ -1173,10 +1182,10 @@ ORDER BY l.`AuctionId`  DESC;
             var volatility = Math.Sqrt(variance);
             var volatilityReduced = (byte)Math.Clamp(volatility * 100, -120, 120);
             var newMedian = Math.Min(shortTermPrice, longTerm);
-            if (IsTrendDownwards(shortTermPrice, longTerm, oldMedian, secondNewestMedian))
+            if (IsTrendDownwards(shortTermPrice, longTerm, thirdMedian, secondNewestMedian))
             {
                 var difference = secondNewestMedian - shortTermPrice;
-                var inPercent = (float)difference / shortTermPrice;
+                var inPercent = (float)difference / secondNewestMedian / 2;
                 if (difference > 0 && newMedian > difference && inPercent < 0.4)
                 {
                     newMedian = newMedian - (long)(newMedian * inPercent);
@@ -1188,7 +1197,7 @@ ORDER BY l.`AuctionId`  DESC;
 
             static bool IsTrendDownwards(long shortTermPrice, long longTerm, long oldMedian, long secondNewestMedian)
             {
-                return oldMedian > shortTermPrice && longTerm > secondNewestMedian && secondNewestMedian > shortTermPrice;
+                return oldMedian > secondNewestMedian && longTerm > shortTermPrice && secondNewestMedian > shortTermPrice;
             }
         }
 
@@ -1277,9 +1286,9 @@ ORDER BY l.`AuctionId`  DESC;
                             lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value) :
                              lookup.Lookup.Values.Where(v => v.Price > 0)).ToList();
             var count = select.Count;
-            var median = select.Select(v=>v.Price).DefaultIfEmpty(0).OrderBy(v => v).Skip(count / 3).FirstOrDefault();
+            var median = select.Select(v => v.Price).DefaultIfEmpty(0).OrderBy(v => v).Skip(count / 3).FirstOrDefault();
             // 2nd percentile to skip low volume outliers on complex items
-            var minValue = select.Where(o => o.Price > median / 20 || o.References.Count > 60).Select(o=>o.Price)
+            var minValue = select.Where(o => o.Price > median / 20 || o.References.Count > 60).Select(o => o.Price)
                         .OrderBy(v => v).Skip(count / 50).DefaultIfEmpty(0).FirstOrDefault();
             return minValue;
         }

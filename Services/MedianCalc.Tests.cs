@@ -101,7 +101,7 @@ public class MedianCalcTests
     {
         ReferenceAuctions bucket = LoadJsonReferences(TerroChestplateSample);
         service.UpdateMedian(bucket);
-        Assert.That(bucket.Price, Is.EqualTo(57500000));
+        Assert.That(bucket.Price, Is.EqualTo(52628738));
     }
 
     [Test]

@@ -1037,9 +1037,9 @@ namespace Coflnet.Sky.Sniper.Services
             AddSell(bucket, 30000000, 5);
             AddSell(bucket, 33400000, 5);
             AddSell(bucket, 31700000, 0);
-            Assert.That(bucket.Price, Is.EqualTo(30566666));
+            Assert.That(bucket.Price, Is.EqualTo(31133333));
             AddSell(bucket, 18500000, 0);
-            Assert.That(bucket.Price, Is.EqualTo(22900000)); // besides the derpy logic also affected by trend adjustment
+            Assert.That(bucket.Price, Is.EqualTo(27300000)); // besides the derpy logic also affected by trend adjustment
 
             void AddSell(ReferenceAuctions bucket, int amount, int daysAgo)
             {
@@ -2357,7 +2357,7 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(metadata["server"], Is.EqualTo(service.ServerDnsName));
             Assert.That(metadata["refAge"], Is.EqualTo("2"));
             Assert.That(metadata["refCount"], Is.EqualTo("9"));
-            Assert.That(metadata["volat"], Is.EqualTo("14"));
+            Assert.That(metadata["volat"], Is.EqualTo("47"));
             Assert.That(metadata["oldRef"], Is.EqualTo("9"));
             Assert.That(metadata["reference"], Is.EqualTo(AuctionService.Instance.GetUuid(sales[9].UId)),
                             string.Join(",", sales.Select(s => AuctionService.Instance.GetUuid(s.UId))));
@@ -2419,9 +2419,9 @@ namespace Coflnet.Sky.Sniper.Services
             }
         }
 
-        [TestCase(10, 20, 15, 23)]
-        [TestCase(20, 20, 5, 74)]
-        [TestCase(2000, 2000, 500, 74)]
+        [TestCase(10, 20, 15, 30)]
+        [TestCase(20, 20, 5, 60)]
+        [TestCase(2000, 2000, 500, 60)]
         [TestCase(20, 20, 19, 2)]
         [TestCase(20, 20, 20, 0)]
         [TestCase(1, 18, 2, 120)]

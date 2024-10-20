@@ -186,6 +186,34 @@ public class DropOffTests
         sniperService.TestNewAuction(testAuction);
         Assert.That(found.All(f => f.TargetPrice < 8_550_000), JsonConvert.SerializeObject(found, Formatting.Indented));
     }
+    /// <summary>
+    /// When price is dropping like for this Travel Scroll the median price should be adjusted downwards
+    /// Context: https://discord.com/channels/267680588666896385/1296462463956680724/1297352116427423795
+    /// </summary>
+    [Test]
+    public void PriceDroppingForwardAdjust()
+    {
+        PriceLookup converted = LoadLookupMock("TravelScroll.json");
+        SniperService.StartTime += TimeSpan.FromDays(10000) + (DateTime.UtcNow - new DateTime(2024, 10, 20));
+        sniperService.UpdateMedian(converted.Lookup.Last().Value);
+        sniperService.AddLookupData("HUB_DA_TRAVEL_SCROLL", converted);
+        var testAuction = new SaveAuction()
+        {
+            Tag = "HUB_DA_TRAVEL_SCROLL",
+            FlatenedNBT = [],
+            StartingBid = 20_900_000,
+            HighestBidAmount = 0,
+            UId = 4,
+            AuctioneerId = "12aaa",
+            Tier = Tier.EPIC,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(testAuction);
+        var medianSnipe = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        medianSnipe.TargetPrice.Should().Be(32_286_162L);
+    }
+
     [TestCase(9, 55999039)]
     [TestCase(10, 58332333)]
     public void SniperEstimate(byte volumeOverride, long target)
