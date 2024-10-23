@@ -762,8 +762,9 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(craftCost.TargetPrice, Is.EqualTo(45_000_000), "should target at craft cost" + JsonConvert.SerializeObject(craftCost, Formatting.Indented));
         }
 
-        [Test]
-        public void CapRuneCraftCostAtCorrectLevel()
+        [TestCase("2", 12_750_000)]
+        [TestCase("3", 38_250_000)] // capped at level 3 (reduced attribute value)
+        public void CapRuneCraftCostAtCorrectLevel(string inputLevel, int targetPrice)
         {
             highestValAuction.Tag = "RUNE_MUSIC";
             var lvl3 = Dupplicate(highestValAuction);
@@ -776,12 +777,12 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(lvl1);
             var sample = Dupplicate(lvl1);
             sample.HighestBidAmount = 0;
-            sample.FlatenedNBT["RUNE_MUSIC"] = "2";
+            sample.FlatenedNBT["RUNE_MUSIC"] = inputLevel;
             sample.StartingBid = 10_000;
             TestNewAuction(sample);
             var craftFind = found.Last(f => f.Finder == LowPricedAuction.FinderType.CraftCost);
             Assert.That(craftFind, Is.Not.Null);
-            Assert.That(craftFind.TargetPrice, Is.EqualTo(12_750_000), "should target at craft cost");
+            Assert.That(craftFind.TargetPrice, Is.EqualTo(targetPrice), "should target at craft cost");
         }
 
         [Test]

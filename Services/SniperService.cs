@@ -659,7 +659,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return new (string, int)[] { (mapper.GetItemKeyForGem(m, flatNbt ?? new()), 1) };
             if (mapper.TryGetIngredients(m.Key, m.Value, null, out var ingredients))
             {
-                return ingredients.Select(i => (i, 1));
+                return ingredients.GroupBy(i=>i).Select(i => (i.Key, i.Count()));
             }
             return EmptyArray;
         }
@@ -1737,9 +1737,15 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (mod.Key.StartsWith("RUNE_"))
                 {
-                    sum += lookup.Lookup.Where(f => f.Value.Price != 0)
+                    var fromlevel1 = lookup.Lookup.Where(f => f.Value.Price != 0)
                         .OrderBy(v => (v.Key.Count + 1) * (v.Key.Modifiers.Count == 0 ? 1 : int.Parse(v.Key.Modifiers.First().Value)))
                         .FirstOrDefault().Value?.Price * item.amount ?? 0;
+                    var matchingLevel = lookup.Lookup.Where(f => f.Value.Price != 0 && f.Key.Modifiers.First().Value == mod.Value)
+                        .Select(f => f.Value.Price).OrderBy(p=>p).FirstOrDefault();
+                    if (matchingLevel != 0 && matchingLevel < fromlevel1)
+                        sum += matchingLevel;
+                    else
+                        sum += fromlevel1;
                     if (tag.Contains("RUNE") && sum < 500_000)
                     {
                         // do not remove rune levels from runes

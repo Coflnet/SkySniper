@@ -203,7 +203,7 @@ public class DropOffTests
             FlatenedNBT = [],
             StartingBid = 20_900_000,
             HighestBidAmount = 0,
-            UId = 4,
+            UId = 1234,
             AuctioneerId = "12aaa",
             Tier = Tier.EPIC,
             Count = 1
