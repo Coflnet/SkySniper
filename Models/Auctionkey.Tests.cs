@@ -712,6 +712,31 @@ public class AuctionkeyTests
         key.Key.Modifiers.Count.Should().Be(0);
     }
     [Test]
+    public void DropWitherEnchantIfExpensiveItem()
+    {
+        var sample = new SaveAuction()
+        {
+            FlatenedNBT = new(),
+            HighestBidAmount = 152_000_000,
+            Tag = "GIANT_SWORD"
+        };
+        service.AddSoldItem(sample.Dupplicate());
+        service.AddSoldItem(sample.Dupplicate());
+        service.AddSoldItem(sample.Dupplicate());
+        service.AddSoldItem(sample.Dupplicate());
+        service.AddSoldItem(sample.Dupplicate());
+        
+        var auction = new SaveAuction()
+        {
+            FlatenedNBT = new() { { "upgrade_level", "5" } },
+            Reforge = ItemReferences.Reforge.withered,
+            Tag = "GIANT_SWORD"
+        };
+        SetBazaarPrice("WITHER_BLOOD", 1_600_000);
+        var key = service.ValueKeyForTest(auction);
+        key.Key.Reforge.Should().Be(ItemReferences.Reforge.Any);
+    }
+    [Test]
     public void ValueAssignedtoRecombobulator()
     {
         var price = Random.Shared.Next(1_000_000, 10_000_000);

@@ -194,7 +194,7 @@ public class DropOffTests
     public void PriceDroppingForwardAdjust()
     {
         PriceLookup converted = LoadLookupMock("TravelScroll.json");
-        SniperService.StartTime += TimeSpan.FromDays(10000) + (DateTime.UtcNow - new DateTime(2024, 10, 20));
+        SniperService.StartTime -= TimeSpan.FromDays(10000) + (DateTime.UtcNow - new DateTime(2024, 10, 20));
         sniperService.UpdateMedian(converted.Lookup.Last().Value);
         sniperService.AddLookupData("HUB_DA_TRAVEL_SCROLL", converted);
         var testAuction = new SaveAuction()
@@ -211,7 +211,7 @@ public class DropOffTests
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(testAuction);
         var medianSnipe = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
-        medianSnipe.TargetPrice.Should().Be(32_286_162L);
+        medianSnipe.TargetPrice.Should().Be(32_286_162L, JsonConvert.SerializeObject(found, Formatting.Indented));
     }
 
     [TestCase(9, 55999039)]
