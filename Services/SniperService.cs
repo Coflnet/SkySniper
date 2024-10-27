@@ -2325,6 +2325,8 @@ ORDER BY l.`AuctionId`  DESC;
                 "rarity_upgrades" => 0.5,
                 "upgrade_level" => 0.8,
                 "talisman_enrichment" => 0.10,
+                var s when s.StartsWith("RUNE_") => 0.55,
+                var s when s.StartsWith("UNIQUE_RUNE_") => 0.55,
                 _ => 0.85
             } * v.Value)).Sum();
             if (cleanCost == componentGuess)

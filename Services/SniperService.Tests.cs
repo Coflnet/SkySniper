@@ -762,8 +762,8 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(craftCost.TargetPrice, Is.EqualTo(45_000_000), "should target at craft cost" + JsonConvert.SerializeObject(craftCost, Formatting.Indented));
         }
 
-        [TestCase("2", 12_750_000)]
-        [TestCase("3", 38_250_000)] // capped at level 3 (reduced attribute value)
+        [TestCase("2", 8_250_000)]
+        [TestCase("3", 24_750_000)] // capped at level 3 (reduced attribute value for applied path)
         public void CapRuneCraftCostAtCorrectLevel(string inputLevel, int targetPrice)
         {
             highestValAuction.Tag = "RUNE_MUSIC";
