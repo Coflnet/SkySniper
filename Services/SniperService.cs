@@ -3059,7 +3059,7 @@ ORDER BY l.`AuctionId`  DESC;
                 };
                 if (l.TryGetValue(lowerCountKey, out ReferenceAuctions lowerCountBucket))
                 {
-                    if (lowerCountBucket.Lbin.Price != 0 && lowerCountBucket.Lbin.Price * key.Count < lbinPrice)
+                    if (lowerCountBucket.Price != 0 && lowerCountBucket.Price * key.Count < lbinPrice)
                         return true;
                 }
             }

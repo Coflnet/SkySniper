@@ -211,7 +211,7 @@ public class DropOffTests
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(testAuction);
         var medianSnipe = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
-        medianSnipe.TargetPrice.Should().Be(32_286_162L, JsonConvert.SerializeObject(found, Formatting.Indented));
+        medianSnipe.TargetPrice.Should().Be(28000000L, JsonConvert.SerializeObject(found, Formatting.Indented));
     }
 
     [TestCase(9, 55999039)]
