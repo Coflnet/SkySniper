@@ -2333,6 +2333,42 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void ChraftCostLvl5ReflectionEnchantShouldNotBeOvervalued()
+        {
+            SetBazaarPrice("ENCHANTMENT_REFLECTION_5", 5_000_000, 7_000_000);
+            service.UpdateBazaar(new()
+            {
+                Products = new() {
+                    new() {
+                        QuickStatus = new() {
+                            BuyOrders = 27
+                        },
+                        ProductId = "ENCHANTMENT_REFLECTION_4",
+                        SellSummary = [
+                            new() {
+                                PricePerUnit = 87_000_000
+                            }
+                        ],
+                        BuySummery = new() {
+                            new() {
+                                PricePerUnit = 1_000_000
+                            }
+                        }
+                    }
+                }
+            });
+            SetBazaarPrice("ENCHANTMENT_REFLECTION_5", 5_000_000, 7_000_000);
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.Enchantments = new List<Core.Enchantment>(){
+                new (Enchantment.EnchantmentType.reflection,5)
+            };
+            SimulateNewAuction(highestValAuction);
+            var flip = found.Where(f => f.Finder == LowPricedAuction.FinderType.CraftCost).FirstOrDefault();
+            flip.Should().NotBeNull();
+            flip.TargetPrice.Should().Be(4845000L);
+        }
+
+        [Test]
         public void PropertiesPassedExist()
         {
             var sales = new List<SaveAuction>();

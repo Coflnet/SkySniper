@@ -659,7 +659,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return new (string, int)[] { (mapper.GetItemKeyForGem(m, flatNbt ?? new()), 1) };
             if (mapper.TryGetIngredients(m.Key, m.Value, null, out var ingredients))
             {
-                return ingredients.GroupBy(i=>i).Select(i => (i.Key, i.Count()));
+                return ingredients.GroupBy(i => i).Select(i => (i.Key, i.Count()));
             }
             return EmptyArray;
         }
@@ -1741,7 +1741,7 @@ ORDER BY l.`AuctionId`  DESC;
                         .OrderBy(v => (v.Key.Count + 1) * (v.Key.Modifiers.Count == 0 ? 1 : int.Parse(v.Key.Modifiers.First().Value)))
                         .FirstOrDefault().Value?.Price * item.amount ?? 0;
                     var matchingLevel = lookup.Lookup.Where(f => f.Value.Price != 0 && f.Key.Modifiers.First().Value == mod.Value)
-                        .Select(f => f.Value.Price).OrderBy(p=>p).FirstOrDefault();
+                        .Select(f => f.Value.Price).OrderBy(p => p).FirstOrDefault();
                     if (matchingLevel != 0 && matchingLevel < fromlevel1)
                         sum += matchingLevel;
                     else
@@ -2837,7 +2837,7 @@ ORDER BY l.`AuctionId`  DESC;
         public void UpdateBazaar(dev.BazaarPull bazaar)
         {
             var today = GetDay(bazaar.Timestamp);
-            foreach (var item in bazaar.Products)
+            foreach (var item in bazaar.Products.OrderBy(p => p.Id))
             {
                 if (item.SellSummary.Count() == 0 && item.BuySummery.Count() == 0)
                     continue;
@@ -2856,6 +2856,11 @@ ORDER BY l.`AuctionId`  DESC;
                     var sellPrice = item.SellSummary.First().PricePerUnit;
                     var buyPrice = item.BuySummery.OrderBy(s => s.PricePerUnit).First().PricePerUnit;
                     itemPrice = (long)(sellPrice + buyPrice) / 2;
+
+                    if (item.ProductId.StartsWith("ENCHANTMENT"))
+                    {
+                        itemPrice = MakePriceAtMost40PercentLowerthanLowerLevel(item.ProductId, (long)itemPrice);
+                    }
                 }
                 else if (item.SellSummary.Any())
                 {
@@ -2923,6 +2928,20 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     refernces.Price = (long)Math.Max(refernces.Price, lowerValue * 1.9);
                 }
+            }
+            long MakePriceAtMost40PercentLowerthanLowerLevel(string id, long estimate)
+            {
+                var currentLevel = int.Parse(id.Split("_").Last());
+                if (currentLevel <= 1 || id.Contains("_MANA_") && currentLevel <= 5)
+                { // mana enchants can drop up to lvl 5 and is worth almost the same at all levels
+                    return estimate;
+                }
+                var higherLevelId = id.Replace($"_{currentLevel}", $"_{currentLevel + 1}");
+                if (BazaarPrices.TryGetValue(higherLevelId, out var higherValue))
+                {
+                    return (long)Math.Min(estimate, higherValue * 0.6);
+                }
+                return estimate;
             }
 
             static bool NotEnoughTimePassed(dev.BazaarPull bazaar, ReferenceAuctions bucket)
