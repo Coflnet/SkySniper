@@ -55,7 +55,7 @@ namespace Coflnet.Sky.Sniper.Services
         internal readonly string[] CrimsonArmors = new string[] { "CRIMSON_", "TERROR_", "AURORA_", "FERVOR_" };
         private readonly HashSet<string> IncludeKeys = new HashSet<string>()
         {
-            "baseStatBoostPercentage", // has an effect on drops from dungeons, is filtered to only max level
+            "baseStatBoostPercentage", // has an effect on drops from dungeons, is filtered to only max level, skelotor master and ice sprays
             "dye_item",
             // "backpack_color", no difference anymore
             "party_hat_color",
@@ -193,6 +193,8 @@ namespace Coflnet.Sky.Sniper.Services
         ];
 
         private readonly List<KeyValuePair<List<string>, List<string>>> AttributesToIgnoreOn = [
+            // https://discord.com/channels/267680588666896385/1303058935430774904/1303072543145459784
+            new(["SHIMMERING_LIGHT_TROUSERS", "SHIMMERING_LIGHT_TUNIC", "SHIMMERING_LIGHT_HOOD", "SHIMMERING_LIGHT_SLIPPERS"], Constants.AttributeKeys.ToList()),
             new(["VELVET_TOP_HAT","CASHMERE_JACKET", "SATIN_TROUSERS", "OXFORD_SHOES"],["color"]) // random https://hypixel-skyblock.fandom.com/wiki/Seymour%27s_Special_Armor
         ];
         private readonly Dictionary<string, string[]> AttributeToIgnoreOnLookup = new();
