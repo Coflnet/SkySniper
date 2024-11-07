@@ -431,6 +431,13 @@ namespace Coflnet.Sky.Sniper.Controllers
             public string Tag { get; set; }
         }
 
+        [HttpGet]
+        [Route("keyOptions")]
+        public IEnumerable<string> KeyContent()
+        {
+            return service.Lookups.SelectMany(l => l.Value.Lookup.Keys.Select(k => k.ToString()));
+        }
+
         /// <summary>
         /// Retrieve lookup references
         /// </summary>
