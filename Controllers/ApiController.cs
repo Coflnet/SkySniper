@@ -435,7 +435,8 @@ namespace Coflnet.Sky.Sniper.Controllers
         [Route("keyOptions")]
         public IEnumerable<string> KeyContent()
         {
-            return service.Lookups.SelectMany(l => l.Value.Lookup.Keys.Select(k => k.ToString()));
+            return service.Lookups.SelectMany(l => l.Value.Lookup.Keys.SelectMany(
+                    k => k.Enchants.Select(e => e.Type.ToString()).Concat(k.Modifiers.Select(m=>m.Key)))).Distinct();
         }
 
         /// <summary>
