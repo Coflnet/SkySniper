@@ -756,6 +756,10 @@ ORDER BY l.`AuctionId`  DESC;
                         continue;
                     loadedVal.Lookup[item.Key] = item.Value;
                 }
+                if (loadedVal.CleanKey?.Count == default || loadedVal.Lookup[loadedVal.CleanKey].Volume * 10 < loadedVal.Lookup.Max(l => l.Value.Volume))
+                {
+                    UpdateCleanKey(loadedVal);
+                }
                 return loadedVal;
             }, (tag, value) =>
             {
@@ -1134,7 +1138,7 @@ ORDER BY l.`AuctionId`  DESC;
                 cleanPriceLookup = lookup.CleanPricePerDay;
                 if (lookup.CleanKey?.Count == default && lookup.Lookup.Count > 1)
                 {
-                    lookup.CleanKey = lookup.Lookup.Where(l => !l.Key.Modifiers.Any(m => m.Key == "virtual")).OrderByDescending(l => l.Value.Volume - l.Key.Modifiers.Count * 5).Select(l => l.Key).FirstOrDefault();
+                    UpdateCleanKey(lookup);
                 }
                 isCleanitem = keyCombo.key?.Key == lookup.CleanKey;
                 if (lookup.CleanKey == default || isCleanitem)
@@ -1150,6 +1154,12 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 return GetMedian(lastTwoWeeks, cleanPriceLookup);
             }
+        }
+
+        private static void UpdateCleanKey(PriceLookup lookup)
+        {
+            lookup.CleanKey = lookup.Lookup.Where(l => !l.Key.Modifiers.Any(m => m.Key == "virtual")).OrderByDescending(l => l.Value.Volume - l.Key.Modifiers.Count * 5).Select(l => l.Key).FirstOrDefault();
+            lookup.CleanPricePerDay = new();
         }
 
         private void PreCalculateVolume((string tag, KeyWithValueBreakdown key) keyCombo)
@@ -1755,7 +1765,7 @@ ORDER BY l.`AuctionId`  DESC;
                     }
                     continue;
                 }
-                sum += (lookup.Lookup.Values.FirstOrDefault(f => f.Price != 0)?.Price ?? 0) * item.amount;
+                sum += (lookup.Lookup.Values.OrderBy(v=>v.Price).FirstOrDefault(f => f.Price != 0)?.Price ?? 0) * item.amount;
             }
             if (items.Count() > 0 && sum == 0)
             {

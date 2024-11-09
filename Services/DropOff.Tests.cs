@@ -210,8 +210,37 @@ public class DropOffTests
         };
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(testAuction);
-        var medianSnipe = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
-        medianSnipe.TargetPrice.Should().Be(28000000L, JsonConvert.SerializeObject(found, Formatting.Indented));
+        var medianSnipe = found.FirstOrDefault(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        medianSnipe?.TargetPrice.Should().Be(28000000L, JsonConvert.SerializeObject(found, Formatting.Indented));
+    }
+
+    [Test]
+    public void DyeItemCraftCostChange()
+    {
+        PriceLookup converted = LoadLookupMock("DYE.json");
+        SniperService.StartTime -= TimeSpan.FromDays(10000) + (DateTime.UtcNow - new DateTime(2024, 11, 09));
+        sniperService.UpdateMedian(converted.Lookup.Last().Value);
+        sniperService.AddLookupData("DYE_H", converted);
+        var testAuction = new SaveAuction()
+        {
+            Tag = "CHESTPLATE",
+            FlatenedNBT = new (){{"dye_item", "DYE_H"}},
+            StartingBid = 20_900_000,
+            HighestBidAmount = 0,
+            UId = 1234,
+            AuctioneerId = "12aaa",
+            Tier = Tier.EPIC,
+            Count = 1
+        };
+        sniperService.AddSoldItem(testAuction.Dupplicate());
+        sniperService.AddSoldItem(testAuction.Dupplicate());
+        sniperService.AddSoldItem(testAuction.Dupplicate());
+        sniperService.AddSoldItem(testAuction.Dupplicate());
+        sniperService.AddSoldItem(testAuction.Dupplicate());
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(testAuction);
+        var medianSnipe = found.First(f => f.Finder == LowPricedAuction.FinderType.CraftCost);
+        medianSnipe.TargetPrice.Should().Be(97399150, JsonConvert.SerializeObject(found, Formatting.Indented));
     }
 
     [TestCase(9, 55999039)]
