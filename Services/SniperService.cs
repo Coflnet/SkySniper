@@ -2902,7 +2902,8 @@ ORDER BY l.`AuctionId`  DESC;
                 // make sure higher enchants are higher value
                 if (item.ProductId.StartsWith("ENCHANTMENT"))
                 {
-                    MakePriceAtLeast90PercentHigherthanLowerLevel(item, bucket);
+                    var cheapestBuy = item.SellSummary.OrderBy(s=>s.PricePerUnit).FirstOrDefault()?.PricePerUnit;
+                    MakePriceAtLeast90PercentHigherthanLowerLevel(item, bucket, cheapestBuy);
                 }
 
                 if (bucket.Price > 0)
@@ -2928,7 +2929,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             logger.LogInformation($"Updated bazaar {Lookups.Count} items");
 
-            void MakePriceAtLeast90PercentHigherthanLowerLevel(dev.ProductInfo item, ReferenceAuctions refernces)
+            void MakePriceAtLeast90PercentHigherthanLowerLevel(dev.ProductInfo item, ReferenceAuctions refernces, double? cheapestBuy)
             {
                 var currentLevel = int.Parse(item.ProductId.Split("_").Last());
                 if (currentLevel <= 1 || item.ProductId.Contains("_MANA_") && currentLevel <= 5)
@@ -2938,7 +2939,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var lowerLevelId = item.ProductId.Replace($"_{currentLevel}", $"_{currentLevel - 1}");
                 if (BazaarPrices.TryGetValue(lowerLevelId, out var lowerValue))
                 {
-                    refernces.Price = (long)Math.Max(refernces.Price, lowerValue * 1.9);
+                    refernces.Price = (long)Math.Min(Math.Max(refernces.Price, lowerValue * 1.9), cheapestBuy ?? long.MaxValue);
                 }
             }
             long MakePriceAtMost40PercentLowerthanLowerLevel(string id, long estimate)
