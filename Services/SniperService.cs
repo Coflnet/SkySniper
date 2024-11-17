@@ -1538,7 +1538,7 @@ ORDER BY l.`AuctionId`  DESC;
                                 || IsSoul(n)) // admins
                             .OrderByDescending(n => n.Key)
                             .Select(i => NormalizeData(i, auction.Tag, auction.FlatenedNBT))
-                            .Where(i => i.Key != Ignore.Key).ToList();
+                            .Where(i => i.Key != Ignore.Key).ToDictionary();
             if (auction.ItemCreatedAt < UnlockedIntroduction
                 // safe guard for when the creation date is wrong 
                 && !auction.FlatenedNBT.ContainsKey("unlocked_slots"))
@@ -1547,12 +1547,12 @@ ORDER BY l.`AuctionId`  DESC;
                 if (auction.FlatenedNBT.TryGetValue("gemstone_slots", out var countString) && int.TryParse(countString, out var count))
                 {
                     allUnlockable = allUnlockable.Take(count).ToList();
-                    modifiers.RemoveAll(m => m.Key == "gemstone_slots");
+                    modifiers.Remove("gemstone_slots");
                 }
                 if (allUnlockable?.Count > 0)
-                    modifiers.Add(new KeyValuePair<string, string>("unlocked_slots", string.Join(",", allUnlockable.OrderBy(s => s))));
+                    modifiers.Add("unlocked_slots", string.Join(",", allUnlockable.OrderBy(s => s)));
             }
-            return (enchants, modifiers);
+            return (enchants, modifiers.ToList());
         }
 
         private static KeyWithValueBreakdown Constructkey(SaveAuction auction, List<Enchant> enchants, List<KeyValuePair<string, string>> modifiers, bool shouldIncludeReforge, long valueSubstracted, List<RankElem> rankElems, Tier tier)
