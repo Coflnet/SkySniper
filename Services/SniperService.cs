@@ -756,7 +756,7 @@ ORDER BY l.`AuctionId`  DESC;
                         continue;
                     loadedVal.Lookup[item.Key] = item.Value;
                 }
-                if (loadedVal.CleanKey?.Count == default || loadedVal.Lookup[loadedVal.CleanKey].Volume * 10 < loadedVal.Lookup.Max(l => l.Value.Volume))
+                if (loadedVal.CleanKey?.Count == default || !loadedVal.Lookup.TryGetValue(loadedVal.CleanKey, out var b) || b?.Volume * 10 < loadedVal.Lookup.Max(l => l.Value.Volume))
                 {
                     UpdateCleanKey(loadedVal);
                 }
@@ -1765,7 +1765,7 @@ ORDER BY l.`AuctionId`  DESC;
                     }
                     continue;
                 }
-                sum += (lookup.Lookup.Values.OrderBy(v=>v.Price).FirstOrDefault(f => f.Price != 0)?.Price ?? 0) * item.amount;
+                sum += (lookup.Lookup.Values.OrderBy(v => v.Price).FirstOrDefault(f => f.Price != 0)?.Price ?? 0) * item.amount;
             }
             if (items.Count() > 0 && sum == 0)
             {
@@ -2902,7 +2902,7 @@ ORDER BY l.`AuctionId`  DESC;
                 // make sure higher enchants are higher value
                 if (item.ProductId.StartsWith("ENCHANTMENT"))
                 {
-                    var cheapestBuy = item.SellSummary.OrderBy(s=>s.PricePerUnit).FirstOrDefault()?.PricePerUnit;
+                    var cheapestBuy = item.SellSummary.OrderBy(s => s.PricePerUnit).FirstOrDefault()?.PricePerUnit;
                     MakePriceAtLeast90PercentHigherthanLowerLevel(item, bucket, cheapestBuy);
                 }
 
