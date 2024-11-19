@@ -188,7 +188,7 @@ namespace Coflnet.Sky.Sniper.Services
                     "CRIMSON_BOOTS", "CRIMSON_LEGGINGS", "CRIMSON_CHESTPLATE", "CRIMSON_HELMET"}, new (){new("veteran", "mana_regeneration")}),
             new(new (){"CRIMSON_BOOTS", "CRIMSON_LEGGINGS", "CRIMSON_CHESTPLATE", "CRIMSON_HELMET", "MOLTEN_BRACELET"},
                     new (){new("magic_find", "mending")}), // vitality = mending
-            new(new(){"MOLTEN_BRACELET"}, new (){new("lifeline", "mana_pool")}),
+            new(new(){"MOLTEN_BRACELET", "MOLTEN_CLOAK"}, new (){new("lifeline", "mana_pool")}),
             new(new(){"GAUNTLET_OF_CONTAGION"}, new (){new("veteran", "mana_regeneration"),new("veteran", "breeze"),new("veteran", "mana_pool")}),
         ];
 
