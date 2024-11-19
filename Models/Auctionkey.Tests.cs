@@ -562,7 +562,7 @@ public class AuctionkeyTests
     {
         var auction = new SaveAuction()
         {
-            Tag = "MOLTEN_CLOAK",
+            Tag = "RANDOM_CLOAK",
             FlatenedNBT = new() { { "lifeline", "1" },
                                 {"mana_pool", "2"} },
         };
