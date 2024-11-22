@@ -15,11 +15,11 @@
 
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.S3" Version="3.7.405.9" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.407" />
     <PackageReference Include="Coflnet.Sky.Mayor.Client" Version="0.3.3" />
     <PackageReference Include="JWT" Version="10.1.1" />
     <PackageReference Include="Coflnet.Sky.Crafts.Client" Version="0.4.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="8.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="8.0.11" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
@@ -28,6 +28,6 @@
   <ItemGroup Condition="'$(Configuration)' != 'Release'">
     <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
-    <PackageReference Include="FluentAssertions" Version="6.12.1" />
+    <PackageReference Include="FluentAssertions" Version="6.12.2" />
   </ItemGroup>
 </Project>
