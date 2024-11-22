@@ -728,9 +728,6 @@ ORDER BY l.`AuctionId`  DESC;
         {
             foreach (var item in loadedVal.Lookup.Keys)
             {
-                if (item.Modifiers.Any(m => m.Key == "candyUsed" && m.Value == "0")
-                        && item.Modifiers.Any(m => m.Key == "exp" && m.Value == (itemTag == "PET_GOLDEN_DRAGON" ? "7" : "6")))
-                    loadedVal.Lookup.TryRemove(item, out _); // have been dropped
                 var value = loadedVal.Lookup.GetValueOrDefault(item);
                 if (value == null)
                     continue;
