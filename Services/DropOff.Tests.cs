@@ -202,6 +202,7 @@ public class DropOffTests
             Tag = "HUB_DA_TRAVEL_SCROLL",
             FlatenedNBT = [],
             StartingBid = 20_900_000,
+            Enchantments = [],
             HighestBidAmount = 0,
             UId = 1234,
             AuctioneerId = "12aaa",
