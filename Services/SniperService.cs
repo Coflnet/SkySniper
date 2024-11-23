@@ -1836,7 +1836,7 @@ ORDER BY l.`AuctionId`  DESC;
                 sum += (int)(factor * (float.Parse(mod.Value) + 1));
             }
             if (mod.Key == "candyUsed")
-                sum += Math.Max(GetPriceForItem(tag) / 6, 10_000_000); // for skined pets important
+                sum += Math.Max(GetPriceForItem(tag) / 6, 10_000_000) * (flatNbt.ContainsKey("skin") ? 10 : 1); // for skined pets important
             if (mod.Key == "is_shiny")
                 sum += 88_000_000;
             if (mod.Key == "party_hat_color")
