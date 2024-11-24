@@ -2106,7 +2106,7 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void BazaarSampledEvery10min()
         {
-            var time = DateTime.UtcNow;
+            var time = DateTime.UtcNow.RoundDown(TimeSpan.FromMinutes(10));
             AddUpdate(TimeSpan.FromMinutes(0), 5_000_000);
             AddUpdate(TimeSpan.FromMinutes(1), 7_000_000);
             AddUpdate(TimeSpan.FromMinutes(2), 16_000_000);

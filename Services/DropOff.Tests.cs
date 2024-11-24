@@ -334,7 +334,9 @@ public class DropOffTests
                 parsed.Lookup.ToDictionary(l => ParseKey(l), l => l.Value);
         var converted = new PriceLookup()
         {
-            Lookup = new System.Collections.Concurrent.ConcurrentDictionary<AuctionKey, ReferenceAuctions>(xy)
+            Lookup = new System.Collections.Concurrent.ConcurrentDictionary<AuctionKey, ReferenceAuctions>(xy),
+            CleanPricePerDay = parsed.CleanPricePerDay,
+            CleanKey = parsed.CleanKey
         };
         return converted;
     }
@@ -364,6 +366,8 @@ public class DropOffTests
     public class LookupLoad
     {
         public Dictionary<string, ReferenceAuctions> Lookup;
+        public Dictionary<short, long> CleanPricePerDay = new();
+        public AuctionKey CleanKey;
     }
     [Test]
     public void Test1()
