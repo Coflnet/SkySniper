@@ -3027,7 +3027,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (lowestLbin > 10_000_000_000)
                 {
                     Activity.Current.Log($"Reduced because no higher value lbin");
-                    percentile = Math.Min(percentile, targetPrice * 96 / 100);
+                    percentile = Math.Min(percentile, targetPrice * 95 / 100);
                     props["noHigherLbin"] = percentile.ToString();
                 }
                 var reduced = CapAtCraftCost(auction.Tag, percentile, breakdown, 0);
@@ -3035,6 +3035,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     percentile = reduced;
                     Activity.Current.Log($"Reduced to craft cost {reduced}");
+                    props["craftCost"] = reduced.ToString();
                 }
                 Activity.Current.Log($"No references, checking all lbins {percentile} {lowestLbin} {referencePrice}");
                 props["referencePrice"] = referencePrice.ToString();

@@ -244,7 +244,7 @@ public class DropOffTests
         medianSnipe.TargetPrice.Should().Be(97399150, JsonConvert.SerializeObject(found, Formatting.Indented));
     }
 
-    [TestCase(9, 55999039)]
+    [TestCase(9, 55415716)]
     [TestCase(10, 58332333)]
     public void SniperEstimate(byte volumeOverride, long target)
     {
