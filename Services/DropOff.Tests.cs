@@ -225,7 +225,7 @@ public class DropOffTests
         var testAuction = new SaveAuction()
         {
             Tag = "CHESTPLATE",
-            FlatenedNBT = new (){{"dye_item", "DYE_H"}},
+            FlatenedNBT = new() { { "dye_item", "DYE_H" } },
             StartingBid = 20_900_000,
             HighestBidAmount = 0,
             UId = 1234,
@@ -290,6 +290,40 @@ public class DropOffTests
         sniperService.TestNewAuction(testAuction);
         found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN)
             .First().TargetPrice.Should().Be(150000000);
+    }
+
+    /// <summary>
+    /// Real world example, craft cost capped at tierboosted pet
+    /// </summary>
+    [Test]
+    public void ScathaNotUnvervalued()
+    {
+        PriceLookup converted = LoadLookupMock("SCATHA.json");
+        var Difference = DateTime.UtcNow - new DateTime(2024, 11, 24);
+        SniperService.StartTime = new DateTime(2021, 9, 25) + Difference;
+        sniperService.AddLookupData("PET_SCATHA", converted);
+        foreach (var item in sniperService.Lookups["PET_SCATHA"].Lookup)
+        {
+            if (item.Key.Modifiers.Count == 1 && item.Key.Modifiers.First().Value == "6" && item.Key.Tier == Tier.LEGENDARY)
+            {
+                Console.WriteLine(item.Key);
+            }
+            sniperService.UpdateMedian(item.Value);
+        }
+        var testAuction = new SaveAuction()
+        {
+            Tag = "PET_SCATHA",
+            StartingBid = 900_000,
+            UId = 4,
+            FlatenedNBT = new Dictionary<string, string>() { { "exp", "26000000" } },
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(testAuction);
+        found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN)
+            .First().TargetPrice.Should().Be(409_000_000);
     }
 
     private static PriceLookup LoadLookupMock(string mockFileName)
