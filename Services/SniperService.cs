@@ -945,7 +945,8 @@ ORDER BY l.`AuctionId`  DESC;
                 // all prices are from today, use 25th percentile instead
                 longSpanPrice = deduplicated.OrderBy(d => d.Price).Take((int)Math.Max(deduplicated.Count() * 0.25, 1)).Max(d => d.Price);
             }
-            var medianPrice = Math.Min(shortTermPrice, longSpanPrice);
+            var uncappedMedian = Math.Min(shortTermPrice, longSpanPrice);
+            var medianPrice = uncappedMedian;
             var lbinMedian = bucket.Lbins.Where(l => l.Price > medianPrice / 2 && l.Day > GetDay() + 5).OrderBy(l => l.Price).Skip(2).FirstOrDefault();
             if (lbinMedian.AuctionId != default)
             {
@@ -1027,7 +1028,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 lookup.CleanPricePerDay ??= new();
                 if (medianPrice > 0)
-                    lookup.CleanPricePerDay[shortTermList.OrderByDescending(s => s.Day).First().Day] = medianPrice;
+                    lookup.CleanPricePerDay[shortTermList.OrderByDescending(s => s.Day).First().Day] = uncappedMedian;
             }
             if (medianPrice < 0)
             {
