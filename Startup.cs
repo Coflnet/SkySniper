@@ -72,7 +72,7 @@ namespace Coflnet.Sky.Sniper
             services.AddSingleton<HypixelItemService>();
             services.AddSingleton<IAttributeFlipService, AttributeFlipService>();
             services.AddSingleton<System.Net.Http.HttpClient>();
-            services.AddJaeger(Configuration);
+            services.AddJaeger(Configuration, 0.001);
             services.AddTransient<HypixelContext>(di => new HypixelContext());
         }
 
