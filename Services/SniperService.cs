@@ -2239,7 +2239,7 @@ ORDER BY l.`AuctionId`  DESC;
 
                 if (!l.TryGetValue(key, out ReferenceAuctions bucket))
                 {
-                    if (triggerEvents && i == 4)
+                    if (triggerEvents && i == 4 && !fastMode)
                     {
                         logger.LogInformation($"could not find bucket {key} for {auction.Tag} {l.Count} {auction.Uuid}");
                         if (this.State < SniperState.Ready)
