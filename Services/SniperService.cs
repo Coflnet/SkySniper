@@ -1477,7 +1477,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             return DetailedKeyFromSaveAuction(auction);
         }
-        private KeyWithValueBreakdown DetailedKeyFromSaveAuction(SaveAuction auction)
+        private KeyWithValueBreakdown DetailedKeyFromSaveAuction(SaveAuction auction, bool fastMode = false)
         {
             var shouldIncludeReforge = Constants.RelevantReforges.Contains(auction.Reforge);
             long valueSubstracted = 0;
@@ -1528,6 +1528,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             var enchants = auction.Enchantments
                             ?.Where(e => MinEnchantMap.TryGetValue(e.Type, out byte value) && e.Level >= value)
+                            .OrderBy(e => e.Type)
                             .Select(e => new Models.Enchant() { Lvl = e.Level, Type = e.Type }).ToList();
             var modifiers = auction.FlatenedNBT?.Where(n =>
                                    IncludeKeys.Contains(n.Key)
@@ -2211,7 +2212,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        public void TestNewAuction(SaveAuction auction, bool triggerEvents = true)
+        public void TestNewAuction(SaveAuction auction, bool triggerEvents = true, bool fastMode = false)
         {
             using var activity = !triggerEvents ? null : activitySource?.StartActivity("TestNewAuction", ActivityKind.Internal);
             activity?.SetTag("uuid", auction.Uuid);
@@ -2224,7 +2225,7 @@ ORDER BY l.`AuctionId`  DESC;
             var medPrice = auction.StartingBid * 1.05 + itemGroupTag.Item2;
             var lastKey = new AuctionKey();
             var shouldTryToFindClosest = false;
-            var basekey = DetailedKeyFromSaveAuction(auction);
+            var basekey = DetailedKeyFromSaveAuction(auction, fastMode);
             for (int i = 0; i < 5; i++)
             {
                 var key = basekey.GetReduced(i);
@@ -2288,11 +2289,11 @@ ORDER BY l.`AuctionId`  DESC;
                     if (FindFlip(auction, lbinPrice, medPrice, bucket, key, lookup, basekey, extraValue, props =>
                     {
                         props["breakdown"] = JsonConvert.SerializeObject(basekey.ValueBreakdown);
-                    }))
+                    }, fastMode))
                         shouldTryToFindClosest = false; // found a snipe, no need to check other lower value buckets
                 }
             }
-            if (!triggerEvents)
+            if (!triggerEvents || fastMode)
                 return; // no need to check for closest, just storing
 
             using var alternateFinders = !triggerEvents ? null : activitySource?.StartActivity("AlternateFinders", ActivityKind.Internal);
@@ -2706,7 +2707,8 @@ ORDER BY l.`AuctionId`  DESC;
                               PriceLookup lookup,
                               KeyWithValueBreakdown breakdown,
                               long extraValue = 0,
-                              Action<Dictionary<string, string>> addProps = null)
+                              Action<Dictionary<string, string>> addProps = null,
+                              bool fastMode = false)
         {
             var l = lookup.Lookup;
             var expValue = GetValueDifferenceForExp(auction, key, l);
@@ -2714,6 +2716,7 @@ ORDER BY l.`AuctionId`  DESC;
             var medianPrice = bucket.Price + extraValue;
             var foundSnipe = false;
             if ((bucket.Lbin.Price > lbinPrice || bucket.Price == 0) && (MaxMedianPriceForSnipe(bucket) > lbinPrice)
+                && (!fastMode || bucket.Volume > 5)
                )
             {
                 foundSnipe = PotentialSnipe(auction, lbinPrice, bucket, key, l, extraValue, breakdown);

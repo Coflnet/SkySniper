@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Core.Services;
 using Coflnet.Sky.Sniper.Models;
@@ -76,6 +77,34 @@ public class DropOffTests
             found.Add(a);
         };
     }
+    [Test]
+    public void SpeedTest()
+    {
+        if(!Dns.GetHostName().Contains("ekwav"))
+            Assert.Ignore("This test is only for local testing");
+        var testAuction = new SaveAuction()
+        {
+            Tag = "WISE_WITHER_BOOTS",
+            FlatenedNBT = new Dictionary<string, string>() { { "rarity_upgrades", "1" } },
+            StartingBid = 900_000,
+            HighestBidAmount = 0,
+            UId = 4,
+            AuctioneerId = "aab123",
+            Tier = Tier.MYTHIC,
+            ItemCreatedAt = DateTime.UtcNow,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        var startTime = DateTime.UtcNow;
+        for (int i = 0; i < 1000; i++)
+        {
+            sniperService.TestNewAuction(testAuction, true, true);
+        }
+        var took = DateTime.UtcNow - startTime;
+        took.Should().BeLessThan(TimeSpan.FromMilliseconds(10));
+    }
+
+
     [Test]
     public void ScavengerArtifact()
     {
