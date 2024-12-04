@@ -2283,6 +2283,7 @@ ORDER BY l.`AuctionId`  DESC;
                     UpdateLbin(auction, bucket, key);
                 if (triggerEvents)
                 {
+                    using var tryFind = !triggerEvents ? null : activitySource?.StartActivity("TryFind", ActivityKind.Internal);
                     long extraValue = GetExtraValue(auction, key) - itemGroupTag.Item2;
                     if (FindFlip(auction, lbinPrice, medPrice, bucket, key, lookup, basekey, extraValue, props =>
                     {
@@ -2293,6 +2294,8 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (!triggerEvents)
                 return; // no need to check for closest, just storing
+
+            using var alternateFinders = !triggerEvents ? null : activitySource?.StartActivity("AlternateFinders", ActivityKind.Internal);
             var topKey = basekey.GetReduced(0);
             var topAttrib = basekey.ValueBreakdown.FirstOrDefault();
             if (topAttrib != default)
@@ -2303,6 +2306,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (shouldTryToFindClosest && triggerEvents && this.State >= SniperState.Ready)
             {
+                using var risky = !triggerEvents ? null : activitySource?.StartActivity("Risky", ActivityKind.Internal);
                 TryFindClosestRisky(auction, l, ref lbinPrice, ref medPrice);
             }
 
