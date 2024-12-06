@@ -82,10 +82,13 @@ public class DropOffTests
     {
         if(!Dns.GetHostName().Contains("ekwav"))
             Assert.Ignore("This test is only for local testing");
+        SetBazaarPrice("RECOMBOBULATOR_3000", 8_000_000);
+        SetBazaarPrice("ENCHANTMENT_GROWTH_6", 44_000_000);
         var testAuction = new SaveAuction()
         {
             Tag = "WISE_WITHER_BOOTS",
             FlatenedNBT = new Dictionary<string, string>() { { "rarity_upgrades", "1" } },
+            Enchantments = new List<Enchantment>() { new() { Type = Enchantment.EnchantmentType.growth, Level = 6 } },
             StartingBid = 900_000,
             HighestBidAmount = 0,
             UId = 4,
@@ -95,6 +98,11 @@ public class DropOffTests
             Count = 1
         };
         sniperService.State = SniperState.FullyLoaded;
+        sniperService.AllocatedDicts = new();
+        for (int i = 0; i < 2000; i++)
+        {
+            sniperService.AllocatedDicts.Enqueue(new(10));
+        }
         var startTime = DateTime.UtcNow;
         for (int i = 0; i < 1000; i++)
         {

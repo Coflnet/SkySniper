@@ -36,6 +36,11 @@ namespace Coflnet.Sky.Sniper.Services
                 Modifier = modifier;
                 Value = value;
             }
+            public RankElem(string modifierkey, string modifierValue, long value)
+            {
+                Modifier = new KeyValuePair<string, string>(modifierkey, modifierValue);
+                Value = value;
+            }
 
             public RankElem(ItemReferences.Reforge reforge, long value)
             {
