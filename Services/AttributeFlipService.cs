@@ -169,7 +169,7 @@ public class AttributeFlipService : IAttributeFlipService
             };
         }
 
-        if (mapper.TryGetIngredients(b.Modifier.Key, b.Modifier.Value, null, out var ingredients))
+        if (mapper.TryGetIngredients(tag, b.Modifier.Key, b.Modifier.Value, null, out var ingredients))
         {
             foreach (var ingredient in ingredients.GroupBy(s => s))
             {

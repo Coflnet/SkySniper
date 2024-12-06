@@ -659,7 +659,7 @@ ORDER BY l.`AuctionId`  DESC;
 
             if (m.Value == "PERFECT" || m.Value == "FLAWLESS")
                 return new (string, int)[] { (mapper.GetItemKeyForGem(m, flatNbt ?? new()), 1) };
-            if (mapper.TryGetIngredients(m.Key, m.Value, null, out var ingredients))
+            if (mapper.TryGetIngredients(tag, m.Key, m.Value, null, out var ingredients))
             {
                 return ingredients.GroupBy(i => i).Select(i => (i.Key, i.Count()));
             }
