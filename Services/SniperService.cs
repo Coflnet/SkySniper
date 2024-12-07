@@ -531,8 +531,19 @@ ORDER BY l.`AuctionId`  DESC;
                 GetDifferenceSum(auction, result, itemKey, c, out var diffExp, out var changeAmount);
                 if (changeAmount != 0)
                 {
-                    result.Median -= changeAmount;
                     result.MedianKey += diffExp;
+                    var lookup = Lookups[this.GetAuctionGroupTag(auction.Tag).Item1];
+                    var cleanItemValue = GetCleanItemPrice(auction.Tag, itemKey, lookup);
+                    if (changeAmount > result.Median / 4 * 3)
+                    {
+                        var closestCraftCost = ComparisonValue(c.Key.Enchants, c.Key.Modifiers.ToList(), auction.Tag, null);
+                        AddReforgeValue(c.Key.Reforge, ref closestCraftCost);
+                        var percentDiff = (float)(cleanItemValue + itemKey.ValueBreakdown.Sum(v => v.Value)) / (cleanItemValue + closestCraftCost.Sum(m => m.Value) + 1);
+                        result.Median = (long)(result.Median * percentDiff);
+                        result.MedianKey += "*";
+                    }
+                    else
+                        result.Median -= changeAmount;
                 }
                 foreach (var item in itemKey.Key.Modifiers.Where(m => Constants.AttributeKeys.Contains(m.Key)))
                 {
@@ -671,7 +682,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     return 0;
                 }
-                var elem = ModifierEstimate(modifiers.ToList(), auction.Tag, auction.FlatenedNBT, m);
+                var elem = ModifierEstimate(missingModifiers.ToList(), auction.Tag, auction.FlatenedNBT, m);
                 if (elem.Value == 0)
                 {
                     deferred.Log($"Missing modifier value {m.Key} {m.Value} {auction.Uuid}");
@@ -693,7 +704,7 @@ ORDER BY l.`AuctionId`  DESC;
                 else
                     // some of the items actually don't have the prefix, skins on pets may but other skins don't
                     return new (string, int)[] { (prefix + m.Value.ToUpper(), 1), (m.Value.ToUpper(), 1) };
-            if (tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false && m.Key.StartsWith("JASPER_0"))
+            if ((tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false) && m.Key.StartsWith("JASPER_0"))
             {
                 // Jasper0 slot can't be accessed on starred (Fragged) items
                 return EmptyArray;
@@ -1722,7 +1733,7 @@ ORDER BY l.`AuctionId`  DESC;
             threshold = Math.Max(threshold, modifierSum / 22);
 
             bool removedRarity = false;
-            bool includeReforge = AddReforgeValue(auction, ref combined);
+            bool includeReforge = AddReforgeValue(auction.Reforge, ref combined);
             combined = combined.OrderByDescending(i => i.Value).Where(c => c.Value != 0).ToList();
             var percentDiff = (double)auction.HighestBidAmount / modifierSum;
             if (auction.HighestBidAmount == 0 || percentDiff > 1)
@@ -1758,17 +1769,18 @@ ORDER BY l.`AuctionId`  DESC;
             var ordered = combined.Where(c => c.Value == 0).Concat(combined.Take(5)).ToList();
             return (valueSubstracted, removedRarity, includeReforge, ordered);
 
-            bool AddReforgeValue(SaveAuction auction, ref IEnumerable<RankElem> combined)
-            {
-                bool includeReforge = Constants.RelevantReforges.Contains(auction.Reforge);
-                if (includeReforge)
-                {
-                    long reforgeValue = GetReforgeValue(auction.Reforge);
-                    combined = combined.Append(new RankElem(auction.Reforge, reforgeValue));
-                }
+        }
 
-                return includeReforge;
+        bool AddReforgeValue(ItemReferences.Reforge reforge, ref IEnumerable<RankElem> combined)
+        {
+            bool includeReforge = Constants.RelevantReforges.Contains(reforge);
+            if (includeReforge)
+            {
+                long reforgeValue = GetReforgeValue(reforge);
+                combined = combined.Append(new RankElem(reforge, reforgeValue));
             }
+
+            return includeReforge;
         }
 
         private IEnumerable<RankElem> ComparisonValue(IEnumerable<Enchant> enchants, List<KeyValuePair<string, string>> modifiers, string tag, Dictionary<string, string> flatNbt)

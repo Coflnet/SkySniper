@@ -1514,7 +1514,7 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
             Assert.That(2500000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
             Assert.That("Gilded -> None (6500000)", Is.EqualTo(estimate.AdditionalProps["reforge"]));
-            Assert.That(1000000, Is.EqualTo(price.Median));
+            Assert.That(price.Median, Is.EqualTo(5263158));
         }
 
         [Test]
@@ -2003,6 +2003,35 @@ namespace Coflnet.Sky.Sniper.Services
             SetBazaarPrice("PET_ITEM_QUICK_CLAW", 99_000_000);
             var price = service.GetPrice(highestValAuction);
             Assert.That(41_000_000 + random, Is.EqualTo(price.Lbin.Price), JsonConvert.SerializeObject(price));
+        }
+
+        [Test]
+        public void AdjustForClosestHavingMasterStarsWorthMoreThanMedian()
+        {
+            highestValAuction.FlatenedNBT = new() { { "upgrade_level", "7" }, { "rarity_upgrades", "1" } };
+            highestValAuction.Enchantments = new List<Core.Enchantment>(){
+                new Core.Enchantment(Enchantment.EnchantmentType.ultimate_wisdom,5)
+            };
+            highestValAuction.Tier = Tier.MYTHIC;
+            highestValAuction.Tag = "STARRED_SHADOW_ASSASSIN_LEGGINGS";
+            SetBazaarPrice("FIRST_MASTER_STAR", 12_000_000);
+            SetBazaarPrice("SECOND_MASTER_STAR", 22_000_000);
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_WISDOM_5", 12_000_000);
+            SetBazaarPrice("RECOMBOBULATOR_3000", 8_000_000);
+            SetBazaarPrice("ESSENCE_WITHER", 2_000);
+            highestValAuction.HighestBidAmount = 29_000_000;
+            AddVolume(highestValAuction);
+            var clean = Dupplicate(highestValAuction);
+            clean.FlatenedNBT = new();
+            clean.HighestBidAmount = 10_000_000;
+            clean.Enchantments = [];
+            clean.Tier = Tier.LEGENDARY;
+            AddVolume(clean);
+            var lessStars = Dupplicate(highestValAuction);
+            lessStars.FlatenedNBT["upgrade_level"] = "3";
+            var price = service.GetPrice(lessStars);
+            Assert.That(price.MedianKey, Is.EqualTo("ultimate_wisdom=5 Any [rarity_upgrades, 1],[upgrade_level, 7] MYTHIC 1- 7*"), JsonConvert.SerializeObject(price));
+            Assert.That(price.Median, Is.EqualTo(13593750), JsonConvert.SerializeObject(price));
         }
 
         [Test]
