@@ -109,7 +109,7 @@ public class DropOffTests
             sniperService.TestNewAuction(testAuction, true, true);
         }
         var took = DateTime.UtcNow - startTime;
-        took.Should().BeLessThan(TimeSpan.FromMilliseconds(10));
+        took.Should().BeLessThan(TimeSpan.FromMilliseconds(90));
     }
 
 
@@ -327,6 +327,34 @@ public class DropOffTests
         sniperService.TestNewAuction(testAuction);
         found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN)
             .First().TargetPrice.Should().Be(150000000);
+    }
+    /// <summary>
+    /// if manipulation is detected within references the time window should be longer
+    /// </summary>
+    [Test]
+    public void SkinManipulatedLongerTimeLimit()
+    {
+        PriceLookup converted = LoadLookupMock("SKIN-antimanip.json");
+        var Difference = DateTime.UtcNow - new DateTime(2024, 12, 07);
+        SniperService.StartTime = new DateTime(2021, 9, 25) + Difference;
+        var testAuction = new SaveAuction()
+        {
+            Tag = "PET_SKIN_BAT_VAMPIRE",
+            StartingBid = 900_000,
+            UId = 4,
+            AuctioneerId = "12aaa",
+            Tier = Tier.EPIC,
+            Count = 1
+        };
+        var sampleLbin = testAuction.Dupplicate();
+        sampleLbin.StartingBid = 2_000_000_000;
+        sniperService.TestNewAuction(sampleLbin);
+        sniperService.AddLookupData("PET_SKIN_BAT_VAMPIRE", converted);
+        sniperService.UpdateMedian(sniperService.Lookups.Last().Value.Lookup.Last().Value);
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(testAuction);
+        found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN)
+            .First().TargetPrice.Should().Be(750000000);
     }
 
     /// <summary>

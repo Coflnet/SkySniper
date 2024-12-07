@@ -840,7 +840,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
 
-            static void CombineBuckets(KeyValuePair<AuctionKey, ReferenceAuctions> item, ReferenceAuctions existingBucket)
+            void CombineBuckets(KeyValuePair<AuctionKey, ReferenceAuctions> item, ReferenceAuctions existingBucket)
             {
                 var existingRef = existingBucket.References;
                 existingBucket.References = item.Value.References;
@@ -851,9 +851,25 @@ ORDER BY l.`AuctionId`  DESC;
                         .OrderBy(r => r.Day));
 
                     var today = GetDay();
-                    while (existingBucket.References.Count > 7 && existingBucket.References.TryPeek(out var r) && r.Day < today - 30)
+                    if (existingBucket.References.Count > 7 && existingBucket.References.TryPeek(out var r) && r.Day < today - 30)
                     {
-                        existingBucket.References.TryDequeue(out _);
+                        var cleaned = ApplyAntiMarketManipulation(existingBucket);
+                        var cleanedMedian = GetMedian(cleaned, null);
+                        var median = GetMedian(existingBucket.References.Where(ri => ri.Day > today - 30).ToList(), null);
+                        var increaseRate = (double)median / cleanedMedian;
+                        var allowedIncrease = 1.5;
+                        if (increaseRate > allowedIncrease)
+                        {
+                            increaseRate /= allowedIncrease;
+                        }
+                        else if (increaseRate < 1)
+                        {
+                            increaseRate = 1;
+                        }
+                        while (existingBucket.References.Count > 7 && existingBucket.References.TryPeek(out r) && r.Day < today - 30 * increaseRate)
+                        {
+                            existingBucket.References.TryDequeue(out _);
+                        }
                     }
                 }
                 existingBucket.Price = item.Value.Price;
@@ -1112,38 +1128,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
 
-            static List<ReferencePrice> ApplyAntiMarketManipulation(ReferenceAuctions bucket)
-            {
-                var buyerCounter = 0;
-                // check for back and forth selling
-                var buyerSellerCombos = bucket.References.GroupBy(a => a.Buyer > a.Seller ? a.Buyer << 15 + a.Seller : a.Seller << 15 + a.Buyer)
-                    .Where(g => g.Count() > 1 && !g.All(gi => gi.Seller == g.First().Seller))
-                    .ToLookup(l => l.First().Seller);
-                var isPersonManipulating = bucket.References.OrderByDescending(r => r.Price).Take(bucket.References.Count / 2)
-                            .GroupBy(r => r.Seller).Where(g => g.Count() >= Math.Max(bucket.References.Count / 3, 3)).OrderByDescending(g => g.Count()).Select(g => g.First().Seller).FirstOrDefault();
-                var deduplicated = bucket.References.Reverse()
-                    .Where(d => !buyerSellerCombos.Contains(d.Seller) && !buyerSellerCombos.Contains(d.Buyer))
-                    .OrderByDescending(b => b.Day)
-                    .GroupBy(a => a.Seller)
-                    .Select(a => a.OrderBy(ai => ai.Price).First())  // only use one (the cheapest) price from each seller
-                    .GroupBy(a => a.Buyer == 0 ? buyerCounter++ : a.Buyer)
-                    .Select(a => a.OrderBy(ai => ai.Price).First())  // only use cheapest price from each buyer 
-                    .Take(60)
-                    .ToList();
-                if (isPersonManipulating != default)
-                {
-                    for (int i = 0; i < deduplicated.Count; i++)
-                    {
-                        if (deduplicated[i].Seller == isPersonManipulating)
-                        {
-                            var elem = deduplicated[i];
-                            elem.Price /= 2;
-                            deduplicated[i] = elem;
-                        }
-                    }
-                }
-                return deduplicated;
-            }
+
 
             long CapPriceAtHigherLevelKey((string tag, KeyWithValueBreakdown key) keyCombo, long limitedPrice)
             {
@@ -1194,6 +1179,39 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 return GetMedian(lastTwoWeeks, cleanPriceLookup);
             }
+        }
+
+        static List<ReferencePrice> ApplyAntiMarketManipulation(ReferenceAuctions bucket)
+        {
+            var buyerCounter = 0;
+            // check for back and forth selling
+            var buyerSellerCombos = bucket.References.GroupBy(a => a.Buyer > a.Seller ? a.Buyer << 15 + a.Seller : a.Seller << 15 + a.Buyer)
+                .Where(g => g.Count() > 1 && !g.All(gi => gi.Seller == g.First().Seller))
+                .ToLookup(l => l.First().Seller);
+            var isPersonManipulating = bucket.References.OrderByDescending(r => r.Price).Take(bucket.References.Count / 2)
+                        .GroupBy(r => r.Seller).Where(g => g.Count() >= Math.Max(bucket.References.Count / 3, 3)).OrderByDescending(g => g.Count()).Select(g => g.First().Seller).FirstOrDefault();
+            var deduplicated = bucket.References.Reverse()
+                .Where(d => !buyerSellerCombos.Contains(d.Seller) && !buyerSellerCombos.Contains(d.Buyer))
+                .OrderByDescending(b => b.Day)
+                .GroupBy(a => a.Seller)
+                .Select(a => a.OrderBy(ai => ai.Price).First())  // only use one (the cheapest) price from each seller
+                .GroupBy(a => a.Buyer == 0 ? buyerCounter++ : a.Buyer)
+                .Select(a => a.OrderBy(ai => ai.Price).First())  // only use cheapest price from each buyer 
+                .Take(60)
+                .ToList();
+            if (isPersonManipulating != default)
+            {
+                for (int i = 0; i < deduplicated.Count; i++)
+                {
+                    if (deduplicated[i].Seller == isPersonManipulating)
+                    {
+                        var elem = deduplicated[i];
+                        elem.Price /= 2;
+                        deduplicated[i] = elem;
+                    }
+                }
+            }
+            return deduplicated;
         }
 
         private static void UpdateCleanKey(PriceLookup lookup)
