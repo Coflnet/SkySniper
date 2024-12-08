@@ -2324,7 +2324,7 @@ ORDER BY l.`AuctionId`  DESC;
                         if (bucket.HitsSinceCalculating > 8)
                         {
                             logger.LogInformation($"Bucket {closestKey} for {auction.Uuid} has been hit {bucket.HitsSinceCalculating} times, skipping");
-                            TryFindClosestRisky(auction, l, ref lbinPrice, ref medPrice);
+                            TryFindClosestRisky(auction, lookup, ref lbinPrice, ref medPrice);
                             return;
                         }
                         lbinPrice *= Math.Pow(1.15, bucket.HitsSinceCalculating);
@@ -2365,7 +2365,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (shouldTryToFindClosest && triggerEvents && this.State >= SniperState.Ready)
             {
                 using var risky = !triggerEvents ? null : activitySource?.StartActivity("Risky", ActivityKind.Internal);
-                TryFindClosestRisky(auction, l, ref lbinPrice, ref medPrice);
+                TryFindClosestRisky(auction, lookup, ref lbinPrice, ref medPrice);
             }
 
             CraftCostFinder(auction, itemGroupTag, lookup, medPrice, basekey);
@@ -2538,7 +2538,7 @@ ORDER BY l.`AuctionId`  DESC;
             return auction.Tag.StartsWith("RUNE_");
         }
 
-        private void TryFindClosestRisky(SaveAuction auction, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, ref double lbinPrice, ref double medPrice)
+        private void TryFindClosestRisky(SaveAuction auction, PriceLookup l, ref double lbinPrice, ref double medPrice)
         {
             if (auction.Tag.StartsWith("RUNE_")) // TODO: compare levels
                 return;
@@ -2547,7 +2547,7 @@ ORDER BY l.`AuctionId`  DESC;
             // special case for items that have no reference bucket, search using most similar
             var detailedKey = DetailedKeyFromSaveAuction(auction);
             var key = detailedKey.GetReduced(0);
-            var closest = FindClosestTo(l, key, auction.Tag);
+            var closest = FindClosestTo(l.Lookup, key, auction.Tag);
             medPrice *= 1.10; // increase price a bit to account for the fact that we are not using the exact same item
             if (closest.Value == null)
             {
@@ -2585,7 +2585,7 @@ ORDER BY l.`AuctionId`  DESC;
                     deferred.Log($"Negative value to substract for {string.Join(",", missingModifiers.Select(m => $"{m.Key}:{m.Value}"))} {auction.Uuid}");
                     toSubstract = Math.Abs(toSubstract);
                 }
-                var fromExp = GetValueDifferenceForExp(auction, closest.Key, l);
+                var fromExp = GetValueDifferenceForExp(auction, closest.Key, l.Lookup);
                 if (fromExp != 0)
                 {
                     props.Add("fromExp", fromExp.ToString());
@@ -2658,6 +2658,8 @@ ORDER BY l.`AuctionId`  DESC;
                 targetPrice -= tierDifference;
                 props.Add("tierVal", $"{closest.Key.Tier} -> {auction.Tier} ({tierDifference})");
             }
+            var modifierValue = (detailedKey.ValueBreakdown.Sum(v => v.Value) + GetCleanItemPrice(auction.Tag, detailedKey, l)) * 1.1;
+            targetPrice = Math.Min(targetPrice, (long)modifierValue);
             AddMedianSample(closest.Value.References, props);
             FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, props);
         }

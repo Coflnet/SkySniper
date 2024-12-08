@@ -1575,8 +1575,8 @@ namespace Coflnet.Sky.Sniper.Services
             TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
-            // 96m for missing mana_regeneration (godroll), 10% for stonks
-            Assert.That(3600000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            // 96m for missing mana_regeneration (godroll), 10% for stonks - overwritten by craft cost limit
+            Assert.That(1320000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
             Assert.That("mana_regeneration:1 (96000000)", Is.EqualTo(estimate.AdditionalProps["missingModifiers"]));
         }
         [Test]
