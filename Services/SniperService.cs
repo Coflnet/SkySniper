@@ -712,6 +712,10 @@ ORDER BY l.`AuctionId`  DESC;
 
             if (m.Value == "PERFECT" || m.Value == "FLAWLESS")
                 return new (string, int)[] { (mapper.GetItemKeyForGem(m, flatNbt ?? new()), 1) };
+            if (m.Key == "upgrade_level" && !(itemService?.IsDungeonItemSync(tag) ?? true))
+            {
+                return EmptyArray;
+            }
             if (mapper.TryGetIngredients(tag, m.Key, m.Value, null, out var ingredients))
             {
                 return ingredients.GroupBy(i => i).Select(i => (i.Key, i.Count()));

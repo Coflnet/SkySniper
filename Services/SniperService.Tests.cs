@@ -1822,9 +1822,11 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
-        public void SubstractsStarCost()
+        public async Task SubstractsStarCost()
         {
+            await service.Init();
             highestValAuction.FlatenedNBT = new();
+            highestValAuction.Tag = "HYPERION";
             var upgradeLvl9 = Dupplicate(highestValAuction);
             upgradeLvl9.HighestBidAmount = 100_000_000;
             upgradeLvl9.FlatenedNBT["upgrade_level"] = "9";
@@ -1839,10 +1841,32 @@ namespace Coflnet.Sky.Sniper.Services
             service.FinishedUpdate();
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
-            Assert.That(28800000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
-            Assert.That("upgrade_level:9 (68000000)", Is.EqualTo(estimate.AdditionalProps["missingModifiers"]), "Third and fourth master star combned cost 68000000");
+            Assert.That(28350000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That("unlocked_slots:COMBAT_0,SAPPHIRE_0,upgrade_level:9 (68500000)", Is.EqualTo(estimate.AdditionalProps["missingModifiers"]), "Third and fourth master star combned cost 68000000");
             var price = service.GetPrice(toTest);
-            Assert.That(32000000, Is.EqualTo(price.Median));
+            Assert.That(31500000, Is.EqualTo(price.Median));
+        }
+        [Test]
+        public async Task MasterStarsOnlyOnDungeonItems()
+        {
+            highestValAuction.FlatenedNBT["upgrade_level"] = "9";
+            highestValAuction.Tag = "GLOWSTONE_GAUNTLET";
+            await service.Init();
+            highestValAuction.HighestBidAmount = 10_000_000;
+            SetBazaarPrice("FOURTH_MASTER_STAR", 49_000_000);
+            SetBazaarPrice("THIRD_MASTER_STAR", 29_000_000);
+            SetBazaarPrice("SECOND_MASTER_STAR", 19_000_000);
+            SetBazaarPrice("ENCHANTED_GLOWSTONE", 1_000_000);
+            SetBazaarPrice("ESSENCE_CRIMON", 2000);
+            AddVolume(highestValAuction);
+            var toTest = Dupplicate(highestValAuction);
+            service.FinishedUpdate();
+            service.State = SniperState.FullyLoaded;
+            service.TestNewAuction(toTest);
+            service.FinishedUpdate();
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.CraftCost).FirstOrDefault();
+            Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
+            Assert.That(25_200_000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
         }
 
         [Test]
@@ -2006,13 +2030,15 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
-        public void AdjustForClosestHavingMasterStarsWorthMoreThanMedian()
+        public async Task AdjustForClosestHavingMasterStarsWorthMoreThanMedian()
         {
             highestValAuction.FlatenedNBT = new() { { "upgrade_level", "7" }, { "rarity_upgrades", "1" } };
             highestValAuction.Enchantments = new List<Core.Enchantment>(){
                 new Core.Enchantment(Enchantment.EnchantmentType.ultimate_wisdom,5)
             };
             highestValAuction.Tier = Tier.MYTHIC;
+            highestValAuction.Tag = "HYPERION";
+            await service.Init();
             highestValAuction.Tag = "STARRED_SHADOW_ASSASSIN_LEGGINGS";
             SetBazaarPrice("FIRST_MASTER_STAR", 12_000_000);
             SetBazaarPrice("SECOND_MASTER_STAR", 22_000_000);
@@ -2031,7 +2057,7 @@ namespace Coflnet.Sky.Sniper.Services
             lessStars.FlatenedNBT["upgrade_level"] = "3";
             var price = service.GetPrice(lessStars);
             Assert.That(price.MedianKey, Is.EqualTo("ultimate_wisdom=5 Any [rarity_upgrades, 1],[upgrade_level, 7] MYTHIC 1- 7*"), JsonConvert.SerializeObject(price));
-            Assert.That(price.Median, Is.EqualTo(13593750), JsonConvert.SerializeObject(price));
+            Assert.That(price.Median, Is.EqualTo(13780115), JsonConvert.SerializeObject(price));
         }
 
         [Test]

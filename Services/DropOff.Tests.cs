@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Core.Services;
 using Coflnet.Sky.Sniper.Models;
@@ -435,7 +436,7 @@ public class DropOffTests
         public AuctionKey CleanKey;
     }
     [Test]
-    public void Test1()
+    public async Task Test1()
     {
         var json = """
         {
@@ -534,6 +535,7 @@ public class DropOffTests
           "RUNE_TIDAL": "3"
         }}
         """;
+        await sniperService.Init();
         var item = JsonConvert.DeserializeObject<ApiSaveAuction>(json);
         // ultimate_refrigerate=5,growth=7,protection=7,mana_vampire=10 Any [artOfPeaceApplied, 1],[COMBAT_0, PERFECT],[dye_item, DYE_PURE_BLACK],[hotpc, 1],[rarity_upgrades, 1],[RUNE_TIDAL, 3]
         SetBazaarPrice("FIRST_MASTER_STAR", 13_000_000);
