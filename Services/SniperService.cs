@@ -2807,8 +2807,8 @@ ORDER BY l.`AuctionId`  DESC;
                 addProps?.Invoke(props);
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, adjustedMedianPrice + extraValue + expValue, props);
             }
-            if (medianPrice - auction.StartingBid < 2_000_000 && bucket.RiskyEstimate > minMedPrice
-                && (bucket.Lbin.AuctionId == default || bucket.Lbin.Price * 1.05 > lbinPrice))
+            if (medianPrice - auction.StartingBid < 2_500_000 && bucket.RiskyEstimate > minMedPrice
+                && (bucket.Lbin.AuctionId == default || bucket.Lbin.Price * 1.04 > lbinPrice))
             {
                 var referenceAuctionId = bucket.References.LastOrDefault().AuctionId;
                 var props = CreateReference(referenceAuctionId, key, extraValue, bucket);
