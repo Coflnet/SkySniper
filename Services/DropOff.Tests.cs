@@ -81,7 +81,7 @@ public class DropOffTests
     [Test]
     public void SpeedTest()
     {
-        if(!Dns.GetHostName().Contains("ekwav"))
+        if (!Dns.GetHostName().Contains("ekwav"))
             Assert.Ignore("This test is only for local testing");
         SetBazaarPrice("RECOMBOBULATOR_3000", 8_000_000);
         SetBazaarPrice("ENCHANTMENT_GROWTH_6", 44_000_000);
@@ -251,6 +251,21 @@ public class DropOffTests
         sniperService.TestNewAuction(testAuction);
         var medianSnipe = found.FirstOrDefault(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
         medianSnipe?.TargetPrice.Should().Be(28000000L, JsonConvert.SerializeObject(found, Formatting.Indented));
+    }
+    [Test]
+    public void UseRiskyEstimateOnLowVolumeWithLowVolatility()
+    {
+        PriceLookup converted = LoadLookupMock("RiskyLowVolume.json");
+        SniperService.StartTime -= TimeSpan.FromDays(10000) + (DateTime.UtcNow - new DateTime(2024, 12, 22));
+        var element = converted.Lookup.Last(l => l.Key.Modifiers.Count > 0);
+        SetBazaarPrice("ENCHANTMENT_SMITE_7", 8_000_000);
+        SetBazaarPrice("ENCHANTMENT_ULTIMATE_WISE_5", 3_000_000);
+        SetBazaarPrice("ENCHANTMENT_VAMPIRISM_5", 3_000_000);
+        SetBazaarPrice("RECOMBOBULATOR_3000", 8_000_000);
+        var key = ("SCAVENGER_ARTIFACT", sniperService.GetBreakdownKey(element.Key, "SCAVENGER_ARTIFACT"));
+        sniperService.UpdateMedian(element.Value, key);
+        element.Value.Price.Should().Be(63318112L);
+        element.Value.RiskyEstimate.Should().Be(66554664L);
     }
 
     [Test]

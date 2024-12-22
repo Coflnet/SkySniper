@@ -20,6 +20,12 @@ namespace Coflnet.Sky.Sniper.Models
         public short Seller { get; set; }
         [Key(4)]
         public short Buyer { get; set; }
+        /// <summary>
+        /// How long the auction has been up for sale in hours, 
+        /// if active auction represents the time until <see cref="Day"/>
+        /// </summary>
+        [Key(5)]
+        public byte SellTime { get; set; }
 
         public static ReferenceComparer Compare = new ReferenceComparer();
 

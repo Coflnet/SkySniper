@@ -1045,7 +1045,7 @@ ORDER BY l.`AuctionId`  DESC;
                 // check higher value keys for lower price 
                 limitedPrice = CapPriceAtHigherLevelKey(keyCombo, limitedPrice);
 
-                if (size > 40)
+                if (size > 40 || bucket.Volatility <= 8 && size > 8)
                 {
                     var riskyLongTerm = GetMedian(monthSpan.Where(d => d.Day >= GetDay() - 10).ToList(), cleanPriceLookup, 3f);
                     var riskyShort = GetMedian(monthSpan.Where(d => d.Day >= GetDay() - 2).ToList(), cleanPriceLookup, 3f);
