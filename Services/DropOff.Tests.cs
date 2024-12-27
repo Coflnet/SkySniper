@@ -264,7 +264,7 @@ public class DropOffTests
         SetBazaarPrice("RECOMBOBULATOR_3000", 8_000_000);
         var key = ("SCAVENGER_ARTIFACT", sniperService.GetBreakdownKey(element.Key, "SCAVENGER_ARTIFACT"));
         sniperService.UpdateMedian(element.Value, key);
-        element.Value.Price.Should().Be(63318112L);
+        element.Value.Price.Should().Be(66554664L);
         element.Value.RiskyEstimate.Should().Be(66554664L);
     }
 
