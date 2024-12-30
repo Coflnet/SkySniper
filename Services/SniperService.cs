@@ -906,17 +906,17 @@ ORDER BY l.`AuctionId`  DESC;
             while (bucket.References.Count > SizeToKeep && bucket.References.TryDequeue(out _)) { }
         }
 
-        public void AddSoldItem(SaveAuction auction, bool preventMedianUpdate = false)
+        public short AddSoldItem(SaveAuction auction, bool preventMedianUpdate = false)
         {
             (ReferenceAuctions bucket, var key) = GetBucketForAuction(auction);
-            AddAuctionToBucket(auction, preventMedianUpdate, bucket, key.ValueSubstract);
+            var time = AddAuctionToBucket(auction, preventMedianUpdate, bucket, key.ValueSubstract);
             try
             {
                 var attributesOnAuction = auction.FlatenedNBT.Where(a => Constants.AttributeKeys.Contains(a.Key)).ToList();
                 if (attributesOnAuction.Count == 0)
-                    return;
+                    return time;
                 if (key.Enchants.Count > 1 || key.Modifiers.Count > 2)
-                    return; // only add attributes for (almost) clean items, one allowed for things that drop with extra enchants
+                    return time; // only add attributes for (almost) clean items, one allowed for things that drop with extra enchants
                 var groupTag = GetAuctionGroupTag(auction.Tag);
                 var itemGroupTag = groupTag.Item1;
                 foreach (var item in attributesOnAuction)
@@ -934,6 +934,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 dev.Logger.Instance.Error(e, $"Occured when trying to store attribue value");
             }
+            return time;
         }
 
         private static AuctionKey VirtualAttributeKey(KeyValuePair<string, string> item)
@@ -955,10 +956,10 @@ ORDER BY l.`AuctionId`  DESC;
         /// <param name="preventMedianUpdate"></param>
         /// <param name="bucket"></param>
         /// <param name="valueSubstract">Extra value to substract based on what is not matching in the bucket</param>
-        public void AddAuctionToBucket(SaveAuction auction, bool preventMedianUpdate, ReferenceAuctions bucket, long valueSubstract = 0)
+        public short AddAuctionToBucket(SaveAuction auction, bool preventMedianUpdate, ReferenceAuctions bucket, long valueSubstract = 0)
         {
             if (bucket.References.Where(r => r.AuctionId == auction.UId).Any())
-                return; // duplicate
+                return -1; // duplicate
             var reference = CreateReferenceFromAuction(auction, valueSubstract);
             if (reference.Price < 0 && valueSubstract > 1_000_000)
             {
@@ -972,6 +973,10 @@ ORDER BY l.`AuctionId`  DESC;
                 var soldAt = auction.End;
                 reference.SellTime = (short)(soldAt - listedAt).TotalMinutes;
             }
+            else if (auction.Start != default)
+            {
+                reference.SellTime = (short)(auction.End - auction.Start).TotalMinutes;
+            }
             bucket.References.Enqueue(reference);
             bucket.Lbins.RemoveAll(l => l.AuctionId == auction.UId);
             CapBucketSize(bucket);
@@ -980,6 +985,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var key = DetailedKeyFromSaveAuction(auction);
                 UpdateMedian(bucket, (GetAuctionGroupTag(auction.Tag).tag, key));
             }
+            return reference.SellTime;
         }
 
         public void UpdateMedian(ReferenceAuctions bucket, (string tag, KeyWithValueBreakdown key) keyCombo = default)
@@ -1563,7 +1569,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             return DetailedKeyFromSaveAuction(auction);
         }
-        private KeyWithValueBreakdown DetailedKeyFromSaveAuction(SaveAuction auction, bool fastMode = false)
+        private KeyWithValueBreakdown DetailedKeyFromSaveAuction(SaveAuction auction, bool fastMode = false, int limit = 5)
         {
             var shouldIncludeReforge = Constants.RelevantReforges.Contains(auction.Reforge);
             long valueSubstracted = 0;
@@ -1573,10 +1579,10 @@ ORDER BY l.`AuctionId`  DESC;
             List<KeyValuePair<string, string>> modifiers;
             (enchants, modifiers) = SelectValuable(auction, fastMode);
 
-            (valueSubstracted, removedRarity, shouldIncludeReforge, rankElems) = CapKeyLength(enchants, modifiers, auction);
+            (valueSubstracted, removedRarity, shouldIncludeReforge, rankElems) = CapKeyLength(enchants, modifiers, auction, limit);
 
             if (enchants == null)
-                enchants = new List<Models.Enchant>();
+                enchants = new List<Enchant>();
             var tier = auction.Tier;
             if (auction.Tag == "ENCHANTED_BOOK")
             {
@@ -1706,7 +1712,7 @@ ORDER BY l.`AuctionId`  DESC;
         /// <param name="modifiers"></param>
         /// <returns>The coin amount substracted</returns>
         public (long valueSubstracted, bool removedRarity, bool includeReforge, List<RankElem> ranked) CapKeyLength(
-            List<Models.Enchant> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction, long threshold = 500000)
+            List<Models.Enchant> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction, long threshold = 500000, int elements = 5)
         {
             var underlyingItemValue = 0L;
             if (auction.Tag != null && Lookups.TryGetValue(auction.Tag, out var lookups))
@@ -1781,7 +1787,7 @@ ORDER BY l.`AuctionId`  DESC;
                         removedRarity = true;
                 }
             }
-            var ordered = combined.Where(c => c.Value == 0).Concat(combined.Take(5)).ToList();
+            var ordered = combined.Where(c => c.Value == 0).Concat(combined.Take(elements)).ToList();
             return (valueSubstracted, removedRarity, includeReforge, ordered);
 
         }

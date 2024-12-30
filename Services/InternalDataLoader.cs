@@ -322,7 +322,7 @@ namespace Coflnet.Sky.Sniper.Services
                 totalStart = DateTime.UtcNow - TimeSpan.FromDays(100);
 
             var samples = new List<SaveAuction>();
-            var tickSize =  TimeSpan.FromDays(2);
+            var tickSize = TimeSpan.FromDays(2);
             for (var start = totalStart; start < DateTime.UtcNow; start += tickSize)
             {
                 var end = start + tickSize;
@@ -542,10 +542,12 @@ namespace Coflnet.Sky.Sniper.Services
                 foreach (var a in batch)
                 {
                     soldReceived.Inc();
-                    sniper.AddSoldItem(a);
+                    var listingTime = sniper.AddSoldItem(a);
                     if (a.UId % 10 == 0)
                         Console.Write("s");
                     await SaveIfReached(a);
+                    if (listingTime > 2)
+                        await partialCalcService.AddSell(a);
                 }
 
             }, stoppingToken, 4);

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Core.Services;
 using Coflnet.Sky.Crafts.Client.Api;
+using Coflnet.Sky.FlipTracker.Client.Api;
 using Coflnet.Sky.Sniper.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics;
@@ -53,6 +54,7 @@ namespace Coflnet.Sky.Sniper
             services.AddHostedService<CraftCostService>(d => d.GetRequiredService<ICraftCostService>() as CraftCostService);
             services.AddSingleton<Mayor.Client.Api.IMayorApi, Mayor.Client.Api.MayorApi>(d => new Mayor.Client.Api.MayorApi(Configuration["MAYOR_BASE_URL"]));
             services.AddSingleton<Mayor.Client.Api.IElectionPeriodsApi>(d => new Mayor.Client.Api.ElectionPeriodsApi(Configuration["MAYOR_BASE_URL"]));
+            services.AddSingleton<ITrackerApi, TrackerApi>(d => new TrackerApi(Configuration["TRACKER_BASE_URL"]));
             services.AddSingleton<IMayorService, MayorService>();
             services.AddHostedService<MayorService>(d => d.GetRequiredService<IMayorService>() as MayorService);
             services.AddSingleton<RetrainService>();

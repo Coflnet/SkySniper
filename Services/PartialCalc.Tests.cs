@@ -43,7 +43,7 @@ public class PartialCalcTests
             new MayorMock(),
             new MockPersistenceManager(),
             NullLogger<PartialCalcService>.Instance,
-            itemService);
+            itemService, null);
         AddSell(new SaveAuction()
         {
             Tag = "CLEAN",

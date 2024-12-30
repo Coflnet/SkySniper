@@ -11,7 +11,6 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace Coflnet.Sky.Sniper.Services;
-#nullable enable
 public class PartialCalcService
 {
     private readonly ConcurrentDictionary<string, PriceLookup> Lookups;
@@ -21,6 +20,7 @@ public class PartialCalcService
     private readonly IMayorService mayorService = null!;
     private readonly IPersitanceManager persitanceManager = null!;
     private readonly ILogger<PartialCalcService> logger = null!;
+    private readonly AIFormattingService aiFormattingService = null!;
     private double adjustRate = 0.01;
     private readonly SniperService sniper;
     public bool IsPrimary { get; set; }
@@ -35,7 +35,8 @@ public class PartialCalcService
         IMayorService mayorService,
         IPersitanceManager persitanceManager,
         ILogger<PartialCalcService> logger,
-        Core.Services.HypixelItemService itemService)
+        Core.Services.HypixelItemService itemService,
+        AIFormattingService aiFormattingService)
     {
         Lookups = sniper.Lookups;
         this.sniper = sniper;
@@ -50,6 +51,7 @@ public class PartialCalcService
         }
 
         this.itemService = itemService;
+        this.aiFormattingService = aiFormattingService;
     }
 
     public Dictionary<string, Dictionary<string, double>> GetAttributeCosts(string tag)
@@ -112,10 +114,12 @@ public class PartialCalcService
         return cleanItem?.Price ?? 0;
     }
 
-    public void AddSell(SaveAuction auction)
+    public async Task AddSell(SaveAuction auction)
     {
         if (!IsPrimary)
             return;
+        if (auction.End > DateTime.UtcNow - TimeSpan.FromHours(1))
+            await aiFormattingService?.AddSample(auction);
         var item = new ItemBreakDown(auction, mayorService.GetMayor(auction.End));
         var attribs = AttributeLookups.GetOrAdd(auction.Tag, tag => new());
         var modifiers = item.Flatten;
@@ -492,7 +496,7 @@ public class PartialCalcService
             {
                 foreach (var attrib in item.Value.Values)
                 {
-                    if(attrib.Value.Count > 1000)
+                    if (attrib.Value.Count > 1000)
                     {
                         logger.LogInformation($"Too many values {item.Key} {attrib.Key} {attrib.Value.Count}");
                         attrib.Value.Clear();
