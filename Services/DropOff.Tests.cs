@@ -78,6 +78,21 @@ public class DropOffTests
             found.Add(a);
         };
     }
+
+    [Test]
+    public void DifferentialPrice()
+    {
+        SniperService.StartTime += DateTime.UtcNow - new DateTime(2024, 12, 30);
+        var converted = LoadLookupMock("trend.json");
+        sniperService.AddLookupData("HYPERION", converted);
+        foreach (var item in converted.Lookup)
+        {
+            sniperService.UpdateMedian(item.Value, ("HYPERION", sniperService.GetBreakdownKey(item.Key, "HYPERION")));
+        }
+        var price = sniperService.Lookups["HYPERION"].Lookup.First().Value.Price;
+        price.Should().Be(1014_218_065L, "Trend anylsis shows a downward trend, compared to long time its the smallest"); 
+    }
+
     [Test]
     public void SpeedTest()
     {
@@ -256,7 +271,7 @@ public class DropOffTests
     public void UseRiskyEstimateOnLowVolumeWithLowVolatility()
     {
         PriceLookup converted = LoadLookupMock("RiskyLowVolume.json");
-        SniperService.StartTime -= TimeSpan.FromDays(10000) + (DateTime.UtcNow - new DateTime(2024, 12, 22));
+        SniperService.StartTime -= TimeSpan.FromDays(10000) - (DateTime.UtcNow - new DateTime(2024, 12, 22));
         var element = converted.Lookup.Last(l => l.Key.Modifiers.Count > 0);
         SetBazaarPrice("ENCHANTMENT_SMITE_7", 8_000_000);
         SetBazaarPrice("ENCHANTMENT_ULTIMATE_WISE_5", 3_000_000);
@@ -264,7 +279,7 @@ public class DropOffTests
         SetBazaarPrice("RECOMBOBULATOR_3000", 8_000_000);
         var key = ("SCAVENGER_ARTIFACT", sniperService.GetBreakdownKey(element.Key, "SCAVENGER_ARTIFACT"));
         sniperService.UpdateMedian(element.Value, key);
-        element.Value.Price.Should().Be(66554664L);
+        element.Value.Price.Should().Be(63318112L);
         element.Value.RiskyEstimate.Should().Be(66554664L);
     }
 
@@ -272,7 +287,7 @@ public class DropOffTests
     public void DyeItemCraftCostChange()
     {
         PriceLookup converted = LoadLookupMock("DYE.json");
-        SniperService.StartTime -= TimeSpan.FromDays(10000) + (DateTime.UtcNow - new DateTime(2024, 11, 09));
+        SniperService.StartTime -= TimeSpan.FromDays(10000) - (DateTime.UtcNow - new DateTime(2024, 11, 09));
         sniperService.UpdateMedian(converted.Lookup.Last().Value);
         sniperService.AddLookupData("DYE_H", converted);
         var testAuction = new SaveAuction()

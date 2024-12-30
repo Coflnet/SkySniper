@@ -998,11 +998,12 @@ ORDER BY l.`AuctionId`  DESC;
             bucket.OldestRef = shortTermList.Take(4).Min(s => s.Day);
             if (shortTermList.Count >= 3 && bucket.OldestRef - shortTermList.First().Day <= -5
                 && shortTermList.First().AuctionId != shortTermList.OrderByDescending(o => o.Price).First().AuctionId
+                && bucket.References.OrderByDescending(r=>r.Day).Skip(5).FirstOrDefault().Day <= GetDay() - 5 // check if anti market manipulation made a hole
                 && bucket.Volume > 0.25) // 5 day gaps are to be expected at ~0.2 volume
             {
                 // probably derpy or weird price drop
                 var reduced = (shortTermList.OrderBy(s => s.Price).First().Price + shortTermPrice * 2) / 3;
-                shortTermPrice = Math.Max(shortTermPrice * 7 / 10, reduced);
+                shortTermPrice = Math.Max(shortTermPrice * 8 / 10, reduced);
             }
             // long term protects against market manipulation
             var monthSpan = deduplicated.Where(d => d.Day >= GetDay() - 30).ToList();
@@ -1270,8 +1271,10 @@ ORDER BY l.`AuctionId`  DESC;
             if (IsTrendDownwards(shortTermPrice, longTerm, thirdMedian, secondNewestMedian))
             {
                 var difference = secondNewestMedian - shortTermPrice;
+                var differenceToLong = longTerm - shortTermPrice;
+                difference = Math.Min(difference, differenceToLong);
                 var inPercent = (float)difference / secondNewestMedian / 2;
-                if (difference > 0 && newMedian > difference && inPercent < 0.4)
+                if (difference > 0 && newMedian > difference && inPercent < 0.2)
                 {
                     newMedian = newMedian - (long)(newMedian * inPercent);
                     deferred.Log($"Trend downwards {bucket.References.First().AuctionId} - {bucket.Price} {shortTermPrice} {longTerm} {secondNewestMedian} diff:{difference} {inPercent}% {newMedian}");
