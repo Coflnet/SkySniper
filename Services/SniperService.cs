@@ -265,6 +265,7 @@ namespace Coflnet.Sky.Sniper.Services
                     bucket.Lbins = new();
                 if (!bucket.Lbins.Contains(item))
                 {
+                    item.SellTime = (short)(auction.Start - auction.End.Date).TotalMinutes;
                     bucket.Lbins.Add(item);
                     bucket.Lbins.Sort(ReferencePrice.Compare);
                     if (bucket.Lbins.First().AuctionId == item.AuctionId)
@@ -964,6 +965,13 @@ ORDER BY l.`AuctionId`  DESC;
                 logger.LogInformation($"Negative price {JsonConvert.SerializeObject(auction)} {reference.Price} {valueSubstract}");
             }
             // move reference to sold
+            var activeLbin = bucket.Lbins.FirstOrDefault(l => l.AuctionId == auction.UId);
+            if (activeLbin.AuctionId != default)
+            {
+                var listedAt = StartTime.AddDays(activeLbin.Day) + TimeSpan.FromMinutes(activeLbin.SellTime);
+                var soldAt = auction.End;
+                reference.SellTime = (short)(soldAt - listedAt).TotalMinutes;
+            }
             bucket.References.Enqueue(reference);
             bucket.Lbins.RemoveAll(l => l.AuctionId == auction.UId);
             CapBucketSize(bucket);
@@ -998,7 +1006,7 @@ ORDER BY l.`AuctionId`  DESC;
             bucket.OldestRef = shortTermList.Take(4).Min(s => s.Day);
             if (shortTermList.Count >= 3 && bucket.OldestRef - shortTermList.First().Day <= -5
                 && shortTermList.First().AuctionId != shortTermList.OrderByDescending(o => o.Price).First().AuctionId
-                && bucket.References.OrderByDescending(r=>r.Day).Skip(5).FirstOrDefault().Day <= GetDay() - 5 // check if anti market manipulation made a hole
+                && bucket.References.OrderByDescending(r => r.Day).Skip(5).FirstOrDefault().Day <= GetDay() - 5 // check if anti market manipulation made a hole
                 && bucket.Volume > 0.25) // 5 day gaps are to be expected at ~0.2 volume
             {
                 // probably derpy or weird price drop

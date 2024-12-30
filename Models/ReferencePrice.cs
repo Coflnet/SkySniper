@@ -25,7 +25,7 @@ namespace Coflnet.Sky.Sniper.Models
         /// if active auction represents the time until <see cref="Day"/>
         /// </summary>
         [Key(5)]
-        public byte SellTime { get; set; }
+        public short SellTime { get; set; }
 
         public static ReferenceComparer Compare = new ReferenceComparer();
 
