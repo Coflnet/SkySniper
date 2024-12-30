@@ -362,7 +362,7 @@ namespace Coflnet.Sky.Sniper.Controllers
             var startDay = SniperService.GetDay(start);
             var endDay = SniperService.GetDay(end);
             var removedSum = 0;
-            if(startDay > endDay)
+            if (startDay > endDay)
             {
                 (endDay, startDay) = (startDay, endDay);
             }
@@ -408,7 +408,7 @@ namespace Coflnet.Sky.Sniper.Controllers
                         return $"{l.Key}+{string.Join("_", modifiers.Select(m => m.Key))}";
                     return l.Key;
                 })
-                .Select(g => (g.Key, g.OrderBy(l => l.Value.Price / Math.Min(l.Value.Volume, 1))
+                .Select(g => (g.Key, g.OrderBy(l => l.Value.Price / Math.Min(l.Value.Volume, Math.Max(1, Math.Log(l.Value.Volume)/2 + 1)))
                     .Select(l => l.Value.Price / (l.Key.Count == 0 ? 1 : l.Key.Count))
                     .FirstOrDefault())
                 ))
@@ -436,7 +436,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         public IEnumerable<string> KeyContent()
         {
             return service.Lookups.SelectMany(l => l.Value.Lookup.Keys.SelectMany(
-                    k => k.Enchants.Select(e => e.Type.ToString()).Concat(k.Modifiers.Select(m=>m.Key)))).Distinct().OrderBy(k => k);
+                    k => k.Enchants.Select(e => e.Type.ToString()).Concat(k.Modifiers.Select(m => m.Key)))).Distinct().OrderBy(k => k);
         }
 
         /// <summary>
