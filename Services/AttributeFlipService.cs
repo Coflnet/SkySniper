@@ -97,7 +97,7 @@ public class AttributeFlipService : IAttributeFlipService
         }
         if (!lookup.Lookup.TryGetValue(key, out var matchingBaucket))
             return;
-        if (matchingBaucket.Volume < 2)
+        if (matchingBaucket.Volume < 1)
             return;
         if (key.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.champion // probably non-purchasable lvl 2-10
             || e.Type == Enchantment.EnchantmentType.vampirism))
