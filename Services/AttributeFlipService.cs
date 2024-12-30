@@ -91,7 +91,7 @@ public class AttributeFlipService : IAttributeFlipService
         var modifierSum = flip.ModifierSum;
         var lookup = flip.Lookup;
         var medianPrice = flip.MedianPrice;
-        if(key.Modifiers.Any(m=>m.Key.ToLower().EndsWith("kills")))
+        if (key.Modifiers.Any(m => m.Key.ToLower().EndsWith("kills")))
         {
             return; // can't buy kills
         }
@@ -99,6 +99,11 @@ public class AttributeFlipService : IAttributeFlipService
             return;
         if (matchingBaucket.Volume < 2)
             return;
+        if (key.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.champion // probably non-purchasable lvl 2-10
+            || e.Type == Enchantment.EnchantmentType.vampirism))
+        {
+            return; 
+        }
         var cheapestLbin = lookup.Lookup.Where(l => l.Value.Lbin.AuctionId != default && l.Value.Lbin.Price > l.Value.Price / 2).MinBy(l => l.Value.Lbin.Price);
         if (cheapestLbin.Value.Lbin.Price > cheapest)
         {
@@ -158,7 +163,7 @@ public class AttributeFlipService : IAttributeFlipService
                 Price = b.Value
             };
         }
-        if(b.Modifier.Key == "upgrade_level")
+        if (b.Modifier.Key == "upgrade_level")
         {
             yield return new AttributeFlip.Ingredient()
             {
