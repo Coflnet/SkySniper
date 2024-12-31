@@ -118,6 +118,7 @@ public class PartialCalcService
     {
         if (!IsPrimary)
             return;
+        logger.LogInformation($"Adding partialSell {auction.Uuid} {auction.Tag} {auction.End} {aiFormattingService == null}");
         if (auction.End > DateTime.UtcNow - TimeSpan.FromHours(1))
             await aiFormattingService?.AddSample(auction);
         var item = new ItemBreakDown(auction, mayorService.GetMayor(auction.End));
