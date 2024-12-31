@@ -69,6 +69,7 @@ namespace Coflnet.Sky.Sniper
             services.AddSingleton<IPersitanceManager, S3PersistanceManager>();
             services.AddSingleton<ITokenService, TokenService>();
             services.AddSingleton<ActiveUpdater>();
+            services.AddSingleton<AIFormattingService>();
             services.AddSingleton<PartialCalcService>();
             services.AddSingleton<Kafka.KafkaCreator>();
             services.AddSingleton<HypixelItemService>();
