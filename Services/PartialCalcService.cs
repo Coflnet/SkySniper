@@ -52,6 +52,7 @@ public class PartialCalcService
 
         this.itemService = itemService;
         this.aiFormattingService = aiFormattingService;
+        IsPrimary = sniper.ServerDnsName.Contains("manager");
     }
 
     public Dictionary<string, Dictionary<string, double>> GetAttributeCosts(string tag)
