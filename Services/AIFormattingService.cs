@@ -88,7 +88,7 @@ public class AIFormattingService
         var withBreakdown = sniper.ValueKeyForTest(auction);
         var fullFlag = 10_000_000_000;
         var attributeList = withBreakdown.ValueBreakdown.Select(x =>
-            (x.Enchant.Type != default ? $"{x.Enchant.Type}:{x.Enchant.Lvl}" : x.Modifier.Key != default ? $"{x.Modifier}:{x.Modifier.Value}" : x.Reforge.ToString(),
+            (x.Enchant.Type != default ? $"{x.Enchant.Type}:{x.Enchant.Lvl}" : x.Modifier.Key != default ? $"{x.Modifier.Key}:{x.Modifier.Value}" : x.Reforge.ToString(),
                 x.IsEstimate ? fullFlag : x.Value))
             .ToDictionary(x => x.Item1, x => x.Item2);
         var mayor = mayorService.GetMayor(auction.End);
