@@ -100,6 +100,7 @@ public class AIFormattingService
             AuctionId = Guid.Parse(auction.Uuid),
             ItemTag = auction.Tag,
             EndedAt = auction.End,
+            SoldFor = auction.HighestBidAmount,
             AttributeValues = attributeList
         });
     }
