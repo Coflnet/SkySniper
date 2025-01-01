@@ -548,7 +548,6 @@ namespace Coflnet.Sky.Sniper.Services
                     await SaveIfReached(a);
                     if (listingTime > 2)
                     {
-                        logger.LogInformation("listing time sold " + listingTime + " " + a.Uuid);
                         await partialCalcService.AddSell(a);
                     }
                 }

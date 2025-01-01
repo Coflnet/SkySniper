@@ -2844,20 +2844,20 @@ ORDER BY l.`AuctionId`  DESC;
             }
             return foundSnipe;
 
-            void LogNonFlip(SaveAuction auction, ReferenceAuctions bucket, AuctionKey key, long extraValue, float volume, long medianPrice, string v = null)
-            {
-                if (volume == 0 || bucket.Lbin.Price == 0 || bucket.Price == 0 || bucket.Price > MIN_TARGET)
-                    Logs.Enqueue(new LogEntry()
-                    {
-                        Key = key.ToString() + $"+{extraValue} {v}",
-                        LBin = bucket.Lbin.Price,
-                        Median = medianPrice,
-                        Uuid = auction.Uuid,
-                        Volume = bucket.Volume
-                    });
-                if (Logs.Count > 2000)
-                    PrintLogQueue();
-            }
+        }
+        void LogNonFlip(SaveAuction auction, ReferenceAuctions bucket, AuctionKey key, long extraValue, float volume, long medianPrice, string v = null)
+        {
+            if (volume == 0 || bucket.Lbin.Price == 0 || bucket.Price == 0 || bucket.Price > MIN_TARGET)
+                Logs.Enqueue(new LogEntry()
+                {
+                    Key = key.ToString() + $"+{extraValue} {v}",
+                    LBin = bucket.Lbin.Price,
+                    Median = medianPrice,
+                    Uuid = auction.Uuid,
+                    Volume = bucket.Volume
+                });
+            if (Logs.Count > 2000)
+                PrintLogQueue();
         }
 
         private static long GetValueDifferenceForExp(SaveAuction auction, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
@@ -3221,11 +3221,15 @@ ORDER BY l.`AuctionId`  DESC;
         private bool FoundAFlip(SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, long targetPrice, Dictionary<string, string> props)
         {
             if (targetPrice < MIN_TARGET || targetPrice < auction.StartingBid * 1.03)
+            {
+                LogNonFlip(auction, bucket, defaultKey, 0, bucket.Volume, targetPrice, "Target price too low");
                 return false; // to low
+            }
             var refAge = (GetDay() - bucket.OldestRef);
             if (bucket.OldestRef != 0 && (refAge > 60 && IsNotClean(auction) || State < SniperState.FullyLoaded && refAge > 5))
             {
                 Activity.Current.Log($"References too old {refAge} {State}");
+                LogNonFlip(auction, bucket, defaultKey, 0, bucket.Volume, targetPrice, $"References too old for {State} ({refAge})");
                 return false; // too old
             }
             props["refAge"] = refAge.ToString();
