@@ -3193,7 +3193,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static long MaxMedianPriceForSnipe(ReferenceAuctions bucket)
         {
-            var price = bucket.Price;
+            var price = bucket.RiskyEstimate;
             if (price == 0)
                 return long.MaxValue; // disabled with 0 volume
             if (price < 15_000_000)

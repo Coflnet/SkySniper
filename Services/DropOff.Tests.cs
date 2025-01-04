@@ -80,7 +80,7 @@ public class DropOffTests
     }
 
     [Test]
-    public void DifferentialPrice()
+    public void DownwardTrendLimit()
     {
         SniperService.StartTime += DateTime.UtcNow - new DateTime(2024, 12, 30);
         var converted = LoadLookupMock("trend.json");
@@ -90,7 +90,7 @@ public class DropOffTests
             sniperService.UpdateMedian(item.Value, ("HYPERION", sniperService.GetBreakdownKey(item.Key, "HYPERION")));
         }
         var price = sniperService.Lookups["HYPERION"].Lookup.First().Value.Price;
-        price.Should().Be(1014_218_065L, "Trend anylsis shows a downward trend, compared to long time its the smallest"); 
+        price.Should().Be(1014_218_065L, "Trend anylsis shows a downward trend, compared to long time its the smallest");
     }
 
     [Test]
@@ -312,8 +312,8 @@ public class DropOffTests
         medianSnipe.TargetPrice.Should().Be(97399150, JsonConvert.SerializeObject(found, Formatting.Indented));
     }
 
-    [TestCase(9, 55415716)]
-    [TestCase(10, 58332333)]
+    [TestCase(9, 60799050L)]
+    [TestCase(10, 63999000L)]
     public void SniperEstimate(byte volumeOverride, long target)
     {
         PriceLookup converted = LoadLookupMock("potato-talisman.json");
