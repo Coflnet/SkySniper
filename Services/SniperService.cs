@@ -3080,7 +3080,10 @@ ORDER BY l.`AuctionId`  DESC;
             var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue, bucket);
             AddMedianSample(bucket.References, props);
             props["mVal"] = bucket.Price.ToString();
-            var targetPrice = (Math.Min(higherValueLowerBin, MaxMedianPriceForSnipe(bucket)) + extraValue) - MIN_TARGET / 200;
+            props["hvlbin"] = higherValueLowerBin.ToString();
+            var targetPrice = Math.Min(higherValueLowerBin, MaxMedianPriceForSnipe(bucket)) + extraValue - MIN_TARGET / 200;
+            if (bucket.Price != 0)
+                targetPrice = Math.Min(targetPrice, bucket.Price * 2);
             if (targetPrice < auction.StartingBid * 1.03)
                 return false;
             var percentile = long.MaxValue;
