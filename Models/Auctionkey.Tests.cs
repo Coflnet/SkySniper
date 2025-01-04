@@ -680,7 +680,7 @@ public class AuctionkeyTests
         await itemService.GetItemsAsync();
         var auction = new SaveAuction()
         {
-            FlatenedNBT = new() ,
+            FlatenedNBT = new(),
             Enchantments = new() { new(EnchantmentType.ultimate_the_one, 4) },
             Tag = "ENCHANTED_BOOK_BUNDLE_THE_ONE"
         };
@@ -725,7 +725,7 @@ public class AuctionkeyTests
         service.AddSoldItem(sample.Dupplicate());
         service.AddSoldItem(sample.Dupplicate());
         service.AddSoldItem(sample.Dupplicate());
-        
+
         var auction = new SaveAuction()
         {
             FlatenedNBT = new() { { "upgrade_level", "5" } },
@@ -735,6 +735,34 @@ public class AuctionkeyTests
         SetBazaarPrice("WITHER_BLOOD", 1_600_000);
         var key = service.ValueKeyForTest(auction);
         key.Key.Reforge.Should().Be(ItemReferences.Reforge.Any);
+    }
+    [Test]
+    public async Task ValueEstimateForCrimsonStars()
+    {
+        await service.Init();
+        var auction = new SaveAuction()
+        {
+            Tag = "CRIMSON_BOOTS",
+            FlatenedNBT = new() { { "rarity_upgrades", "1" }, { "hpc", "10" }, { "unlocked_slots", "COMBAT_0,COMBAT_1" }, { "upgrade_level", "10" }, { "veteran", "5" }, { "dominance", "4" }, { "color", "230:83:0" }, { "cc", "1" } },
+            Tier = Tier.MYTHIC,
+            Reforge = ItemReferences.Reforge.ancient
+        };
+        SetBazaarPrice("ESSENCE_CRIMSON", 1_900);
+        SetBazaarPrice("RECOMBOBULATOR_3000", 8_000_000);
+        SetBazaarPrice("HEAVY_PEARL", 50_000);
+        SetBazaarPrice("FLAWLESS_JASPER_GEM", 6_000_000);
+        SetBazaarPrice("FLAWLESS_SAPPHIRE_GEM", 1_800_000);
+        SetBazaarPrice("FLAWLESS_RUBY_GEM", 1_500_000);
+        SetBazaarPrice("FLAWLESS_AMETHYST_GEM", 2_000_000);
+
+        var key = service.ValueKeyForTest(auction);
+        key.Key.Reforge.Should().Be(ItemReferences.Reforge.Any);
+        key.Key.Enchants.Count.Should().Be(0);
+        key.ValueBreakdown.Should().Contain([
+            new (new KeyValuePair<string,string>("veteran",   "5"), 57000000),
+            new (new KeyValuePair<string,string>("dominance", "4"), 53800000),
+            new (new KeyValuePair<string,string>("unlocked_slots", "COMBAT_0,COMBAT_1"), 23100000),
+            new (new KeyValuePair<string,string>("upgrade_level", "10"), 1504500),]);
     }
     [Test]
     public void ValueAssignedtoRecombobulator()

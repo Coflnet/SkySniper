@@ -47,6 +47,36 @@ namespace Coflnet.Sky.Sniper.Services
                 Reforge = reforge;
                 Value = value;
             }
+
+
+            public override bool Equals(object obj)
+            {
+                if (obj == null)
+                    return false;
+                RankElem elem = obj as RankElem;
+                if (elem == null)
+                    return false;
+                return elem.Enchant.Equals(Enchant) && elem.Modifier.Key == Modifier.Key 
+                    && elem.Modifier.Value == Modifier.Value && elem.Reforge == Reforge
+                    && elem.Value == Value;
+            }
+
+            public override int GetHashCode()
+            {
+                if (Enchant.Lvl != default)
+                {
+                    return Enchant.GetHashCode();
+                }
+                if (Modifier.Key != null)
+                {
+                    return Modifier.Key.GetHashCode() ^ Modifier.Value.GetHashCode();
+                }
+                if (Reforge != default)
+                {
+                    return Reforge.GetHashCode();
+                }
+                return 0;
+            }
         }
     }
 }
