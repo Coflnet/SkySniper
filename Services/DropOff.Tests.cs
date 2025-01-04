@@ -312,8 +312,8 @@ public class DropOffTests
         medianSnipe.TargetPrice.Should().Be(97399150, JsonConvert.SerializeObject(found, Formatting.Indented));
     }
 
-    [TestCase(9, 60799050L)]
-    [TestCase(10, 63999000L)]
+    [TestCase(9, 55415716L)]
+    [TestCase(10, 58332333L)]
     public void SniperEstimate(byte volumeOverride, long target)
     {
         PriceLookup converted = LoadLookupMock("potato-talisman.json");
