@@ -170,7 +170,7 @@ public class DropOffTests
             }
         }
         var desk = sniperService.Lookups["DESK"].Lookup.Where(l => l.Key.Count == 1).First();
-        desk.Value.Price.Should().Be(36_000);
+        desk.Value.Price.Should().Be(21_600 + 750_000);
     }
     [Test]
     public void ScarfUnderValue()

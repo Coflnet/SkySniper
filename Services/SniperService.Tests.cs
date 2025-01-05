@@ -1943,7 +1943,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(sample);
             var toTest = Dupplicate(sample);
             var estimate = service.GetPrice(toTest);
-            Assert.That(estimate.Median, Is.EqualTo(400 * sample.Count * 1.2 * 3));
+            Assert.That(estimate.Median, Is.EqualTo((int)(400 * sample.Count * 1.08 * 2 + 750_000)));
         }
 
         [Test]
@@ -1959,7 +1959,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(sample, 6);
             var toTest = Dupplicate(sample);
             var estimate = service.GetPrice(toTest);
-            Assert.That(estimate.Median, Is.EqualTo(36 * 62));
+            Assert.That(estimate.Median, Is.EqualTo((int)(20 * 1.08 * 62 + 750_000)));
         }
 
         [Test]

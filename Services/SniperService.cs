@@ -1312,11 +1312,12 @@ ORDER BY l.`AuctionId`  DESC;
                 && (craftCostService?.TryGetCost(tag, out double craftCost) ?? false) && craftCost > 0)
             {
                 var stackSize = key.Key.Count;
-                var stackCost = craftCost * stackSize * 1.2;
+                var stackCost = craftCost * stackSize * 1.08;
                 if (stackCost < 500_000)
                 {
-                    stackCost *= 3; // allow higher limit for low cost items
+                    stackCost *= 2; // allow higher limit for low cost items
                 }
+                stackCost += 750_000; // lazyness factor
                 if (stackCost < medianPrice)
                 {
                     logger.LogDebug($"Capped {tag} at {stackCost} {stackSize} craft cost {craftCost} {key}");
