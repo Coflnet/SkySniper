@@ -121,7 +121,11 @@ public class PartialCalcService
             return;
         logger.LogInformation($"Adding partialSell {auction.Uuid} {auction.Tag} {auction.End} {aiFormattingService == null}");
         if (auction.End > DateTime.UtcNow - TimeSpan.FromHours(1))
+        {
             await aiFormattingService?.AddSample(auction);
+            if (aiFormattingService != null)
+                return;
+        }
         var item = new ItemBreakDown(auction, mayorService.GetMayor(auction.End));
         var attribs = AttributeLookups.GetOrAdd(auction.Tag, tag => new());
         var modifiers = item.Flatten;
