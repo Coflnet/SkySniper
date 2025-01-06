@@ -92,6 +92,25 @@ public class DropOffTests
         var price = sniperService.Lookups["HYPERION"].Lookup.First().Value.Price;
         price.Should().Be(1014_218_065L, "Trend anylsis shows a downward trend, compared to long time its the smallest");
     }
+    /// <summary>
+    /// Flip from https://sky.coflnet.com/auction/3513bd5932a2413183059fe636867d92
+    /// to https://sky.coflnet.com/auction/01456d41316046dc9bf99ccc17b30d95
+    /// got undervalued because the median was 250m (matching with risky estimate at the time)
+    /// </summary>
+    [Test]
+    public void JerryArtifact()
+    {
+        SniperService.StartTime += DateTime.UtcNow - new DateTime(2025, 1, 5);
+        var converted = LoadLookupMock("jerry.json");
+        sniperService.AddLookupData("JERRY_TALISMAN_GOLDEN", converted);
+        SetBazaarPrice("RECOMBOBULATOR_3000", 8_000_000);
+        foreach (var item in converted.Lookup)
+        {
+            sniperService.UpdateMedian(item.Value, ("JERRY_TALISMAN_GOLDEN", sniperService.GetBreakdownKey(item.Key, "JERRY_TALISMAN_GOLDEN")));
+        }
+        var price = sniperService.Lookups["JERRY_TALISMAN_GOLDEN"].Lookup.First(l => l.Key.Modifiers.Count == 0 && l.Key.Count == 1).Value;
+        price.RiskyEstimate.Should().Be(258388496, "Half of the risky estimate should be applied");
+    }
 
     [Test]
     public void SpeedTest()

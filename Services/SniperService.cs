@@ -1062,10 +1062,12 @@ ORDER BY l.`AuctionId`  DESC;
 
                 if (size > 40 || bucket.Volatility <= 8 && size > 8)
                 {
-                    var riskyLongTerm = GetMedian(monthSpan.Where(d => d.Day >= GetDay() - 10).ToList(), cleanPriceLookup, 3f);
-                    var riskyShort = GetMedian(monthSpan.Where(d => d.Day >= GetDay() - 2).ToList(), cleanPriceLookup, 3f);
-                    var marketManipLimit = limitedPrice * 4 / 3 + 1_000_000;
-                    bucket.RiskyEstimate = Math.Min(Math.Min(riskyShort, riskyLongTerm), marketManipLimit);
+                    bucket.RiskyEstimate = Get66thPercentile(cleanPriceLookup, monthSpan, limitedPrice);
+                }
+                else if (size > 10 && bucket.Volatility < 18)
+                {
+                    var riskyEst = Get66thPercentile(cleanPriceLookup, monthSpan, limitedPrice);
+                    bucket.RiskyEstimate = (limitedPrice + riskyEst) / 2;
                 }
                 else
                 {
@@ -1208,6 +1210,15 @@ ORDER BY l.`AuctionId`  DESC;
                     return GetMedian(monthSpan, cleanPriceLookup);
                 }
                 return GetMedian(lastTwoWeeks, cleanPriceLookup);
+            }
+
+            static long Get66thPercentile(Dictionary<short, long> cleanPriceLookup, List<ReferencePrice> monthSpan, long limitedPrice)
+            {
+                var riskyLongTerm = GetMedian(monthSpan.Where(d => d.Day >= GetDay() - 10).ToList(), cleanPriceLookup, 3f);
+                var riskyShort = GetMedian(monthSpan.Where(d => d.Day >= GetDay() - 2).ToList(), cleanPriceLookup, 3f);
+                var marketManipLimit = limitedPrice * 4 / 3 + 1_000_000;
+                var estimate = Math.Min(Math.Min(riskyShort, riskyLongTerm), marketManipLimit);
+                return estimate;
             }
         }
 
