@@ -1062,11 +1062,11 @@ ORDER BY l.`AuctionId`  DESC;
 
                 if (size > 40 || bucket.Volatility <= 8 && size > 8)
                 {
-                    bucket.RiskyEstimate = Get66thPercentile(cleanPriceLookup, monthSpan, limitedPrice);
+                    bucket.RiskyEstimate = Get66thPercentile(cleanPriceLookup, monthSpan, limitedPrice, medianPrice);
                 }
                 else if (size > 10 && bucket.Volatility < 18)
                 {
-                    var riskyEst = Get66thPercentile(cleanPriceLookup, monthSpan, limitedPrice);
+                    var riskyEst = Get66thPercentile(cleanPriceLookup, monthSpan, limitedPrice, medianPrice);
                     bucket.RiskyEstimate = (limitedPrice + riskyEst) / 2;
                 }
                 else
@@ -1212,11 +1212,15 @@ ORDER BY l.`AuctionId`  DESC;
                 return GetMedian(lastTwoWeeks, cleanPriceLookup);
             }
 
-            static long Get66thPercentile(Dictionary<short, long> cleanPriceLookup, List<ReferencePrice> monthSpan, long limitedPrice)
+            static long Get66thPercentile(Dictionary<short, long> cleanPriceLookup, List<ReferencePrice> monthSpan, long limitedPrice, long medianPrice)
             {
                 var riskyLongTerm = GetMedian(monthSpan.Where(d => d.Day >= GetDay() - 10).ToList(), cleanPriceLookup, 3f);
                 var riskyShort = GetMedian(monthSpan.Where(d => d.Day >= GetDay() - 2).ToList(), cleanPriceLookup, 3f);
-                var marketManipLimit = limitedPrice * 4 / 3 + 1_000_000;
+                var marketManipLimit = limitedPrice * 10 / 9 + 1_000_000;
+                if(medianPrice > limitedPrice) 
+                {// already capped by craft cost reduce limit
+                    marketManipLimit = limitedPrice * 11 / 10;
+                }
                 var estimate = Math.Min(Math.Min(riskyShort, riskyLongTerm), marketManipLimit);
                 return estimate;
             }
@@ -2843,7 +2847,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var props = CreateReference(referenceAuctionId, key, extraValue, bucket);
                 AddMedianSample(bucket.References, props);
                 addProps?.Invoke(props);
-                props.Add("riskyEst", "true");
+                props.Add("riskyEst", bucket.RiskyEstimate.ToString());
                 var target = bucket.RiskyEstimate + extraValue + expValue;
                 if (bucket.Lbin.Price != 0)
                     target = (long)Math.Min(target, bucket.Lbin.Price * 1.05);

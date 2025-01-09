@@ -113,6 +113,22 @@ public class DropOffTests
     }
 
     [Test]
+    public void DropPriceSameSeller()
+    {
+        SniperService.StartTime += DateTime.UtcNow - new DateTime(2025, 1, 8);
+        var converted = LoadLookupMock("sameSellerPriceDrop.json");
+        sniperService.AddLookupData("GLOSSY_MINERAL_BOOTS", converted);
+        craftCostService.Costs["GLOSSY_MINERAL_BOOTS"] = 37_000_000;
+        foreach (var item in converted.Lookup)
+        {
+            sniperService.UpdateMedian(item.Value, ("GLOSSY_MINERAL_BOOTS", sniperService.GetBreakdownKey(item.Key, "GLOSSY_MINERAL_BOOTS")));
+        }
+        var price = sniperService.Lookups["GLOSSY_MINERAL_BOOTS"].Lookup.First(l => l.Key.Modifiers.Count == 0 && l.Key.Count == 1).Value;
+        price.Price.Should().Be(40_710_000, "craft cost limited from 41m");
+        price.RiskyEstimate.Should().Be(44_781_000, "*11/10 above median because it is already limite by craft cost");
+    }
+
+    [Test]
     public void SpeedTest()
     {
         if (!Dns.GetHostName().Contains("ekwav"))
