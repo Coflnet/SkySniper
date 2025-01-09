@@ -244,8 +244,8 @@ public class MedianCalcTests
         service.FoundSnipe += flips.Add;
         service.TestNewAuction(bare);
         service.FinishedUpdate();
-        Assert.That(flips.First(f => f.Finder == LowPricedAuction.FinderType.STONKS).TargetPrice, Is.EqualTo(27700000));
-        Assert.That(bucket.RiskyEstimate, Is.EqualTo(27700000));
+        Assert.That(flips.First(f => f.Finder == LowPricedAuction.FinderType.STONKS).TargetPrice, Is.EqualTo(27070000), " capped 10% above by median");
+        Assert.That(bucket.RiskyEstimate, Is.EqualTo(27700000)); 
         var dupplicate = bare.Dupplicate();
         flips.Clear();
         service.TestNewAuction(dupplicate);

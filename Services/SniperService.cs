@@ -2847,6 +2847,8 @@ ORDER BY l.`AuctionId`  DESC;
                 var target = bucket.RiskyEstimate + extraValue + expValue;
                 if (bucket.Lbin.Price != 0)
                     target = (long)Math.Min(target, bucket.Lbin.Price * 1.05);
+                if(bucket.Price != 0)
+                    target = (long)Math.Min(target, bucket.Price * 1.10 + 1_000_000);
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.STONKS, target, props);
             }
             else
