@@ -15,13 +15,15 @@ public class AIFormattingService
     private readonly ILogger<AIFormattingService> logger;
     private readonly IMayorService mayorService = null!;
     private readonly ITrackerApi trackerApi = null!;
+    private readonly ICraftCostService craftCostService;
 
-    public AIFormattingService(SniperService sniper, ILogger<AIFormattingService> logger, IMayorService mayorService, ITrackerApi trackerApi)
+    public AIFormattingService(SniperService sniper, ILogger<AIFormattingService> logger, IMayorService mayorService, ITrackerApi trackerApi, ICraftCostService craftCostService)
     {
         this.sniper = sniper;
         this.logger = logger;
         this.mayorService = mayorService;
         this.trackerApi = trackerApi;
+        this.craftCostService = craftCostService;
     }
     // only some mayors have an effect on relevant item prices
     private static readonly HashSet<string> RelevantMayors = new() { "scorpius", "derpy", "jerry", "diana", "aatrox", "marina" };
@@ -94,6 +96,8 @@ public class AIFormattingService
         var mayor = mayorService.GetMayor(auction.End);
         if (RelevantMayors.Contains(mayor))
             attributeList["m:" + mayor] = fullFlag;
+        if (craftCostService.TryGetCost(auction.Tag, out var cost))
+            attributeList["cleancost"] = (long)cost;
         logger.LogInformation("Adding sample for {tag} with {mayor} mayor", auction.Tag, mayor);
         await trackerApi.SaveComplicatedFlipAsync(new()
         {
