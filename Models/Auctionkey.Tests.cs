@@ -300,6 +300,21 @@ public class AuctionkeyTests
         Assert.That(shouldIgnore, Is.EqualTo(key.Enchants.Count == 0));
     }
 
+    [Test]
+    public void UsesLvl5PriceForManaEnchants()
+    {
+        SetBazaarPrice("ENCHANTMENT_MANA_VAMPIRE_5", 1_000_000);
+        SetBazaarPrice("ENCHANTMENT_MANA_VAMPIRE_10", 1);
+        SetBazaarPrice("ENCHANTMENT_MANA_VAMPIRE_1", 200_000);
+        var auction = new SaveAuction()
+        {
+            Tag = "SWORD",
+            Enchantments = new() { new(EnchantmentType.mana_vampire, 10) },
+        };
+        var key = service.ValueKeyForTest(auction);
+        Assert.That(key.ValueBreakdown.First().Value, Is.EqualTo(32_000_000));
+    }
+
     [TestCase(0)]
     [TestCase(1)]
     [TestCase(2)]
