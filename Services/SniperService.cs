@@ -3272,7 +3272,7 @@ ORDER BY l.`AuctionId`  DESC;
             });
             Logs.Enqueue(new LogEntry()
             {
-                Key = props.GetValueOrDefault("key") ?? props.GetValueOrDefault("breakdown"),
+                Key = props.GetValueOrDefault("key") ?? (props.GetValueOrDefault("breakdown") + "+" + props.GetValueOrDefault("cleanCost")),
                 LBin = bucket.Lbin.Price,
                 Median = bucket.Price,
                 Uuid = auction.Uuid,
