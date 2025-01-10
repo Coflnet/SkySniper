@@ -357,6 +357,25 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(9_500_000, Is.EqualTo(actualPrice.Median));
         }
 
+        [Test]
+        public void GemValueAddedToPriceOnStarred()
+        {
+            SetBazaarPrice("PERFECT_JASPER_GEM", 38_000_000);
+            AddVolume(new SaveAuction()
+            {
+                Tag = "STARRED_SHADOW_ASSASSIN_CHESTPLATE",
+                FlatenedNBT = new() {  },
+                HighestBidAmount = 10_000_000
+            });
+            TestNewAuction(new SaveAuction()
+            {
+                Tag = "STARRED_SHADOW_ASSASSIN_CHESTPLATE",
+                FlatenedNBT = new() { { "JASPER_0", "PERFECT" }, {"COMBAT_0_gem", "JASPER"}, {"COMBAT_0", "PERFECT"} }
+            });
+            var actualPrice = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice;
+            actualPrice.Should().Be(85_000_000);
+        }
+
         /// <summary>
         /// Same uuid with very high profit percent is probably a bait, so we ignore it after the first listing
         /// </summary>

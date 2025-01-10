@@ -2779,10 +2779,6 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     continue;
                 }
-                if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false && item.Key.StartsWith("JASPER_0"))
-                    // Jasper0 slot can't be accessed on starred (Fragged) items
-                    continue;
-
                 var gemkey = mapper.GetItemKeyForGem(item, auction.FlatenedNBT);
                 if (item.Value == "PERFECT")
                     if (Lookups.TryGetValue(gemkey, out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
