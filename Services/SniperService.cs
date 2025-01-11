@@ -975,7 +975,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             else if (auction.Start != default)
             {
-                reference.SellTime = (short)(auction.End - auction.Start).TotalMinutes;
+                reference.SellTime = (short)((auction.End - auction.Start).TotalMinutes +1); // add one in case it sold within a minute
             }
             bucket.References.Enqueue(reference);
             bucket.Lbins.RemoveAll(l => l.AuctionId == auction.UId);
