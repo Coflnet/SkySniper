@@ -2271,6 +2271,8 @@ ORDER BY l.`AuctionId`  DESC;
         public static KeyValuePair<string, string> NormalizeGroupNumber(KeyValuePair<string, string> s, params int[] groups)
         {
             var val = GetNumeric(s);
+            if (val < 800)
+                return Ignore;
             for (int i = 0; i < groups.Length; i++)
             {
                 if (val < groups[i])

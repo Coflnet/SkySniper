@@ -1145,17 +1145,17 @@ namespace Coflnet.Sky.Sniper.Services
             bucket.Price.Should().Be(900_000_000);
         }
 
-        [TestCase(1, 0)]
-        [TestCase(200, 1)]
-        [TestCase(499, 1)]
-        [TestCase(999, 2)]
-        [TestCase(1299, 3)]
-        [TestCase(999999, 4)]
-        public void NormalizeGroupNumber(int val, int expectedGroup)
+        [TestCase(1, "")]
+        [TestCase(2000, "1")]
+        [TestCase(4099, "1")]
+        [TestCase(9909, "2")]
+        [TestCase(10299, "3")]
+        [TestCase(999999, "4")]
+        public void NormalizeGroupNumber(int val, string expectedGroup)
         {
-            var simAttr = new KeyValuePair<string, string>("new_years_cake", val.ToString());
-            var comb = SniperService.NormalizeGroupNumber(simAttr, 200, 500, 1000, 2000);
-            Assert.That(expectedGroup.ToString(), Is.EqualTo(comb.Value));
+            var simAttr = new KeyValuePair<string, string>("sample_kills", val.ToString());
+            var comb = SniperService.NormalizeGroupNumber(simAttr, 2000, 5000, 10000, 20000);
+            Assert.That(expectedGroup, Is.EqualTo(comb.Value));
         }
 
         [Test]
