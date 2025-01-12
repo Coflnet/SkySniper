@@ -3227,7 +3227,7 @@ ORDER BY l.`AuctionId`  DESC;
             while (Logs.TryDequeue(out LogEntry result))
             {
                 var finderName = result.Finder == LowPricedAuction.FinderType.UNKOWN ? "NF" : result.Finder.ToString();
-                logger.LogInformation($"Info: {finderName} {result.Uuid} {result.Median} \t{result.LBin} {result.Volume} {result.Key}");
+                logger.LogInformation($"Info: {finderName} {result.Uuid} m:{result.Median} \t{result.LBin} {result.Volume} {result.Key}");
             }
             deferred.PrintQueue();
         }
