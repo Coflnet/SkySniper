@@ -46,6 +46,8 @@ namespace Coflnet.Sky.Sniper.Models
         public short DeduplicatedReferenceCount;
         [IgnoreMember]
         public long RiskyEstimate;
+        [IgnoreMember]
+        public long TimeToSell;
 
         private float _volume;
         [IgnoreMember]

@@ -1046,6 +1046,7 @@ ORDER BY l.`AuctionId`  DESC;
             bucket.Volume = deduplicated.Count() / (GetDay() - deduplicated.OrderBy(d => d.Day).First().Day + 1);
             bucket.DeduplicatedReferenceCount = (short)deduplicated.Count();
             PreCalculateVolume(keyCombo);
+            bucket.TimeToSell = (int)deduplicated.Where(d=>d.SellTime > 0).DefaultIfEmpty().Average(d => d.SellTime);
             // get price of item without enchants and add enchant value 
             if (keyCombo != default)
             {
@@ -3256,6 +3257,7 @@ ORDER BY l.`AuctionId`  DESC;
             props["refCount"] = bucket.DeduplicatedReferenceCount.ToString();
             props["oldRef"] = (GetDay() - (bucket.References?.Select(r => r.Day).FirstOrDefault(GetDay()) ?? GetDay())).ToString();
             props["volat"] = bucket.Volatility.ToString();
+            props["minToSell"] = bucket.TimeToSell.ToString();
 
             if (type == LowPricedAuction.FinderType.SNIPER_MEDIAN && bucket.HitsSinceCalculating < 10
                 && IsProbablyNotBait(auction, targetPrice))
