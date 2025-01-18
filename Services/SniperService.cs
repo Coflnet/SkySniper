@@ -6,7 +6,6 @@ using Coflnet.Sky.Sniper.Models;
 using Coflnet.Sky.Core;
 using Prometheus;
 using Coflnet.Sky.Core.Services;
-using Amazon.Runtime.Internal.Util;
 using Newtonsoft.Json;
 using System.Net;
 using System.Diagnostics;
@@ -2430,10 +2429,18 @@ ORDER BY l.`AuctionId`  DESC;
                 return v.Enchant.Type.ToString();
             }, c => c.IsEstimate ? c.Value / 20 : c.Value);
             var cleanCost = GetCleanItemPrice(itemGroupTag.tag, basekey, lookup);
-            if (basekey.ValueBreakdown.Count == 1 && basekey.Key.Modifiers.FirstOrDefault(m => m.Key == itemGroupTag.tag).Key != default)
+            if (BreakDownIncludesItem(itemGroupTag, basekey))
             {
-                cleanCost = 0; // breakdown already includes cheapest item (rune probably)
+                cleanCost = 0;
             }
+            cleanCost = Math.Min(cleanCost, auction.Tag switch
+            {
+                "STARRED_MIDAS_STAFF" => 200_000_000,
+                "MIDAS_STAFF" => 100_000_000,
+                "MIDAS_SWORD" => 50_000_000,
+                "STARRED_MIDAS_SWORD" => 150_000_000,
+                _ => cleanCost
+            });
             var componentSum = valueLookup.Select(v => (long)(v.Key switch
             {
                 "skin" => auction.Tag.StartsWith("PET") ? 0.5 : 0.4,
@@ -2459,6 +2466,12 @@ ORDER BY l.`AuctionId`  DESC;
                         { "breakdown", JsonConvert.SerializeObject(valueLookup) }
                     };
                 FoundAFlip(auction, new(), LowPricedAuction.FinderType.CraftCost, combined, props);
+            }
+
+            static bool BreakDownIncludesItem((string tag, long costSubstract) itemGroupTag, KeyWithValueBreakdown basekey)
+            {
+                // breakdown already includes cheapest item (rune probably)
+                return basekey.ValueBreakdown.Count == 1 && basekey.Key.Modifiers.FirstOrDefault(m => m.Key == itemGroupTag.tag).Key != default;
             }
         }
 
