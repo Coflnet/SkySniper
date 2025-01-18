@@ -975,7 +975,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             else if (auction.Start != default)
             {
-                reference.SellTime = (short)((auction.End - auction.Start).TotalMinutes +1); // add one in case it sold within a minute
+                reference.SellTime = (short)((auction.End - auction.Start).TotalMinutes + 1); // add one in case it sold within a minute
             }
             bucket.References.Enqueue(reference);
             bucket.Lbins.RemoveAll(l => l.AuctionId == auction.UId);
@@ -1046,7 +1046,9 @@ ORDER BY l.`AuctionId`  DESC;
             bucket.Volume = deduplicated.Count() / (GetDay() - deduplicated.OrderBy(d => d.Day).First().Day + 1);
             bucket.DeduplicatedReferenceCount = (short)deduplicated.Count();
             PreCalculateVolume(keyCombo);
-            bucket.TimeToSell = (int)deduplicated.Where(d=>d.SellTime > 0).DefaultIfEmpty().Average(d => d.SellTime);
+            bucket.TimeToSell = (int)deduplicated
+                        .Where(d => d.SellTime > 0 && d.Price > medianPrice * 0.9)
+                        .DefaultIfEmpty().Average(d => d.SellTime);
             // get price of item without enchants and add enchant value 
             if (keyCombo != default)
             {
@@ -1218,7 +1220,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var riskyLongTerm = GetMedian(monthSpan.Where(d => d.Day >= GetDay() - 10).ToList(), cleanPriceLookup, 3f);
                 var riskyShort = GetMedian(monthSpan.Where(d => d.Day >= GetDay() - 2).ToList(), cleanPriceLookup, 3f);
                 var marketManipLimit = limitedPrice * 10 / 9 + 1_000_000;
-                if(medianPrice > limitedPrice) 
+                if (medianPrice > limitedPrice)
                 {// already capped by craft cost reduce limit
                     marketManipLimit = limitedPrice * 11 / 10;
                 }
@@ -2850,7 +2852,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var target = bucket.RiskyEstimate + extraValue + expValue;
                 if (bucket.Lbin.Price != 0)
                     target = (long)Math.Min(target, bucket.Lbin.Price * 1.05);
-                if(bucket.Price != 0)
+                if (bucket.Price != 0)
                     target = (long)Math.Min(target, bucket.Price * 1.10 + 1_000_000);
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.STONKS, target, props);
             }
