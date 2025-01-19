@@ -3262,7 +3262,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return false; // to low
             }
             var refAge = (GetDay() - bucket.OldestRef);
-            if (bucket.OldestRef != 0 && (refAge > 60 && IsNotClean(auction) || State < SniperState.FullyLoaded && refAge > 5))
+            if (bucket.OldestRef != 0 && (refAge > 60 && IsNotClean(auction) || State < SniperState.FullyLoaded && refAge > 10))
             {
                 Activity.Current.Log($"References too old {refAge} {State}");
                 LogNonFlip(auction, bucket, defaultKey, 0, bucket.Volume, targetPrice, $"References too old for {State} ({refAge})");
