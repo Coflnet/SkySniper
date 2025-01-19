@@ -72,6 +72,7 @@ namespace Coflnet.Sky.Sniper.Services
             "drill_part_upgrade_module", // low worth of normal omlet but can go up to 180m
             "divan_powder_coating",
             "ability_scroll", // applied to hyperions worth ~250m https://discord.com/channels/267680588666896385/1031668335731019886/1031668607479975976
+            "power_ability_scroll",
             // magma armor is to cheap "magmaCubesKilled"
             "captured_player", // cake soul 
             "event", // year+eventtype
@@ -166,7 +167,7 @@ namespace Coflnet.Sky.Sniper.Services
         {
             "drill_part_engine",
             "drill_part_fuel_tank",
-            "drill_part_upgrade_module",
+            "drill_part_upgrade_module"
         };
 
         private static readonly Dictionary<string, short> ShardAttributes = new(){
