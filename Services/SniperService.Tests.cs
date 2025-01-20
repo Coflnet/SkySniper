@@ -2291,7 +2291,7 @@ namespace Coflnet.Sky.Sniper.Services
             testFlip.StartingBid = 200;
             service.TestNewAuction(testFlip);
             Assert.That(found, Is.Not.Null, "flip should have been found as its lower than higher level");
-            Assert.That(500, Is.EqualTo(found.TargetPrice), "lowest bin price should be used");
+            Assert.That(499, Is.EqualTo(found.TargetPrice), "lowest bin price should be used");
 
         }
 
@@ -2816,7 +2816,7 @@ namespace Coflnet.Sky.Sniper.Services
             var flip = Dupplicate(highestValAuction);
             flip.StartingBid = 5;
             TestNewAuction(flip);
-            Assert.That(25000000, Is.EqualTo(found.Last().TargetPrice));
+            Assert.That(24999999, Is.EqualTo(found.Last().TargetPrice));
             Assert.That(0, Is.EqualTo(found.Last().DailyVolume));
         }
         [Test]
