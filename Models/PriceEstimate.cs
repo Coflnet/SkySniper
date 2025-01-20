@@ -10,6 +10,7 @@ namespace Coflnet.Sky.Sniper.Models
         public string MedianKey { get; set; }
         public string ItemKey { get; set; }
         public byte Volatility { get; set; }
+        public short AvgSellTime { get; set; }
         public ReferencePrice LastSale { get; set; }
     }
 }
