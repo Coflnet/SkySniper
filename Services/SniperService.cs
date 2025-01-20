@@ -3115,7 +3115,7 @@ ORDER BY l.`AuctionId`  DESC;
             AddMedianSample(bucket.References, props);
             props["mVal"] = bucket.Price.ToString();
             props["hvlbin"] = higherValueLowerBin.ToString();
-            var targetPrice = Math.Min(higherValueLowerBin, MaxMedianPriceForSnipe(bucket)) + extraValue - MIN_TARGET / 200;
+            var targetPrice = Math.Min(higherValueLowerBin - 1, MaxMedianPriceForSnipe(bucket)) + extraValue - MIN_TARGET / 200;
             if (bucket.Price != 0)
                 targetPrice = Math.Min(targetPrice, bucket.Price * 2);
             if (targetPrice < auction.StartingBid * 1.03)
@@ -3168,6 +3168,16 @@ ORDER BY l.`AuctionId`  DESC;
                 props["referencePrice"] = referencePrice.ToString();
                 props["percentile"] = percentile.ToString();
                 props["lowestLbin"] = lowestLbin.ToString();
+            }
+            else
+            {
+                var capped = CapAtCraftCost(auction.Tag, bucket.Price, breakdown, 0);
+                if (capped > 0)
+                {
+                    percentile = Math.Min(percentile, capped * 21 / 20);
+                    Activity.Current.Log($"Capped at craft cost {capped}");
+                    props["craftCost"] = capped.ToString();
+                }
             }
             targetPrice = Math.Min(targetPrice, percentile);
             return FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
@@ -3230,7 +3240,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static long MaxMedianPriceForSnipe(ReferenceAuctions bucket)
         {
-            var price = bucket.RiskyEstimate == 0 ? bucket.Price : bucket.RiskyEstimate;
+            var price = bucket.RiskyEstimate == 0 ? bucket.Price : Math.Min(bucket.RiskyEstimate, bucket.Price * 11 / 10);
             if (price == 0)
                 return long.MaxValue; // disabled with 0 volume
             if (price < 15_000_000)
