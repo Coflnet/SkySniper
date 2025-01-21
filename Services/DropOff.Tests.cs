@@ -394,6 +394,37 @@ public class DropOffTests
         found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN)
             .First().TargetPrice.Should().Be(150000000);
     }
+
+    /// <summary>
+    /// Snipes were recommended with target 42m because a higher value key matched
+    /// </summary>
+    [Test]
+    public void AvoidVeryRiskySnipes()
+    {
+        var converted = LoadLookupMock("wisewitherboots.json");
+        SniperService.StartTime += DateTime.UtcNow - new DateTime(2025, 1, 20);
+        sniperService.AddLookupData("WISE_WITHER_BOOTS", converted);
+        SetBazaarPrice("RECOMBOBULATOR_3000", 10_700_000);
+        SetBazaarPrice("ENCHANTMENT_ULTIMATE_WISDOM_5", 4_000_000);
+        SetBazaarPrice("WITHER_ESSENCE", 3_200);
+        foreach (var item in converted.Lookup)
+        {
+            sniperService.UpdateMedian(item.Value, ("WISE_WITHER_BOOTS", sniperService.GetBreakdownKey(item.Key, "WISE_WITHER_BOOTS")));
+        }
+        foreach (var item in converted.Lookup)
+        {
+            sniperService.UpdateMedian(item.Value, ("WISE_WITHER_BOOTS", sniperService.GetBreakdownKey(item.Key, "WISE_WITHER_BOOTS")));
+        }
+        var withEnchant = converted.Lookup.First(l => l.Key.ToString() == "ultimate_wisdom=5 Any [rarity_upgrades, 1],[upgrade_level, 5] MYTHIC 1").Value;
+        var keyOrder = string.Join('\n', converted.Lookup.Keys);
+        Console.WriteLine(keyOrder);
+        withEnchant.Price.Should().Be(30170000L);
+        withEnchant.RiskyEstimate.Should().Be(33187000L);
+        var withoutEnchant = converted.Lookup.First(l => l.Key.ToString() == " Any [rarity_upgrades, 1],[upgrade_level, 5] MYTHIC 1").Value;
+        withoutEnchant.Price.Should().Be(25770000L);
+        withoutEnchant.RiskyEstimate.Should().Be(28347000L);
+        // maybe test a snipe auction
+    }
     /// <summary>
     /// if manipulation is detected within references the time window should be longer
     /// </summary>

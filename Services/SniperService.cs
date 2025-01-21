@@ -3171,7 +3171,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             else
             {
-                var capped = CapAtCraftCost(auction.Tag, percentile, breakdown, 0);
+                var capped = CapAtCraftCost(auction.Tag, higherValueLowerBin, breakdown, 0);
                 if (capped > 0)
                 {
                     percentile = Math.Min(percentile, capped * 21 / 20);
@@ -3240,7 +3240,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static long MaxMedianPriceForSnipe(ReferenceAuctions bucket)
         {
-            var price = bucket.RiskyEstimate == 0 ? bucket.Price : Math.Min(bucket.RiskyEstimate, bucket.Price * 12 / 10);
+            var price = bucket.RiskyEstimate == 0 ? bucket.Price : Math.Min(bucket.RiskyEstimate, bucket.Price * 11 / 10 + 1_000_000);
             if (price == 0)
                 return long.MaxValue; // disabled with 0 volume
             if (price < 15_000_000)
