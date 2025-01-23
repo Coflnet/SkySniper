@@ -425,6 +425,31 @@ public class DropOffTests
         withoutEnchant.RiskyEstimate.Should().Be(28347000L);
         // maybe test a snipe auction
     }
+
+        [Test]
+    public void LowerToLbinIfLowVolume()
+    {
+        var converted = LoadLookupMock("limitByLbin.json");
+        SniperService.StartTime += DateTime.UtcNow - new DateTime(2025, 1, 21);
+        sniperService.AddLookupData("ITEM", converted);
+        foreach (var item in converted.Lookup)
+        {
+            sniperService.UpdateMedian(item.Value, ("ITEM", sniperService.GetBreakdownKey(item.Key, "ITEM")));
+        }
+        var auction = new SaveAuction()
+        {
+            Tag = "ITEM",
+            StartingBid = 900_000,
+            UId = 4,
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        flip.TargetPrice.Should().Be(2_990_000_000L);
+    }
     /// <summary>
     /// if manipulation is detected within references the time window should be longer
     /// </summary>

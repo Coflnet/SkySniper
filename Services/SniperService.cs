@@ -2854,6 +2854,11 @@ ORDER BY l.`AuctionId`  DESC;
                     props["expvalue"] = expValue.ToString();
                 }
                 addProps?.Invoke(props);
+                if (lookup.Volume < 1 && lookup.Volume > 0 && bucket.Price > 100_000_000 && bucket.Lbin.Price > 0 && bucket.Price > bucket.Lbin.Price)
+                {
+                    props.Add("lbin", JsonConvert.SerializeObject(bucket.Lbin));
+                    adjustedMedianPrice = Math.Min(adjustedMedianPrice, bucket.Lbin.Price);
+                }
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, adjustedMedianPrice + extraValue + expValue, props);
             }
             if (medianPrice - auction.StartingBid < 2_500_000 && bucket.RiskyEstimate > minMedPrice
