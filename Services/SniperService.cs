@@ -2322,7 +2322,7 @@ ORDER BY l.`AuctionId`  DESC;
                 },
                 ValueBreakdown = new()
             }:*/DetailedKeyFromSaveAuction(auction, fastMode);
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 4; i++)
             {
                 var key = basekey.GetReduced(i);
                 if (i > 0 && key == lastKey)
