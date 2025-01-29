@@ -431,10 +431,6 @@ ORDER BY l.`AuctionId`  DESC;
             if (BazaarPrices.TryGetValue(auction.Tag, out var bazaar))
                 return new() { Median = (long)bazaar };
             var tagGroup = GetAuctionGroupTag(auction.Tag);
-            if ((tagGroup.tag.StartsWith("HOT_") || tagGroup.tag.StartsWith("BURNING_") || tagGroup.tag.StartsWith("FIERY_") || tagGroup.tag.StartsWith("INFERNAL_")) && CrimsonArmors.Any(tagGroup.tag.Contains))
-            {
-                tagGroup.tag = tagGroup.tag.Replace($"{tagGroup.tag.Split('_')[0]}_", "");
-            }
 
             var result = new PriceEstimate();
             if (!Lookups.TryGetValue(tagGroup.Item1, out PriceLookup lookup))
