@@ -999,8 +999,9 @@ ORDER BY l.`AuctionId`  DESC;
                 bucket.Price = 0; // to low vol
                 return;
             }
+            bucket.Volume = deduplicated.Count() / (GetDay() - deduplicated.OrderBy(d => d.Day).First().Day + 1);
             // short term protects against price drops after updates
-            List<ReferencePrice> shortTermList = GetShortTermBatch(deduplicated).OrderByDescending(b => b.Day).ToList();
+            List<ReferencePrice> shortTermList = GetShortTermBatch(deduplicated, bucket.Volume).OrderByDescending(b => b.Day).ToList();
             PriceLookup lookup;
             Dictionary<short, long> cleanPriceLookup;
             bool isCleanitem;
@@ -1040,7 +1041,6 @@ ORDER BY l.`AuctionId`  DESC;
             }
             (bucket.Volatility, medianPrice) = GetVolatility(lookup, bucket, shortTermPrice, longSpanPrice);
             bucket.HitsSinceCalculating = 0;
-            bucket.Volume = deduplicated.Count() / (GetDay() - deduplicated.OrderBy(d => d.Day).First().Day + 1);
             bucket.DeduplicatedReferenceCount = (short)deduplicated.Count();
             PreCalculateVolume(keyCombo);
             bucket.TimeToSell = (int)deduplicated
@@ -1079,6 +1079,7 @@ ORDER BY l.`AuctionId`  DESC;
                     logger.LogWarning($"Price capped {keyCombo.tag} -> {limitedPrice} ({craftCostCap}) {keyCombo.key.Key} {medianPrice} {bucket.Price} - {volatMedian} {shortTermPrice} {longSpanPrice}");
                     limitedPrice = 11;
                 }
+                var preLimitedPrice = medianPrice;
                 medianPrice = limitedPrice;
                 if (medianPrice < 0)
                 {
@@ -1086,8 +1087,12 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 else
                     bucket.Price = medianPrice;
-                // return;
 
+                if (bucket.Volume >= 4 && bucket.Lbin.AuctionId != default && bucket.Lbin.Day < GetDay() + 3)
+                { // volume high enought to risk higher percentile
+                    var cappedPrice = preLimitedPrice == medianPrice ? preLimitedPrice * 12 / 10 : limitedPrice;
+                    medianPrice = Math.Min(Math.Max(bucket.RiskyEstimate, medianPrice), cappedPrice);
+                }
 
                 var keyWithNoEnchants = new AuctionKey(keyCombo.Item2)
                 {
@@ -1456,10 +1461,10 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private static List<ReferencePrice> GetShortTermBatch(List<ReferencePrice> deduplicated)
+        private static List<ReferencePrice> GetShortTermBatch(List<ReferencePrice> deduplicated, float volume)
         {
             // if more than half of the references are less than 12 hours old, use more references
-            if (deduplicated.Where(d => d.Day >= GetDay(DateTime.Now - TimeSpan.FromHours(12))).Count() > SizeToKeep / 2)
+            if (deduplicated.Where(d => d.Day >= GetDay(DateTime.Now - TimeSpan.FromHours(12))).Count() > SizeToKeep / 2 || volume > 4)
                 return deduplicated.Take(6).ToList();
             return deduplicated.Take(3).ToList();
         }

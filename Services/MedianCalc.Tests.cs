@@ -23,7 +23,7 @@ public class MedianCalcTests
     {
         ReferenceAuctions bucket = LoadJsonReferences(SampleJson);
         service.UpdateMedian(bucket);
-        Assert.That(54900000, Is.EqualTo(bucket.Price));
+        Assert.That(bucket.Price, Is.EqualTo(51000000));
     }
 
     private static ReferenceAuctions LoadJsonReferences(string json)

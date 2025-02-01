@@ -218,7 +218,7 @@ public class DropOffTests
             sniperService.UpdateMedian(item.Value, ("SCARF", sniperService.GetBreakdownKey(item.Key, "SCARF")));
         }
         var scarf = sniperService.Lookups["SCARF"].Lookup.Where(l => l.Key.Count == 1 && l.Key.Modifiers.Count == 0).First();
-        scarf.Value.Price.Should().Be(1300000);
+        scarf.Value.Price.Should().Be(1550000L);
     }
     /// <summary>
     /// Real world example, craft cost did not use the correct clean price
@@ -249,7 +249,7 @@ public class DropOffTests
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(testAuction);
         var pickaxe = found.First(f => f.Finder == LowPricedAuction.FinderType.CraftCost);
-        pickaxe.TargetPrice.Should().Be(23475000L);
+        pickaxe.TargetPrice.Should().Be(23495000L);
     }
 
     [Test]
@@ -426,7 +426,7 @@ public class DropOffTests
         // maybe test a snipe auction
     }
 
-        [Test]
+    [Test]
     public void LowerToLbinIfLowVolume()
     {
         var converted = LoadLookupMock("limitByLbin.json");
@@ -449,6 +449,35 @@ public class DropOffTests
         sniperService.TestNewAuction(auction);
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
         flip.TargetPrice.Should().Be(2_990_000_000L);
+    }
+
+    /// <summary>
+    /// Price drop protection should adjust to volume and not miss good flips
+    /// </summary>
+    [Test]
+    public void PetPriceDropIgnore()
+    {
+        var converted = LoadLookupMock("petHigherRisk.json");
+        SniperService.StartTime = new DateTime(2021, 9, 25) + (DateTime.UtcNow - new DateTime(2025, 1, 31));
+        sniperService.AddLookupData("PET_G", converted);
+        foreach (var item in converted.Lookup)
+        {
+            sniperService.UpdateMedian(item.Value, ("PET_G", sniperService.GetBreakdownKey(item.Key, "PET_G")));
+        }
+        var auction = new SaveAuction()
+        {
+            Tag = "PET_G",
+            StartingBid = 16_000_000,
+            UId = 4,
+            FlatenedNBT = new Dictionary<string, string>() { { "exp", "26000000" } },
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        flip.TargetPrice.Should().Be(22_400_000L);
     }
     /// <summary>
     /// if manipulation is detected within references the time window should be longer

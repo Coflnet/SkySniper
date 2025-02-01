@@ -1016,7 +1016,7 @@ namespace Coflnet.Sky.Sniper.Services
                 service.AddAuctionToBucket(Dupplicate(auction), false, bucket);
                 auction.End = auction.End.AddDays(1);
             }
-            var day = SniperService.GetDay(auction.End) - 3;
+            var day = SniperService.GetDay(auction.End) - 4;
             Assert.That(day, Is.EqualTo(bucket.OldestRef));
         }
 
