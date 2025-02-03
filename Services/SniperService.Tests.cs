@@ -412,8 +412,8 @@ namespace Coflnet.Sky.Sniper.Services
         [TestCase("25770000000", "6")]
         public void Grouping(string input, string expected)
         {
-            var a = SniperService.NormalizeNumberTo(new KeyValuePair<string, string>("a", input), 4_225_538, 6);
-            Assert.That(expected, Is.EqualTo(a.Value));
+            var a = SniperService.NormalizeNumberTo(new KeyValuePair<string, string>("exp", input), 4_225_538, 6);
+            Assert.That(a.Value, Is.EqualTo(expected));
         }
 
         [Test]
@@ -1797,10 +1797,10 @@ namespace Coflnet.Sky.Sniper.Services
         public void StonksIncreaseForKills()
         {
             highestValAuction.FlatenedNBT = new() { { "zombie_kills", "15000" } };
-            var withoutKills = Dupplicate(highestValAuction);
-            withoutKills.HighestBidAmount = 10_000_000;
-            withoutKills.FlatenedNBT["zombie_kills"] = "0";
-            AddVolume(withoutKills);
+            var lessKills = Dupplicate(highestValAuction);
+            lessKills.HighestBidAmount = 10_000_000;
+            lessKills.FlatenedNBT["zombie_kills"] = "5000";
+            AddVolume(lessKills);
 
             TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();

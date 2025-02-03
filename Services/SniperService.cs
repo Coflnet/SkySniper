@@ -2263,7 +2263,10 @@ ORDER BY l.`AuctionId`  DESC;
 
         public static KeyValuePair<string, string> NormalizeNumberTo(KeyValuePair<string, string> s, int groupingSize, int highestGroup = int.MaxValue)
         {
-            var group = GetNumeric(s) / groupingSize;
+            var value = GetNumeric(s);
+            if (s.Key != "exp" && value < groupingSize / 4)
+                return Ignore;
+            var group = value / groupingSize;
             return new KeyValuePair<string, string>(s.Key, Math.Min(group, highestGroup).ToString());
         }
 
