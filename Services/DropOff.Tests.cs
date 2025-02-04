@@ -218,7 +218,7 @@ public class DropOffTests
             sniperService.UpdateMedian(item.Value, ("SCARF", sniperService.GetBreakdownKey(item.Key, "SCARF")));
         }
         var scarf = sniperService.Lookups["SCARF"].Lookup.Where(l => l.Key.Count == 1 && l.Key.Modifiers.Count == 0).First();
-        scarf.Value.Price.Should().Be(1550000L);
+        scarf.Value.Price.Should().Be(1499000L);
     }
     /// <summary>
     /// Real world example, craft cost did not use the correct clean price
@@ -477,7 +477,31 @@ public class DropOffTests
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(auction);
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
-        flip.TargetPrice.Should().Be(22_400_000L);
+        flip.TargetPrice.Should().Be(21_780_000);
+    }
+    [Test]
+    public void ReduceForSameSellerSells()
+    {
+        var converted = LoadLookupMock("hoverious.json");
+        SniperService.StartTime = new DateTime(2021, 9, 25) + (DateTime.UtcNow - new DateTime(2025, 2, 3));
+        sniperService.AddLookupData("INFINI_VACUUM_HOOVERIUS", converted);
+        foreach (var item in converted.Lookup)
+        {
+            sniperService.UpdateMedian(item.Value, ("INFINI_VACUUM_HOOVERIUS", sniperService.GetBreakdownKey(item.Key, "INFINI_VACUUM_HOOVERIUS")));
+        }
+        var auction = new SaveAuction()
+        {
+            Tag = "INFINI_VACUUM_HOOVERIUS",
+            StartingBid = 16_000_000,
+            UId = 4,
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        flip.TargetPrice.Should().Be(24_000_000L, "pulled down by 66th percentile on last 12 sales (5th highest)");
     }
     /// <summary>
     /// if manipulation is detected within references the time window should be longer
