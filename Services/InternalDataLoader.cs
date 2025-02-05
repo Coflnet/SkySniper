@@ -192,8 +192,8 @@ namespace Coflnet.Sky.Sniper.Services
 
         private async Task LoadActiveAuctions(CancellationToken stoppingToken)
         {
-            // load active auctions
-
+            if (DateTime.UtcNow < new DateTime(2025, 2, 6))
+                return; // database issues, don't disable auctions
             logger.LogInformation("loading active auctions");
             try
             {
