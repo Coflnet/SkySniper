@@ -180,7 +180,7 @@ public class AuctionkeyTests
         // by default reforge and tier match
         Assert.That(originkey.Similarity(targetKey), Is.GreaterThan(originkey.Similarity(badKey)));
     }
-    [TestCase("SILENT_DEATH", "ZOMBIE_SWORD")]
+    [TestCase("SILENT_DEATH", "GEMSTONE_GAUNTLET")]
     [TestCase("ZOMBIE_KNIGHT_SWORD", "ASPECT_OF_THE_END")]
     public async Task ScavengerRemovedForDungeon(string dropOn, string keepOn)
     {

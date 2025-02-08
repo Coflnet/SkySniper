@@ -1878,15 +1878,29 @@ namespace Coflnet.Sky.Sniper.Services
             SetBazaarPrice("ENCHANTED_GLOWSTONE", 1_000_000);
             SetBazaarPrice("ESSENCE_CRIMON", 2000);
             AddVolume(highestValAuction);
-            var toTest = Dupplicate(highestValAuction);
-            service.FinishedUpdate();
-            service.State = SniperState.FullyLoaded;
-            service.TestNewAuction(toTest);
-            service.FinishedUpdate();
+            TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.CraftCost).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
             Assert.That(25_200_000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
         }
+        [Test]
+        public async Task MasterStarsAlsoOnDungeonConvertableItems()
+        {
+            highestValAuction.FlatenedNBT["upgrade_level"] = "9";
+            highestValAuction.Tag = "REAPER_MASK";
+            await service.Init();
+            highestValAuction.HighestBidAmount = 10_000_000;
+            SetBazaarPrice("FOURTH_MASTER_STAR", 49_000_000);
+            SetBazaarPrice("THIRD_MASTER_STAR", 29_000_000);
+            SetBazaarPrice("SECOND_MASTER_STAR", 19_000_000);
+            SetBazaarPrice("ESSENCE_UNDEAD", 2000);
+            AddVolume(highestValAuction);
+            TestNewAuction(highestValAuction);
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.CraftCost).FirstOrDefault();
+            Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
+            Assert.That(estimate.TargetPrice, Is.EqualTo(87637349), JsonConvert.SerializeObject(estimate.AdditionalProps));
+        }
+
 
         [Test]
         public void AdjustDueToCount()
