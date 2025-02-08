@@ -624,7 +624,7 @@ public class ItemBreakDown
             Flatten.Remove("ability_scroll");
         }
         // normalize
-        foreach (var item in Flatten.Keys)
+        foreach (var item in Flatten.Keys.ToList())
         {
             var kv = new KeyValuePair<string, string>(item, Flatten[item].ToString() ?? "");
             var normalized = SniperService.NormalizeGeneral(kv, true, Flatten, true);
