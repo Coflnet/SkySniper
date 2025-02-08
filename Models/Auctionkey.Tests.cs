@@ -251,6 +251,23 @@ public class AuctionkeyTests
     }
 
     [Test]
+    public async Task SlotsLoadableOnStarredShadowAssasisn()
+    {
+        await itemService.GetItemsAsync();
+        SetBazaarPrice("FINE_JASPER_GEM", 80_000);
+        var baseAuction = new SaveAuction()
+        {
+            Tag = "SHADOW_ASSASSIN_HELMET", // its stored without starred prefix
+            Enchantments = new(),
+            FlatenedNBT = new() { { "unlocked_slots", "COMBAT_0,JASPER_0" } },
+            ItemCreatedAt = new DateTime(2022, 1, 1),
+            Tier = Tier.MYTHIC
+        };
+        var key = service.ValueKeyForTest(baseAuction);
+        key.Key.Modifiers.Should().BeEquivalentTo(new KeyValuePair<string, string>[] { new("unlocked_slots", "COMBAT_0,JASPER_0") });
+    }
+
+    [Test]
     public void ShinyOnlyOnChestPlateAndHyperion()
     {
         var auction = new SaveAuction()
