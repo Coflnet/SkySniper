@@ -2571,7 +2571,8 @@ ORDER BY l.`AuctionId`  DESC;
                         .OrderByDescending(e => e.Value.Price).FirstOrDefault();
             if (containing.Value == default)
                 return;
-            FindFlip(auction, lbinPrice, medPrice, containing.Value, key, lookup, fullKey, 0, props =>
+            var extraValue = GetExtraValue(auction, key);
+            FindFlip(auction, lbinPrice, medPrice, containing.Value, key, lookup, fullKey, extraValue, props =>
             {
                 props.Add("fullKey", key.ToString());
                 props.Add("usedKey", containing.Key.ToString());
