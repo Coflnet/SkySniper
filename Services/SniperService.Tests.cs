@@ -1718,11 +1718,11 @@ namespace Coflnet.Sky.Sniper.Services
         public void HigherEnchantTierAreWorthMoreThanLowerBazaar()
         {
             SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_1", 42_000_000, 36_000_000);
-            SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_2", 109_000_000, 1_000_003);
-            SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_3", 240_000_000, 1_600_003);
-            SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_4", 0, 2_000_003);
-            SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_5", 0, 109_000_000);
-            Assert.That(service.Lookups["ENCHANTMENT_ULTIMATE_FATAL_TEMPO_5"].Lookup.First().Value.Price, Is.EqualTo(866400000));
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_2", 1_000_003, 109_000_000);
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_3", 1_600_003, 240_000_000);
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_4", 2_000_003, 0);
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_FATAL_TEMPO_5", 109_000_000, 0);
+            Assert.That(service.Lookups["ENCHANTMENT_ULTIMATE_FATAL_TEMPO_5"].Lookup.First().Value.Price, Is.EqualTo(547348200));
         }
 
         [Test]
@@ -2141,17 +2141,16 @@ namespace Coflnet.Sky.Sniper.Services
             var sellOrder = new List<SellOrder>();
             if (value > 0)
                 sellOrder.Add(new SellOrder() { PricePerUnit = value });
+            var buyOrder = new List<BuyOrder>();
+            if (buyValue > 0)
+                buyOrder.Add(new BuyOrder() { PricePerUnit = buyValue });
             service.UpdateBazaar(new()
             {
                 Products = new(){
                 new (){
                     ProductId =  tag,
                     SellSummary = sellOrder,
-                    BuySummery = new(){
-                        new (){
-                            PricePerUnit = buyValue
-                        }
-                    }
+                    BuySummery = buyOrder
                 }
             }
             });
@@ -2468,7 +2467,7 @@ namespace Coflnet.Sky.Sniper.Services
             SimulateNewAuction(highestValAuction);
             var flip = found.Where(f => f.Finder == LowPricedAuction.FinderType.CraftCost).FirstOrDefault();
             flip.Should().NotBeNull();
-            flip.TargetPrice.Should().Be(4250000L);
+            flip.TargetPrice.Should().Be(4845000);
         }
 
         [Test]

@@ -3036,7 +3036,7 @@ ORDER BY l.`AuctionId`  DESC;
                 // make sure higher enchants are higher value
                 if (item.ProductId.StartsWith("ENCHANTMENT"))
                 {
-                    var cheapestBuy = item.SellSummary.OrderBy(s => s.PricePerUnit).FirstOrDefault()?.PricePerUnit;
+                    var cheapestBuy = item.BuySummery.OrderBy(s => s.PricePerUnit).FirstOrDefault()?.PricePerUnit;
                     MakePriceAtLeast90PercentHigherthanLowerLevel(item, bucket, cheapestBuy);
                 }
 
@@ -3187,8 +3187,9 @@ ORDER BY l.`AuctionId`  DESC;
                 var capped = CapAtCraftCost(auction.Tag, higherValueLowerBin, breakdown, 0);
                 if (capped > 0)
                 {
-                    percentile = Math.Min(percentile, capped * 21 / 20);
+                    percentile = Math.Min(percentile, capped * 21 / 20) + 500_000; // 500k extra since this is high volume
                     Activity.Current.Log($"Capped at craft cost {capped}");
+                    props["percentile"] = percentile.ToString();
                     props["craftCost"] = capped.ToString();
                 }
             }

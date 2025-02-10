@@ -220,6 +220,37 @@ public class DropOffTests
         var scarf = sniperService.Lookups["SCARF"].Lookup.Where(l => l.Key.Count == 1 && l.Key.Modifiers.Count == 0).First();
         scarf.Value.Price.Should().Be(1499000L);
     }
+
+    [Test]
+    public void AspectOfTheVoidCraftCostCapSniperHigh()
+    {
+        var converted = LoadLookupMock("aspect_of_the_void.json");
+        SniperService.StartTime += -TimeSpan.FromDays(10_000) + (DateTime.UtcNow - new DateTime(2025, 02, 09));
+        sniperService.AddLookupData("ASPECT_OF_THE_VOID", converted);
+        foreach (var item in converted.Lookup)
+        {
+            sniperService.UpdateMedian(item.Value, ("ASPECT_OF_THE_VOID", sniperService.GetBreakdownKey(item.Key, "ASPECT_OF_THE_VOID")));
+        }
+        SetBazaarPrice("ETHERWARP_MERGER", 260_000);
+        SetBazaarPrice("ETHERWARP_CONDUIT", 15_500_000);
+        SetBazaarPrice("ENCHANTMENT_ULTIMATE_WISE_5", 2_000_000);
+        var testAuction = new SaveAuction()
+        {
+            Tag = "ASPECT_OF_THE_VOID",
+            FlatenedNBT = new() { { "ethermerge", "1" } },
+            Enchantments = [new Enchantment() { Type = Enchantment.EnchantmentType.ultimate_wise, Level = 5 }],
+            StartingBid = 23_000_000,
+            HighestBidAmount = 0,
+            UId = 4,
+            AuctioneerId = "12aaa",
+            Tier = Tier.EPIC,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(testAuction);
+        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
+        flip.TargetPrice.Should().BeGreaterThan(26_000_000L);
+    }
     /// <summary>
     /// Real world example, craft cost did not use the correct clean price
     /// </summary>
