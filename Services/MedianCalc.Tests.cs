@@ -137,7 +137,7 @@ public class MedianCalcTests
         sample = bare.Dupplicate();
         sample.StartingBid = 1_000_000;
         service.TestNewAuction(sample);
-        Assert.That(flips.First().TargetPrice, Is.EqualTo(7280000));
+        Assert.That(flips.First().TargetPrice, Is.EqualTo(7644000));
 
         void SetupPlain(out SaveAuction bare, out AuctionKeyWithValue key, out List<LowPricedAuction> flips)
         {

@@ -3173,6 +3173,8 @@ ORDER BY l.`AuctionId`  DESC;
                 var reduced = CapAtCraftCost(auction.Tag, percentile, breakdown, 0);
                 if (reduced > 0)
                 {
+                    if (percentile != reduced)
+                        reduced = reduced *21 / 20; // 5% extra for snipe
                     percentile = reduced;
                     Activity.Current.Log($"Reduced to craft cost {reduced}");
                     props["craftCost"] = reduced.ToString();

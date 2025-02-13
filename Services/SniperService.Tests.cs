@@ -364,13 +364,13 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(new SaveAuction()
             {
                 Tag = "STARRED_SHADOW_ASSASSIN_CHESTPLATE",
-                FlatenedNBT = new() {  },
+                FlatenedNBT = new() { },
                 HighestBidAmount = 10_000_000
             });
             TestNewAuction(new SaveAuction()
             {
                 Tag = "STARRED_SHADOW_ASSASSIN_CHESTPLATE",
-                FlatenedNBT = new() { { "JASPER_0", "PERFECT" }, {"COMBAT_0_gem", "JASPER"}, {"COMBAT_0", "PERFECT"} }
+                FlatenedNBT = new() { { "JASPER_0", "PERFECT" }, { "COMBAT_0_gem", "JASPER" }, { "COMBAT_0", "PERFECT" } }
             });
             var actualPrice = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice;
             actualPrice.Should().Be(85_000_000);
@@ -480,7 +480,7 @@ namespace Coflnet.Sky.Sniper.Services
             TestNewAuction(higherValue);
             TestNewAuction(highestValAuction);
             var foundFlip = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER).Last().TargetPrice;
-            Assert.That(1_000_000_000, Is.EqualTo(foundFlip), JsonConvert.SerializeObject(found, Formatting.Indented));
+            Assert.That(foundFlip, Is.EqualTo(1_000_000_000), JsonConvert.SerializeObject(found, Formatting.Indented));
         }
         /// <summary>
         /// https://discord.com/channels/267680588666896385/1264680179624706050/1264685231063961753
@@ -2969,7 +2969,7 @@ namespace Coflnet.Sky.Sniper.Services
             overvalued.StartingBid = 120_000_000;
             TestNewAuction(overvalued);
             TestNewAuction(flip);
-            Assert.That(10_000_000 + 9_000_000 * 1.1, Is.EqualTo(found.Last().TargetPrice));
+            Assert.That(found.Last().TargetPrice, Is.EqualTo((10_000_000 + 9_000_000 * 1.1) * 1.05));
         }
         [Test]
         public void SniperNoVolumeLimitedByMoreAttribMedian()
@@ -2985,7 +2985,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.AddSoldItem(highestValAuction);
 
             TestNewAuction(flip);
-            Assert.That(12_000_000, Is.EqualTo(found.Last().TargetPrice));
+            Assert.That(found.Last().TargetPrice, Is.EqualTo(12_000_000));
             Assert.That(0, Is.EqualTo(found.Last().DailyVolume));
         }
 
