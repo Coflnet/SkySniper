@@ -3187,7 +3187,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var capped = CapAtCraftCost(auction.Tag, higherValueLowerBin, breakdown, 0);
                 if (capped > 0)
                 {
-                    percentile = Math.Min(percentile, capped * 21 / 20) + 500_000; // 500k extra since this is high volume
+                    percentile = Math.Min(percentile, capped * 12 / 11) + 500_000; // 500k extra since this is high volume
                     Activity.Current.Log($"Capped at craft cost {capped}");
                     props["percentile"] = percentile.ToString();
                     props["craftCost"] = capped.ToString();
