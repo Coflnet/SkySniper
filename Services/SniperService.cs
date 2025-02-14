@@ -3308,6 +3308,9 @@ ORDER BY l.`AuctionId`  DESC;
                 targetPrice = (long)(targetPrice / Math.Pow(1.05, bucket.HitsSinceCalculating));
                 bucket.HitsSinceCalculating++;
             }
+            using var found = activitySource?.StartActivity("FoundFlip", ActivityKind.Internal);
+            found?.AddTag("uuid", auction.Uuid);
+            found.Log($"Found flip {auction.Uuid} {targetPrice} {type} {bucket.Volume}");
 
             FoundSnipe?.Invoke(new LowPricedAuction()
             {
