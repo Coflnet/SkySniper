@@ -2581,7 +2581,7 @@ ORDER BY l.`AuctionId`  DESC;
         }
 
         public static readonly HashSet<string> HyperionGroup = new() { "SCYLLA", "VALKYRIE", "NECRON_BLADE", "ASTRAEA" };
-
+        public static readonly HashSet<string> WinterFragmentGroup = new(){ "STARRED_GLACIAL_SCYTHE", "STARRED_ICE_SPRAY_WAND", "STARRED_YETI_SWORD" };
         /// <summary>
         /// Remaps item tags into one item if they are easily switchable
         /// </summary>
@@ -2592,9 +2592,13 @@ ORDER BY l.`AuctionId`  DESC;
             if (HyperionGroup.Contains(itemGroupTag))
                 return ("HYPERION", GetPriceForItem("GIANT_FRAGMENT_LASER") * 8); // easily craftable from one into the other
             if (itemGroupTag.StartsWith("STARRED_")
-                && !itemGroupTag.Contains("MIDAS_") && !itemGroupTag.StartsWith("STARRED_DAEDALUS_AXE")) // midas and daedalus needs golden fragments which are expensive
+                && !itemGroupTag.Contains("MIDAS_") && !itemGroupTag.StartsWith("STARRED_DAEDALUS_AXE"))
+            {// midas and daedalus needs golden fragments which are expensive
                 // technically neds 8 for crafting but looses the value on craft so using 7
-                return (itemGroupTag.Substring(8), GetPriceForItem("LIVID_FRAGMENT") * 7);
+                var isFrozen = WinterFragmentGroup.Contains(itemGroupTag);
+                var cost = GetPriceForItem(isFrozen ? "WINTER_FRAGMENT" : "LIVID_FRAGMENT") * 7;
+                return (itemGroupTag[8..], cost);
+            }
             return (itemGroupTag, 0);
         }
 
@@ -3174,7 +3178,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (reduced > 0)
                 {
                     if (percentile != reduced)
-                        reduced = reduced *21 / 20; // 5% extra for snipe
+                        reduced = reduced * 21 / 20; // 5% extra for snipe
                     percentile = reduced;
                     Activity.Current.Log($"Reduced to craft cost {reduced}");
                     props["craftCost"] = reduced.ToString();
