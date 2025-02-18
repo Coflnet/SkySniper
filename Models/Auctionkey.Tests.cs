@@ -796,6 +796,24 @@ public class AuctionkeyTests
             new (new KeyValuePair<string,string>("unlocked_slots", "COMBAT_0,COMBAT_1"), 23100000),
             new (new KeyValuePair<string,string>("upgrade_level", "10"), 1504500),]);
     }
+
+    [TestCase("SKELETON_MASTER_CHESTPLATE", true)]
+    [TestCase("HYPERION", false)]
+    public void DropEnchantsOnSkeletonMaster(string tag, bool shouldKeep)
+    {
+        var auction = new SaveAuction()
+        {
+            Tag = tag,
+            Enchantments = new() { new(EnchantmentType.ultimate_legion, 5) },
+            FlatenedNBT = new() {
+                { "baseStatBoostPercentage", "50" },
+                { "item_tier", "10" } },
+        };
+        var key = service.KeyFromSaveAuction(auction);
+        var itemTier = key.Modifiers.FirstOrDefault(x => x.Key == "item_tier");
+        (itemTier.Key != null).Should().Be(shouldKeep);
+    }
+
     [Test]
     public void ValueAssignedtoRecombobulator()
     {

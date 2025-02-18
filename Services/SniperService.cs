@@ -65,7 +65,7 @@ namespace Coflnet.Sky.Sniper.Services
             "color", // armour
             "model", // abicase
             // potion "level", // not engough impact
-            // "item_tier", // mostly found on armor, unsure what it does
+            "item_tier", // mostly found on armor, unsure what it does
             "talisman_enrichment", // talismans can be enriched with additional stats
             "drill_part_engine",
             "drill_part_fuel_tank",
@@ -2101,6 +2101,12 @@ ORDER BY l.`AuctionId`  DESC;
                 if (val > 50)
                     return new KeyValuePair<string, string>("baseStatBoost", ">50");
             }
+            if (s.Key == "item_tier")
+            {
+                if (s.Value == "10" && tag == "SKELETON_MASTER_CHESTPLATE")
+                    return new KeyValuePair<string, string>("item_tier", "10");
+                return Ignore;
+            }
             if (s.Key.StartsWith("RUNE_") && !IncludeKeys.Contains(s.Key) && !tag.Contains("RUNE_"))
             {
                 return Ignore;
@@ -2581,7 +2587,7 @@ ORDER BY l.`AuctionId`  DESC;
         }
 
         public static readonly HashSet<string> HyperionGroup = new() { "SCYLLA", "VALKYRIE", "NECRON_BLADE", "ASTRAEA" };
-        public static readonly HashSet<string> WinterFragmentGroup = new(){ "STARRED_GLACIAL_SCYTHE", "STARRED_ICE_SPRAY_WAND", "STARRED_YETI_SWORD" };
+        public static readonly HashSet<string> WinterFragmentGroup = new() { "STARRED_GLACIAL_SCYTHE", "STARRED_ICE_SPRAY_WAND", "STARRED_YETI_SWORD" };
         /// <summary>
         /// Remaps item tags into one item if they are easily switchable
         /// </summary>
