@@ -1044,7 +1044,7 @@ ORDER BY l.`AuctionId`  DESC;
             bucket.DeduplicatedReferenceCount = (short)deduplicated.Count();
             PreCalculateVolume(keyCombo);
             bucket.TimeToSell = (int)deduplicated
-                        .Where(d => d.SellTime > 0 && d.Price > medianPrice * 0.9)
+                        .Where(d => d.SellTime > 0 && d.Price > medianPrice * 0.9 && d.Price < medianPrice * 1.2)
                         .DefaultIfEmpty().Average(d => d.SellTime);
             // get price of item without enchants and add enchant value 
             if (keyCombo != default)
