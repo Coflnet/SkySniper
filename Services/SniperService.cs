@@ -122,6 +122,7 @@ namespace Coflnet.Sky.Sniper.Services
             "RUNE_SPELLBOUND",
             "RUNE_GRAND_FREEZING",
             "RUNE_PRIMAL_FEAR",
+            "bass_weight",
             "is_shiny", // cosmetic effect on wither armor ~5% drop chance on Master Mode 7
         };
 
@@ -417,6 +418,7 @@ ORDER BY l.`AuctionId`  DESC;
             Converters["upgrade_level"] = m => new(m.Modifier, EstStarCost(m.ItemTag, int.Parse(m.Modifier.Value)));
             Converters["unlocked_slots"] = m => new(m.Modifier, GetGemstoneSlotWorth(m.RelevantModifiers, m.ItemTag, m.Modifier));
             Converters["scroll_count"] = m => new(m.Modifier, (GetPriceForItem("IMPLOSION_SCROLL") + GetPriceForItem("SHADOW_WARP_SCROLL") + GetPriceForItem("WITHER_SHIELD_SCROLL")) / 3 * int.Parse(m.Modifier.Value));
+            Converters["bass_weight"] = m => new(m.Modifier, 5_000_000 * int.Parse(m.Modifier.Value.Split(',')[0]));
         }
 
         public void SummaryUpdate()
@@ -2149,6 +2151,8 @@ ORDER BY l.`AuctionId`  DESC;
                 return NormalizeNumberTo(s, 20_000, 2);
             if (s.Key == "collected_coins")
                 return NormalizeGroupNumber(s, 100_000_000, 1_000_000_000);
+            if (s.Key == "bass_weight")
+                return NormalizeGroupNumber(s, 2, 5, 10, 20, 50, 100, 200);
             if (s.Key == "candyUsed")
             {
                 var expAmount = GetNumeric(flatten.FirstOrDefault(f => f.Key == "exp"));
