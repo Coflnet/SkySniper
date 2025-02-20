@@ -123,6 +123,7 @@ namespace Coflnet.Sky.Sniper.Services
             "RUNE_GRAND_FREEZING",
             "RUNE_PRIMAL_FEAR",
             "bass_weight",
+            "chimera_found", // Diana's Bookshelf
             "is_shiny", // cosmetic effect on wither armor ~5% drop chance on Master Mode 7
         };
 
@@ -142,6 +143,7 @@ namespace Coflnet.Sky.Sniper.Services
             { "thunder_charge", m => new (m.Modifier, 55_000_000 * int.Parse(m.Modifier.Value)){IsEstimate=true} },
             { "baseStatBoostPercentage", m => new (m.Modifier, (int)((float.Parse(m.Modifier.Value) - 45) * 500_000)) {IsEstimate=true}},
             { "hotpc", m => new ("hotpc", m.Modifier.Value, 3_000_000) {IsEstimate=true}},
+            { "chimera_found", m => new ("chimera_found", m.Modifier.Value, int.Parse(m.Modifier.Value) * 10_000_000) {IsEstimate=true}},
             { "new_years_cake", m => new (m.Modifier, int.Parse(m.Modifier.Value) switch
                 {
                     < 20 => 20_000_000,
