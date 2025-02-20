@@ -118,7 +118,7 @@ public class AuctionkeyTests
             FlatenedNBT = new() { { "lifeline", "1" }, { "mana_regeneration", "1" } },
         };
         var key = service.KeyFromSaveAuction(auction);
-        Assert.That(1, Is.EqualTo(key.Modifiers.Count));
+        Assert.That(2, Is.EqualTo(key.Modifiers.Count));
         Assert.That(key.Modifiers.Any(x => x.Key == "lifeline" && x.Value == "1"));
     }
     [Test]
