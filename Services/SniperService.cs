@@ -212,6 +212,7 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly KeyValuePair<List<string>, List<KeyValuePair<string, string>>>[] ItemSpecificAttribCombo =
         [
             new(["LAVA_SHELL_NECKLACE", "MOLTEN_BELT"], new (){new("lifeline", "mana_pool"), new("lifeline", "lifeline")}),
+            new(["LAVA_SHELL_NECKLACE"], [new("lifeline", "mana_regeneration")]),
             new(new (){"TERROR_BOOTS", "TERROR_LEGGINGS", "TERROR_CHESTPLATE"}, new (){new("lifeline", "mana_pool")}),
             new(new (){"MAGMA_LORD_BOOTS", "MAGMA_LORD_LEGGINGS", "MAGMA_LORD_CHESTPLATE", "MAGMA_LORD_HELMET"},
                 new (){new("blazing_fortune", "mana_pool"), new("blazing_fortune", "fishing_experience"),
