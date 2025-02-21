@@ -142,7 +142,11 @@ namespace Coflnet.Sky.Sniper.Services
             { "party_hat_color", m => new (m.Modifier, 20_000_000) {IsEstimate=true}},
             { "thunder_charge", m => new (m.Modifier, 55_000_000 * int.Parse(m.Modifier.Value)){IsEstimate=true} },
             { "baseStatBoostPercentage", m => new (m.Modifier, (int)((float.Parse(m.Modifier.Value) - 45) * 500_000)) {IsEstimate=true}},
-            { "hotpc", m => new ("hotpc", m.Modifier.Value, 3_000_000) {IsEstimate=true}},
+            { "hotpc", m => new ("hotpc", m.Modifier.Value, m.Modifier.Value switch {
+                "1" => 5_000_000,
+                "0.1" => 2_000_000,
+                _ => 800_000 // no fuming
+            }) {IsEstimate=true}},
             { "chimera_found", m => new ("chimera_found", m.Modifier.Value, int.Parse(m.Modifier.Value) * 10_000_000) {IsEstimate=true}},
             { "new_years_cake", m => new (m.Modifier, int.Parse(m.Modifier.Value) switch
                 {
@@ -2047,7 +2051,8 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     15 => new("hotpc", "1"),
                     /// this is mirrored in <see cref="PropertyMapper"/>
-                    > 10 => new("hotpc", "0"),
+                    > 10 => new("hotpc", "0.1"),
+                    10 => new("hotpc", "0"),
                     _ => Ignore
                 };
             if (s.Key == "ability_scroll")

@@ -546,7 +546,7 @@ namespace Coflnet.Sky.Sniper.Services
         {
             var sample = Dupplicate(highestValAuction);
             sample.Reforge = ItemReferences.Reforge.Magnetic;
-            sample.FlatenedNBT = new() { { "farming_for_dummies_count", "1" }, { "hpc", "10" } };
+            sample.FlatenedNBT = new() { { "farming_for_dummies_count", "1" }, { "hpc", "9" } };
             sample.Enchantments = [
                 new Enchantment(Enchantment.EnchantmentType.growth, 6),
                 new Enchantment(Enchantment.EnchantmentType.protection, 6),
