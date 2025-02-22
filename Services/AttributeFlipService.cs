@@ -77,6 +77,15 @@ public class AttributeFlipService : IAttributeFlipService
                 toRemove.Add(item.Key);
                 logger.LogInformation($"Removing outdated flip {item.Key.Item1} {item.Key.Item2} {item.Value.AuctionToBuy}");
             }
+            if (sniperService.Lookups.TryGetValue(item.Key.Item1, out var lookup) && lookup.Lookup.TryGetValue(item.Key.Item2, out var value))
+            {
+                var uid = AuctionService.Instance.GetId(item.Value.AuctionToBuy);
+                if (value.References.Any(r => r.AuctionId == uid))
+                {
+                    toRemove.Add(item.Key);
+                    logger.LogInformation($"Removing sold flip {item.Key.Item1} {item.Key.Item2} {item.Value.AuctionToBuy}");
+                }
+            }
         }
         foreach (var item in toRemove)
         {
@@ -102,7 +111,7 @@ public class AttributeFlipService : IAttributeFlipService
         if (key.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.champion // probably non-purchasable lvl 2-10
             || e.Type == Enchantment.EnchantmentType.vampirism))
         {
-            return; 
+            return;
         }
         var cheapestLbin = lookup.Lookup.Where(l => l.Value.Lbin.AuctionId != default && l.Value.Lbin.Price > l.Value.Price / 2).MinBy(l => l.Value.Lbin.Price);
         if (cheapestLbin.Value.Lbin.Price > cheapest)
@@ -205,6 +214,7 @@ public class AttributeFlip
     public long EstimatedCraftingCost { get; set; }
     public DateTime FoundAt { get; set; } = DateTime.UtcNow;
     public float Volume { get; internal set; }
+    public DateTi
 
     public class Ingredient
     {

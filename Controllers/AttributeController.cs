@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using Coflnet.Sky.Sniper.Models;
 using Coflnet.Sky.Core;
+using System;
 
 namespace Coflnet.Sky.Sniper.Controllers;
 
@@ -27,7 +28,7 @@ public class AttributeController : ControllerBase
     [HttpGet]
     public IEnumerable<AttributeFlip> GetCrafts()
     {
-        return flipService.Flips.Values;
+        return flipService.Flips.Values.Where(v => v.FoundAt < DateTime.UtcNow.AddMinutes(-1));
     }
 
     [Route("combo/{leftAttrib}/{rightAttrib}")]
