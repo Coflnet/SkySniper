@@ -90,7 +90,7 @@ public class AttributeFlipService : IAttributeFlipService
             if (sniperService.Lookups.TryGetValue(item.Key.Item1, out var lookup) && lookup.Lookup.TryGetValue(item.Key.Item2, out var value))
             {
                 var uid = AuctionService.Instance.GetId(item.Value.AuctionToBuy);
-                if (value.References.Any(r => r.AuctionId == uid))
+                if (!value.Lbins.Any(r => r.AuctionId == uid))
                 {
                     toRemove.Add(item.Key);
                     logger.LogInformation($"Removing sold flip {item.Key.Item1} {item.Key.Item2} {item.Value.AuctionToBuy}");
