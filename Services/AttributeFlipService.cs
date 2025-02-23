@@ -47,7 +47,17 @@ public class AttributeFlipService : IAttributeFlipService
         };
         sniperService.OnSummaryUpdate += () =>
         {
-            Task.Run(Update);
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await Update();
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, "Error while updating attribute flips");
+                }
+            });
         };
         this.logger = logger;
         this.hypixelItemService = hypixelItemService;
