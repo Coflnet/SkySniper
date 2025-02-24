@@ -3095,6 +3095,30 @@ namespace Coflnet.Sky.Sniper.Services
             sample.TargetPrice.Should().Be(18049999L);
         }
 
+        [Test]
+        public async Task DoNotLimitSnipeAtCraftIfNotCraftable()
+        {
+            SetBazaarPrice("ENCHANTMENT_SCAVENGER_5", 300_000);
+            await service.Init();
+            highestValAuction.ItemCreatedAt = DateTime.UtcNow;
+            highestValAuction.Tag = "ICE_SPRAY_WAND";
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.Enchantments = [new() { Type = Enchantment.EnchantmentType.scavenger, Level = 5 }];
+            highestValAuction.HighestBidAmount = 20_000_000;
+            AddVolume(highestValAuction, 30);
+            var lbin = Dupplicate(highestValAuction);
+            lbin.HighestBidAmount = 0;
+            lbin.StartingBid = 28_000_000;
+            TestNewAuction(lbin);
+            var toTest = Dupplicate(lbin);
+            toTest.HighestBidAmount = 0;
+            toTest.StartingBid = 22_000_000;
+
+            service.TestNewAuction(toTest);
+            var snipe = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
+            snipe.TargetPrice.Should().Be(27720000L);
+        }
+
         [TestCase(10, 40_000_000)] // at 10 volume the two buckets are combined 
         [TestCase(12, 2_000_000)] // bucket is not combined as the original has sufficient volume 
         public async Task CombineWithClosestKeyToGetMedian(int refCount, int expectedEstimate)

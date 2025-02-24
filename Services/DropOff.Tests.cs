@@ -379,7 +379,7 @@ public class DropOffTests
     }
 
     [TestCase(9, 55415716L)]
-    [TestCase(10, 58332333L)]
+    [TestCase(10, 63360000L)] // lbin based up to 99% at 10 volume
     public void SniperEstimate(byte volumeOverride, long target)
     {
         PriceLookup converted = LoadLookupMock("potato-talisman.json");
