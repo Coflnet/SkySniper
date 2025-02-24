@@ -3056,6 +3056,45 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(0, Is.EqualTo(found.Count), JsonConvert.SerializeObject(found, Formatting.Indented));
         }
 
+        /// <summary>
+        /// combined buckets lbin should be used as target
+        /// </summary>
+        /// <returns></returns>
+        [Test]
+        public async Task UseLbinFromCombinedLowerKeys()
+        {
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_LEGION_5", 10_000_000);
+            SetBazaarPrice("RECOMBOBULATOR_3000", 10_000_000);
+            SetBazaarPrice("FINE_JASPER_GEM", 85_000);
+            SetBazaarPrice("ESSENCE_WITHER", 2_600);
+            SetBazaarPrice("HOT_POTATO_BOOK", 80_000);
+            SetBazaarPrice("FUMING_POTATO_BOOK", 1_200_000);
+            await service.Init();
+            // " Any [hotpc, 0],[rarity_upgrades, 1],[unlocked_slots, COMBAT_0,JASPER_0],[upgrade_level, 5] MYTHIC 1"
+            highestValAuction.FlatenedNBT = new() { { "rarity_upgrades", "1" }, { "upgrade_level", "5" }, { "unlocked_slots", "COMBAT_0,JASPER_0" }, {"hpc", "10"} };
+            highestValAuction.Tag = "SHADOW_ASSASSIN_HELMET";
+            highestValAuction.StartingBid = 19_000_000;
+            highestValAuction.HighestBidAmount = 13_000_000;
+            AddVolume(highestValAuction, 10); 
+            highestValAuction.HighestBidAmount = 0;
+            TestNewAuction(highestValAuction); // add lbin
+            var higherValue = Dupplicate(highestValAuction);
+            higherValue.FlatenedNBT["hpc"] = "15";
+            higherValue.Enchantments = new List<Core.Enchantment>(){
+                new Core.Enchantment(Enchantment.EnchantmentType.ultimate_legion,5)
+            };
+            
+            higherValue.StartingBid = 14_000_000;
+            higherValue.HighestBidAmount = 14_500_000;
+            AddVolume(higherValue);
+            higherValue.HighestBidAmount = 14_000_000;
+            TestNewAuction(higherValue); 
+
+            var sample = found.First(f=>f.Finder == LowPricedAuction.FinderType.SNIPER);
+            sample.Should().NotBeNull();
+            sample.TargetPrice.Should().Be(18049999L);
+        }
+
         [TestCase(10, 40_000_000)] // at 10 volume the two buckets are combined 
         [TestCase(12, 2_000_000)] // bucket is not combined as the original has sufficient volume 
         public async Task CombineWithClosestKeyToGetMedian(int refCount, int expectedEstimate)

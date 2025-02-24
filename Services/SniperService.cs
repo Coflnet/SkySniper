@@ -2857,7 +2857,7 @@ ORDER BY l.`AuctionId`  DESC;
             var volume = bucket.Volume;
             var medianPrice = bucket.Price + extraValue;
             var foundSnipe = false;
-            if ((bucket.Lbin.Price > lbinPrice || bucket.Price == 0) && (MaxMedianPriceForSnipe(bucket) > lbinPrice)
+            if ((bucket.Lbin.Price > lbinPrice || bucket.Price == 0) && (MaxMedianPriceForSnipe(bucket, breakdown) > lbinPrice)
                 && (!fastMode || bucket.Volume > 5)
                )
             {
@@ -3150,7 +3150,7 @@ ORDER BY l.`AuctionId`  DESC;
             AddMedianSample(bucket.References, props);
             props["mVal"] = bucket.Price.ToString();
             props["hvlbin"] = higherValueLowerBin.ToString();
-            var targetPrice = Math.Min(higherValueLowerBin - 1, MaxMedianPriceForSnipe(bucket)) + extraValue - MIN_TARGET / 200;
+            var targetPrice = Math.Min(higherValueLowerBin - 1, MaxMedianPriceForSnipe(bucket, breakdown)) + extraValue - MIN_TARGET / 200;
             if (bucket.Price != 0)
                 targetPrice = Math.Min(targetPrice, bucket.Price * 2);
             if (targetPrice < auction.StartingBid * 1.03)
@@ -3185,6 +3185,11 @@ ORDER BY l.`AuctionId`  DESC;
                     percentile /= 5;
                 }
                 percentile = Math.Min(percentile, referencePrice);
+                var sumBrekdown = breakdown.ValueBreakdown.Sum(v => v.Value);
+                if (percentile < sumBrekdown * 0.7)
+                {
+                    percentile = (long)(sumBrekdown * 1.6 + percentile) / 3;
+                }
                 percentile = Math.Min(percentile, lowestLbin);
                 if (lowestLbin > 10_000_000_000)
                 {
@@ -3276,16 +3281,18 @@ ORDER BY l.`AuctionId`  DESC;
             props["med"] = string.Join(',', bucket.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
         }
 
-        private static long MaxMedianPriceForSnipe(ReferenceAuctions bucket)
+        private static long MaxMedianPriceForSnipe(ReferenceAuctions bucket, KeyWithValueBreakdown breakdown)
         {
             var price = bucket.RiskyEstimate == 0 ? bucket.Price : Math.Min(bucket.RiskyEstimate, bucket.Price * 11 / 10 + 1_000_000);
+            var reducedCraftValue = breakdown.ValueBreakdown.Sum(v => v.Value) * 0.7;
             if (price == 0)
                 return long.MaxValue; // disabled with 0 volume
+            var fromPrice = price * 21 / 20;
             if (price < 15_000_000)
-                return price * 13 / 10;
-            if (price < 100_000_000)
-                return price * 14 / 12;
-            return price * 21 / 20;
+                fromPrice = price * 13 / 10;
+            else if (price < 100_000_000)
+                fromPrice = price * 14 / 12;
+            return Math.Max((long)reducedCraftValue, fromPrice);
         }
 
         public void PrintLogQueue()
