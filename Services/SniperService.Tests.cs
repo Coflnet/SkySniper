@@ -1519,7 +1519,7 @@ namespace Coflnet.Sky.Sniper.Services
             var mapper = new PropertyMapper();
             var result = mapper.EnchantValue(new Core.Enchantment(Enchantment.EnchantmentType.ultimate_duplex, 1), null, new(){
                 {"ENCHANTMENT_ULTIMATE_REITERATE_1", 3000}
-            });
+            }, "sample");
             Assert.That(3000, Is.EqualTo(result));
         }
 

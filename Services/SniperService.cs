@@ -639,7 +639,7 @@ ORDER BY l.`AuctionId`  DESC;
         private void GetDifferenceSum(SaveAuction auction, PriceEstimate result, AuctionKeyWithValue itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> c, out string diffExp, out long changeAmount)
         {
             (var modVal, var modExp) = AdjustMedianForModifiers(result, itemKey, c, auction);
-            (var enchal, var enchExp) = AdjustForMissingEnchants(result, itemKey, c);
+            (var enchal, var enchExp) = AdjustForMissingEnchants(result, auction.Tag, itemKey, c);
             var reforgediff = 0L;
             if (c.Key.Reforge != itemKey.Reforge)
                 reforgediff = GetReforgeValue(c.Key.Reforge) - GetReforgeValue(itemKey.Reforge) / 20;
@@ -647,13 +647,13 @@ ORDER BY l.`AuctionId`  DESC;
             changeAmount = modVal + enchal + reforgediff;
         }
 
-        private (long substract, string add) AdjustForMissingEnchants(PriceEstimate result, AuctionKey itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> closest)
+        private (long substract, string add) AdjustForMissingEnchants(PriceEstimate result, string itemTag, AuctionKey itemKey, KeyValuePair<AuctionKey, ReferenceAuctions> closest)
         {
             // closest should be bigger 
             var missingEnchants = closest.Key.Enchants.Where(m => !itemKey.Enchants.Any(e => e.Type == m.Type && e.Lvl >= m.Lvl)).ToList();
             if (missingEnchants.Count > 0)
             {
-                var enchCost = GetPriceSumForEnchants(missingEnchants);
+                var enchCost = GetPriceSumForEnchants(missingEnchants, itemTag);
                 if (enchCost > 0)
                 {
                     return (enchCost, $"-{string.Join(",", missingEnchants.Select(m => $"{m.Type}{m.Lvl}"))}");
@@ -1839,7 +1839,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private IEnumerable<RankElem> ComparisonValue(IEnumerable<Enchant> enchants, List<KeyValuePair<string, string>> modifiers, string tag, Dictionary<string, string> flatNbt)
         {
-            var valuePerEnchant = enchants?.Select(item => new RankElem(item, mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices)));
+            var valuePerEnchant = enchants?.Select(item => new RankElem(item, mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices, tag)));
 
             var handler = (KeyValuePair<string, string> mod) =>
             {
@@ -2701,14 +2701,14 @@ ORDER BY l.`AuctionId`  DESC;
             var missingEnchants = closest.Key.Enchants.Where(m => !key.Enchants.Contains(m)).ToList();
             if (missingEnchants.Count > 0)
             {
-                var enchVal = GetPriceSumForEnchants(missingEnchants);
+                var enchVal = GetPriceSumForEnchants(missingEnchants, auction.Tag);
                 toSubstract += enchVal;
                 props.Add("missingEnchants", string.Join(",", missingEnchants.Select(e => $"{e.Type}_{e.Lvl}")) + $" ({enchVal})");
             }
             var additionalEnchants = key.Enchants.Where(e => !closest.Key.Enchants.Contains(e)).ToList();
             if (additionalEnchants.Count > 0)
             {
-                var valEst = GetPriceSumForEnchants(additionalEnchants) / 2;
+                var valEst = GetPriceSumForEnchants(additionalEnchants, auction.Tag) / 2;
                 var enchantVal = Math.Min(valEst, closest.Value.Price / 4);
                 toSubstract -= enchantVal;
                 props.Add("enchValueAdded", string.Join(",", additionalEnchants.Select(e => $"{e.Type}_{e.Lvl}")) + $" ({enchantVal}-{valEst})");
@@ -2789,12 +2789,12 @@ ORDER BY l.`AuctionId`  DESC;
             return 0;
         }
 
-        private long GetPriceSumForEnchants(IEnumerable<Models.Enchant> missingEnchants)
+        private long GetPriceSumForEnchants(IEnumerable<Models.Enchant> missingEnchants, string itemTag)
         {
             long toSubstract = 0;
             foreach (var item in missingEnchants)
             {
-                toSubstract += mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices);
+                toSubstract += mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices, itemTag);
             }
             return toSubstract;
         }
