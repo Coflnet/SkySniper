@@ -11,6 +11,7 @@ using System.Net;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using FluentAssertions;
 
 namespace Coflnet.Sky.Sniper.Services
 {
@@ -153,6 +154,7 @@ namespace Coflnet.Sky.Sniper.Services
                     < 20 => 20_000_000,
                     69 => 10_000_000,
                     < 120 => 2_000_000,
+                    400 => 10_000_000, // check this in the future
                     _ => 600_000,
                 }){IsEstimate=true} },
             { "party_hat_emoji", m => new (m.Modifier, 8_000_000){IsEstimate=true} },
@@ -166,6 +168,9 @@ namespace Coflnet.Sky.Sniper.Services
             "new_years_cake",
             "candyUsed",
         };
+
+        private static readonly HashSet<string> ImportantCakeYears = new()
+        { "69", "420", "400"};
 
         /// <summary>
         /// Keys containing itemTags that should be added separately
@@ -1182,6 +1187,11 @@ ORDER BY l.`AuctionId`  DESC;
             long CapPriceAtHigherLevelKey((string tag, KeyWithValueBreakdown key) keyCombo, long limitedPrice)
             {
                 var oldestDay = bucket.OldestRef;
+                if (keyCombo.key.Key.Modifiers.FirstOrDefault().Key == "new_years_cake"
+                    && ImportantCakeYears.Contains(keyCombo.key.Key.Modifiers.FirstOrDefault().Value))
+                {
+                    return limitedPrice;
+                }
                 var cheaperHigherValue = Lookups[keyCombo.tag].Lookup
                     .Where(k => k.Value.Price < limitedPrice && k.Value.Price != 0
                             && !k.Key.Modifiers.Any(m => m.Key == "virtual")

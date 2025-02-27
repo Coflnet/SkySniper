@@ -1000,6 +1000,13 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(500_000, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
             var price = service.GetPrice(auction);
             Assert.That(price.Median, Is.EqualTo(503_333));
+
+            // but exclude valuable years
+            var century = auction.Dupplicate(15_000_000);
+            century.FlatenedNBT["new_years_cake"] = "400";
+            AddVolume(century);
+            service.TestNewAuction(century);
+            Assert.That(15_000_000, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
         }
 
         [Test]
