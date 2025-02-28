@@ -3241,7 +3241,7 @@ ORDER BY l.`AuctionId`  DESC;
             return FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
         }
 
-        private static bool IsHigherValue(string tag, AuctionKey baseKey, AuctionKey toCheck)
+        private bool IsHigherValue(string tag, AuctionKey baseKey, AuctionKey toCheck)
         {
             return baseKey.Tier <= toCheck.Tier
                     && (toCheck.Tier != Tier.LEGENDARY || tag != "PET_SPIRIT")
@@ -3249,6 +3249,7 @@ ORDER BY l.`AuctionId`  DESC;
                     && baseKey.Modifiers.All(m => toCheck.Modifiers.Any(other => other.Key == m.Key
                                             && (other.Value == m.Value ||
                                                 float.TryParse(other.Value, out var otherVal)
+                                            && (baseKey.Modifiers.FirstOrDefault().Key != "new_years_cake" || !ImportantCakeYears.Contains(other.Value))
                                             && float.TryParse(m.Value, out var ownVal) && (InvertedValueKey.Contains(other.Key) ? otherVal < ownVal : otherVal > ownVal)
                                             || other.Value.Contains(m.Value) && !float.TryParse(other.Value, out _)
                                                 // has any space or comma for contains
