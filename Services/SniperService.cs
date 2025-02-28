@@ -10,8 +10,6 @@ using Newtonsoft.Json;
 using System.Net;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using FluentAssertions;
 
 namespace Coflnet.Sky.Sniper.Services
 {
