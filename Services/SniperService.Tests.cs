@@ -525,6 +525,27 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(30_000_000, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
         }
         [Test]
+        public async Task HigherValueCheckHonorsReforge()
+        {
+            SetBazaarPrice("OVERGROWN_GRASS", 40_000_000);
+            SetBazaarPrice("RECOMBOBULATOR_3000", 10_000_000);
+            await service.Init();
+            highestValAuction.Reforge = ItemReferences.Reforge.mossy;
+            highestValAuction.FlatenedNBT = new(){
+                {"rarity_upgrades", "3000"}};
+            highestValAuction.HighestBidAmount = 10_000_000;
+            AddVolume(highestValAuction, 8);
+            var lowerValue = Dupplicate(highestValAuction);
+            lowerValue.Reforge = ItemReferences.Reforge.dirty;
+            lowerValue.HighestBidAmount = 5_000_000;
+            AddVolume(lowerValue);
+            var sample = Dupplicate(highestValAuction);
+            sample.HighestBidAmount = 0;
+            sample.StartingBid = 1000;
+            TestNewAuction(sample);
+            found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice.Should().Be(10_000_000);
+        }
+        [Test]
         public void LowVolumeHighValueShowsUpVolumeCheck()
         {
             var sample = Dupplicate(highestValAuction);

@@ -2258,6 +2258,7 @@ ORDER BY l.`AuctionId`  DESC;
                 // check against every other item with the same enchants and modifiers (and more) - which should be higher value
                 foreach (var item in l.Where(x => x.Value.Price > 0).Select(x => x.Key).Where(k => k != baseKey && baseKey.Modifiers
                     .All(m => k.Modifiers != null && k.Modifiers.Any(km => km.Key == m.Key && km.Value == m.Value))
+                        && (baseKey.Reforge == k.Reforge || baseKey.Reforge == ItemReferences.Reforge.Any)
                             && baseKey.Enchants
                     .All(e => k.Enchants != null && k.Enchants.Any(ek => e.Type == ek.Type && ek.Lvl == e.Lvl)) && k.Tier == baseKey.Tier))
                 {
