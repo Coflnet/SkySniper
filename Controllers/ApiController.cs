@@ -401,6 +401,8 @@ namespace Coflnet.Sky.Sniper.Controllers
                         }}";
                     if (l.Key == "ATTRIBUTE_SHARD" && i.Key.Modifiers.First().Value == "7")
                         return $"{l.Key}+{i.Key.Modifiers.First().Key};7";
+                    if (l.Key == "ATTRIBUTE_SHARD" && i.Key.Modifiers.First().Value == "5")
+                        return $"{l.Key}+{i.Key.Modifiers.First().Key};5";
                     if (l.Key.StartsWith("RUNE_"))
                         return $"{l.Key}{(i.Key.Modifiers.Count > 0 ? $"_{i.Key.Modifiers.First().Value}" : "")}";
                     if (i.Key.Modifiers.Any(m => m.Key == "virtual"))
