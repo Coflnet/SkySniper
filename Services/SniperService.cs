@@ -2351,16 +2351,13 @@ ORDER BY l.`AuctionId`  DESC;
             var medPrice = auction.StartingBid * 1.05 + itemGroupTag.Item2;
             var lastKey = new AuctionKey();
             var shouldTryToFindClosest = false;
-            var basekey = /*fastMode ? new KeyWithValueBreakdown()
+            var basekey = DetailedKeyFromSaveAuction(auction, fastMode);
+
+            if (auction.Start > DateTime.UtcNow.AddSeconds(-18))
             {
-                Key = new(){
-                    Count = 1,
-                    Enchants = new([]),
-                    Modifiers = new([]),
-                    Tier = auction.Tier
-                },
-                ValueBreakdown = new()
-            }:*/DetailedKeyFromSaveAuction(auction, fastMode);
+                // check combined first if its a bed anyways not much time to be lost
+                CheckLowerKeyFull(auction, lookup, lbinPrice, medPrice, basekey, l);
+            }
             for (int i = 0; i < 4; i++)
             {
                 var key = basekey.GetReduced(i);
