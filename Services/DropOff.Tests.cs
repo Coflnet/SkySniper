@@ -482,6 +482,36 @@ public class DropOffTests
         flip.TargetPrice.Should().Be(2_990_000_000L);
     }
 
+    [Test]
+    public void AllowHigherEstimateOnCleanHighVolumeLbin()
+    {
+        var converted = LoadLookupMock("DRILL_ENGINE.json");
+        SniperService.StartTime += DateTime.UtcNow - new DateTime(2025, 3, 10) - TimeSpan.FromDays(10000);
+        sniperService.AddLookupData("DRILL_ENGINE", converted);
+        foreach (var item in converted.Lookup)
+        {
+            sniperService.UpdateMedian(item.Value, ("DRILL_ENGINE", sniperService.GetBreakdownKey(item.Key, "DRILL_ENGINE")));
+        }
+        var auction = new SaveAuction()
+        {
+            Tag = "DRILL_ENGINE",
+            StartingBid = 270_000_000,
+            UId = 4,
+            AuctioneerId = "12aaa",
+            Tier = Tier.RARE,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        var lbin = auction.Dupplicate();
+        lbin.StartingBid = 305_000_000;
+        sniperService.TestNewAuction(lbin);
+        sniperService.FinishedUpdate();
+        sniperService.TestNewAuction(auction);
+        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
+        flip.TargetPrice.Should().Be(305_000_000L * 99 / 100);
+
+    }
+
     /// <summary>
     /// Price drop protection should adjust to volume and not miss good flips
     /// </summary>

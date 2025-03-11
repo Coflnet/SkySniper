@@ -3303,6 +3303,8 @@ ORDER BY l.`AuctionId`  DESC;
                 fromPrice = price * 13 / 10;
             else if (price < 100_000_000)
                 fromPrice = price * 14 / 12;
+            if (bucket.Volume > 10 && bucket.DeduplicatedReferenceCount > 32)
+                fromPrice = fromPrice * 12 / 10; // stable unbiased price, allow higher snipes
             return Math.Max((long)reducedCraftValue, fromPrice);
         }
 
