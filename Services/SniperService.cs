@@ -141,7 +141,7 @@ namespace Coflnet.Sky.Sniper.Services
             { "is_shiny", m => new (m.Modifier, 88_000_000) {IsEstimate=true}},
             { "party_hat_color", m => new (m.Modifier, 20_000_000) {IsEstimate=true}},
             { "thunder_charge", m => new (m.Modifier, 55_000_000 * int.Parse(m.Modifier.Value)){IsEstimate=true} },
-            { "baseStatBoostPercentage", m => new (m.Modifier, (int)((float.Parse(m.Modifier.Value) - 45) * 500_000)) {IsEstimate=true}},
+            { "baseStatBoost", m => new (m.Modifier, (int)((float.Parse(m.Modifier.Value) - 45) * 500_000)) {IsEstimate=true}},
             { "hotpc", m => new ("hotpc", m.Modifier.Value, m.Modifier.Value switch {
                 "1" => 5_000_000,
                 "0.1" => 2_000_000,
@@ -2111,10 +2111,8 @@ ORDER BY l.`AuctionId`  DESC;
             if (s.Key == "baseStatBoostPercentage")
             {
                 var val = int.Parse(s.Value);
-                if (val < 46)
+                if (val < 50)
                     return Ignore;
-                //if (val < 50)
-                //    return new KeyValuePair<string, string>("baseStatBoost", "46-49");
                 if (val == 50) // max level found
                     return new KeyValuePair<string, string>("baseStatBoost", "50");
                 if (val > 50)
