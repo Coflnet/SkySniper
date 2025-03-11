@@ -679,7 +679,7 @@ public class AuctionkeyTests
         };
         SetBazaarPrice("ENCHANTMENT_EXPERTISE_1", 4_000_000);
         var key = service.ValueKeyForTest(auction);
-        Assert.That(key.ValueBreakdown.First().Value, Is.EqualTo(6_000_000), JsonConvert.SerializeObject(key.ValueBreakdown));
+        Assert.That(key.ValueBreakdown.First().Value, Is.EqualTo(17_500_000), JsonConvert.SerializeObject(key.ValueBreakdown));
     }
     [Test]
     public void BlocksBrokenUsedInsteadOfEfficiencyOnPromisingAxe()
@@ -693,7 +693,7 @@ public class AuctionkeyTests
         var key = service.ValueKeyForTest(auction);
         key.ValueBreakdown.First().Value.Should().Be(2_000_000);
         key.ValueBreakdown.First().Modifier.Key.Should().Be("blocksBroken");
-        key.ValueBreakdown.Count.Should().Be(1);
+        key.ValueBreakdown.Count.Should().Be(2);
     }
     [TestCase(100_020_000, 201_000_000)]
     [TestCase(1_000_000_000, 2001_000_000)]

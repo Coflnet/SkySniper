@@ -92,7 +92,7 @@ namespace Coflnet.Sky.Sniper.Services
             "zombie_kills", // slayer kills
             "spider_kills", // slayer kills
             "eman_kills", // slayer kills
-            "expertise_kills", // kills for expertise enchant counting sea creatures
+            //"expertise_kills", // kills for expertise enchant counting sea creatures, replaced by enchant value caluclation
             "bow_kills", // huricane bow
             "raider_kills", // raiders axe
             "sword_kills",
@@ -121,6 +121,7 @@ namespace Coflnet.Sky.Sniper.Services
             "RUNE_SPELLBOUND",
             "RUNE_GRAND_FREEZING",
             "RUNE_PRIMAL_FEAR",
+            "RUNE_RAINY_DAY",
             "bass_weight",
             "chimera_found", // Diana's Bookshelf
             "is_shiny", // cosmetic effect on wither armor ~5% drop chance on Master Mode 7
