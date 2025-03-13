@@ -3213,7 +3213,6 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 Activity.Current.Log($"No references, checking all lbins {percentile} {lowestLbin} {referencePrice}");
                 props["referencePrice"] = referencePrice.ToString();
-                props["percentile"] = percentile.ToString();
                 props["lowestLbin"] = lowestLbin.ToString();
             }
             else
@@ -3228,10 +3227,10 @@ ORDER BY l.`AuctionId`  DESC;
                     percentile = Math.Min(percentile, capped * 12 / 11) + 500_000; // 500k extra since this is high volume
                     Activity.Current.Log($"Capped at craft cost {capped}");
                     props["breakdown"] = JsonConvert.SerializeObject(breakdown.ValueBreakdown);
-                    props["percentile"] = percentile.ToString();
                     props["craftCost"] = capped.ToString();
                 }
             }
+            props["percentile"] = percentile.ToString();
             targetPrice = Math.Min(targetPrice, percentile);
             return FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
         }

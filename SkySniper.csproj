@@ -20,7 +20,7 @@
     <PackageReference Include="Coflnet.Sky.Mayor.Client" Version="0.3.3" />
     <PackageReference Include="JWT" Version="10.1.1" />
     <PackageReference Include="Coflnet.Sky.Crafts.Client" Version="0.4.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="8.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="8.0.14" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
