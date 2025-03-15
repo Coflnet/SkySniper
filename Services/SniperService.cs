@@ -1599,7 +1599,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static readonly System.Collections.ObjectModel.ReadOnlyCollection<KeyValuePair<string, string>> EmptyModifiers = new(new List<KeyValuePair<string, string>>());
         private static readonly System.Collections.ObjectModel.ReadOnlyCollection<KeyValuePair<string, string>> EmptyPetModifiers = new(new List<KeyValuePair<string, string>>() { new("candyUsed", "0"), new("exp", "0") });
-        private static readonly DateTime UnlockedIntroduction = new DateTime(2021, 9, 4);
+        private static readonly DateTime UnlockedIntroduction = new DateTime(2021, 9, 11);
         private static readonly List<string> GemPurities = new() { "PERFECT", "FLAWLESS", "FINE", "ROUGH" };
         public long EstStarCost(string item, int tier)
         {
