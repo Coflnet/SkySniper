@@ -1664,7 +1664,23 @@
 				{
 					"auctionId": 398617152269886773,
 					"price": 15800000,
-					"day": 1205,
+					"day": 1215,
+					"seller": -1513,
+					"buyer": 21944,
+					"sellTime": 213
+				},
+				{
+					"auctionId": 398617152269886774,
+					"price": 15200000,
+					"day": 1215,
+					"seller": -1513,
+					"buyer": 21944,
+					"sellTime": 213
+				},
+				{
+					"auctionId": 398617152269886775,
+					"price": 15200000,
+					"day": 1215,
 					"seller": -1513,
 					"buyer": 21944,
 					"sellTime": 213

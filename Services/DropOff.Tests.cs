@@ -280,7 +280,7 @@ public class DropOffTests
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(testAuction);
         var pickaxe = found.First(f => f.Finder == LowPricedAuction.FinderType.CraftCost);
-        pickaxe.TargetPrice.Should().Be(23377645L);
+        pickaxe.TargetPrice.Should().Be(23377000L);
     }
 
     [Test]

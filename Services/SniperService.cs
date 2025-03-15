@@ -1444,7 +1444,9 @@ ORDER BY l.`AuctionId`  DESC;
                              lookup.Lookup.Values.Where(v => v.Price > 0)).ToList();
             var count = select.Count;
             var all = select.SelectMany(v => v.References).ToList();
-            var target = all.OrderByDescending(a=>a.Day).Take(400).OrderBy(r => r.Price).Skip(all.Count / 50).FirstOrDefault();
+            var size = (int)Math.Max(lookup.Volume * 10, 50);
+            var target = all.OrderByDescending(a => a.Day).ThenBy(l => l.Price)
+                .Take(size).OrderBy(r => r.Price).Skip(size / 50 + 1).FirstOrDefault();
             return target.Price;
         }
 
