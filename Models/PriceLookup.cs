@@ -25,6 +25,8 @@ namespace Coflnet.Sky.Sniper.Models
         /// </summary>
         [Key(4)]
         public AuctionKey CleanKey;
+        [Key(5)]
+        public long CleanPrice;
     }
 
 }

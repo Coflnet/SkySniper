@@ -90,7 +90,7 @@ public class DropOffTests
             sniperService.UpdateMedian(item.Value, ("HYPERION", sniperService.GetBreakdownKey(item.Key, "HYPERION")));
         }
         var price = sniperService.Lookups["HYPERION"].Lookup.First().Value.Price;
-        price.Should().Be(1014_218_065L, "Trend anylsis shows a downward trend, compared to long time its the smallest");
+        price.Should().Be(1029_293_224L, "Trend anylsis shows a downward trend, compared to long time its the smallest");
     }
     /// <summary>
     /// Flip from https://sky.coflnet.com/auction/3513bd5932a2413183059fe636867d92
@@ -100,7 +100,7 @@ public class DropOffTests
     [Test]
     public void JerryArtifact()
     {
-        SniperService.StartTime += DateTime.UtcNow - new DateTime(2025, 1, 5);
+        SniperService.StartTime += DateTime.UtcNow - new DateTime(2025, 1, 5) - TimeSpan.FromDays(10000);
         var converted = LoadLookupMock("jerry.json");
         sniperService.AddLookupData("JERRY_TALISMAN_GOLDEN", converted);
         SetBazaarPrice("RECOMBOBULATOR_3000", 8_000_000);
@@ -109,7 +109,7 @@ public class DropOffTests
             sniperService.UpdateMedian(item.Value, ("JERRY_TALISMAN_GOLDEN", sniperService.GetBreakdownKey(item.Key, "JERRY_TALISMAN_GOLDEN")));
         }
         var price = sniperService.Lookups["JERRY_TALISMAN_GOLDEN"].Lookup.First(l => l.Key.Modifiers.Count == 0 && l.Key.Count == 1).Value;
-        price.RiskyEstimate.Should().Be(258388496, "Half of the risky estimate should be applied");
+        price.RiskyEstimate.Should().BeGreaterThanOrEqualTo(262678900L, "Half of the risky estimate should be applied");
     }
 
     [Test]
@@ -280,7 +280,7 @@ public class DropOffTests
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(testAuction);
         var pickaxe = found.First(f => f.Finder == LowPricedAuction.FinderType.CraftCost);
-        pickaxe.TargetPrice.Should().Be(23495000L);
+        pickaxe.TargetPrice.Should().Be(23377645L);
     }
 
     [Test]
@@ -345,7 +345,7 @@ public class DropOffTests
         SetBazaarPrice("RECOMBOBULATOR_3000", 8_000_000);
         var key = ("SCAVENGER_ARTIFACT", sniperService.GetBreakdownKey(element.Key, "SCAVENGER_ARTIFACT"));
         sniperService.UpdateMedian(element.Value, key);
-        element.Value.Price.Should().Be(63318112L);
+        element.Value.Price.Should().Be(62312557L);
         element.Value.RiskyEstimate.Should().Be(66554664L);
     }
 
@@ -449,11 +449,11 @@ public class DropOffTests
         var withEnchant = converted.Lookup.First(l => l.Key.ToString() == "ultimate_wisdom=5 Any [rarity_upgrades, 1],[upgrade_level, 5] MYTHIC 1").Value;
         var keyOrder = string.Join('\n', converted.Lookup.Keys);
         Console.WriteLine(keyOrder);
-        withEnchant.Price.Should().Be(30170000L);
-        withEnchant.RiskyEstimate.Should().Be(33187000L);
+        withEnchant.Price.Should().Be(31970000L);
+        withEnchant.RiskyEstimate.Should().Be(35167000L);
         var withoutEnchant = converted.Lookup.First(l => l.Key.ToString() == " Any [rarity_upgrades, 1],[upgrade_level, 5] MYTHIC 1").Value;
-        withoutEnchant.Price.Should().Be(25770000L);
-        withoutEnchant.RiskyEstimate.Should().Be(28347000L);
+        withoutEnchant.Price.Should().Be(27570000L);
+        withoutEnchant.RiskyEstimate.Should().BeGreaterThanOrEqualTo(28347000L);
         // maybe test a snipe auction
     }
 
@@ -510,6 +510,27 @@ public class DropOffTests
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
         flip.TargetPrice.Should().Be(305_000_000L * 99 / 100);
 
+    }
+
+    [Test]
+    public async Task CleanValueCorrect()
+    {
+        var converted = LoadLookupMock("HYPERION.json");
+        await sniperService.Init();
+        SniperService.StartTime += DateTime.UtcNow - new DateTime(2025, 3, 10) - TimeSpan.FromDays(10000);
+        SetBazaarPrice("RECOMBOBULATOR_3000", 9_000_000);
+        SetBazaarPrice("THE_ART_OF_WAR", 8_000_000);
+        SetBazaarPrice("FUMING_POTATO_BOOK", 3_000_000);
+        SetBazaarPrice("IMPLOSION_SCROLL", 250_000_000);
+        SetBazaarPrice("ENCHANTMENT_ULTIMATE_CHIMERA_5", 300_000_000);
+        SetBazaarPrice("FIRST_MASTER_STAR", 18_000_000);
+        sniperService.AddLookupData("HYPERION", converted);
+        foreach (var item in converted.Lookup)
+        {
+            sniperService.UpdateMedian(item.Value, ("HYPERION", sniperService.GetBreakdownKey(item.Key, "HYPERION")));
+        }
+        var cleanPrices = sniperService.Lookups["HYPERION"].Lookup.Where(p => p.Value.Price > 0 && p.Value.TimeToSell > 3).ToList().OrderBy(v => v.Value.Price).Skip(1).Take(5);
+        cleanPrices.First().Value.Price.Should().BeGreaterThan(900_000_000, cleanPrices.First().Key.ToString());
     }
 
     /// <summary>

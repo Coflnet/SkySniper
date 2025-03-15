@@ -1002,7 +1002,11 @@ ORDER BY l.`AuctionId`  DESC;
         {
             var size = bucket.References.Count;
             if (size < 4)
+            {
+                if (keyCombo != default)
+                    bucket.Price = 0;
                 return; // can't have enough volume
+            }
             List<ReferencePrice> deduplicated = ApplyAntiMarketManipulation(bucket);
             DropUnderlistings(deduplicated);
 
@@ -1012,7 +1016,10 @@ ORDER BY l.`AuctionId`  DESC;
                 bucket.Price = 0; // to low vol
                 return;
             }
-            bucket.Volume = deduplicated.Count() / (GetDay() - deduplicated.OrderBy(d => d.Day).First().Day + 1);
+            var days = GetDay() - deduplicated.OrderBy(d => d.Day).First().Day + 1;
+            if (days == 0)
+                days = 1;
+            bucket.Volume = deduplicated.Count / days;
             // short term protects against price drops after updates
             List<ReferencePrice> shortTermList = GetShortTermBatch(deduplicated, bucket.Volume).OrderByDescending(b => b.Day).ToList();
             PriceLookup lookup;
@@ -1024,7 +1031,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (shortTermList.Count >= 3 && bucket.OldestRef - shortTermList.First().Day <= -5
                 && shortTermList.First().AuctionId != shortTermList.OrderByDescending(o => o.Price).First().AuctionId
                 && bucket.References.OrderByDescending(r => r.Day).Skip(5).FirstOrDefault().Day <= GetDay() - 5 // check if anti market manipulation made a hole
-                && bucket.Volume > 0.25) // 5 day gaps are to be expected at ~0.2 volume
+                && bucket.Volume > 0.3) // 5 day gaps are to be expected at ~0.2 volume
             {
                 // probably derpy or weird price drop
                 var reduced = (shortTermList.OrderBy(s => s.Price).First().Price + shortTermPrice * 2) / 3;
@@ -1064,6 +1071,11 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var breakdown = keyCombo.key.ValueBreakdown;
                 var volatMedian = medianPrice;
+                if (bucket.Price > 0 && bucket.Price == 547790144 || medianPrice == 547790144 ||
+                    bucket.Price > 0 && keyCombo.key.Key.Enchants.FirstOrDefault().Type == Enchantment.EnchantmentType.champion && keyCombo.key.Key.Enchants.FirstOrDefault().Lvl == 10)
+                {
+                    Console.WriteLine("test");
+                }
                 long limitedPrice = CapAtCraftCost(keyCombo.tag, medianPrice, keyCombo.key, bucket.Price);
                 var craftCostCap = limitedPrice;
                 if (limitedPrice == 0)
@@ -1071,7 +1083,7 @@ ORDER BY l.`AuctionId`  DESC;
                     limitedPrice = medianPrice;
                 }
                 // check higher value keys for lower price 
-                limitedPrice = CapPriceAtHigherLevelKey(keyCombo, limitedPrice);
+                limitedPrice = CapPriceAtHigherLevelKey(keyCombo, limitedPrice, bucket);
 
                 if (size > 40 || bucket.Volatility <= 8 && size > 8)
                 {
@@ -1183,7 +1195,7 @@ ORDER BY l.`AuctionId`  DESC;
 
 
 
-            long CapPriceAtHigherLevelKey((string tag, KeyWithValueBreakdown key) keyCombo, long limitedPrice)
+            long CapPriceAtHigherLevelKey((string tag, KeyWithValueBreakdown key) keyCombo, long limitedPrice, ReferenceAuctions bucket)
             {
                 var oldestDay = bucket.OldestRef;
                 if (keyCombo.key.Key.Modifiers.FirstOrDefault().Key == "new_years_cake"
@@ -1196,6 +1208,7 @@ ORDER BY l.`AuctionId`  DESC;
                             && !k.Key.Modifiers.Any(m => m.Key == "virtual")
                             && k.Value.OldestRef >= oldestDay // only relevant if price dropped recently
                             && k.Value.DeduplicatedReferenceCount > 3 && k.Value.Price > limitedPrice / 20
+                            && k.Value.Volatility > bucket.Volume
                             && IsHigherValue(keyCombo.tag, keyCombo.key, k.Key) && k.Key.Reforge == keyCombo.key.Key.Reforge)
                     .OrderBy(b => b.Value.Price).FirstOrDefault();
                 if (cheaperHigherValue.Value != default
@@ -1265,9 +1278,9 @@ ORDER BY l.`AuctionId`  DESC;
                 .Where(d => !buyerSellerCombos.Contains(d.Seller) && !buyerSellerCombos.Contains(d.Buyer))
                 .OrderByDescending(b => b.Day)
                 .GroupBy(a => a.Seller)
-                .Select(a => a.OrderBy(ai => ai.Price).First())  // only use one (the cheapest) price from each seller
+                .Select(a => a.OrderBy(ai => ai.Price).Skip(a.Count() / 3).First())  // only use one (the cheapest) price from each seller
                 .GroupBy(a => a.Buyer == 0 ? buyerCounter++ : a.Buyer)
-                .Select(a => a.OrderBy(ai => ai.Price).First())  // only use cheapest price from each buyer 
+                .Select(a => a.OrderBy(ai => ai.Price).Skip(a.Count() / 3).First())  // only use cheapest price from each buyer 
                 .Take(60)
                 .ToList();
             if (isPersonManipulating != default)
@@ -1430,11 +1443,9 @@ ORDER BY l.`AuctionId`  DESC;
                             lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value) :
                              lookup.Lookup.Values.Where(v => v.Price > 0)).ToList();
             var count = select.Count;
-            var median = select.Select(v => v.Price).DefaultIfEmpty(0).OrderBy(v => v).Skip(count / 3).FirstOrDefault();
-            // 2nd percentile to skip low volume outliers on complex items
-            var minValue = select.Where(o => o.Price > median / 20 || o.References.Count > 60).Select(o => o.Price)
-                        .OrderBy(v => v).Skip(count / 50).DefaultIfEmpty(0).FirstOrDefault();
-            return minValue;
+            var all = select.SelectMany(v => v.References).ToList();
+            var target = all.OrderByDescending(a=>a.Day).Take(400).OrderBy(r => r.Price).Skip(all.Count / 50).FirstOrDefault();
+            return target.Price;
         }
 
         private long AttributeValueEstimateForCap(string tag, RankElem v, List<RankElem> breakdown, PriceLookup lookup)
@@ -1487,7 +1498,7 @@ ORDER BY l.`AuctionId`  DESC;
             // if more than half of the references are less than 12 hours old, use more references
             if (deduplicated.Where(d => d.Day >= GetDay(DateTime.Now - TimeSpan.FromHours(12))).Count() > SizeToKeep / 2 || volume > 4)
                 return deduplicated.Take(6).ToList();
-            return deduplicated.Take(3).ToList();
+            return deduplicated.Take(5).ToList();
         }
 
         public (ReferenceAuctions auctions, AuctionKeyWithValue key) GetBucketForAuction(SaveAuction auction)

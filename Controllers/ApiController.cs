@@ -412,7 +412,7 @@ namespace Coflnet.Sky.Sniper.Controllers
                         return $"{l.Key}+{string.Join("_", modifiers.Select(m => m.Key))}";
                     return l.Key;
                 })
-                .Select(g => (g.Key, g.OrderBy(l => l.Value.Price / Math.Min(l.Value.Volume, Math.Max(1, Math.Log(l.Value.Volume) / 2 + 1)))
+                .Select(g => (g.Key, g.Where(l => l.Value.TimeToSell > 5).OrderBy(l => l.Value.Price / Math.Min(l.Value.Volume, Math.Max(1, Math.Log(l.Value.Volume) / 2 + 1)))
                     .Select(l => l.Value.Price / (l.Key.Count == 0 ? 1 : l.Key.Count))
                     .FirstOrDefault())
                 ))

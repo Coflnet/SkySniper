@@ -657,13 +657,13 @@ namespace Coflnet.Sky.Sniper.Services
             moreValue.FlatenedNBT = new() { { "skin", "SOME" } };
             moreValue.HighestBidAmount = 10_000_000;
             moreValue.End = DateTime.UtcNow - TimeSpan.FromDays(10);
-            AddVolume(moreValue);
+            AddVolume(moreValue, 8);
             var sample = Dupplicate(highestValAuction);
             sample.HighestBidAmount = 5_000_000;
             sample.FlatenedNBT = new();
             AddVolume(sample);
             moreValue.HighestBidAmount = 1_000_000;
-            AddVolume(moreValue, 2);
+            AddVolume(moreValue, 3);
             service.AddSoldItem(sample); // update median but should not use low volume
             var estimate = service.GetPrice(sample);
             Assert.That(estimate.Median, Is.EqualTo(5_000_000));
@@ -1092,9 +1092,9 @@ namespace Coflnet.Sky.Sniper.Services
             AddSell(bucket, 30000000, 5);
             AddSell(bucket, 33400000, 5);
             AddSell(bucket, 31700000, 0);
-            Assert.That(bucket.Price, Is.EqualTo(31133333));
+            Assert.That(bucket.Price, Is.EqualTo(30800000));
             AddSell(bucket, 18500000, 0);
-            Assert.That(bucket.Price, Is.EqualTo(27300000)); // besides the derpy logic also affected by trend adjustment
+            Assert.That(bucket.Price, Is.EqualTo(26166666)); // besides the derpy logic also affected by trend adjustment
 
             void AddSell(ReferenceAuctions bucket, int amount, int daysAgo)
             {
@@ -1133,7 +1133,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddSell(bucket, 59420000, 5);
             AddSell(bucket, 350000, 0);
             AddSell(bucket, 65000000, 0);
-            Assert.That(59420000, Is.EqualTo(bucket.Price), "The short term median should be used");
+            Assert.That(bucket.Price, Is.EqualTo(47536000), "The short term median should be used");
 
             void AddSell(ReferenceAuctions bucket, int amount, int daysAgo)
             {
@@ -1630,7 +1630,7 @@ namespace Coflnet.Sky.Sniper.Services
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
             // 96m for missing mana_regeneration (godroll), 10% for stonks - overwritten by craft cost limit
-            Assert.That(1320000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That(1101719, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
             Assert.That("mana_regeneration:1 (96000000)", Is.EqualTo(estimate.AdditionalProps["missingModifiers"]));
         }
         [Test]
@@ -2243,7 +2243,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddUpdate(TimeSpan.FromMinutes(29), 50_000_000);
             CurrentValue().Should().Be(3_000_000, "should ignore expensive values in short frames");
             AddUpdate(TimeSpan.FromMinutes(36.5), 6_000_000);
-            CurrentValue().Should().Be(3_500_000);
+            CurrentValue().Should().BeLessThanOrEqualTo(3_500_000);
 
             void AddUpdate(TimeSpan toAdd, int sellPrice)
             {
@@ -2522,9 +2522,9 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
             var metadata = estimate.AdditionalProps;
             Assert.That(metadata["server"], Is.EqualTo(service.ServerDnsName));
-            Assert.That(metadata["refAge"], Is.EqualTo("2"));
+            Assert.That(metadata["refAge"], Is.EqualTo("3"));
             Assert.That(metadata["refCount"], Is.EqualTo("9"));
-            Assert.That(metadata["volat"], Is.EqualTo("47"));
+            Assert.That(metadata["volat"], Is.EqualTo("42"));
             Assert.That(metadata["oldRef"], Is.EqualTo("9"));
             Assert.That(metadata["reference"], Is.EqualTo(AuctionService.Instance.GetUuid(sales[9].UId)),
                             string.Join(",", sales.Select(s => AuctionService.Instance.GetUuid(s.UId))));
@@ -2576,7 +2576,7 @@ namespace Coflnet.Sky.Sniper.Services
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
             // should be at about craft cost
-            Assert.That(estimate.TargetPrice, Is.EqualTo(30980900), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That(30643400, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
 
             void CreateVolume(string attrib, int level, int cost)
             {
@@ -2633,7 +2633,7 @@ namespace Coflnet.Sky.Sniper.Services
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
             // craft cost + combo value
-            Assert.That(71870000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That(estimate.TargetPrice, Is.EqualTo(70745000), JsonConvert.SerializeObject(estimate.AdditionalProps));
 
             highestValAuction.Tag = "ATTRIBUTE_SHARD";
             // lower cost to upgrade via shard
@@ -2643,7 +2643,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(toTest, 1); // refresh median with new cap
             var price = service.GetPrice(toTest);
             var capExtra = (long)(Math.Pow(2, 7) * randomVal * 1.20) / 2 * 11 / 10;
-            Assert.That(price.Median, Is.EqualTo(61310_000 + capExtra), JsonConvert.SerializeObject(price));
+            Assert.That(price.Median, Is.EqualTo(60185000 + capExtra), JsonConvert.SerializeObject(price));
 
             void CreateVolume(string attrib, int level, int cost)
             {

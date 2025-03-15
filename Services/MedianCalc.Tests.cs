@@ -93,7 +93,7 @@ public class MedianCalcTests
     {
         ReferenceAuctions bucket = LoadJsonReferences(FlipSample);
         service.UpdateMedian(bucket);
-        Assert.That(bucket.Price, Is.EqualTo(30000000), "Both flips should be ignored for median");
+        Assert.That(bucket.Price, Is.EqualTo(29999666), "Both flips should be ignored for median");
     }
 
     [Test]
@@ -109,7 +109,7 @@ public class MedianCalcTests
     {
         ReferenceAuctions bucket = LoadJsonReferences(LowDropMedian);
         service.UpdateMedian(bucket);
-        Assert.That(bucket.Price, Is.EqualTo(50000000));
+        Assert.That(bucket.Price, Is.EqualTo(54000000));
     }
     [Test]
     public void BraceletLimit()
