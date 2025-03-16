@@ -550,7 +550,7 @@ ORDER BY l.`AuctionId`  DESC;
                         AddReforgeValue(c.Key.Reforge, ref closestCraftCost);
                         var percentDiff = (float)(cleanItemValue + itemKey.ValueBreakdown.Sum(v => v.Value)) / (cleanItemValue + closestCraftCost.Sum(m => m.Value) + 1);
                         result.Median = (long)(result.Median * percentDiff);
-                        result.MedianKey += "*";
+                        result.MedianKey += "*" + percentDiff.ToString("F2");
                     }
                     else
                         result.Median -= changeAmount;
