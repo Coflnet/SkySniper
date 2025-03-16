@@ -2905,23 +2905,25 @@ namespace Coflnet.Sky.Sniper.Services
         {
             SetBazaarPrice("RECOMBOBULATOR_3000", 1_000_000);
             craftCost.Costs[highestValAuction.Tag] = 4_000_000;
-            highestValAuction.FlatenedNBT = new() { { "thunder_charge", "150000" }, { "rarity_upgrades", "1" } };
+            highestValAuction.FlatenedNBT = new() { { "thunder_charge", "150000" }};
             highestValAuction.StartingBid = 0;
             highestValAuction.Tier = Tier.RARE;
             highestValAuction.HighestBidAmount = 20_000_000;
             AddVolume(highestValAuction);
             var higherValue = Dupplicate(highestValAuction);
             higherValue.HighestBidAmount = 90_000_000;
+            higherValue.Tier = Tier.LEGENDARY;
             higherValue.FlatenedNBT["thunder_charge"] = "1000000";
             AddVolume(higherValue);
             var noCharge = Dupplicate(highestValAuction);
             noCharge.HighestBidAmount = 4_000_000;
-            noCharge.Tier = Tier.COMMON;
-            noCharge.FlatenedNBT["thunder_charge"] = "0";
+            noCharge.Tier = Tier.UNCOMMON;
+            noCharge.FlatenedNBT = new() { { "thunder_charge", "1" } };
             AddVolume(noCharge, 10);
+            AddVolume(highestValAuction); // refresh median after noticing multiple rarities
 
             var price = service.GetPrice(higherValue);
-            Assert.That(price.Median, Is.EqualTo(87100000), "estimate for charge + recomb");
+            Assert.That(price.Median, Is.EqualTo(86000000), "estimate for charge + recomb");
             service.TestNewAuction(highestValAuction);
             var rarePriceCapped = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).First();
             rarePriceCapped.TargetPrice.Should().Be(20_000_000);

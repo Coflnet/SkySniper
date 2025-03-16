@@ -1121,6 +1121,9 @@ ORDER BY l.`AuctionId`  DESC;
                     var percentileRecent = GetMedian(recent, cleanPriceLookup, 3f);
                     medianPrice = Math.Min(Math.Max(bucket.RiskyEstimate, medianPrice), Math.Min(cappedPrice, percentileRecent));
                 }
+                lookup.HasMultipleRarities = lookup.Lookup
+                        .Where(l => l.Key.Tier != Tier.UNKNOWN)
+                        .GroupBy(l => l.Key.Tier).Count() > 2;
 
                 var keyWithNoEnchants = new AuctionKey(keyCombo.Item2)
                 {
@@ -1361,8 +1364,13 @@ ORDER BY l.`AuctionId`  DESC;
         {
             List<RankElem> breakdown = key.ValueBreakdown;
             var limitedPrice = 0L;
+            if (!Lookups.TryGetValue(tag, out var lookup))
+            {
+                logger.LogInformation($"Could not cap, No lookup for {tag} keeping {currentPrice} on {key.Key}");
+                return Math.Min(medianPrice, currentPrice + 10_000 + currentPrice / 100);
+            }
             // stackables
-            if (key.Key.Enchants.Count == 0 && key.Key.Modifiers.Count == 0
+            if (key.Key.Enchants.Count == 0 && key.Key.Modifiers.Count == 0 && !lookup.HasMultipleRarities
                 && (craftCostService?.TryGetCost(tag, out double craftCost) ?? false) && craftCost > 0)
             {
                 var stackSize = key.Key.Count;
@@ -1381,11 +1389,6 @@ ORDER BY l.`AuctionId`  DESC;
             if (breakdown.Any(v => v.Value == 0) || breakdown.Count <= 0)
                 return medianPrice; // can't cap nothin added, basically clean
 
-            if (!Lookups.TryGetValue(tag, out var lookup))
-            {
-                logger.LogInformation($"Could not cap, No lookup for {tag} keeping {currentPrice} on {key.Key}");
-                return Math.Min(medianPrice, currentPrice + 10_000 + currentPrice / 100);
-            }
             // determine craft cost 
             long minValue = GetCleanItemPrice(tag, key, lookup);
             if (minValue == 0 || currentPrice == minValue)
@@ -2465,7 +2468,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 return;
             }
-            if(itemGroupTag.tag.StartsWith("UNIQUE_RUNE_"))
+            if (itemGroupTag.tag.StartsWith("UNIQUE_RUNE_"))
             {
                 return; // runes are not crafted so makes not sense to report them
             }
