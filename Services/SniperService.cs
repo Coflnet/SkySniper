@@ -550,7 +550,7 @@ ORDER BY l.`AuctionId`  DESC;
                         AddReforgeValue(c.Key.Reforge, ref closestCraftCost);
                         var percentDiff = (float)(cleanItemValue + itemKey.ValueBreakdown.Sum(v => v.Value)) / (cleanItemValue + closestCraftCost.Sum(m => m.Value) + 1);
                         result.Median = (long)(result.Median * percentDiff);
-                        result.MedianKey += "*" + percentDiff.ToString("F2");
+                        result.MedianKey += "*" + percentDiff.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
                     }
                     else
                         result.Median -= changeAmount;
@@ -2464,6 +2464,10 @@ ORDER BY l.`AuctionId`  DESC;
             if (componentGuess <= medPrice / 8) // no need to check if sum is too low
             {
                 return;
+            }
+            if(itemGroupTag.tag.StartsWith("UNIQUE_RUNE_"))
+            {
+                return; // runes are not crafted so makes not sense to report them
             }
             var valueLookup = basekey.ValueBreakdown.ToDictionary(v =>
             {

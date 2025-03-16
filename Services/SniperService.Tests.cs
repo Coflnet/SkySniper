@@ -803,10 +803,12 @@ namespace Coflnet.Sky.Sniper.Services
             auction.FlatenedNBT = new() { { "RUNE_GRAND_FREEZING", "3" } };
             auction.HighestBidAmount = 45_000_000;
             AddVolume(auction);
+            auction.HighestBidAmount = 44_000_000;
+            AddVolume(auction, 2);
             auction.HighestBidAmount = 10;
             TestNewAuction(auction);
-            var craftCost = found.Last(f => f.Finder == LowPricedAuction.FinderType.CraftCost);
-            Assert.That(craftCost.TargetPrice, Is.EqualTo(45_000_000), "should target at craft cost" + JsonConvert.SerializeObject(craftCost, Formatting.Indented));
+            var craftCost = found.LastOrDefault(f => f.Finder == LowPricedAuction.FinderType.CraftCost);
+            craftCost.Should().BeNull("they are not crafted so should not be reported");
         }
 
         [TestCase("2", 8_250_000)]
