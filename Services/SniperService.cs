@@ -140,7 +140,7 @@ namespace Coflnet.Sky.Sniper.Services
             { "pgems", m => new (m.Modifier, 100_000_000){IsEstimate=true}},
             { "is_shiny", m => new (m.Modifier, 88_000_000) {IsEstimate=true}},
             { "party_hat_color", m => new (m.Modifier, 20_000_000) {IsEstimate=true}},
-            { "thunder_charge", m => new (m.Modifier, 55_000_000 * int.Parse(m.Modifier.Value)){IsEstimate=true} },
+            { "thunder_charge", m => new (m.Modifier, 50_000_000 * int.Parse(m.Modifier.Value) + 10_000_000){IsEstimate=true} },
             { "baseStatBoost", m => new (m.Modifier, (int)((float.Parse(m.Modifier.Value) - 45) * 500_000)) {IsEstimate=true}},
             { "hotpc", m => new ("hotpc", m.Modifier.Value, m.Modifier.Value switch {
                 "1" => 5_000_000,
