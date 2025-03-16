@@ -549,7 +549,7 @@ ORDER BY l.`AuctionId`  DESC;
                         var closestCraftCost = ComparisonValue(c.Key.Enchants, c.Key.Modifiers.ToList(), auction.Tag, null);
                         AddReforgeValue(c.Key.Reforge, ref closestCraftCost);
                         var percentDiff = (float)(cleanItemValue + itemKey.ValueBreakdown.Sum(v => v.Value)) / (cleanItemValue + closestCraftCost.Sum(m => m.Value) + 1);
-                        result.Median = (long)(result.Median * percentDiff);
+                        result.Median = (long)(result.Median * Math.Min(percentDiff, 1.5));
                         result.MedianKey += "*" + percentDiff.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
                     }
                     else
