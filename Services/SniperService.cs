@@ -2999,7 +2999,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 if (l.TryGetValue(k, out ReferenceAuctions altBucket))
                 {
-                    if (altBucket.Price != 0)
+                    if (altBucket.Price != 0 && altBucket.Volume > bucket.Volume / 2)
                         return altBucket.Price;
                 }
                 return long.MaxValue;
