@@ -3249,6 +3249,8 @@ ORDER BY l.`AuctionId`  DESC;
                     props["breakdown"] = JsonConvert.SerializeObject(breakdown.ValueBreakdown);
                     props["craftCost"] = capped.ToString();
                 }
+                else
+                    props["nocapped"] = capped.ToString();
             }
             props["percentile"] = percentile.ToString();
             targetPrice = Math.Min(targetPrice, percentile);
