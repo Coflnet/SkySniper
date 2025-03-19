@@ -1110,7 +1110,8 @@ ORDER BY l.`AuctionId`  DESC;
 
                 if (limitedPrice == 0)
                 {
-                    logger.LogWarning($"Price capped {keyCombo.tag} -> {limitedPrice} ({craftCostCap}) {keyCombo.key.Key} {medianPrice} {bucket.Price} - {volatMedian} {shortTermPrice} {longSpanPrice}");
+                    if (longSpanPrice != 0)
+                        logger.LogWarning($"Price capped {keyCombo.tag} -> {limitedPrice} ({craftCostCap}) {keyCombo.key.Key} {medianPrice} {bucket.Price} - {volatMedian} {shortTermPrice} {longSpanPrice}");
                     limitedPrice = 11;
                 }
                 var preLimitedPrice = medianPrice;
