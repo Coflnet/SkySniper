@@ -69,6 +69,9 @@ namespace Coflnet.Sky.Sniper.Services
             "drill_part_engine",
             "drill_part_fuel_tank",
             "drill_part_upgrade_module", // low worth of normal omlet but can go up to 180m
+            "sinker.part",
+            "line.part",
+            "hook.part",
             "divan_powder_coating",
             "ability_scroll", // applied to hyperions worth ~250m https://discord.com/channels/267680588666896385/1031668335731019886/1031668607479975976
             "power_ability_scroll",
@@ -172,13 +175,16 @@ namespace Coflnet.Sky.Sniper.Services
         { "69", "420", "400"};
 
         /// <summary>
-        /// Keys containing itemTags that should be added separately
+        /// Keys containing itemTags that should be added separately (cause its removable)
         /// </summary>
         private readonly HashSet<string> ItemKeys = new()
         {
             "drill_part_engine",
             "drill_part_fuel_tank",
-            "drill_part_upgrade_module"
+            "drill_part_upgrade_module",
+            "line.part",
+            "sinker.part",
+            "hook.part",
         };
 
         private static readonly Dictionary<string, short> ShardAttributes = new(){
@@ -295,11 +301,14 @@ namespace Coflnet.Sky.Sniper.Services
 
         private readonly Dictionary<string, string> ModifierItemPrefixes = new()
         {
-            {"drill_part_engine", String.Empty},
-            {"drill_part_fuel_tank", String.Empty},
-            {"drill_part_upgrade_module", String.Empty},
+            {"drill_part_engine", string.Empty},
+            {"drill_part_fuel_tank", string.Empty},
+            {"drill_part_upgrade_module", string.Empty},
+            {"hook.part", string.Empty},
+            {"line.part", string.Empty},
+            {"sinker.part", string.Empty},
             {"skin", "PET_SKIN_"},
-            {"dye_item", String.Empty},
+            {"dye_item", string.Empty},
             {"petItem", "PET_ITEM_"}
         };
         private readonly HypixelItemService itemService;
