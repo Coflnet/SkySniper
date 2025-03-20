@@ -2103,11 +2103,14 @@ ORDER BY l.`AuctionId`  DESC;
                     "PET_ITEM_LUCKY_CLOVER" => "LUCKY_CLOVER",
                     "PET_ITEM_LUCKY_CLOVER_DROP" => "LUCKY_CLOVER",
                     "GREEN_BANDANA" => "GREEN_BANDANA",
+                    "BROWN_BANDANA" => "BROWN_BANDANA",
                     "PET_ITEM_COMBAT_SKILL_BOOST_EPIC" => "COMBAT_SKILL_BOOST_EPIC",
                     "PET_ITEM_FISHING_SKILL_BOOST_EPIC" => "FISHING_SKILL_BOOST_EPIC",
                     "PET_ITEM_FORAGING_SKILL_BOOST_EPIC" => "FORAGING_SKILL_BOOST_EPIC",
                     "ALL_SKILLS_SUPER_BOOST" => "ALL_SKILLS_SUPER_BOOST",
                     "PET_ITEM_EXP_SHARE" => "EXP_SHARE",
+                    "REINFORCED_SCALES" => "REINFORCED_SCALES",
+                    "SERRATED_CLAWS" => "SERRATED_CLAWS",
                     _ => null
                 };
                 // ignore exp based items if exp is maxed
