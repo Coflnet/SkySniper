@@ -3158,7 +3158,7 @@ namespace Coflnet.Sky.Sniper.Services
 
             service.TestNewAuction(toTest);
             var snipe = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
-            snipe.TargetPrice.Should().Be(27720000L);
+            snipe.TargetPrice.Should().Be(27266666L, "limited by 33% over median");
         }
 
         [TestCase(10, 40_000_000)] // at 10 volume the two buckets are combined 

@@ -3251,7 +3251,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if ((craftCostService?.TryGetCost(auction.Tag, out var craftCost) ?? false) || key.Modifiers.Count > 0 || key.Enchants.Count > 0)
                     capped = CapAtCraftCost(auction.Tag, higherValueLowerBin, breakdown, 0);
                 else
-                    targetPrice = Math.Min(higherValueLowerBin * 99 / 100, bucket.Price * 2); // pull target up for non craftable clean
+                    targetPrice = Math.Min(higherValueLowerBin * 99 / 100, bucket.Price * 4 / 3 + 1_000_000); // pull target up for non craftable clean
                 if (capped > 0)
                 {
                     percentile = Math.Min(percentile, capped * 12 / 11) + 500_000; // 500k extra since this is high volume
