@@ -561,6 +561,39 @@ public class DropOffTests
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
         flip.TargetPrice.Should().Be(21_780_000);
     }
+    /// <summary>
+    /// Golden dragon should have craft cost based on level (exp) and rarity
+    /// </summary>
+    [Test]
+    public void PetCleanExpBased()
+    {
+        SetBazaarPrice("MINOS_RELIC", 44_000_000);
+        var converted = LoadLookupMock("dragon.json");
+        SniperService.StartTime = new DateTime(2021, 9, 25) + (DateTime.UtcNow - new DateTime(2025, 3, 21));
+        sniperService.AddLookupData("PET_GOLDEN_DRAGON", converted);
+        foreach (var item in converted.Lookup)
+        {
+            sniperService.UpdateMedian(item.Value, ("PET_GOLDEN_DRAGON", sniperService.GetBreakdownKey(item.Key, "PET_GOLDEN_DRAGON")));
+        }
+        var auction = new SaveAuction()
+        {
+            Tag = "PET_GOLDEN_DRAGON",
+            StartingBid = 16_000_000,
+            UId = 4,
+            FlatenedNBT = new Dictionary<string, string>() { { "exp", "260000000" }, { "candyUsed", "0" }, {"heldItem", "MINOS_RELIC"} },
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        flip.TargetPrice.Should().Be(972428570L);
+        flip.AdditionalProps["breakdown"].Should().StartWith("[{\"Value\":371999999,");
+        var sniper = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
+        sniper.TargetPrice.Should().Be(996501550L); // should be limited by a little bit over craft cost and not target 1.1b
+    }
+
     [Test]
     public void ReduceForSameSellerSells()
     {
