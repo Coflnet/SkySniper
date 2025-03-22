@@ -45,6 +45,7 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly ConcurrentDictionary<(string, AuctionKey), (PriceEstimate result, DateTime addedAt)> ClosetLbinMapLookup = new();
         private readonly ConcurrentDictionary<(string, AuctionKey), (PriceEstimate result, DateTime addedAt)> ClosetMedianMapLookup = new();
         private readonly ConcurrentDictionary<(string, AuctionKey), (ReferencePrice result, DateTime addedAt)> HigherValueLbinMapLookup = new();
+        private readonly ConcurrentDictionary<ModifierLookupKey, (RankElem, DateTime)> ModifierValueLookup = new();
 
         private readonly Counter sellClosestSearch = Metrics.CreateCounter("sky_sniper_sell_closest_search", "Number of searches for closest sell");
         private readonly Counter closestMedianBruteCounter = Metrics.CreateCounter("sky_sniper_closest_median_brute", "Number of brute force searches for closest median");
@@ -269,6 +270,10 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 HigherValueLbinMapLookup.TryRemove(item.Key, out _);
             }
+            foreach (var item in ModifierValueLookup.Where(c => c.Value.Item2 < removeBefore).ToList())
+            {
+                ModifierValueLookup.TryRemove(item.Key, out _);
+            }
             removeBefore = DateTime.UtcNow.AddMinutes(-0.10);
             foreach (var item in ClosetLbinMapLookup.Where(c => c.Value.addedAt < removeBefore).ToList())
             {
@@ -443,7 +448,7 @@ ORDER BY l.`AuctionId`  DESC;
             this.craftCostService = craftCostService;
 
             Converters["exp"] = m => new(m.Modifier, GetExpValue(m.ItemTag, m.Modifier)) { IsEstimate = true };
-            Converters["candyUsed"] = m => new(m.Modifier, GetCandyPrice(m.ItemTag, m.FlatNbt)) { IsEstimate = true };
+            Converters["candyUsed"] = m => new(m.Modifier, GetCandyPrice(m.ItemTag, m.RelevantModifiers.ToDictionary())) { IsEstimate = true };
             /*
             { "upgrade_level", m => new (m.Modifier, EstStarCost(m.ItemTag, int.Parse(m.Modifier.Value))) {IsEstimate=true}},
             { "unlocked_slots", m => new (m.Modifier, itemService.GetSlotCostSync(m.ItemTag, m.FlatNbt, m.Modifier.Value.Split(',').ToList()).Item2){IsEstimate=true}},
@@ -727,7 +732,7 @@ ORDER BY l.`AuctionId`  DESC;
             }).Sum();
         }
 
-        private IEnumerable<(string tag, int amount)> GetItemKeysForModifier(IEnumerable<KeyValuePair<string, string>> modifiers, Dictionary<string, string> flatNbt, string tag, KeyValuePair<string, string> m)
+        private IEnumerable<(string tag, int amount)> GetItemKeysForModifier(string tag, KeyValuePair<string, string> m)
         {
             if (m.Key == null)
                 return EmptyArray;
@@ -743,8 +748,6 @@ ORDER BY l.`AuctionId`  DESC;
                 return EmptyArray;
             }
 
-            if (m.Value == "PERFECT" || m.Value == "FLAWLESS")
-                return new (string, int)[] { (mapper.GetItemKeyForGem(m, flatNbt ?? new()), 1) };
             if (m.Key == "upgrade_level" && !(itemService?.IsDungeonItemSync(tag) ?? true))
             {
                 return EmptyArray;
@@ -1903,7 +1906,15 @@ ORDER BY l.`AuctionId`  DESC;
 
             var handler = (KeyValuePair<string, string> mod) =>
             {
-                return ModifierEstimate(modifiers, tag, flatNbt, mod);
+                var lookupKey = new ModifierLookupKey() { ItemTag = tag, Modifier = mod, RelevantModifiers = modifiers.ToDictionary() };
+                if (ModifierValueLookup.TryGetValue(lookupKey, out var value))
+                {
+                    return value.Item1;
+                }
+                var calculated = ModifierEstimate(modifiers, tag, flatNbt, mod);
+                if (calculated.Value > 0)
+                    ModifierValueLookup[lookupKey] = (calculated, DateTime.UtcNow);
+                return calculated;
             };
             var valuePerModifier = modifiers?.Select(m =>
             {
@@ -1929,7 +1940,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private RankElem ModifierEstimate(List<KeyValuePair<string, string>> modifiers, string tag, Dictionary<string, string> flatNbt, KeyValuePair<string, string> mod)
         {
-            var items = GetItemKeysForModifier(modifiers, flatNbt, tag, mod);
+            var items = GetItemKeysForModifier(tag, mod);
             var sum = 0L;
             foreach (var item in items)
             {
@@ -1967,7 +1978,6 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 return converter(new()
                 {
-                    FlatNbt = flatNbt,
                     ItemTag = tag,
                     Modifier = mod,
                     RelevantModifiers = modifiers
@@ -2041,7 +2051,6 @@ ORDER BY l.`AuctionId`  DESC;
         {
             public string ItemTag;
             public List<KeyValuePair<string, string>> RelevantModifiers;
-            public Dictionary<string, string> FlatNbt;
             public KeyValuePair<string, string> Modifier;
         }
 
@@ -2413,11 +2422,6 @@ ORDER BY l.`AuctionId`  DESC;
             var shouldTryToFindClosest = false;
             var basekey = DetailedKeyFromSaveAuction(auction, fastMode);
 
-            if (auction.Start > DateTime.UtcNow.AddSeconds(-18))
-            {
-                // check combined first if its a bed anyways not much time to be lost
-                CheckLowerKeyFull(auction, lookup, lbinPrice, medPrice, basekey, l);
-            }
             for (int i = 0; i < 4; i++)
             {
                 var key = basekey.GetReduced(i);
