@@ -2793,7 +2793,6 @@ ORDER BY l.`AuctionId`  DESC;
             }
             var modifierValue = (detailedKey.ValueBreakdown.Sum(v => v.Value) + GetCleanItemPrice(auction.Tag, detailedKey, l)) * 1.1;
             targetPrice = Math.Min(targetPrice, (long)modifierValue);
-            AddMedianSample(closest.Value.References, props);
             FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, props);
         }
 
@@ -2920,7 +2919,6 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 var referenceAuctionId = bucket.References.LastOrDefault().AuctionId;
                 var props = CreateReference(referenceAuctionId, key, extraValue, bucket);
-                AddMedianSample(bucket.References, props);
                 if (key.ValueSubstract != 0)
                 {
                     props["valuedropped"] = key.ValueSubstract.ToString();
@@ -2942,7 +2940,6 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var referenceAuctionId = bucket.References.LastOrDefault().AuctionId;
                 var props = CreateReference(referenceAuctionId, key, extraValue, bucket);
-                AddMedianSample(bucket.References, props);
                 addProps?.Invoke(props);
                 props.Add("riskyEst", bucket.RiskyEstimate.ToString());
                 var target = bucket.RiskyEstimate + extraValue + expValue;
@@ -2965,7 +2962,8 @@ ORDER BY l.`AuctionId`  DESC;
             if (volume == 0 || bucket.Lbin.Price == 0 || bucket.Price == 0 || bucket.Price > MIN_TARGET)
                 Logs.Enqueue(new LogEntry()
                 {
-                    Key = key.ToString() + $"+{extraValue} {v}",
+                    Key = key,
+                    ExtraContext = $"+{extraValue} {v}",
                     LBin = bucket.Lbin.Price,
                     Median = medianPrice,
                     Uuid = auction.Uuid,
@@ -3193,7 +3191,6 @@ ORDER BY l.`AuctionId`  DESC;
                 return false;
             }
             var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue, bucket);
-            AddMedianSample(bucket.References, props);
             props["mVal"] = bucket.Price.ToString();
             props["hvlbin"] = higherValueLowerBin.ToString();
             var targetPrice = Math.Min(higherValueLowerBin - 1, MaxMedianPriceForSnipe(bucket, breakdown)) + extraValue - MIN_TARGET / 200;
@@ -3355,7 +3352,7 @@ ORDER BY l.`AuctionId`  DESC;
             while (Logs.TryDequeue(out LogEntry result))
             {
                 var finderName = result.Finder == LowPricedAuction.FinderType.UNKOWN ? "NF" : result.Finder.ToString();
-                logger.LogInformation($"Info: {finderName} {result.Uuid} m:{result.Median} \t{result.LBin} {result.Volume} {result.Key}");
+                logger.LogInformation($"Info: {finderName} {result.Uuid} m:{result.Median} \t{result.LBin} {result.Volume} {result.Key}{result.ExtraContext}");
             }
             deferred.PrintQueue();
         }
@@ -3379,6 +3376,7 @@ ORDER BY l.`AuctionId`  DESC;
                 LogNonFlip(auction, bucket, defaultKey, 0, bucket.Volume, targetPrice, $"References too old for {State} ({refAge})");
                 return false; // too old
             }
+            AddMedianSample(bucket.References, props);
             props["refAge"] = refAge.ToString();
             props["server"] = ServerDnsName;
             props["refCount"] = bucket.DeduplicatedReferenceCount.ToString();
@@ -3406,7 +3404,7 @@ ORDER BY l.`AuctionId`  DESC;
             });
             Logs.Enqueue(new LogEntry()
             {
-                Key = props.GetValueOrDefault("key") ?? (props.GetValueOrDefault("breakdown") + "+" + props.GetValueOrDefault("cleanCost")),
+                ExtraContext = props.GetValueOrDefault("key") ?? (props.GetValueOrDefault("breakdown") + "+" + props.GetValueOrDefault("cleanCost")),
                 LBin = bucket.Lbin.Price,
                 Median = bucket.Price,
                 Uuid = auction.Uuid,
