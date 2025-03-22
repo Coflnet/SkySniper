@@ -20,8 +20,17 @@ namespace Coflnet.Sky.Sniper.Services
         private const int SizeToKeep = 80;
         public const int PetExpMaxlevel = 4_225_538 * 6;
         private const int GoldenDragonMaxExp = 30_036_483 * 7;
+        public static short CurrentDayCache = 0;
         public static int MIN_TARGET = 200_000;
-        public static DateTime StartTime = new DateTime(2021, 9, 25);
+        private static DateTime _startTime = new DateTime(2021, 9, 25);
+        public static DateTime StartTime
+        {
+            get => _startTime; set
+            {
+                _startTime = value;
+                UpdateToday(); // important for tests
+            }
+        }
         private readonly ILogger<SniperService> logger;
         public ConcurrentDictionary<string, PriceLookup> Lookups = new ConcurrentDictionary<string, PriceLookup>(3, 2000);
 
@@ -254,6 +263,7 @@ namespace Coflnet.Sky.Sniper.Services
         public void FinishedUpdate()
         {
             ProcessLbins();
+            UpdateToday();
             var removeBefore = DateTime.UtcNow.AddMinutes(-10);
             foreach (var item in HigherValueLbinMapLookup.Where(c => c.Value.addedAt < removeBefore).ToList())
             {
@@ -269,6 +279,11 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 ClosetMedianMapLookup.TryRemove(item.Key, out _);
             }
+        }
+
+        private static void UpdateToday()
+        {
+            CurrentDayCache = (short)(DateTime.UtcNow - StartTime).TotalDays; // os time for UtcNow takes time
         }
 
         public void ProcessLbins()
@@ -370,7 +385,6 @@ ORDER BY l.`AuctionId`  DESC;
 
         public SniperService(HypixelItemService itemService, ActivitySource activitySource, ILogger<SniperService> logger, ICraftCostService craftCostService)
         {
-
             this.FoundSnipe += la =>
             {
                 if (la.Finder == LowPricedAuction.FinderType.SNIPER && (float)la.Auction.StartingBid / la.TargetPrice < 0.8 && la.TargetPrice > 1_000_000)
@@ -1590,7 +1604,10 @@ ORDER BY l.`AuctionId`  DESC;
         public static short GetDay(DateTime date = default)
         {
             if (date == default)
-                date = DateTime.UtcNow;
+                if (CurrentDayCache != 0)
+                    return CurrentDayCache;
+                else
+                    date = DateTime.UtcNow;
             return (short)(date - StartTime).TotalDays;
         }
 
@@ -3439,6 +3456,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             await itemService.GetItemsAsync();
             await mapper.LoadNeuConstants();
+            UpdateToday();
         }
     }
 }
