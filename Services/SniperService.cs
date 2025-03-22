@@ -1148,6 +1148,10 @@ ORDER BY l.`AuctionId`  DESC;
                 lookup.HasMultipleRarities = lookup.Lookup
                         .Where(l => l.Key.Tier != Tier.UNKNOWN)
                         .GroupBy(l => l.Key.Tier).Count() > 2;
+                var cleanPrice = GetCleanItemPrice(keyCombo.tag, keyCombo.key, lookup, true);
+                lookup.CleanPricePerTier ??= new();
+                if (cleanPrice > 0)
+                    lookup.CleanPricePerTier[keyCombo.key.Key.Tier] = cleanPrice;
 
                 var keyWithNoEnchants = new AuctionKey(keyCombo.Item2)
                 {
@@ -1464,8 +1468,12 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private static long GetCleanItemPrice(string tag, KeyWithValueBreakdown key, PriceLookup lookup)
+        private static long GetCleanItemPrice(string tag, KeyWithValueBreakdown key, PriceLookup lookup, bool force = false)
         {
+            if (!force && lookup.CleanPricePerTier.TryGetValue(key.Key.Tier, out var cleanPrice))
+            {
+                return cleanPrice;
+            }
             var select = (NBT.IsPet(tag) ?
                             lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value) :
                              lookup.Lookup.Values.Where(v => v.Price > 0)).ToList();

@@ -26,7 +26,7 @@ namespace Coflnet.Sky.Sniper.Models
         [Key(4)]
         public AuctionKey CleanKey;
         [Key(5)]
-        public long CleanPrice;
+        public Dictionary<Tier, long> CleanPricePerTier = new();
         [Key(7)]
         public bool HasMultipleRarities;
     }
