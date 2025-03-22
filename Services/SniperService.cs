@@ -2706,6 +2706,8 @@ ORDER BY l.`AuctionId`  DESC;
                 return;
             if (auction.Tag == "NEW_YEAR_CAKE")
                 return; // can't use closest for years
+            if (auction.FlatenedNBT.TryGetValue("exp", out var expString) && expString == "0")
+                return; // no point in comparing
             // special case for items that have no reference bucket, search using most similar
             var detailedKey = DetailedKeyFromSaveAuction(auction);
             var key = detailedKey.GetReduced(0);
