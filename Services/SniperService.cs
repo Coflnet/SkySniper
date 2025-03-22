@@ -2040,7 +2040,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (Lookups.TryGetValue(tag, out var lookup) && lookup.Lookup.TryGetValue(lvl1Key, out var baseLevel) && lookup.Lookup.TryGetValue(maxLevel, out var maxLevelValue))
             {
                 var precise = (maxLevelValue.Price - baseLevel.Price) / int.Parse(maxExp);
-                return (int)precise * (int.Parse(mod.Value));
+                return (int)(precise * float.Parse(mod.Value));
             }
             var factor = Math.Max(GetPriceForItem(tag) / 6, 10_000_000);
             var value = (int)(factor * (float.Parse(mod.Value) + 1));
