@@ -274,6 +274,17 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 await LoadOnepass(maxId, batchSize, allStart, differential, i, stoppinToken);
             }
+            if (RetrainService.IsManager)
+            {
+                try
+                {
+                    await persitance.SaveLookup(sniper.Lookups);
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, "could not save ");
+                }
+            }
             sniper.State = SniperState.FullyLoaded;
         }
 
