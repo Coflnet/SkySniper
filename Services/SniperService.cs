@@ -3221,15 +3221,16 @@ ORDER BY l.`AuctionId`  DESC;
                 Activity.Current.Log("Stacksize 1 is cheaper");
                 return false;
             }
-            var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue, bucket);
-            props["mVal"] = bucket.Price.ToString();
-            props["hvlbin"] = higherValueLowerBin.ToString();
             var targetPrice = Math.Min(higherValueLowerBin - 1, MaxMedianPriceForSnipe(bucket, breakdown)) + extraValue - MIN_TARGET / 200;
             if (bucket.Price != 0)
                 targetPrice = Math.Min(targetPrice, bucket.Price * 2);
             if (targetPrice < auction.StartingBid * 1.03)
                 return false;
             var percentile = long.MaxValue;
+
+            var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue, bucket);
+            props["mVal"] = bucket.Price.ToString();
+            props["hvlbin"] = higherValueLowerBin.ToString();
 
             if (bucket.Price == 0 || bucket.Volume < 10)
             {

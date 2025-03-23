@@ -1456,7 +1456,7 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void SubstractsSkinValue()
         {
-            highestValAuction.FlatenedNBT = new() { { "candyUsed", "1" }, { "exp", "0" } };
+            highestValAuction.FlatenedNBT = new() { { "candyUsed", "1" }, { "exp", "25000000" } };
             var withSkin = Dupplicate(highestValAuction);
             withSkin.HighestBidAmount = 60_000_000;
             withSkin.FlatenedNBT.Add("skin", "SKELETON");
@@ -1489,7 +1489,7 @@ namespace Coflnet.Sky.Sniper.Services
                 })
             };
 
-            highestValAuction.FlatenedNBT = new() { { "skin", "DIFF" }, { "exp", "0" } };
+            highestValAuction.FlatenedNBT = new() { { "skin", "DIFF" }, { "exp", "50" } };
             var withSkin = Dupplicate(highestValAuction);
             withSkin.HighestBidAmount = 60_000_000;
             withSkin.FlatenedNBT["skin"] = "SKELETON";
