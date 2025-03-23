@@ -833,6 +833,8 @@ ORDER BY l.`AuctionId`  DESC;
                 if (value.References.Count == 0 && value.Lbins.Count == 0 || value.References.All(r => r.Day == 1047) // lost nbt data that day
                     || value.References.All(r => r.Day < GetDay() - 21) && !item.IsClean())
                     loadedVal.Lookup.TryRemove(item, out _); // unimportant
+                if (NBT.IsPet(itemTag) && !item.Modifiers.Any(m => m.Key == "exp"))
+                    loadedVal.Lookup.TryRemove(item, out _); // bugged
             }
             if (itemTag.Contains("RUNE_"))
             {
@@ -2067,9 +2069,10 @@ ORDER BY l.`AuctionId`  DESC;
             (var maxExp, var second) = tag == "PET_GOLDEN_DRAGON" ? ("7", GoldenDragonMaxExp) : ("6", PetExpMaxlevel);
             var lvl1Key = new AuctionKey(new(), ItemReferences.Reforge.Any, EmptyPetModifiers.ToList(), Tier.LEGENDARY, 1);
             var maxLevel = new AuctionKey(new(), ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>>() { new("exp", maxExp) }, Tier.LEGENDARY, 1);
-            if (Lookups.TryGetValue(tag, out var lookup) && lookup.Lookup.TryGetValue(lvl1Key, out var baseLevel) && lookup.Lookup.TryGetValue(maxLevel, out var maxLevelValue))
+            if (Lookups.TryGetValue(tag, out var lookup) && lookup.Lookup.TryGetValue(lvl1Key, out var baseLevel)
+                && lookup.Lookup.TryGetValue(maxLevel, out var maxLevelValue) && maxLevelValue.Price > 100)
             {
-                var precise = (maxLevelValue.Price - baseLevel.Price) / (int.Parse(maxExp));
+                var precise = (maxLevelValue.Price - baseLevel.Price) / int.Parse(maxExp);
                 return (int)(precise * Math.Max(float.Parse(mod.Value), 0.5));
             }
             var factor = Math.Max(GetPriceForItem(tag) / 6, 10_000_000);
