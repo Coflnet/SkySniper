@@ -531,6 +531,23 @@ public class DropOffTests
         }
         var cleanPrices = sniperService.Lookups["HYPERION"].Lookup.Where(p => p.Value.Price > 0 && p.Value.TimeToSell > 3).ToList().OrderBy(v => v.Value.Price).Skip(1).Take(5);
         cleanPrices.First().Value.Price.Should().BeGreaterThan(900_000_000, cleanPrices.First().Key.ToString());
+        var auction = new SaveAuction()
+        {
+            Tag = "HYPERION",
+            StartingBid = 270_000_000,
+            UId = 4,
+            AuctioneerId = "12aaa",
+            FlatenedNBT = new() { { "rarity_upgrades", "1" }, { "upgrade_level", "10" } },
+            Tier = Tier.MYTHIC,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        for (int i = 0; i < 5; i++)
+        {
+            sniperService.TestNewAuction(auction.Dupplicate());
+        }
+        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN && f.TargetPrice >= 994589999);
+        flip.Should().NotBeNull();
     }
 
     /// <summary>
@@ -580,7 +597,7 @@ public class DropOffTests
             Tag = "PET_GOLDEN_DRAGON",
             StartingBid = 16_000_000,
             UId = 4,
-            FlatenedNBT = new Dictionary<string, string>() { { "exp", "260000000" }, { "candyUsed", "0" }, {"heldItem", "MINOS_RELIC"} },
+            FlatenedNBT = new Dictionary<string, string>() { { "exp", "260000000" }, { "candyUsed", "0" }, { "heldItem", "MINOS_RELIC" } },
             AuctioneerId = "12aaa",
             Tier = Tier.LEGENDARY,
             Count = 1
@@ -589,7 +606,7 @@ public class DropOffTests
         sniperService.TestNewAuction(auction);
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
         flip.TargetPrice.Should().Be(972428570L);
-        flip.AdditionalProps["breakdown"].Should().StartWith("[{\"Value\":371999999,");
+        flip.AdditionalProps["breakdown"].Should().StartWith("[{\"Value\":372000000,");
         var sniper = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
         sniper.TargetPrice.Should().Be(996501550L); // should be limited by a little bit over craft cost and not target 1.1b
     }
