@@ -46,6 +46,7 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly ConcurrentDictionary<(string, AuctionKey), (PriceEstimate result, DateTime addedAt)> ClosetMedianMapLookup = new();
         private readonly ConcurrentDictionary<(string, AuctionKey), (ReferencePrice result, DateTime addedAt)> HigherValueLbinMapLookup = new();
         private readonly ConcurrentDictionary<ModifierLookupKey, (RankElem, DateTime)> ModifierValueLookup = new();
+        private readonly ConcurrentDictionary<(string, KeyValuePair<string, string>), (long, DateTime)> AttributeValueLookup = new();
 
         private readonly Counter sellClosestSearch = Metrics.CreateCounter("sky_sniper_sell_closest_search", "Number of searches for closest sell");
         private readonly Counter closestMedianBruteCounter = Metrics.CreateCounter("sky_sniper_closest_median_brute", "Number of brute force searches for closest median");
@@ -273,6 +274,10 @@ namespace Coflnet.Sky.Sniper.Services
             foreach (var item in ModifierValueLookup.Where(c => c.Value.Item2 < removeBefore).ToList())
             {
                 ModifierValueLookup.TryRemove(item.Key, out _);
+            }
+            foreach (var item in AttributeValueLookup.Where(c => c.Value.Item2 < removeBefore).ToList())
+            {
+                AttributeValueLookup.TryRemove(item.Key, out _);
             }
             removeBefore = DateTime.UtcNow.AddMinutes(-0.10);
             foreach (var item in ClosetLbinMapLookup.Where(c => c.Value.addedAt < removeBefore).ToList())
@@ -963,6 +968,12 @@ ORDER BY l.`AuctionId`  DESC;
                     var power = Math.Pow(2, level - 1);
                     var toSubstractForLvl1 = auction.HighestBidAmount - auction.HighestBidAmount / power;
                     AddAuctionToBucket(auction, preventMedianUpdate, bucketForAttribute, (long)toSubstractForLvl1);
+                    foreach (var updateItem in AttributeValueLookup.Where(l => 
+                        (l.Key.Item1 == groupTag.tag || groupTag.tag == "ATTRIBUTE_SHARD")
+                        && l.Key.Item2.Key == itemKey.Modifiers.First().Key).ToList())
+                    {
+                        AttributeValueLookup.TryRemove(updateItem.Key, out _);
+                    }
                 }
                 OnSold?.Invoke((auction, key));
             }
@@ -1504,32 +1515,51 @@ ORDER BY l.`AuctionId`  DESC;
                             .DefaultIfEmpty(0).Min() / 2;
                 comboValue = percentile;
             }
-            var baseLevel = int.Parse(v.Modifier.Value);
-            // check lowest value path
-            var options = lookup.Lookup.AsEnumerable();
-            if (CrimsonArmors.Any(tag.StartsWith))
+            var key = (tag, v.Modifier);
+            if (AttributeValueLookup.TryGetValue(key, out var value))
             {
-                // these 4 types can be combined amongst each other
-                var secondType = tag.Split("_")[1];
-                options = CrimsonArmors.SelectMany(s => Lookups.TryGetValue(s + secondType, out var lookup) ? lookup.Lookup.AsEnumerable() : []);
+                return value.Item1 + comboValue;
             }
-            double quarterPercentile = GetPercentile(v, baseLevel, options);
-            var shards = GetPercentile(v, baseLevel, Lookups.GetValueOrDefault("ATTRIBUTE_SHARD", new PriceLookup()).Lookup);
-            if (shards > 0 && shards < quarterPercentile)
-            {
-                quarterPercentile = shards;
-            }
-            return (long)(Math.Pow(2, baseLevel) * quarterPercentile * 1.20) + comboValue;
+            var elementValue = NewMethod(tag, v, lookup);
+            if (elementValue > 0)
+                AttributeValueLookup[key] = (elementValue, DateTime.UtcNow);
+            return elementValue + comboValue;
 
-            static double GetPercentile(RankElem v, int baseLevel, IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> options)
+            static double GetPercentile(RankElem v, IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> options)
             {
                 var values = options.Where(l => l.Value.Price > 0
-                                            && (l.Key.Modifiers.Count == 2 && l.Key.Modifiers.Last().Key == "virtual" || l.Key.Modifiers.Count == 1) && l.Key.Modifiers.Any(m => m.Key == v.Modifier.Key)
-                                            && baseLevel > int.Parse(l.Key.Modifiers.First().Value))
+                                            && (l.Key.Modifiers.Count == 2 && l.Key.Modifiers.Last().Key == "virtual" || l.Key.Modifiers.Count == 1) && l.Key.Modifiers.Any(m => m.Key == v.Modifier.Key))
                                 .Select(l => l.Value.Price / Math.Pow(2, int.Parse(l.Key.Modifiers.First().Value)))
                                 .ToList();
                 var quarterPercentile = values.Count > 0 ? values.OrderBy(v => v).Skip(values.Count / 4).First() : 0;
                 return quarterPercentile;
+            }
+
+            double CheckPaths(RankElem v, IEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> options)
+            {
+                double quarterPercentile = GetPercentile(v, options);
+                var shards = GetPercentile(v, Lookups.GetValueOrDefault("ATTRIBUTE_SHARD", new PriceLookup()).Lookup);
+                if (shards > 0 && shards < quarterPercentile)
+                {
+                    quarterPercentile = shards;
+                }
+
+                return quarterPercentile;
+            }
+
+            long NewMethod(string tag, RankElem v, PriceLookup lookup)
+            {
+                var baseLevel = int.Parse(v.Modifier.Value);
+                // check lowest value path
+                var options = lookup.Lookup.AsEnumerable();
+                if (CrimsonArmors.Any(tag.StartsWith))
+                {
+                    // these 4 types can be combined amongst each other
+                    var secondType = tag.Split("_")[1];
+                    options = CrimsonArmors.SelectMany(s => Lookups.TryGetValue(s + secondType, out var lookup) ? lookup.Lookup.AsEnumerable() : []);
+                }
+                double quarterPercentile = CheckPaths(v, options);
+                return (long)(Math.Pow(2, baseLevel) * quarterPercentile * 1.20);
             }
         }
 
