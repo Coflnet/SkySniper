@@ -147,7 +147,7 @@ namespace Coflnet.Sky.Sniper.Models
                     continue;
                 }
 
-                if (modMatch.Modifier.Value == m.Value)
+                if (modMatch.Modifier.Value == m.Value && modMatch.Modifier.Key != "candyUsed") // don't add value for same candy
                     matchValue += modMatch.GetValueOrDefault(ImportanceFactor(m.Key));
                 else if (modMatch.Modifier.Key == null && float.TryParse(m.Value, CultureInfo.InvariantCulture, out var parsed))
                     matchValue -= modMatch.GetValueOrDefault(Math.Abs(parsed) * ImportanceFactor(m.Key));
@@ -175,10 +175,10 @@ namespace Coflnet.Sky.Sniper.Models
 
         private static int ImportanceFactor(string key)
         {
-            if (SniperService.VeryValuable.Contains(key))
-                return 10 * 1_000_000;
             if (SniperService.Increadable.Contains(key))
                 return 100 * 1_000_000;
+            if (SniperService.VeryValuable.Contains(key))
+                return 10 * 1_000_000;
             return 1 * 1_000_000;
         }
 

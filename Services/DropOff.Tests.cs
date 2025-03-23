@@ -606,7 +606,7 @@ public class DropOffTests
         sniperService.TestNewAuction(auction);
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
         flip.TargetPrice.Should().Be(972428570L);
-        flip.AdditionalProps["breakdown"].Should().StartWith("[{\"Value\":372000000,");
+        flip.AdditionalProps["breakdown"].Should().StartWith("[{\"Value\":371999999,");
         var sniper = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
         sniper.TargetPrice.Should().Be(996501550L); // should be limited by a little bit over craft cost and not target 1.1b
     }
@@ -696,6 +696,33 @@ public class DropOffTests
         sniperService.TestNewAuction(testAuction);
         found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN)
             .First().TargetPrice.Should().Be(409_000_000);
+    }
+
+    [Test]
+    public void EndermanStonksLevelComparison()
+    {
+        var converted = LoadLookupMock("Enderman.json");
+        SetBazaarPrice("ENDERMAN_SLAYER", 400_000); // not on bazaar but for price test enough
+        SniperService.StartTime = new DateTime(2021, 9, 25) + (DateTime.UtcNow - new DateTime(2025, 3, 23));
+        sniperService.AddLookupData("PET_ENDERMAN", converted);
+        foreach (var item in converted.Lookup)
+        {
+            sniperService.UpdateMedian(item.Value, ("PET_ENDERMAN", sniperService.GetBreakdownKey(item.Key, "PET_ENDERMAN")));
+        }
+        var auction = new SaveAuction()
+        {
+            Tag = "PET_ENDERMAN",
+            StartingBid = 500_000,
+            UId = 4,
+            FlatenedNBT = new Dictionary<string, string>() { { "exp", "1" }, {"candyUsed", "0"} },
+            AuctioneerId = "12aaa",
+            Tier = Tier.EPIC,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var flip = found.FirstOrDefault(f => f.Finder == LowPricedAuction.FinderType.STONKS);
+        flip.Should().BeNull();
     }
 
     private static PriceLookup LoadLookupMock(string mockFileName)

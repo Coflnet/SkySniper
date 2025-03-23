@@ -968,7 +968,7 @@ ORDER BY l.`AuctionId`  DESC;
                     var power = Math.Pow(2, level - 1);
                     var toSubstractForLvl1 = auction.HighestBidAmount - auction.HighestBidAmount / power;
                     AddAuctionToBucket(auction, preventMedianUpdate, bucketForAttribute, (long)toSubstractForLvl1);
-                    foreach (var updateItem in AttributeValueLookup.Where(l => 
+                    foreach (var updateItem in AttributeValueLookup.Where(l =>
                         (l.Key.Item1 == groupTag.tag || groupTag.tag == "ATTRIBUTE_SHARD")
                         && l.Key.Item2.Key == itemKey.Modifiers.First().Key).ToList())
                     {
@@ -2069,8 +2069,8 @@ ORDER BY l.`AuctionId`  DESC;
             var maxLevel = new AuctionKey(new(), ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>>() { new("exp", maxExp) }, Tier.LEGENDARY, 1);
             if (Lookups.TryGetValue(tag, out var lookup) && lookup.Lookup.TryGetValue(lvl1Key, out var baseLevel) && lookup.Lookup.TryGetValue(maxLevel, out var maxLevelValue))
             {
-                var precise = (maxLevelValue.Price - baseLevel.Price) / int.Parse(maxExp);
-                return (int)(precise * float.Parse(mod.Value));
+                var precise = (maxLevelValue.Price - baseLevel.Price) / (int.Parse(maxExp));
+                return (int)(precise * Math.Max(float.Parse(mod.Value), 0.5));
             }
             var factor = Math.Max(GetPriceForItem(tag) / 6, 10_000_000);
             var value = (int)(factor * (float.Parse(mod.Value) + 1));
@@ -2138,7 +2138,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var expMulti = tag == "PET_GOLDEN_DRAGON" ? GoldenDragonMaxExp / PetExpMaxlevel : 1;
                 var exp = GetNumeric(s);
-                if (exp > 1_000_000 * expMulti && exp <= 2_500_000 * expMulti)
+                if (exp >= 1_000_000 * expMulti && exp <= 2_500_000 * expMulti)
                     return new KeyValuePair<string, string>(s.Key, "0.3");
                 else if (exp > 2_500_000 * expMulti && exp < PetExpMaxlevel * expMulti / 6)
                     return new KeyValuePair<string, string>(s.Key, "0.6");
@@ -2736,8 +2736,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return;
             if (auction.Tag == "NEW_YEAR_CAKE")
                 return; // can't use closest for years
-            if (auction.FlatenedNBT.TryGetValue("exp", out var expString) && expString == "0")
-                return; // no point in comparing
+
             // special case for items that have no reference bucket, search using most similar
             var detailedKey = DetailedKeyFromSaveAuction(auction);
             var key = detailedKey.GetReduced(0);
@@ -3048,6 +3047,8 @@ ORDER BY l.`AuctionId`  DESC;
                     var lvl1Price = lvl1Bucket.Price;
                     var lvl100Price = lvl100Bucket.Price;
                     var accountedFor = double.Parse(key.Modifiers.Where(m => m.Key == "exp").Select(v => v.Value).FirstOrDefault("0"));
+                    if (auction.Tier == Tier.EPIC)
+                        accountedFor += 2;
                     var accountedMiddle = accountedFor + Math.Min(0.5, accountedFor / 2);
                     var accountedExp = maxExp.Item2 / 7 * accountedMiddle;
                     var perExp = (double)((lvl100Price - lvl1Price) / (double)(maxExp.Item2 - 1));

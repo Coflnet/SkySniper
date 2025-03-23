@@ -2372,7 +2372,7 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         //[TestCase(31023190, 31023190, 409489302, LowPricedAuction.FinderType.SNIPER_MEDIAN)] // is adusted downwards
-        [TestCase(31023190, 355244041, 540000000, LowPricedAuction.FinderType.STONKS)]
+        [TestCase(31023190, 355244041, 546028820, LowPricedAuction.FinderType.STONKS)]
         public void MedianAdjustForBucketExpDiffGoldenDrag(int exp, int referncesExp, int expectedPrice, LowPricedAuction.FinderType finder)
         {
             highestValAuction.Count = 1;
