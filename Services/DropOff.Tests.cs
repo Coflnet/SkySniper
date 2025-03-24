@@ -609,6 +609,11 @@ public class DropOffTests
         flip.AdditionalProps["breakdown"].Should().StartWith("[{\"Value\":371999999,");
         var sniper = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
         sniper.TargetPrice.Should().Be(996501550L); // should be limited by a little bit over craft cost and not target 1.1b
+
+        // check that exp is not dropped on lvl 1
+        auction.FlatenedNBT["exp"] = "1";
+        var lowKey = sniperService.ValueKeyForTest(auction);
+        lowKey.Key.Modifiers.Count.Should().Be(3);
     }
 
     [Test]

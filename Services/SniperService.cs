@@ -1913,6 +1913,8 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 else
                 {
+                    if (item.Modifier.Key == "exp")
+                        continue; // even if its valued at very little this needs to stay
                     if (modifiers.Remove(item.Modifier))
                         valueSubstracted += adjustedRemoveValue;
                     if (item.Modifier.Key == "rarity_upgrades")
