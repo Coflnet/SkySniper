@@ -1032,6 +1032,10 @@ ORDER BY l.`AuctionId`  DESC;
             if (!preventMedianUpdate)
             {
                 var key = DetailedKeyFromSaveAuction(auction);
+                if (NBT.IsPet(auction.Tag) && !key.Key.Modifiers.Any(m => m.Key == "exp"))
+                {
+                    logger.LogError($"Exp lost {auction.Uuid} {JsonConvert.SerializeObject(key)}");
+                }
                 UpdateMedian(bucket, (GetAuctionGroupTag(auction.Tag).tag, key));
             }
             return reference.SellTime;
@@ -2744,6 +2748,11 @@ ORDER BY l.`AuctionId`  DESC;
             var detailedKey = DetailedKeyFromSaveAuction(auction);
             var key = detailedKey.GetReduced(0);
             var closest = FindClosestTo(l.Lookup, key, auction.Tag);
+            if (NBT.IsPet(auction.Tag) && !closest.Key.Modifiers.Any(m => m.Key == "exp"))
+            {
+                logger.LogWarning($"Pet without exp {auction.Uuid}");
+                return; // don't use closest for pets without exp
+            }
             medPrice *= 1.10; // increase price a bit to account for the fact that we are not using the exact same item
             if (closest.Value == null)
             {
