@@ -2748,7 +2748,7 @@ ORDER BY l.`AuctionId`  DESC;
             var detailedKey = DetailedKeyFromSaveAuction(auction);
             var key = detailedKey.GetReduced(0);
             var closest = FindClosestTo(l.Lookup, key, auction.Tag);
-            if (NBT.IsPet(auction.Tag) && !closest.Key.Modifiers.Any(m => m.Key == "exp"))
+            if (NBT.IsPet(auction.Tag) && closest.Key?.Modifiers != null && !closest.Key.Modifiers.Any(m => m.Key == "exp"))
             {
                 logger.LogWarning($"Pet without exp {auction.Uuid}");
                 return; // don't use closest for pets without exp
