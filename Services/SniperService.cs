@@ -1915,6 +1915,8 @@ ORDER BY l.`AuctionId`  DESC;
                         continue; // even if its valued at very little this needs to stay
                     if (modifiers.Remove(item.Modifier))
                         valueSubstracted += adjustedRemoveValue;
+                    if(item.Modifier.Key == "skin")
+                        modifiers.RemoveAll(m => m.Key == "candyUsed");
                     if (item.Modifier.Key == "rarity_upgrades")
                         removedRarity = true;
                 }

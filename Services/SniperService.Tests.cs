@@ -216,20 +216,42 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(!key.Modifiers.Any(e => e.Key == SniperService.PetItemKey), "below 5% value is removed");
             Assert.That(key.Modifiers.Any(e => e.Key == "skin"), "above 5% value is not removed");
 
-            void AddPetReference(Tier tier, int price)
+
+        }
+        void AddPetReference(Tier tier, int price, int exp = 0, int candyUsed = 1)
+        {
+            AddVolume(new SaveAuction()
             {
-                AddVolume(new SaveAuction()
-                {
-                    Tag = "PET_GRIFFIN",
-                    FlatenedNBT = new(){
+                Tag = "PET_GRIFFIN",
+                FlatenedNBT = new(){
                         {"skin", "FOUR_SEASONS_GRIFFIN"},
-                        {"candyUsed", "1"},
-                        {"exp", "0"}
+                        {"candyUsed", candyUsed.ToString()},
+                        {"exp", exp.ToString()}
                     },
-                    Tier = tier,
-                    HighestBidAmount = price
-                });
-            }
+                Tier = tier,
+                HighestBidAmount = price
+            });
+        }
+
+        [Test]
+        public void RemoveSkinAndCandyIfValueToLow()
+        {
+            SetBazaarPrice("FOUR_SEASONS_GRIFFIN", 500_000);
+            AddPetReference(Tier.LEGENDARY, 10_000_000, 0, 0);
+            AddPetReference(Tier.LEGENDARY, 50_000_000, 26000000, 0);
+            var key = service.KeyFromSaveAuction(new SaveAuction()
+            {
+                Tag = "PET_GRIFFIN",
+                FlatenedNBT = new(){
+                    {"skin", "FOUR_SEASONS_GRIFFIN"},
+                    {"candyUsed", "1"},
+                    {"exp", "26000000"}
+                },
+                Tier = Tier.LEGENDARY,
+            });
+            key.Modifiers.Should().NotContain(m => m.Key == "skin");
+            key.Modifiers.Should().NotContain(m => m.Key == "candyUsed");
+
         }
 
         [Test]
@@ -2905,7 +2927,7 @@ namespace Coflnet.Sky.Sniper.Services
         {
             SetBazaarPrice("RECOMBOBULATOR_3000", 1_000_000);
             craftCost.Costs[highestValAuction.Tag] = 4_000_000;
-            highestValAuction.FlatenedNBT = new() { { "thunder_charge", "150000" }};
+            highestValAuction.FlatenedNBT = new() { { "thunder_charge", "150000" } };
             highestValAuction.StartingBid = 0;
             highestValAuction.Tier = Tier.RARE;
             highestValAuction.HighestBidAmount = 20_000_000;
@@ -3113,11 +3135,11 @@ namespace Coflnet.Sky.Sniper.Services
             SetBazaarPrice("FUMING_POTATO_BOOK", 1_200_000);
             await service.Init();
             // " Any [hotpc, 0],[rarity_upgrades, 1],[unlocked_slots, COMBAT_0,JASPER_0],[upgrade_level, 5] MYTHIC 1"
-            highestValAuction.FlatenedNBT = new() { { "rarity_upgrades", "1" }, { "upgrade_level", "5" }, { "unlocked_slots", "COMBAT_0,JASPER_0" }, {"hpc", "10"} };
+            highestValAuction.FlatenedNBT = new() { { "rarity_upgrades", "1" }, { "upgrade_level", "5" }, { "unlocked_slots", "COMBAT_0,JASPER_0" }, { "hpc", "10" } };
             highestValAuction.Tag = "SHADOW_ASSASSIN_HELMET";
             highestValAuction.StartingBid = 19_000_000;
             highestValAuction.HighestBidAmount = 13_000_000;
-            AddVolume(highestValAuction, 10); 
+            AddVolume(highestValAuction, 10);
             highestValAuction.HighestBidAmount = 0;
             TestNewAuction(highestValAuction); // add lbin
             var higherValue = Dupplicate(highestValAuction);
@@ -3125,14 +3147,14 @@ namespace Coflnet.Sky.Sniper.Services
             higherValue.Enchantments = new List<Core.Enchantment>(){
                 new Core.Enchantment(Enchantment.EnchantmentType.ultimate_legion,5)
             };
-            
+
             higherValue.StartingBid = 14_000_000;
             higherValue.HighestBidAmount = 14_500_000;
             AddVolume(higherValue);
             higherValue.HighestBidAmount = 14_000_000;
-            TestNewAuction(higherValue); 
+            TestNewAuction(higherValue);
 
-            var sample = found.First(f=>f.Finder == LowPricedAuction.FinderType.SNIPER);
+            var sample = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
             sample.Should().NotBeNull();
             sample.TargetPrice.Should().Be(18049999L);
         }
