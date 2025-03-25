@@ -1104,6 +1104,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             (bucket.Volatility, medianPrice) = GetVolatility(lookup, bucket, shortTermPrice, longSpanPrice);
             bucket.HitsSinceCalculating = 0;
+            bucket.StonksHits = 0;
             bucket.DeduplicatedReferenceCount = (short)deduplicated.Count();
             PreCalculateVolume(keyCombo);
             bucket.TimeToSell = (int)deduplicated
@@ -2767,6 +2768,13 @@ ORDER BY l.`AuctionId`  DESC;
             var props = new Dictionary<string, string>() { { "closest", closest.Key.ToString() } };
             var missingModifiers = closest.Key.Modifiers.Where(m => !key.Modifiers.Contains(m)).ToList();
             long toSubstract = 0;
+            if (closest.Value.StonksHits > 0)
+            {
+                if (closest.Value.StonksHits > 10)
+                    return; 
+                // risk increases with more hits
+                toSubstract += (long)(closest.Value.Price * 0.1 * Math.Pow(1.05, closest.Value.StonksHits));
+            }
             if (key.Modifiers.Any(m => m.Value == TierBoostShorthand) && !closest.Key.Modifiers.Any(m => m.Value == TierBoostShorthand))
             {
                 toSubstract += GetCostForItem("PET_ITEM_TIER_BOOST");
@@ -2855,6 +2863,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             var modifierValue = (detailedKey.ValueBreakdown.Sum(v => v.Value) + GetCleanItemPrice(auction.Tag, detailedKey, l)) * 1.1;
             targetPrice = Math.Min(targetPrice, (long)modifierValue);
+            closest.Value.StonksHits++;
             FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, props);
         }
 

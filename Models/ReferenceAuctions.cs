@@ -35,6 +35,8 @@ namespace Coflnet.Sky.Sniper.Models
         public List<ReferencePrice> Lbins = new();
         [Key(6)]
         public short HitsSinceCalculating = 0;
+        [IgnoreMember]
+        public short StonksHits = 0;
         [Key(7)]
         public byte Volatility = 0;
         [IgnoreMember]
