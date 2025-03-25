@@ -3454,6 +3454,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 if (bucket.HitsSinceCalculating > bucket.Volume / 10)
                     targetPrice = (long)(targetPrice / Math.Pow(1.05, bucket.HitsSinceCalculating));
+                props["hits"] = bucket.HitsSinceCalculating.ToString();
                 bucket.HitsSinceCalculating++;
             }
             using var found = activitySource?.StartActivity("FoundFlip", ActivityKind.Internal);
