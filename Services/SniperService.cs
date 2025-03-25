@@ -1831,7 +1831,7 @@ ORDER BY l.`AuctionId`  DESC;
             return n.Key.StartsWith("MASTER_CRYPT_TANK_ZOMBIE")
                     || n.Key.StartsWith("MINOS_CHAMPION_")
                     || n.Key == "MINOS_INQUISITOR_750"
-                    || n.Key.StartsWith("MASTER_CRYPT_UNDEAD_") && n.Key.Length > 23;
+                    || n.Key.Length > 23 && n.Key.StartsWith("MASTER_CRYPT_UNDEAD_");
         }
 
         /// <summary>
@@ -1915,7 +1915,7 @@ ORDER BY l.`AuctionId`  DESC;
                         continue; // even if its valued at very little this needs to stay
                     if (modifiers.Remove(item.Modifier))
                         valueSubstracted += adjustedRemoveValue;
-                    if(item.Modifier.Key == "skin")
+                    if (item.Modifier.Key == "skin")
                         modifiers.RemoveAll(m => m.Key == "candyUsed");
                     if (item.Modifier.Key == "rarity_upgrades")
                         removedRarity = true;
@@ -3452,7 +3452,8 @@ ORDER BY l.`AuctionId`  DESC;
             if (type == LowPricedAuction.FinderType.SNIPER_MEDIAN && bucket.HitsSinceCalculating < 10
                 && IsProbablyNotBait(auction, targetPrice))
             {
-                targetPrice = (long)(targetPrice / Math.Pow(1.05, bucket.HitsSinceCalculating));
+                if (bucket.HitsSinceCalculating > bucket.Volume / 10)
+                    targetPrice = (long)(targetPrice / Math.Pow(1.05, bucket.HitsSinceCalculating));
                 bucket.HitsSinceCalculating++;
             }
             using var found = activitySource?.StartActivity("FoundFlip", ActivityKind.Internal);
