@@ -1189,8 +1189,6 @@ ORDER BY l.`AuctionId`  DESC;
                         && lowerCountBucket.Price * keyCombo.Item2.Key.Count < medianPrice)
                     {
                         medianPrice = Math.Min(medianPrice, lowerCountBucket.Price * keyWithNoEnchants.Count);
-
-                        logger.LogInformation($"Adjusted for count {keyCombo.tag} -> {medianPrice}  {keyWithNoEnchants} - {keyCombo.Item2.Key}");
                     }
                 }
             }
@@ -2497,18 +2495,6 @@ ORDER BY l.`AuctionId`  DESC;
                         {
                             return;
                         }
-                        bucket = closests.FirstOrDefault().Value;
-                        var closestKey = closests.FirstOrDefault().Key;
-                        if (bucket.HitsSinceCalculating > 8)
-                        {
-                            logger.LogInformation($"Bucket {closestKey} for {auction.Uuid} has been hit {bucket.HitsSinceCalculating} times, skipping");
-                            TryFindClosestRisky(auction, lookup, ref lbinPrice, ref medPrice);
-                            return;
-                        }
-                        lbinPrice *= Math.Pow(1.15, bucket.HitsSinceCalculating);
-                        medPrice *= Math.Pow(1.25, bucket.HitsSinceCalculating);
-                        shouldTryToFindClosest = true;
-                        break; // don't use most similar until key lenght limit is added
                     }
                     else if (i != 0)
                         continue;
