@@ -1248,8 +1248,7 @@ ORDER BY l.`AuctionId`  DESC;
             long CapPriceAtHigherLevelKey((string tag, KeyWithValueBreakdown key) keyCombo, long limitedPrice, ReferenceAuctions bucket)
             {
                 var oldestDay = bucket.OldestRef;
-                if (keyCombo.key.Key.Modifiers.FirstOrDefault().Key == "new_years_cake"
-                    && ImportantCakeYears.Contains(keyCombo.key.Key.Modifiers.FirstOrDefault().Value))
+                if (keyCombo.key.Key.Modifiers.Any(m=>m.Key == "new_years_cake" && ImportantCakeYears.Contains(m.Value)))
                 {
                     return limitedPrice;
                 }
@@ -1788,8 +1787,8 @@ ORDER BY l.`AuctionId`  DESC;
             var key = new AuctionKeyWithValue()
             {
                 // order attributes
-                Modifiers = modifiers.OrderBy(m => m.Key).ToList().AsReadOnly(),
-                Enchants = enchants.OrderBy(e => e.Type).ToList().AsReadOnly(),
+                Modifiers = modifiers.AsReadOnly(),
+                Enchants = enchants.AsReadOnly(),
                 Tier = tier,
                 Reforge = shouldIncludeReforge ? auction.Reforge : ItemReferences.Reforge.Any,
                 Count = (byte)auction.Count,

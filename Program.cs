@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Coflnet.Sky.Sniper.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -13,8 +14,12 @@ namespace Coflnet.Sky.Sniper
     {
         public static void Main(string[] args)
         {
+            var test = new DropOffTests();
+            test.Setup();
+            test.CleanValueCorrect().Wait();
+            Console.WriteLine("Tests done");
             System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
-            CreateHostBuilder(args).Build().Run();
+           // CreateHostBuilder(args).Build().Run();
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>

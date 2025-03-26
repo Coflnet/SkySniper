@@ -227,13 +227,13 @@ namespace Coflnet.Sky.Sniper.Models
             if (Enchants != null)
                 foreach (var item in Enchants)
                 {
-                    enchRes = enchRes * 31 + item.GetHashCode();
+                    enchRes = enchRes * item.GetHashCode();
                 }
             var modRes = 0x20;
             if (Modifiers != null)
                 foreach (var item in Modifiers)
                 {
-                    modRes = modRes * 31 + (item.Value == null ? 0 : item.Value.GetHashCode());
+                    modRes = modRes * (item.Value == null ? 1 : item.Value.GetHashCode());
                 }
             return HashCode.Combine(enchRes, Reforge, modRes, Tier, Count);
         }
@@ -246,11 +246,17 @@ namespace Coflnet.Sky.Sniper.Models
         public override bool Equals(object obj)
         {
             return obj is AuctionKey key &&
-                    (key.Enchants == null && this.Enchants == null || (this.Enchants != null && key.Enchants != null && key.Enchants.SequenceEqual(this.Enchants))) &&
                    Reforge == key.Reforge &&
-                   (key.Modifiers == null && this.Modifiers == null || (this.Modifiers != null && key.Modifiers != null && key.Modifiers.SequenceEqual(this.Modifiers))) &&
                    Tier == key.Tier &&
-                   Count == key.Count;
+                   Count == key.Count&&
+                   (key.Enchants == null && this.Enchants == null || 
+                    (this.Enchants != null && key.Enchants != null && 
+                     this.Enchants.Count == key.Enchants.Count &&
+                     this.Enchants.All(e => key.Enchants.Any(ke => ke.Type == e.Type && ke.Lvl == e.Lvl)))) &&
+                   (key.Modifiers == null && this.Modifiers == null || 
+                    (this.Modifiers != null && key.Modifiers != null &&
+                     this.Modifiers.Count == key.Modifiers.Count &&
+                     this.Modifiers.All(m => key.Modifiers.Any(km => km.Key == m.Key && km.Value == m.Value)))) ;
         }
 
         public AuctionKey(List<Enchant> enchants, ItemReferences.Reforge reforge, List<KeyValuePair<string, string>> modifiers, Tier tier, byte count)
