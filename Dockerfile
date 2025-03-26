@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0 as build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 as build
 WORKDIR /build
 RUN git clone --depth=1 https://github.com/Coflnet/HypixelSkyblock.git dev
 WORKDIR /build/sky
@@ -10,7 +10,7 @@ COPY . .
 RUN dotnet test
 RUN dotnet publish -c debug -o /app && rm /app/items.json
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0
+FROM mcr.microsoft.com/dotnet/sdk:9.0
 WORKDIR /app
 
 COPY --from=build /app .

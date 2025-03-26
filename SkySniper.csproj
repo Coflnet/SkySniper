@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <GenerateProgramFile>false</GenerateProgramFile>
     <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
   </PropertyGroup>
@@ -20,7 +20,7 @@
     <PackageReference Include="Coflnet.Sky.Mayor.Client" Version="0.3.3" />
     <PackageReference Include="JWT" Version="10.1.1" />
     <PackageReference Include="Coflnet.Sky.Crafts.Client" Version="0.4.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="8.0.14" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="9.0.3" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
