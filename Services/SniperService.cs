@@ -1053,6 +1053,7 @@ ORDER BY l.`AuctionId`  DESC;
             List<ReferencePrice> deduplicated = ApplyAntiMarketManipulation(bucket);
             DropUnderlistings(deduplicated);
 
+
             size = deduplicated.Count();
             if (size <= 3 || deduplicated.Count(d => d.Day >= GetDay() - 20) < 3 && !(keyCombo.Item2?.Key.IsClean() ?? false) && !IsMaxAttrib(keyCombo))
             {
@@ -1070,6 +1071,10 @@ ORDER BY l.`AuctionId`  DESC;
             bool isCleanitem;
             GetCleanPriceLookup(keyCombo, out lookup, out cleanPriceLookup, out isCleanitem);
             var shortTermPrice = GetMedian(shortTermList, cleanPriceLookup);
+            if (IsDropping(bucket, shortTermPrice, out var rate))
+            {
+                shortTermPrice = (long)(shortTermPrice * rate);
+            }
             bucket.OldestRef = shortTermList.Take(4).Min(s => s.Day);
             if (shortTermList.Count >= 3 && bucket.OldestRef - shortTermList.First().Day <= -5
                 && shortTermList.First().AuctionId != shortTermList.OrderByDescending(o => o.Price).First().AuctionId
@@ -1312,6 +1317,30 @@ ORDER BY l.`AuctionId`  DESC;
                 var estimate = Math.Min(Math.Min(riskyShort, riskyLongTerm), marketManipLimit);
                 return estimate;
             }
+        }
+
+        private bool IsDropping(ReferenceAuctions bucket, long shortTermPrice, out float rate)
+        {
+            var relevant = bucket.References.Reverse().Take(6).ToList();
+            var buyLookup = relevant.GroupBy(r => r.Buyer).ToDictionary(g => g.Key, g => g.First());
+            List<float> drops = new();
+            foreach (var item in relevant)
+            {
+                if (buyLookup.TryGetValue(item.Seller, out var purchase))
+                {
+                    if (purchase.Price > item.Price * 0.97 && item.Price < shortTermPrice)
+                    {
+                        drops.Add((float)item.Price / Math.Max(purchase.Price, shortTermPrice * 0.97f) * 0.97f);
+                    }
+                }
+            }
+            if (drops.Count <= 1)
+            {
+                rate = 1;
+                return false;
+            }
+            rate = drops.OrderByDescending(e => e).Skip(1).First();
+            return true;
         }
 
         static List<ReferencePrice> ApplyAntiMarketManipulation(ReferenceAuctions bucket)

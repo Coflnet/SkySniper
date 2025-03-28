@@ -669,6 +669,25 @@ public class AuctionkeyTests
         Assert.That(key.ValueBreakdown.First().Value, Is.EqualTo(5_000_000));
     }
     [Test]
+    public void IncludeDivanPowderCoating()
+    {
+        var auction = new SaveAuction()
+        {
+            FlatenedNBT = new() { { "divan_powder_coating", "1" }, {"unlocked_slots", "AMBER_0,AMBER_1,JADE_0,JADE_1,TOPAZ_0"},
+            {"JADE_1", "PERFECT"},{"JADE_0", "PERFECT"},{"AMBER_0", "PERFECT"},{"AMBER_1", "PERFECT"},{"TOPAZ_0", "PERFECT"},
+            {"rarity_upgrades", "1"} },
+            Tag = "DIVAN_BOOTS",
+            Reforge = ItemReferences.Reforge.jaded
+        };
+        SetBazaarPrice("DIVAN_POWDER_COATING", 100_000_001);
+        SetBazaarPrice("PERFECT_AMBER_GEM", 20_000_001);
+        SetBazaarPrice("PERFECT_JADE_GEM", 40_000_001);
+        SetBazaarPrice("PERFECT_TOPAZ_GEM", 40_000_001);
+        SetBazaarPrice("RECOMBOBULATOR_3000", 10_000_000);
+        var key = service.ValueKeyForTest(auction);
+        Assert.That(key.ValueBreakdown.First().Value, Is.EqualTo(100_000_001));
+    }
+    [Test]
     public void ValuesExpertiseCorrectly()
     {
         var auction = new SaveAuction()

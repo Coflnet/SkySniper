@@ -92,6 +92,20 @@ public class DropOffTests
         var price = sniperService.Lookups["HYPERION"].Lookup.First().Value.Price;
         price.Should().Be(1029_293_224L, "Trend anylsis shows a downward trend, compared to long time its the smallest");
     }
+    [Test]
+    public void LowResellPullsdown()
+    {
+        SniperService.StartTime += DateTime.UtcNow - new DateTime(2024, 12, 30) - TimeSpan.FromDays(10000);
+        var converted = LoadLookupMock("skindrop.json");
+        SetBazaarPrice("PET_SKIN_CAT_SPACE_KITTY", 40_000_000);
+        sniperService.AddLookupData("PET_BLACK_CAT", converted);
+        foreach (var item in converted.Lookup)
+        {
+            sniperService.UpdateMedian(item.Value, ("PET_BLACK_CAT", sniperService.GetBreakdownKey(item.Key, "PET_BLACK_CAT")));
+        }
+        var price = sniperService.Lookups["PET_BLACK_CAT"].Lookup.First().Value.Price;
+        price.Should().Be(117000008L, "Low resell rate should pull down the price");
+    }
     /// <summary>
     /// Flip from https://sky.coflnet.com/auction/3513bd5932a2413183059fe636867d92
     /// to https://sky.coflnet.com/auction/01456d41316046dc9bf99ccc17b30d95
@@ -530,7 +544,7 @@ public class DropOffTests
             sniperService.UpdateMedian(item.Value, ("HYPERION", sniperService.GetBreakdownKey(item.Key, "HYPERION")));
         }
         var cleanPrices = sniperService.Lookups["HYPERION"].Lookup.Where(p => p.Value.Price > 0 && p.Value.TimeToSell > 3).ToList().OrderBy(v => v.Value.Price).Skip(1).Take(5);
-        cleanPrices.First().Value.Price.Should().BeGreaterThan(900_000_000, cleanPrices.First().Key.ToString());
+        cleanPrices.First().Value.Price.Should().BeGreaterThan(897_000_000, cleanPrices.First().Key.ToString());
         var auction = new SaveAuction()
         {
             Tag = "HYPERION",

@@ -1,0 +1,254 @@
+{
+    "lookup": {
+        " Any [candyUsed, 0],[exp, 6],[skin, CAT_SPACE_KITTY] MYTHIC 1": {
+            "price": 140000000,
+            "references": [
+                {
+                    "auctionId": 6565615653434571000,
+                    "price": 155000000,
+                    "day": 1177,
+                    "seller": 31445,
+                    "buyer": 0,
+                    "sellTime": 221
+                },
+                {
+                    "auctionId": 2667395139363647000,
+                    "price": 122810000,
+                    "day": 1197,
+                    "seller": -19961,
+                    "buyer": 0,
+                    "sellTime": 245
+                },
+                {
+                    "auctionId": -1870921060107678200,
+                    "price": 146000000,
+                    "day": 1199,
+                    "seller": 19754,
+                    "buyer": 0,
+                    "sellTime": 83
+                },
+                {
+                    "auctionId": 6437668661989003000,
+                    "price": 150000000,
+                    "day": 1212,
+                    "seller": -25289,
+                    "buyer": 0,
+                    "sellTime": 80
+                },
+                {
+                    "auctionId": 5637403632063763000,
+                    "price": 149999999,
+                    "day": 1217,
+                    "seller": -8085,
+                    "buyer": 0,
+                    "sellTime": 280
+                },
+                {
+                    "auctionId": -3343790160742697500,
+                    "price": 177810000,
+                    "day": 1217,
+                    "seller": -2188,
+                    "buyer": 0,
+                    "sellTime": 121
+                },
+                {
+                    "auctionId": -6529145696581444000,
+                    "price": 165310000,
+                    "day": 1218,
+                    "seller": -7409,
+                    "buyer": 0,
+                    "sellTime": 356
+                },
+                {
+                    "auctionId": 6415700607589200000,
+                    "price": 120000000,
+                    "day": 1221,
+                    "seller": -12444,
+                    "buyer": 0,
+                    "sellTime": 1
+                },
+                {
+                    "auctionId": 4099546148829010000,
+                    "price": 140000000,
+                    "day": 1224,
+                    "seller": 26295,
+                    "buyer": 0,
+                    "sellTime": 109
+                },
+                {
+                    "auctionId": 8666286506892652000,
+                    "price": 277810000,
+                    "day": 1224,
+                    "seller": -26516,
+                    "buyer": 0,
+                    "sellTime": 131
+                },
+                {
+                    "auctionId": 3062750144718018600,
+                    "price": 142020000,
+                    "day": 1225,
+                    "seller": -28016,
+                    "buyer": 0,
+                    "sellTime": 829
+                },
+                {
+                    "auctionId": 3582100404501625000,
+                    "price": 113323501,
+                    "day": 1235,
+                    "seller": -20114,
+                    "buyer": 0,
+                    "sellTime": 1
+                },
+                {
+                    "auctionId": -1347558888620242200,
+                    "price": 155310000,
+                    "day": 1245,
+                    "seller": 20600,
+                    "buyer": 0,
+                    "sellTime": 10089
+                },
+                {
+                    "auctionId": 7575056723738772000,
+                    "price": 150000000,
+                    "day": 1246,
+                    "seller": -11541,
+                    "buyer": 0,
+                    "sellTime": 111
+                },
+                {
+                    "auctionId": -5226308997172323000,
+                    "price": 109000000,
+                    "day": 1246,
+                    "seller": -29500,
+                    "buyer": 0,
+                    "sellTime": 1
+                },
+                {
+                    "auctionId": 4399563557065005600,
+                    "price": 138000000,
+                    "day": 1248,
+                    "seller": 27328,
+                    "buyer": 0,
+                    "sellTime": 727
+                },
+                {
+                    "auctionId": -1561824932278119400,
+                    "price": 144999999,
+                    "day": 1253,
+                    "seller": 9251,
+                    "buyer": 0,
+                    "sellTime": 1327
+                },
+                {
+                    "auctionId": -5496694438184953000,
+                    "price": 185000000,
+                    "day": 1269,
+                    "seller": 12873,
+                    "buyer": 0,
+                    "sellTime": 176
+                },
+                {
+                    "auctionId": 8221681566829284000,
+                    "price": 140000000,
+                    "day": 1270,
+                    "seller": 32309,
+                    "buyer": 0,
+                    "sellTime": 179
+                },
+                {
+                    "auctionId": -410416725711869060,
+                    "price": 123285995,
+                    "day": 1278,
+                    "seller": -795,
+                    "buyer": -26912,
+                    "sellTime": 1091
+                },
+                {
+                    "auctionId": 8812741614298031000,
+                    "price": 125000000,
+                    "day": 1279,
+                    "seller": -26912,
+                    "buyer": -14948,
+                    "sellTime": 0
+                },
+                {
+                    "auctionId": 4549849875114270700,
+                    "price": 117000000,
+                    "day": 1279,
+                    "seller": -14948,
+                    "buyer": -27315,
+                    "sellTime": 0
+                },
+                {
+                    "auctionId": 1774197509226455800,
+                    "price": 118067967,
+                    "day": 1280,
+                    "seller": -17699,
+                    "buyer": -27315,
+                    "sellTime": 0
+                }
+            ],
+            "oldestRef": 1269,
+            "lbins": [
+                {
+                    "auctionId": -3970108049396948500,
+                    "price": 126000000,
+                    "day": 1282,
+                    "seller": -27315,
+                    "buyer": 0,
+                    "sellTime": -2110
+                },
+                {
+                    "auctionId": 3352584904650833000,
+                    "price": 131100000,
+                    "day": 1283,
+                    "seller": -27315,
+                    "buyer": 0,
+                    "sellTime": -3368
+                },
+                {
+                    "auctionId": -4088839705813879000,
+                    "price": 169000000,
+                    "day": 1287,
+                    "seller": 15564,
+                    "buyer": 0,
+                    "sellTime": -18916
+                }
+            ],
+            "hitsSinceCalculating": 0,
+            "stonksHits": 0,
+            "volatility": 2,
+            "riskyEstimate": 123500000,
+            "timeToSell": 413,
+            "volume": 0.22115384
+        }
+    },
+    "category": "MISC",
+    "volume": 74.4,
+    "cleanPricePerDay": {
+        "1278": 49999996,
+        "1279": 49999996,
+        "1280": 48500000
+    },
+    "cleanKey": {
+        "enchants": [],
+        "reforge": "Any",
+        "modifiers": [
+            {
+                "key": "candyUsed",
+                "value": "0"
+            },
+            {
+                "key": "exp",
+                "value": "0"
+            }
+        ],
+        "tier": "LEGENDARY",
+        "count": 1
+    },
+    "cleanPricePerTier": {
+        "LEGENDARY": 48000000,
+        "MYTHIC": 72810000
+    },
+    "hasMultipleRarities": false
+}
