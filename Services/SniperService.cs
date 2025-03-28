@@ -1248,7 +1248,7 @@ ORDER BY l.`AuctionId`  DESC;
             long CapPriceAtHigherLevelKey((string tag, KeyWithValueBreakdown key) keyCombo, long limitedPrice, ReferenceAuctions bucket)
             {
                 var oldestDay = bucket.OldestRef;
-                if (keyCombo.key.Key.Modifiers.Any(m=>m.Key == "new_years_cake" && ImportantCakeYears.Contains(m.Value)))
+                if (keyCombo.key.Key.Modifiers.Any(m => m.Key == "new_years_cake" && ImportantCakeYears.Contains(m.Value)))
                 {
                     return limitedPrice;
                 }
@@ -2604,9 +2604,9 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private void CheckCombined(SaveAuction auction, PriceLookup lookup, double lbinPrice, double medPrice, KeyWithValueBreakdown fullKey, RankElem topAttrib)
+        private void CheckCombined(SaveAuction auction, PriceLookup lookup, double lbinPrice, double medPrice, KeyWithValueBreakdown longKey, RankElem topAttrib)
         {
-            var topKey = fullKey.GetReduced(0);
+            var topKey = longKey.GetReduced(0);
             var l = lookup.Lookup;
             var similar = l.Where(e => topAttrib.Modifier.Key != default && !e.Key.Modifiers.Any(m => m.Key == "virtual") || e.Key.Enchants.Contains(topAttrib.Enchant)).ToList();
             if (similar.Count == 1)
@@ -2619,40 +2619,40 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 return; // enough references in previous check
             }
-            var relevant = similar.Where(e => IsHigherValue(auction.Tag, e.Key, topKey)
-                                && e.Key.Reforge == topKey.Reforge)
-                .OrderByDescending(e => e.Key.Modifiers.Count + e.Key.Enchants.Count)
-                .ThenByDescending(e => ComparisonValue(e.Key.Enchants, e.Key.Modifiers.ToList(), GetAuctionGroupTag(auction.Tag).tag, null).Sum(s => s.Value))
+            var fullKey = GetFullKey(auction);
+            var relevant = similar.Where(e => (e.Key.Reforge == topKey.Reforge || topKey.Reforge == ItemReferences.Reforge.Any)
+                        && IsHigherValue(auction.Tag, e.Key, fullKey))
+                .Select(e => (e, value: e.Value.Volume * ComparisonValue(e.Key.Enchants, e.Key.Modifiers.ToList(), GetAuctionGroupTag(auction.Tag).tag, null).Sum(s => s.Value)))
+                .OrderByDescending(e => e.value)
                 .ToList();
             if (relevant.Count < 2)
             {
                 return; // makes only sense if there is something combined
             }
             // get enough relevant to build a median and try to get highest value (most enchantments and modifiers)
-            var combined = relevant.SelectMany(r => r.Value.References.Select(ri => (ri, relevancy: (r.Key.Modifiers.Count + r.Key.Enchants.Count) * 10 + ri.Day)))
-                                .Reverse() // get the newest first
+            var combined = relevant.SelectMany(r => r.e.Value.References.Select(ri => (ri, relevancy: r.value * (GetDay() - ri.Day + 10) * Math.Log10(ri.Price + 1))))
                                 .OrderByDescending(r => r.relevancy).Select(r => r.ri).Take(targetVolume).ToList();
             if (combined.Count == 0)
             {
                 return;
             }
-            var lbinBucket = relevant.MinBy(r => r.Value.Lbin.Price).Value;
+            var lbinBucket = relevant.Select(r => r.e.Value.Lbin).Where(r => r.Price != default).DefaultIfEmpty().MinBy(r => r.Price);
             var virtualBucket = new ReferenceAuctions()
             {
-                Lbins = [lbinBucket.Lbin],
+                Lbins = [lbinBucket],
                 References = new(combined),
-                Price = combined.Count < 4 ? 0 : GetCappedMedian(auction, fullKey, combined),
+                Price = combined.Count < 4 ? 0 : GetCappedMedian(auction, longKey, combined),
                 OldestRef = (short)(GetDay() - 2),
                 Volatility = 123// mark as risky
             };
             // mark with extra value -3
-            var foundAndAbort = FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, lookup, fullKey, MIN_TARGET == 0 ? 0 : -3, props =>
+            var foundAndAbort = FindFlip(auction, lbinPrice, medPrice, virtualBucket, topKey, lookup, longKey, MIN_TARGET == 0 ? 0 : -3, props =>
             {
                 var total = 0;
-                props.Add("combined", string.Join(",", relevant.TakeWhile(c => (total += c.Value.References.Count) < targetVolume)
-                    .Select(c => c.Key.ToString() + ":" + c.Value.References.Count)));
-                props.Add("breakdown", JsonConvert.SerializeObject(fullKey.ValueBreakdown));
-                logger.LogInformation($"Combined {fullKey} {auction.Uuid} {virtualBucket.Price} {virtualBucket.Lbin.Price} keys: {string.Join(",", relevant.Select(r => r.Key))}");
+                props.Add("combined", string.Join(",", relevant.TakeWhile(c => (total += c.e.Value.References.Count) < targetVolume)
+                    .Select(c => c.e.Key.ToString() + ":" + c.e.Value.References.Count)));
+                props.Add("breakdown", JsonConvert.SerializeObject(longKey.ValueBreakdown));
+                logger.LogInformation($"Combined {longKey} {auction.Uuid} {virtualBucket.Price} {virtualBucket.Lbin.Price} keys: {string.Join(",", relevant.Select(r => r.e.Key))}");
             });
 
             long GetCappedMedian(SaveAuction auction, KeyWithValueBreakdown fullKey, List<ReferencePrice> combined)
@@ -2672,17 +2672,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return; // not complicated
             if (auction.Tag.StartsWith("PET_"))
                 return; // eg Enderman gets cheaper at mythic for some reason
-            if (auction.Tag.StartsWith("STARRED_MIDAS_"))
-                return; // midas references were only recently split
-            (var enchant, var modifiers) = SelectValuable(auction);
-            var key = new AuctionKeyWithValue()
-            {
-                Count = 1,
-                Enchants = new(enchant ?? new()),
-                Modifiers = new(modifiers ?? new()),
-                Tier = auction.Tier,
-                Reforge = auction.Reforge
-            };
+            AuctionKeyWithValue key = GetFullKey(auction);
             var today = GetDay();
             var containing = l.Where(e => e.Value.Price > 0 && e.Value.References.Count > 5
                             && (e.Key.Reforge == key.Reforge || e.Key.Reforge == ItemReferences.Reforge.Any)
@@ -2698,6 +2688,20 @@ ORDER BY l.`AuctionId`  DESC;
                 props.Add("usedKey", containing.Key.ToString());
                 props.Add("by", "lowerfullkey");
             });
+        }
+
+        private AuctionKeyWithValue GetFullKey(SaveAuction auction)
+        {
+            (var enchant, var modifiers) = SelectValuable(auction);
+            var key = new AuctionKeyWithValue()
+            {
+                Count = 1,
+                Enchants = new(enchant ?? new()),
+                Modifiers = new(modifiers ?? new()),
+                Tier = auction.Tier,
+                Reforge = auction.Reforge
+            };
+            return key;
         }
 
         public static readonly HashSet<string> HyperionGroup = new() { "SCYLLA", "VALKYRIE", "NECRON_BLADE", "ASTRAEA" };
@@ -2770,7 +2774,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (closest.Value.StonksHits > 0)
             {
                 if (closest.Value.StonksHits > 10)
-                    return; 
+                    return;
                 // risk increases with more hits
                 toSubstract += (long)(closest.Value.Price * 0.1 * Math.Pow(1.05, closest.Value.StonksHits));
             }

@@ -613,7 +613,7 @@ namespace Coflnet.Sky.Sniper.Services
             TestNewAuction(sample);
             var result = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
             Assert.That(14_000_000, Is.EqualTo(result.TargetPrice));
-            Assert.That(result.AdditionalProps.ContainsValue("lowerfullkey"));
+            Assert.That(result.AdditionalProps.ContainsKey("combined"));
             // extra value was ommited
             SetBazaarPrice("PERFECT_PERIDOT_GEM", 29_000_000);
             sample.FlatenedNBT.Add("PERIDOT_0", "PERFECT");
@@ -3158,7 +3158,7 @@ namespace Coflnet.Sky.Sniper.Services
 
             var sample = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
             sample.Should().NotBeNull();
-            sample.TargetPrice.Should().Be(18049999L);
+            sample.TargetPrice.Should().Be(18999999L);
         }
 
         [Test]
