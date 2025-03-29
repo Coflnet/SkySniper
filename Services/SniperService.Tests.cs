@@ -2389,6 +2389,7 @@ namespace Coflnet.Sky.Sniper.Services
         public void MedianAdjustForBucketExpDiff(int exp, int expectedPrice)
         {
             highestValAuction.Count = 1;
+            highestValAuction.Tier = Tier.LEGENDARY;
             highestValAuction.FlatenedNBT = new(){
                 {"exp",SniperService.PetExpMaxlevel.ToString()}
             };
@@ -2413,6 +2414,7 @@ namespace Coflnet.Sky.Sniper.Services
         public void MedianAdjustForBucketExpDiffGoldenDrag(int exp, int referncesExp, int expectedPrice, LowPricedAuction.FinderType finder)
         {
             highestValAuction.Count = 1;
+            highestValAuction.Tier = Tier.LEGENDARY;
             highestValAuction.Tag = "PET_GOLDEN_DRAGON";
             highestValAuction.FlatenedNBT = new(){
                 {"exp",(SniperService.PetExpMaxlevel * 50).ToString()}

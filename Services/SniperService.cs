@@ -3093,8 +3093,8 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var maxExp = auction.Tag == "PET_GOLDEN_DRAGON" ? ("7", GoldenDragonMaxExp) : ("6", PetExpMaxlevel);
                 var exp = Math.Min((long)double.Parse(expString), maxExp.Item2);
-                var lvl1Key = new AuctionKey(new(), ItemReferences.Reforge.Any, EmptyPetModifiers.ToList(), auction.Tier, 1);
-                var lvl100Key = new AuctionKey(new(), ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>>() { new("exp", maxExp.Item1) }, auction.Tier, 1);
+                var lvl1Key = new AuctionKey(new(), ItemReferences.Reforge.Any, EmptyPetModifiers.ToList(), Tier.LEGENDARY, 1);
+                var lvl100Key = new AuctionKey(new(), ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>>() { new("exp", maxExp.Item1) }, Tier.LEGENDARY, 1);
                 if (l.TryGetValue(lvl1Key, out var lvl1Bucket) && l.TryGetValue(lvl100Key, out var lvl100Bucket))
                 {
                     var lvl1Price = lvl1Bucket.Price;
