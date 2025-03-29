@@ -3367,7 +3367,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (percentile != reduced)
                         reduced = reduced * 21 / 20; // 5% extra for snipe
-                    percentile = reduced;
+                    percentile = Math.Min(reduced, percentile);
                     Activity.Current.Log($"Reduced to craft cost {reduced}");
                     props["craftCost"] = reduced.ToString();
                 }
