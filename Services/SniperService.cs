@@ -1127,7 +1127,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 long limitedPrice = CapAtCraftCost(keyCombo.tag, medianPrice, keyCombo.key, bucket.Price);
                 var craftCostCap = limitedPrice;
-                if (limitedPrice == 0)
+                if (limitedPrice == 0 || IsLevel100CleanPet(keyCombo.key))
                 {
                     limitedPrice = medianPrice;
                 }
@@ -1317,6 +1317,11 @@ ORDER BY l.`AuctionId`  DESC;
                 var estimate = Math.Min(Math.Min(riskyShort, riskyLongTerm), marketManipLimit);
                 return estimate;
             }
+        }
+
+        private bool IsLevel100CleanPet(KeyWithValueBreakdown key)
+        {
+            return key.Key.Modifiers.Count == 1 && key.Key.Modifiers[0].Key == "exp" && key.Key.Modifiers[0].Value == "6";
         }
 
         private bool IsDropping(ReferenceAuctions bucket, long shortTermPrice, out float rate)

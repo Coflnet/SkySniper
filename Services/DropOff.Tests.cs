@@ -114,16 +114,33 @@ public class DropOffTests
     [Test]
     public void JerryArtifact()
     {
-        SniperService.StartTime += DateTime.UtcNow - new DateTime(2025, 1, 5) - TimeSpan.FromDays(10000);
-        var converted = LoadLookupMock("jerry.json");
-        sniperService.AddLookupData("JERRY_TALISMAN_GOLDEN", converted);
         SetBazaarPrice("RECOMBOBULATOR_3000", 8_000_000);
-        foreach (var item in converted.Lookup)
-        {
-            sniperService.UpdateMedian(item.Value, ("JERRY_TALISMAN_GOLDEN", sniperService.GetBreakdownKey(item.Key, "JERRY_TALISMAN_GOLDEN")));
-        }
+        AddLookupAndUpdateMeidans("jerry.json", "JERRY_TALISMAN_GOLDEN", new DateTime(2025, 1, 5));
         var price = sniperService.Lookups["JERRY_TALISMAN_GOLDEN"].Lookup.First(l => l.Key.Modifiers.Count == 0 && l.Key.Count == 1).Value;
         price.RiskyEstimate.Should().BeGreaterThanOrEqualTo(262678900L, "Half of the risky estimate should be applied");
+    }
+
+    [Test]
+    public void HermitCrabLevel100NotLimited()
+    {
+        AddLookupAndUpdateMeidans("HermitCrab.json", "PET_HERMIT_CRAB", new DateTime(2025, 1, 5));
+        var price = sniperService.Lookups["PET_HERMIT_CRAB"].Lookup.First(l => l.Key.Modifiers.Count == 1 && l.Key.Tier == Tier.LEGENDARY).Value;
+        price.Price.Should().Be(42_000_000, "Level 100 should not be limited by craft cost");
+    }
+
+    private void AddLookupAndUpdateMeidans(string fileName, string itemTag, DateTime simulatedTime)
+    {
+        SniperService.StartTime += DateTime.UtcNow - simulatedTime - TimeSpan.FromDays(10000);
+        var converted = LoadLookupMock(fileName);
+        sniperService.AddLookupData(itemTag, converted);
+        foreach (var item in converted.Lookup)
+        {
+            if(item.Key.Modifiers.Count == 1 && item.Key.Tier == Tier.LEGENDARY)
+            {
+                Console.WriteLine(item.Key);
+            }
+            sniperService.UpdateMedian(item.Value, (itemTag, sniperService.GetBreakdownKey(item.Key, itemTag)));
+        }
     }
 
     [Test]
@@ -145,8 +162,7 @@ public class DropOffTests
     [Test]
     public void SpeedTest()
     {
-        if (!Dns.GetHostName().Contains("ekwav"))
-            Assert.Ignore("This test is only for local testing");
+        Assert.Ignore("This test is only for local testing");
         SetBazaarPrice("RECOMBOBULATOR_3000", 8_000_000);
         SetBazaarPrice("ENCHANTMENT_GROWTH_6", 44_000_000);
         var testAuction = new SaveAuction()
@@ -733,7 +749,7 @@ public class DropOffTests
             Tag = "PET_ENDERMAN",
             StartingBid = 500_000,
             UId = 4,
-            FlatenedNBT = new Dictionary<string, string>() { { "exp", "1" }, {"candyUsed", "0"} },
+            FlatenedNBT = new Dictionary<string, string>() { { "exp", "1" }, { "candyUsed", "0" } },
             AuctioneerId = "12aaa",
             Tier = Tier.EPIC,
             Count = 1

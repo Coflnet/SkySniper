@@ -857,15 +857,28 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
-        public void FallbackOnNomatchLevel2()
+        public void Level100NotPriceCappedByItself()
         {
-            AddVolume(highestValAuction);
-            service.TestNewAuction(highestValAuction);
-            var anotherAuction = new SaveAuction(highestValAuction)
-            { UId = 563, StartingBid = 500, AuctioneerId = "00000", FlatenedNBT = highestValAuction.FlatenedNBT };
-            //anotherAuction.FlatenedNBT["exp"] = "50000";
-            service.TestNewAuction(anotherAuction);
-            Assert.That(1000, Is.EqualTo(found.Last().TargetPrice));
+            AddPetVolume(Tier.LEGENDARY, 10_000_000, 0);
+            AddPetVolume(Tier.LEGENDARY, 12_000_000, 30_000_000);
+            service.Lookups["PET_GRIFFIN"].Lookup.First(l => l.Key.Modifiers.Count == 1).Value.Price = 10_000_000;
+            AddPetVolume(Tier.LEGENDARY, 40_000_000, 30_000_000, 50);
+            service.Lookups["PET_GRIFFIN"].Lookup.First(l => l.Key.Modifiers.Count == 1).Value.Price.Should().Be(40_000_000);
+
+
+            void AddPetVolume(Tier tier, int price, int exp, int volume = 4)
+            {
+                AddVolume(new SaveAuction()
+                {
+                    Tag = "PET_GRIFFIN",
+                    FlatenedNBT = new(){
+                        {"candyUsed", "0"},
+                        {"exp", exp.ToString()}
+                    },
+                    Tier = tier,
+                    HighestBidAmount = price
+                },volume);
+            }
         }
         [Test]
         public void CheckBelowHigherTier()
