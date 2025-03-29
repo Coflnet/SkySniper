@@ -1675,9 +1675,14 @@ ORDER BY l.`AuctionId`  DESC;
                 AuctionId = auction.UId,
                 Day = GetDay(auction.End),
                 Price = basePrice - valueSubstract,
-                Seller = auction.AuctioneerId == null ? (short)(auction.SellerId % (2 << 14)) : Convert.ToInt16(auction.AuctioneerId.Substring(0, 4), 16),
+                Seller = GetSellerId(auction),
                 Buyer = buyer?.Bidder == null ? (short)0 : Convert.ToInt16(buyer.Bidder.Substring(0, 4), 16)
             };
+        }
+
+        private static short GetSellerId(SaveAuction auction)
+        {
+            return auction.AuctioneerId == null ? (short)(auction.SellerId % (2 << 14)) : Convert.ToInt16(auction.AuctioneerId.Substring(0, 4), 16);
         }
 
         public static short GetDay(DateTime date = default)
@@ -3342,7 +3347,13 @@ ORDER BY l.`AuctionId`  DESC;
                 var sumBrekdown = breakdown.ValueBreakdown.Sum(v => v.Value);
                 if (percentile < sumBrekdown * 0.7)
                 {
-                    percentile = (long)(sumBrekdown * 1.6 + percentile) / 3;
+                    percentile = (long)Math.Min((sumBrekdown * 1.6 + percentile) / 3, referencePrice * 1.2);
+                }
+                if(bucket.Price == 0 && bucket.Lbin.Seller == GetSellerId(auction))
+                {
+                    props["sellerMatch"] = percentile.ToString();
+                    // seller matching is sus 
+                    percentile /= 2;
                 }
                 percentile = Math.Min(percentile, lowestLbin);
                 if (lowestLbin > 10_000_000_000)

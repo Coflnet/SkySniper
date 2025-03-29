@@ -2718,7 +2718,6 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
             // should be at about craft cost
             Assert.That(21870000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
-
         }
 
         [Test]
@@ -3196,6 +3195,29 @@ namespace Coflnet.Sky.Sniper.Services
             service.TestNewAuction(toTest);
             var snipe = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
             snipe.TargetPrice.Should().Be(27266666L, "limited by 33% over median");
+        }
+
+        [Test]
+        public void ReduceEstimateifMatchingSeller()
+        {
+            SetBazaarPrice("RECOMBOBULATOR_3000", 110_000_000); // simulate more valuable attribues
+            highestValAuction.FlatenedNBT = new(){{"rarity_upgrades","1"}};
+            highestValAuction.StartingBid = 200_000_000;
+            highestValAuction.HighestBidAmount = 0;
+            service.State = SniperState.FullyLoaded;
+            service.TestNewAuction(highestValAuction);
+            service.FinishedUpdate();
+            var reference = Dupplicate(highestValAuction);
+            reference.HighestBidAmount = 65_000_000;
+            service.AddSoldItem(reference);
+            var higherValue = Dupplicate(highestValAuction);
+            var flip = Dupplicate(highestValAuction);
+            flip.StartingBid = 5;
+            flip.AuctioneerId = highestValAuction.AuctioneerId;
+
+            service.TestNewAuction(flip);
+            service.FinishedUpdate();
+            found.First().TargetPrice.Should().Be(39_000_000, "limited by 20% above reference and halfed by same seller");
         }
 
         [TestCase(10, 40_000_000)] // at 10 volume the two buckets are combined 
