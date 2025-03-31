@@ -100,7 +100,7 @@ public class MedianCalcTests
     public void TerrorChestplateMedian()
     {
         ReferenceAuctions bucket = LoadJsonReferences(TerroChestplateSample);
-        service.UpdateMedian(bucket);
+        service.UpdateMedian(bucket, ("test", new KeyWithValueBreakdown() { Key = new AuctionKey() { }, ValueBreakdown = new(), SubstractedValue = 10 }));
         Assert.That(bucket.Price, Is.EqualTo(52628738));
     }
 
