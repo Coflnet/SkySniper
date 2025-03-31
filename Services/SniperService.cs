@@ -1101,6 +1101,11 @@ ORDER BY l.`AuctionId`  DESC;
             }
             var uncappedMedian = Math.Min(shortTermPrice, longSpanPrice);
             var medianPrice = uncappedMedian;
+            if(keyCombo == default)
+            {
+                bucket.Price = medianPrice; // bazaar price
+                return;
+            }
             var lbinMedian = bucket.Lbins.Where(l => l.Price > medianPrice / 2 && l.Day > GetDay() + 5).OrderBy(l => l.Price).Skip(2).FirstOrDefault();
             if (lbinMedian.AuctionId != default)
             {
@@ -2989,11 +2994,11 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 var gemkey = mapper.GetItemKeyForGem(item, auction.FlatenedNBT);
                 if (item.Value == "PERFECT")
-                    if (Lookups.TryGetValue(gemkey, out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
-                        gemValue += gemLookup.Lookup.Values.First().Price - 500_000;
+                    if (BazaarPrices.TryGetValue(gemkey, out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
+                        gemValue += (long)gemLookup - 500_000;
                 if (item.Value == "FLAWLESS")
-                    if (Lookups.TryGetValue(gemkey, out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
-                        gemValue += gemLookup.Lookup.Values.First().Price - 100_000;
+                    if (BazaarPrices.TryGetValue(gemkey, out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
+                        gemValue += (long)gemLookup - 100_000;
             }
 
             return gemValue;
