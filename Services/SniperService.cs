@@ -3497,7 +3497,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (targetPrice < MIN_TARGET || targetPrice < auction.StartingBid * 1.03)
             {
-                LogNonFlip(auction, bucket, defaultKey, 0, bucket.Volume, targetPrice, "Target price too low");
+                LogNonFlip(auction, bucket, defaultKey, 0, bucket.Volume, targetPrice, "Target price too low " + targetPrice);
                 return false; // to low
             }
             var refAge = (GetDay() - bucket.OldestRef);
