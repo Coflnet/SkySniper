@@ -133,7 +133,18 @@ public class DropOffTests
         SniperService.StartTime += DateTime.UtcNow - new DateTime(2025, 3, 30) - TimeSpan.FromDays(10000);
         var converted = LoadLookupMock("GEM.json");
         sniperService.AddLookupData("PERFECT_JASPER_GEM", converted);
+        craftCostService.Costs["PERFECT_JASPER_GEM"] = 20_000_000_000;
         SetBazaarPrice("PERFECT_JASPER_GEM", 30_000_000);
+        foreach (var item in sniperService.Lookups)
+            {
+                foreach (var bucket in item.Value.Lookup)
+                {
+                    if (bucket.Value.References.Count < 4)
+                        continue; // can't have a median
+                    // make sure all medians are up to date
+                    sniperService.UpdateMedian(bucket.Value, (item.Key, sniperService.GetBreakdownKey(bucket.Key, item.Key)));
+                }
+            }
         var price = sniperService.Lookups["PERFECT_JASPER_GEM"].Lookup.First().Value;
         price.Price.Should().Be(30491442L, "Median bazaar price");
     }

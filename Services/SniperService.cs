@@ -1459,6 +1459,10 @@ ORDER BY l.`AuctionId`  DESC;
                 && (craftCostService?.TryGetCost(tag, out double craftCost) ?? false) && craftCost > 0)
             {
                 var stackSize = key.Key.Count;
+                if(stackSize == 0)
+                {
+                    return medianPrice; // don't limit bazaar items
+                }
                 var stackCost = craftCost * stackSize * 1.08;
                 if (stackCost < 500_000)
                 {
