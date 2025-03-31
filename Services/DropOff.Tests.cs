@@ -127,6 +127,16 @@ public class DropOffTests
         var price = sniperService.Lookups["PET_HERMIT_CRAB"].Lookup.First(l => l.Key.Modifiers.Count == 1 && l.Key.Tier == Tier.LEGENDARY).Value;
         price.Price.Should().Be(42_000_000, "Level 100 should not be limited by craft cost");
     }
+    [Test]
+    public void PerfectGem()
+    {
+        SniperService.StartTime += DateTime.UtcNow - new DateTime(2025, 3, 30) - TimeSpan.FromDays(10000);
+        var converted = LoadLookupMock("GEM.json");
+        sniperService.AddLookupData("PERFECT_JASPER_GEM", converted);
+        SetBazaarPrice("PERFECT_JASPER_GEM", 30_000_000);
+        var price = sniperService.Lookups["PERFECT_JASPER_GEM"].Lookup.First().Value;
+        price.Price.Should().Be(30491442L, "Median bazaar price");
+    }
 
     private void AddLookupAndUpdateMeidans(string fileName, string itemTag, DateTime simulatedTime)
     {
@@ -135,10 +145,6 @@ public class DropOffTests
         sniperService.AddLookupData(itemTag, converted);
         foreach (var item in converted.Lookup)
         {
-            if(item.Key.Modifiers.Count == 1 && item.Key.Tier == Tier.LEGENDARY)
-            {
-                Console.WriteLine(item.Key);
-            }
             sniperService.UpdateMedian(item.Value, (itemTag, sniperService.GetBreakdownKey(item.Key, itemTag)));
         }
     }
@@ -974,7 +980,8 @@ public class DropOffTests
                         }
                     }
                 }
-            }
+            },
+            Timestamp = DateTime.UtcNow
         });
     }
 }

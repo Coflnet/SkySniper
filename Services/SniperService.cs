@@ -1200,7 +1200,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             else
             {
-                logger.LogWarning($"No key combo {bucket.Price} {bucket.References.First().AuctionId}");
+                logger.LogWarning($"No key combo {keyCombo.tag} {bucket.Price} {bucket.References.First().AuctionId}");
             }
             if (isCleanitem)
             {
@@ -3242,7 +3242,7 @@ ORDER BY l.`AuctionId`  DESC;
                     }
                 }
             }
-            logger.LogInformation($"Updated bazaar {Lookups.Count} items");
+            logger.LogInformation($"Updated bazaar {Lookups.Count} items {bazaar.Timestamp}");
 
             void MakePriceAtLeast90PercentHigherthanLowerLevel(dev.ProductInfo item, ReferenceAuctions refernces, double? cheapestBuy)
             {
