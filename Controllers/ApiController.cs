@@ -129,7 +129,6 @@ namespace Coflnet.Sky.Sniper.Controllers
         [Route("dump/{itemId}")]
         public PriceLookup GetLookupJson(string itemId, [FromHeader] string Authorization)
         {
-            CountUsageAndValidate(Authorization);
             return service.Lookups[itemId];
         }
 
