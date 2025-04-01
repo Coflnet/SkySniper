@@ -3110,7 +3110,7 @@ ORDER BY l.`AuctionId`  DESC;
                     var lvl100Price = lvl100Bucket.Price;
                     var accountedFor = double.Parse(key.Modifiers.Where(m => m.Key == "exp").Select(v => v.Value).FirstOrDefault("0"));
                     if (auction.Tier == Tier.EPIC)
-                        accountedFor += 2;
+                        accountedFor += 1;
                     var accountedMiddle = accountedFor + Math.Min(0.5, accountedFor / 2);
                     var accountedExp = maxExp.Item2 / 7 * accountedMiddle;
                     var perExp = (double)((lvl100Price - lvl1Price) / (double)(maxExp.Item2 - 1));
@@ -3119,7 +3119,7 @@ ORDER BY l.`AuctionId`  DESC;
                         return 0; // bad effect with so many exp
                     if (exp > 4_000_000 && expValue > 0)
                         return expValue / 2; // graceful reduce
-                    if (expValue < 0)
+                    if (expValue < 0 && accountedFor <= 1)
                     {
                         var matchingKey = new AuctionKey(new(), ItemReferences.Reforge.Any, EmptyPetModifiers.ToList(), auction.Tier, 1);
                         var matchingTier = l.GetValueOrDefault(matchingKey)?.Price ?? 0;
