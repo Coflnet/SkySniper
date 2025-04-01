@@ -1101,7 +1101,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             var uncappedMedian = Math.Min(shortTermPrice, longSpanPrice);
             var medianPrice = uncappedMedian;
-            if(keyCombo == default)
+            if (keyCombo == default)
             {
                 bucket.Price = medianPrice; // bazaar price
                 return;
@@ -1459,7 +1459,7 @@ ORDER BY l.`AuctionId`  DESC;
                 && (craftCostService?.TryGetCost(tag, out double craftCost) ?? false) && craftCost > 0)
             {
                 var stackSize = key.Key.Count;
-                if(stackSize == 0)
+                if (stackSize == 0)
                 {
                     return medianPrice; // don't limit bazaar items
                 }
@@ -3117,8 +3117,14 @@ ORDER BY l.`AuctionId`  DESC;
                     var expValue = (long)(perExp * (exp - 1 - accountedExp));
                     if (exp > 11_600_000 && expValue > 0) // only block upwards price changes
                         return 0; // bad effect with so many exp
-                    if (exp > 8_000_000 && expValue > 0)
+                    if (exp > 4_000_000 && expValue > 0)
                         return expValue / 2; // graceful reduce
+                    if (expValue < 0)
+                    {
+                        var matchingKey = new AuctionKey(new(), ItemReferences.Reforge.Any, EmptyPetModifiers.ToList(), auction.Tier, 1);
+                        var matchingTier = l.GetValueOrDefault(matchingKey)?.Price ?? 0;
+                        return Math.Max(expValue, -matchingTier / 4); // reduce target by max 25% the starting bid
+                    }
                     return expValue;
                 }
 
@@ -3358,7 +3364,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     percentile = (long)Math.Min((sumBrekdown * 1.6 + percentile) / 3, referencePrice * 1.2);
                 }
-                if(bucket.Price == 0 && bucket.Lbin.Seller == GetSellerId(auction))
+                if (bucket.Price == 0 && bucket.Lbin.Seller == GetSellerId(auction))
                 {
                     props["sellerMatch"] = percentile.ToString();
                     // seller matching is sus 

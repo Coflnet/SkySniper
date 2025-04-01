@@ -774,7 +774,7 @@ public class DropOffTests
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(auction);
         var flip = found.FirstOrDefault(f => f.Finder == LowPricedAuction.FinderType.STONKS);
-        flip.Should().BeNull();
+        flip.TargetPrice.Should().Be(712500L, "exp adjusted");
     }
 
     private static PriceLookup LoadLookupMock(string mockFileName)
