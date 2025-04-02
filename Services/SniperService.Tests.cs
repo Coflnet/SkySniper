@@ -1322,8 +1322,8 @@ namespace Coflnet.Sky.Sniper.Services
             service.FinishedUpdate();
             drill.FlatenedNBT = new();
             var estimate = service.GetPrice(drill);
-            Assert.That(9_000_000, Is.EqualTo(estimate.Median), "10m base - 1m component");
-            Assert.That(estimate.MedianKey, Is.EqualTo(" Any [drill_part_engine, component] UNKNOWN 1- component"));
+            Assert.That(9_080_000, Is.EqualTo(estimate.Median), "10m base - 1m component incl removal cost");
+            Assert.That(estimate.MedianKey, Is.EqualTo(" Any  UNKNOWN 1"), "drill part not in key");
 
         }
         [Test]
@@ -2466,35 +2466,31 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void ComponetExtraValue()
         {
-            SaveAuction drill = SetupDrill();
-            LowPricedAuction found = null;
-            var lowAssert = (LowPricedAuction s) =>
-            {
-                found = s;
-                if (s.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN)
-                    Assert.That(2000, Is.EqualTo(s.TargetPrice), "extra value should be added to price");
-            };
-            service.FoundSnipe += lowAssert;
-            service.TestNewAuction(Dupplicate(drill));
-            service.FinishedUpdate();
-            service.PrintLogQueue();
-            Assert.That(found, Is.Not.Null, "flip with extra value should pop up");
-        }
-
-        private SaveAuction SetupDrill()
-        {
             var part = Dupplicate(highestValAuction);
+            part.HighestBidAmount = 17_000_000;
             part.Tag = "COMPONENT";
             AddVolume(part);
 
             var drill = Dupplicate(highestValAuction);
             drill.Tag = "DRILL";
+            drill.HighestBidAmount = 6_000_000;
+            var cleanDrill = Dupplicate(drill);
             AddVolume(drill);
             service.FinishedUpdate();
 
             drill.FlatenedNBT["drill_part_engine"] = "component";
-            return drill;
+            drill.FlatenedNBT["drill_part_fuel_tank"] = "component";
+            drill.FlatenedNBT["drill_part_upgrade_module"] = "component";
+            drill.HighestBidAmount = 15_000_000;
+            AddVolume(drill, 4);
+
+            service.TestNewAuction(Dupplicate(drill));
+            service.FinishedUpdate();
+            service.PrintLogQueue();
+            var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+            flip.TargetPrice.Should().Be((part.HighestBidAmount * 97 / 100 - 50_000) * 3 + cleanDrill.HighestBidAmount, "3x component price minus 3% for effort to remove");
         }
+
         [Test]
         public void CapMedianAt3xLowerLevelRune()
         {

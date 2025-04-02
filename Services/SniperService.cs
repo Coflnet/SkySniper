@@ -77,12 +77,6 @@ namespace Coflnet.Sky.Sniper.Services
             // potion "level", // not engough impact
             "item_tier", // mostly found on armor, unsure what it does
             "talisman_enrichment", // talismans can be enriched with additional stats
-            "drill_part_engine",
-            "drill_part_fuel_tank",
-            "drill_part_upgrade_module", // low worth of normal omlet but can go up to 180m
-            "sinker.part",
-            "line.part",
-            "hook.part",
             "divan_powder_coating",
             "ability_scroll", // applied to hyperions worth ~250m https://discord.com/channels/267680588666896385/1031668335731019886/1031668607479975976
             "power_ability_scroll",
@@ -952,7 +946,8 @@ ORDER BY l.`AuctionId`  DESC;
         public short AddSoldItem(SaveAuction auction, bool preventMedianUpdate = false)
         {
             (ReferenceAuctions bucket, var key) = GetBucketForAuction(auction);
-            var time = AddAuctionToBucket(auction, preventMedianUpdate, bucket, key.ValueSubstract);
+            var extraValue = GetExtraValue(auction, key);
+            var time = AddAuctionToBucket(auction, preventMedianUpdate, bucket, key.ValueSubstract, extraValue);
             try
             {
                 var attributesOnAuction = auction.FlatenedNBT.Where(a => Constants.AttributeKeys.Contains(a.Key)).ToList();
@@ -1005,11 +1000,11 @@ ORDER BY l.`AuctionId`  DESC;
         /// <param name="preventMedianUpdate"></param>
         /// <param name="bucket"></param>
         /// <param name="valueSubstract">Extra value to substract based on what is not matching in the bucket</param>
-        public short AddAuctionToBucket(SaveAuction auction, bool preventMedianUpdate, ReferenceAuctions bucket, long valueSubstract = 0)
+        public short AddAuctionToBucket(SaveAuction auction, bool preventMedianUpdate, ReferenceAuctions bucket, long valueSubstract = 0, long extraValue = 0)
         {
             if (bucket.References.Where(r => r.AuctionId == auction.UId).Any())
                 return -1; // duplicate
-            var reference = CreateReferenceFromAuction(auction, valueSubstract);
+            var reference = CreateReferenceFromAuction(auction, valueSubstract, extraValue);
             if (reference.Price < 0 && valueSubstract > 1_000_000)
             {
                 logger.LogInformation($"Negative price {JsonConvert.SerializeObject(auction)} {reference.Price} {valueSubstract}");
@@ -1672,18 +1667,22 @@ ORDER BY l.`AuctionId`  DESC;
             return itemBucket.Lookup.GetOrAdd(key, (k) => new ReferenceAuctions());
         }
 
-        private static ReferencePrice CreateReferenceFromAuction(SaveAuction auction, long valueSubstract = 0)
+        private static ReferencePrice CreateReferenceFromAuction(SaveAuction auction, long valueSubstract = 0, long extraValue = 0)
         {
             var basePrice = auction.HighestBidAmount == 0 ? auction.StartingBid : auction.HighestBidAmount;
             // remove at most 50% of the value
             if (basePrice < valueSubstract)
                 valueSubstract = Math.Min(valueSubstract, basePrice / 2);
             var buyer = auction.Bids?.OrderByDescending(b => b.Amount).FirstOrDefault();
+            if (basePrice - valueSubstract - extraValue < 0)
+            {
+                extraValue = 0;
+            }
             return new ReferencePrice()
             {
                 AuctionId = auction.UId,
                 Day = GetDay(auction.End),
-                Price = basePrice - valueSubstract,
+                Price = basePrice - valueSubstract - extraValue,
                 Seller = GetSellerId(auction),
                 Buyer = buyer?.Bidder == null ? (short)0 : Convert.ToInt16(buyer.Bidder.Substring(0, 4), 16)
             };
@@ -2977,8 +2976,9 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (!Lookups.TryGetValue(value.ToUpper(), out var itemLookup))
                         continue;
-                    var prices = itemLookup.Lookup.Values.First();
-                    extraValue += prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price);
+                    var prices = itemLookup.Lookup.GetValueOrDefault(itemLookup.CleanKey ?? itemLookup.Lookup.First(k => k.Value.Price > 0).Key);
+                    const int RemovalCost = 50_000;
+                    extraValue += (prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price)) * 97 / 100 - RemovalCost;
                 }
             }
             long gemValue = GetGemValue(auction, key);
@@ -3350,7 +3350,7 @@ ORDER BY l.`AuctionId`  DESC;
                                 .Where(x => x.Value.Lbin.Price > 0 && x.Value.Lbin.Price < bucket.Lbin.Price)
                                 .Select(x => x.Value.Lbin.Price).DefaultIfEmpty(long.MaxValue).Min();
                 // 25th percentile of all references
-                var allReferences = higherValueKeys.SelectMany(x => x.Value.References.Select(r=>r.Price / (x.Key.Count == 0 ? 1 : x.Key.Count))).ToList();
+                var allReferences = higherValueKeys.SelectMany(x => x.Value.References.Select(r => r.Price / (x.Key.Count == 0 ? 1 : x.Key.Count))).ToList();
                 var referencePrice = allReferences
                                 .OrderBy(p => p).Skip(allReferences.Count / 4)
                                 .DefaultIfEmpty(targetPrice / 4).Min() * Math.Max(1, allReferences.Count / 20);
