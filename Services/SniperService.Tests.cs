@@ -877,7 +877,7 @@ namespace Coflnet.Sky.Sniper.Services
                     },
                     Tier = tier,
                     HighestBidAmount = price
-                },volume);
+                }, volume);
             }
         }
         [Test]
@@ -1062,7 +1062,7 @@ namespace Coflnet.Sky.Sniper.Services
             // but exclude valuable years
             var century = auction.Dupplicate(15_000_000);
             century.FlatenedNBT["new_years_cake"] = "400";
-            AddVolume(century,6);
+            AddVolume(century, 6);
             century.HighestBidAmount = 0;
             century.StartingBid = 500_000;
             service.TestNewAuction(century);
@@ -2018,6 +2018,30 @@ namespace Coflnet.Sky.Sniper.Services
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
             Assert.That(3000000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+        }
+
+        [Test]
+        public void CapSniperValueAtHigherCount()
+        {
+            highestValAuction.FlatenedNBT = new();
+            var biggerStack = Dupplicate(highestValAuction);
+            biggerStack.Count = 15;
+            biggerStack.HighestBidAmount = 10_000_000;
+            AddVolume(biggerStack, 8);
+
+            var single = Dupplicate(highestValAuction);
+            single.Count = 1;
+            single.HighestBidAmount = 0;
+            single.StartingBid = 100_000_000;
+            TestNewAuction(single);
+
+            var toTest = Dupplicate(single);
+            toTest.StartingBid = 100_000;
+            TestNewAuction(toTest);
+
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER).FirstOrDefault();
+            Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
+            Assert.That(estimate.TargetPrice, Is.EqualTo(666666), JsonConvert.SerializeObject(estimate.AdditionalProps));
         }
 
         [Test]
@@ -3203,7 +3227,7 @@ namespace Coflnet.Sky.Sniper.Services
         public void ReduceEstimateifMatchingSeller()
         {
             SetBazaarPrice("RECOMBOBULATOR_3000", 110_000_000); // simulate more valuable attribues
-            highestValAuction.FlatenedNBT = new(){{"rarity_upgrades","1"}};
+            highestValAuction.FlatenedNBT = new() { { "rarity_upgrades", "1" } };
             highestValAuction.StartingBid = 200_000_000;
             highestValAuction.HighestBidAmount = 0;
             service.State = SniperState.FullyLoaded;

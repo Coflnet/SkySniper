@@ -3350,9 +3350,9 @@ ORDER BY l.`AuctionId`  DESC;
                                 .Where(x => x.Value.Lbin.Price > 0 && x.Value.Lbin.Price < bucket.Lbin.Price)
                                 .Select(x => x.Value.Lbin.Price).DefaultIfEmpty(long.MaxValue).Min();
                 // 25th percentile of all references
-                var allReferences = higherValueKeys.SelectMany(x => x.Value.References).ToList();
+                var allReferences = higherValueKeys.SelectMany(x => x.Value.References.Select(r=>r.Price / (x.Key.Count == 0 ? 1 : x.Key.Count))).ToList();
                 var referencePrice = allReferences
-                                .Select(r => r.Price).OrderBy(p => p).Skip(allReferences.Count / 4)
+                                .OrderBy(p => p).Skip(allReferences.Count / 4)
                                 .DefaultIfEmpty(targetPrice / 4).Min() * Math.Max(1, allReferences.Count / 20);
                 if (bucket.Price == 0 && bucket.References.Count > 2 && higherValueKeys.Count <= 2) // manip indicator
                 {
