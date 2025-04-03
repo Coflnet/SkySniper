@@ -172,7 +172,7 @@ namespace Coflnet.Sky.Sniper.Services
             SetBazaarPrice("ENCHANTMENT_MANA_VAMPIRE_6", 2_100_000);
             SetBazaarPrice("ENCHANTMENT_SHARPNESS_6", 4_100_000);
             SetBazaarPrice("ENCHANTMENT_GROWTH_6", 4_100_000);
-            SetBazaarPrice("TEST", 80_600_000);
+            SetBazaarPrice("TEST", 60_000_000);
             var key = service.KeyFromSaveAuction(new SaveAuction()
             {
                 Tag = "TEST",
@@ -612,7 +612,7 @@ namespace Coflnet.Sky.Sniper.Services
 
             TestNewAuction(sample);
             var result = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
-            Assert.That(14_000_000, Is.EqualTo(result.TargetPrice));
+            Assert.That(result.TargetPrice, Is.EqualTo(13435701));
             Assert.That(result.AdditionalProps.ContainsKey("combined"));
             // extra value was ommited
             SetBazaarPrice("PERFECT_PERIDOT_GEM", 29_000_000);

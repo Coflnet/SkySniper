@@ -1938,10 +1938,10 @@ ORDER BY l.`AuctionId`  DESC;
                 percentDiff = 1;
             // remove all but the top 5 
             var toRemove = combined.Skip(5).Where(c => c.Value > 0)
-                    // keep top 2 even if below threshold
-                    .Concat(combined.Skip(2).Where(c => c.Value > 0 && c.Value < threshold))
+                    // keep top 1 even if below threshold
+                    .Concat(combined.Skip(1).Where(c => c.Value > 0 && c.Value < threshold))
                     // always remove below 500k or ~1.6%
-                    .Concat(combined.Take(2).Where(c => c.Value > 0 && (c.Value < 500_000 || c.Value < threshold / 4))).ToList();
+                    .Concat(combined.Take(1).Where(c => c.Value > 0 && (c.Value < 500_000 || c.Value < threshold / 4))).ToList();
             foreach (var item in toRemove)
             {
                 // use percentage of full value
