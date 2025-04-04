@@ -1944,12 +1944,19 @@ ORDER BY l.`AuctionId`  DESC;
             }
             IEnumerable<RankElem> combined = ComparisonValue(enchants, modifiers, auction.Tag, auction.FlatenedNBT);
 
+            bool includeReforge = AddReforgeValue(auction.Reforge, ref combined);
+            var list = combined as ICollection<RankElem> ?? combined.ToList();
+            var filtered = new List<RankElem>(list.Count);
+            foreach (var c in list)
+            {
+                if (c.Value != 0)
+                    filtered.Add(c);
+            }
+            filtered.Sort((a, b) => b.Value.CompareTo(a.Value));
+            combined = filtered;
+
             var modifierSum = underlyingItemValue + combined?.Select(m => m.IsEstimate ? m.Value / 20 : m.Value).DefaultIfEmpty(0).Sum() ?? 0;
             threshold = Math.Max(threshold, modifierSum / 22);
-
-            bool removedRarity = false;
-            bool includeReforge = AddReforgeValue(auction.Reforge, ref combined);
-            combined = combined.OrderByDescending(i => i.Value).Where(c => c.Value != 0).ToList();
             var percentDiff = (double)auction.HighestBidAmount / modifierSum;
             if (auction.HighestBidAmount == 0 || percentDiff > 1)
                 percentDiff = 1;
@@ -1968,6 +1975,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 i++;
             }
+            bool removedRarity = false;
             foreach (var item in toRemove)
             {
                 // use percentage of full value

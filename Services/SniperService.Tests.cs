@@ -140,7 +140,7 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(!key.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.ultimate_legion));
             Assert.That(ItemReferences.Reforge.Any, Is.EqualTo(key.Reforge));
             Assert.That(Tier.LEGENDARY, Is.EqualTo(key.Tier), "Recombobulator should drop the rarity");
-            Assert.That(7171902, Is.EqualTo(key.ValueSubstract), "Because highest bid is lower than craft cost the removed modifier sum is not 9.6m");
+            Assert.That(7106225, Is.EqualTo(key.ValueSubstract), "Because highest bid is lower than craft cost the removed modifier sum is not 9.6m");
         }
         /// <summary>
         /// Negative test to <see cref="CapKeySize"/>
