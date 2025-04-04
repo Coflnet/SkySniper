@@ -2167,7 +2167,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (costs.unavailable.Count() > 0)
             {
-                (modifiers as List<KeyValuePair<string,string>>)?.RemoveAll(m => m.Key == "unlocked_slots");
+                (modifiers as List<KeyValuePair<string, string>>)?.RemoveAll(m => m.Key == "unlocked_slots");
                 var remaining = present.Except(costs.unavailable);
                 if (remaining.Count() > 0)
                     modifiers.Add(new(mod.Key, string.Join(",", remaining.OrderBy(s => s))));
@@ -2646,8 +2646,21 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (shouldTryToFindClosest && triggerEvents && this.State >= SniperState.Ready)
             {
-                using var risky = !triggerEvents ? null : activitySource?.StartActivity("Risky", ActivityKind.Internal);
-                TryFindClosestRisky(auction, lookup, ref lbinPrice, ref medPrice);
+                var riskyFind = System.Threading.Tasks.Task.Run(() =>
+                {
+                    using var risky = !triggerEvents ? null : activitySource?.StartActivity("Risky", ActivityKind.Internal);
+                    try
+                    {
+                        TryFindClosestRisky(auction, lookup, ref lbinPrice, ref medPrice);
+                    }
+                    catch (System.Exception e)
+                    {
+                        risky?.SetTag("error", "true");
+                        risky?.Log(e.ToString());
+                    }
+                });
+                if(MIN_TARGET == 0)
+                    riskyFind.Wait(); // test
             }
 
             CraftCostFinder(auction, itemGroupTag, lookup, medPrice, basekey);
