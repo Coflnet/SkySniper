@@ -2765,7 +2765,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return; // makes only sense if there is something combined
             }
             // get enough relevant to build a median and try to get highest value (most enchantments and modifiers)
-            var combined = relevant.SelectMany(r => r.e.Value.References.Select(ri => (ri, relevancy: r.value * (GetDay() - ri.Day + 10) * Math.Log10(ri.Price + 1))))
+            var combined = relevant.SelectMany(r => r.e.Value.References.Select(ri => (ri, relevancy: r.value * (ri.Day-GetDay() + 10) * Math.Log10(ri.Price + 1))))
                                 .OrderByDescending(r => r.relevancy).Select(r => r.ri).Take(targetVolume).ToList();
             if (combined.Count == 0)
             {
@@ -2776,7 +2776,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 Lbins = [lbinBucket],
                 References = new(combined),
-                Price = combined.Count < 4 ? 0 : GetCappedMedian(auction, longKey, combined),
+                Price = combined.Count < 4 ? 0 : GetCappedMedian(auction, longKey, combined) * 98 / 100,
                 OldestRef = (short)(GetDay() - 2),
                 Volatility = 123// mark as risky
             };

@@ -121,6 +121,33 @@ public class DropOffTests
     }
 
     [Test]
+    public void InfernalSortOrderLowerValue()
+    {
+        SetBazaarPrice("ENCHANTMENT_ULTIMATE_HABANERO_TACTICS_5", 187_477_552);
+        SetBazaarPrice("ENCHANTMENT_MANA_VAMPIRE_10", 32_899_992);
+        SetBazaarPrice("DYE_BLACK_ICE", 26800000);
+        SetBazaarPrice("RECOMBOBULATOR_3000", 9_000_000);
+        AddLookupAndUpdateMeidans("Infernal.json", "INFERNAL_CRIMSON_LEGGINGS", new DateTime(2025, 4, 4));
+        var testAuction = new SaveAuction()
+        {
+            Tag = "INFERNAL_CRIMSON_LEGGINGS",
+            FlatenedNBT = new Dictionary<string, string>() { { "magic_find", "10" },{ "veteran", "10" }, 
+                { "dye_item", "DYE_BLACK_ICE" }, {"rarity_upgrades", "1" } },
+            Enchantments = [new(){Type = Enchantment.EnchantmentType.mana_vampire, Level = 10 }, new(){Type = Enchantment.EnchantmentType.ultimate_habanero_tactics, Level = 5 }],
+            StartingBid = 830_000_000,
+            HighestBidAmount = 0,
+            UId = 4,
+            AuctioneerId = "12aaa",
+            Tier = Tier.MYTHIC,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(testAuction);
+        var flip = found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        flip.TargetPrice.Should().Be(877592576L);
+    }
+
+    [Test]
     public void HermitCrabLevel100NotLimited()
     {
         AddLookupAndUpdateMeidans("HermitCrab.json", "PET_HERMIT_CRAB", new DateTime(2025, 1, 5));
@@ -939,7 +966,7 @@ public class DropOffTests
         sniperService.TestNewAuction(item);
         Assert.That(found.Count, Is.GreaterThanOrEqualTo(1));
         // combines buckets to reach estimation
-        Assert.That(295379936 - 3, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
+        Assert.That(289472337 - 3, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
     }
 
     [Test]
@@ -970,7 +997,7 @@ public class DropOffTests
 
         sniperService.TestNewAuction(auction.Dupplicate());
         Assert.That(1, Is.EqualTo(found.Count));
-        Assert.That(24716394 - 3, Is.EqualTo(found.First().TargetPrice));
+        Assert.That(24222066 - 3, Is.EqualTo(found.First().TargetPrice));
     }
 
 

@@ -457,7 +457,7 @@ namespace Coflnet.Sky.Sniper.Services
                 new Core.Enchantment(Enchantment.EnchantmentType.critical,6)
             };
             service.TestNewAuction(anotherAuction);
-            Assert.That(1000, Is.EqualTo(found.Last().TargetPrice));
+            Assert.That(1000, Is.EqualTo(found.First(f=>f.Finder==LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
         }
         /// <summary>
         /// szenario: overvaluing of " Any Rare 1"
@@ -548,7 +548,7 @@ namespace Coflnet.Sky.Sniper.Services
             sample.HighestBidAmount = 0;
             sample.StartingBid = 500;
             TestNewAuction(sample);
-            Assert.That(30_000_000, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
+            Assert.That(29_400_000, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
         }
         [Test]
         public async Task HigherValueCheckHonorsReforge()
@@ -616,7 +616,7 @@ namespace Coflnet.Sky.Sniper.Services
 
             TestNewAuction(sample);
             var result = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
-            Assert.That(result.TargetPrice, Is.EqualTo(13435701));
+            Assert.That(result.TargetPrice, Is.EqualTo(13166986));
             Assert.That(result.AdditionalProps.ContainsKey("combined"));
             // extra value was ommited
             SetBazaarPrice("PERFECT_PERIDOT_GEM", 29_000_000);
@@ -724,7 +724,7 @@ namespace Coflnet.Sky.Sniper.Services
             sample.HighestBidAmount = 0;
             sample.StartingBid = 1000;
             TestNewAuction(sample);
-            Assert.That(500_000_000, Is.EqualTo(found.Last().TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
+            Assert.That(490_000_000, Is.EqualTo(found.Last().TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
         }
         [Test]
         public void HigherValueCheckUsedOnLbinGetPrice()
@@ -1039,7 +1039,7 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.HighestBidAmount = 600_000_000;
             highestValAuction.StartingBid = 600_000_000;
             service.TestNewAuction(highestValAuction);
-            Assert.That(650000000, Is.EqualTo(found.Last().TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
+            Assert.That(637000000, Is.EqualTo(found.Last().TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
         }
 
         [Test]
@@ -1059,7 +1059,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.AddSoldItem(hundret);
             service.TestNewAuction(auction);
 
-            Assert.That(500_000, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
+            Assert.That(490_000, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
             var price = service.GetPrice(auction);
             Assert.That(price.Median, Is.EqualTo(503_333));
 
@@ -3246,7 +3246,7 @@ namespace Coflnet.Sky.Sniper.Services
             found.First().TargetPrice.Should().Be(39_000_000, "limited by 20% above reference and halfed by same seller");
         }
 
-        [TestCase(10, 40_000_000)] // at 10 volume the two buckets are combined 
+        [TestCase(10, 39_200_000)] // at 10 volume the two buckets are combined 
         [TestCase(12, 2_000_000)] // bucket is not combined as the original has sufficient volume 
         public async Task CombineWithClosestKeyToGetMedian(int refCount, int expectedEstimate)
         {
