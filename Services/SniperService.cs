@@ -1906,46 +1906,14 @@ ORDER BY l.`AuctionId`  DESC;
         /// <param name="modifiers"></param>
         /// <returns>The coin amount substracted</returns>
         public (long valueSubstracted, bool removedRarity, bool includeReforge, List<RankElem> ranked) CapKeyLength(
-            List<Models.Enchant> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction, long threshold = 500000, int elements = 5)
+            List<Enchant> enchants, List<KeyValuePair<string, string>> modifiers, SaveAuction auction, long threshold = 500000, int elements = 5)
         {
-            var underlyingItemValue = 0L;
-            if (auction.Tag != null && Lookups.TryGetValue(auction.Tag, out var lookups))
-            {
-                var price = lookups.CleanPricePerTier.GetValueOrDefault(auction.Tier);
-                if (price > 0)
-                {
-                    underlyingItemValue = price;
-                    threshold = Math.Max(price / 20, threshold);
-                }
-            }
-
-            var gems = modifiers.Where(m => m.Value == "PERFECT").ToList();
-            long valueSubstracted = 0;
-            foreach (var item in gems)
-            {
-                var gemKey = mapper.GetItemKeyForGem(item, auction.FlatenedNBT);
-                if (BazaarPrices.TryGetValue(gemKey, out var price))
-                {
-                    valueSubstracted += (long)price; // no removal cost because this is just add
-                    modifiers.Remove(item);
-                }
-            }
-            if (gems.Count == 5)
-            {
-                modifiers.Add(new("pgems", "5"));
-            }
+            long underlyingItemValue = GetCleanItemValue(auction, ref threshold);
+            long valueSubstracted = HandleGems(modifiers, auction);
             IEnumerable<RankElem> combined = ComparisonValue(enchants, modifiers, auction.Tag, auction.FlatenedNBT);
 
             bool includeReforge = AddReforgeValue(auction.Reforge, ref combined);
-            var list = combined as ICollection<RankElem> ?? combined.ToList();
-            var filtered = new List<RankElem>(list.Count);
-            foreach (var c in list)
-            {
-                if (c.Value != 0)
-                    filtered.Add(c);
-            }
-            filtered.Sort((a, b) => b.Value.CompareTo(a.Value));
-            combined = filtered;
+            combined = SortCombined(combined);
 
             var modifierSum = underlyingItemValue + combined?.Select(m => m.IsEstimate ? m.Value / 20 : m.Value).DefaultIfEmpty(0).Sum() ?? 0;
             threshold = Math.Max(threshold, modifierSum / 22);
@@ -1953,20 +1921,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (auction.HighestBidAmount == 0 || percentDiff > 1)
                 percentDiff = 1;
             // remove all but the top 5 
-            var toRemove = new List<RankElem>(5);
-            int i = 0;
-            foreach (var c in combined)
-            {
-                // keep top 1 even if below threshold
-                // always remove below 500k or ~1.6%
-                if ((i >= 5 && c.Value > 0)
-                    || (i >= 1 && i < 5 && c.Value > 0 && c.Value < threshold)
-                    || (i < 1 && c.Value > 0 && (c.Value < 500_000 || c.Value < threshold / 4)))
-                {
-                    toRemove.Add(c);
-                }
-                i++;
-            }
+            List<RankElem> toRemove = GetItemsToRemove(threshold, combined);
             bool removedRarity = false;
             foreach (var item in toRemove)
             {
@@ -1994,9 +1949,84 @@ ORDER BY l.`AuctionId`  DESC;
                         removedRarity = true;
                 }
             }
-            var ordered = combined.Where(c => c.Value == 0).Concat(combined.Take(elements)).ToList();
+            List<RankElem> ordered = GetOrdered(elements, combined);
             return (valueSubstracted, removedRarity, includeReforge, ordered);
 
+            static IEnumerable<RankElem> SortCombined(IEnumerable<RankElem> combined)
+            {
+                var list = combined as ICollection<RankElem> ?? combined.ToList();
+                var filtered = new List<RankElem>(list.Count);
+                foreach (var c in list)
+                {
+                    if (c.Value != 0)
+                        filtered.Add(c);
+                }
+                filtered.Sort((a, b) => b.Value.CompareTo(a.Value));
+                combined = filtered;
+                return combined;
+            }
+
+            static List<RankElem> GetOrdered(int elements, IEnumerable<RankElem> combined)
+            {
+                return combined.Where(c => c.Value == 0).Concat(combined.Take(elements)).ToList();
+            }
+        }
+
+        private static List<RankElem> GetItemsToRemove(long threshold, IEnumerable<RankElem> combined)
+        {
+            var toRemove = new List<RankElem>(5);
+            int i = 0;
+            foreach (var c in combined)
+            {
+                // keep top 1 even if below threshold
+                // always remove below 500k or ~1.6%
+                if ((i >= 5 && c.Value > 0)
+                    || (i >= 1 && i < 5 && c.Value > 0 && c.Value < threshold)
+                    || (i < 1 && c.Value > 0 && (c.Value < 500_000 || c.Value < threshold / 4)))
+                {
+                    toRemove.Add(c);
+                }
+                i++;
+            }
+
+            return toRemove;
+        }
+
+        private long GetCleanItemValue(SaveAuction auction, ref long threshold)
+        {
+            var underlyingItemValue = 0L;
+            if (auction.Tag != null && Lookups.TryGetValue(auction.Tag, out var lookups))
+            {
+                var price = lookups.CleanPricePerTier.GetValueOrDefault(auction.Tier);
+                if (price > 0)
+                {
+                    underlyingItemValue = price;
+                    threshold = Math.Max(price / 20, threshold);
+                }
+            }
+
+            return underlyingItemValue;
+        }
+
+        private long HandleGems(List<KeyValuePair<string, string>> modifiers, SaveAuction auction)
+        {
+            var gems = modifiers.Where(m => m.Value == "PERFECT").ToList();
+            long valueSubstracted = 0;
+            foreach (var item in gems)
+            {
+                var gemKey = mapper.GetItemKeyForGem(item, auction.FlatenedNBT);
+                if (BazaarPrices.TryGetValue(gemKey, out var price))
+                {
+                    valueSubstracted += (long)price; // no removal cost because this is just add
+                    modifiers.Remove(item);
+                }
+            }
+            if (gems.Count == 5)
+            {
+                modifiers.Add(new("pgems", "5"));
+            }
+
+            return valueSubstracted;
         }
 
         bool AddReforgeValue(ItemReferences.Reforge reforge, ref IEnumerable<RankElem> combined)
