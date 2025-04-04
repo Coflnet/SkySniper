@@ -1597,8 +1597,8 @@ namespace Coflnet.Sky.Sniper.Services
             var reforge = Dupplicate(highestValAuction);
             reforge.HighestBidAmount = 10_000_000;
             reforge.Reforge = ItemReferences.Reforge.Gilded;
-            AddVolume(reforge);
             SetBazaarPrice("MIDAS_JEWEL", 4_000_000);
+            AddVolume(reforge);
 
             TestNewAuction(highestValAuction);
             var price = service.GetPrice(highestValAuction);

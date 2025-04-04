@@ -46,6 +46,7 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly ConcurrentDictionary<(string, AuctionKey), (PriceEstimate result, DateTime addedAt)> ClosetMedianMapLookup = new();
         private readonly ConcurrentDictionary<(string, AuctionKey), (ReferencePrice result, DateTime addedAt)> HigherValueLbinMapLookup = new();
         private readonly ConcurrentDictionary<ModifierLookupKey, (RankElem, DateTime)> ModifierValueLookup = new();
+        private readonly ConcurrentDictionary<ItemReferences.Reforge, (RankElem, DateTime)> ReforgeValueLookup = new();
         private readonly ConcurrentDictionary<(string, KeyValuePair<string, string>), (long, DateTime)> AttributeValueLookup = new();
 
         private readonly Counter sellClosestSearch = Metrics.CreateCounter("sky_sniper_sell_closest_search", "Number of searches for closest sell");
@@ -282,6 +283,10 @@ namespace Coflnet.Sky.Sniper.Services
             foreach (var item in ClosetMedianMapLookup.Where(c => c.Value.addedAt < removeBefore).ToList())
             {
                 ClosetMedianMapLookup.TryRemove(item.Key, out _);
+            }
+            foreach (var item in ReforgeValueLookup.Where(c => c.Value.Item2 < removeBefore).ToList())
+            {
+                ReforgeValueLookup.TryRemove(item.Key, out _);
             }
         }
 
@@ -892,6 +897,7 @@ ORDER BY l.`AuctionId`  DESC;
                     dev.Logger.Instance.Error(e, $"Could not deduplicate");
                 }
             }
+            UpdateFragged(itemTag);
 
             void CombineBuckets(KeyValuePair<AuctionKey, ReferenceAuctions> item, ReferenceAuctions existingBucket)
             {
@@ -938,6 +944,16 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
+        private static void UpdateFragged(string itemTag)
+        {
+            if (itemTag.StartsWith("STARRED_") &&
+            // midas and daedalus needs golden fragments which are expensive
+            !MidasTags.Contains(itemTag) && !itemTag.StartsWith("STARRED_DAEDALUS_AXE"))
+            {
+                CombinableStarred.Add(itemTag);
+            }
+        }
+
         private static void CapBucketSize(ReferenceAuctions bucket)
         {
             while (bucket.References.Count > SizeToKeep && bucket.References.TryDequeue(out _)) { }
@@ -945,6 +961,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         public short AddSoldItem(SaveAuction auction, bool preventMedianUpdate = false)
         {
+            UpdateFragged(auction.Tag);
             (ReferenceAuctions bucket, var key) = GetBucketForAuction(auction);
             var extraValue = GetExtraValue(auction, key);
             var time = AddAuctionToBucket(auction, preventMedianUpdate, bucket, key.ValueSubstract, extraValue);
@@ -1937,11 +1954,20 @@ ORDER BY l.`AuctionId`  DESC;
             if (auction.HighestBidAmount == 0 || percentDiff > 1)
                 percentDiff = 1;
             // remove all but the top 5 
-            var toRemove = combined.Skip(5).Where(c => c.Value > 0)
-                    // keep top 1 even if below threshold
-                    .Concat(combined.Skip(1).Where(c => c.Value > 0 && c.Value < threshold))
-                    // always remove below 500k or ~1.6%
-                    .Concat(combined.Take(1).Where(c => c.Value > 0 && (c.Value < 500_000 || c.Value < threshold / 4))).ToList();
+            var toRemove = new List<RankElem>(5);
+            int i = 0;
+            foreach (var c in combined)
+            {
+                // keep top 1 even if below threshold
+                // always remove below 500k or ~1.6%
+                if ((i >= 5 && c.Value > 0)
+                    || (i >= 1 && i < 5 && c.Value > 0 && c.Value < threshold)
+                    || (i < 1 && c.Value > 0 && (c.Value < 500_000 || c.Value < threshold / 4)))
+                {
+                    toRemove.Add(c);
+                }
+                i++;
+            }
             foreach (var item in toRemove)
             {
                 // use percentage of full value
@@ -1978,8 +2004,16 @@ ORDER BY l.`AuctionId`  DESC;
             bool includeReforge = Constants.RelevantReforges.Contains(reforge);
             if (includeReforge)
             {
+                if (ReforgeValueLookup.TryGetValue(reforge, out var value))
+                {
+                    combined = combined.Append(value.Item1);
+                    return includeReforge;
+                }
                 long reforgeValue = GetReforgeValue(reforge);
-                combined = combined.Append(new RankElem(reforge, reforgeValue));
+                var element = new RankElem(reforge, reforgeValue);
+                combined = combined.Append(element);
+                if (reforgeValue > 0)
+                    ReforgeValueLookup[reforge] = (element, DateTime.UtcNow);
             }
 
             return includeReforge;
@@ -2203,7 +2237,7 @@ ORDER BY l.`AuctionId`  DESC;
                 else
                     return NormalizeNumberTo(s, PetExpMaxlevel / 6, 6);
             }
-            var generalNormalizations = NormalizeGeneral(s, (tag?.StartsWith("MIDAS") ?? false) || (tag?.StartsWith("STARRED_MIDAS") ?? false),
+            var generalNormalizations = NormalizeGeneral(s, IsMidas(tag),
                 flattenedNbt,
                 tag == "PET_GOLDEN_DRAGON"
                 );
@@ -2288,6 +2322,11 @@ ORDER BY l.`AuctionId`  DESC;
             if (s.Key == "color" && (flattenedNbt.ContainsKey("dye_item") || itemService.GetDefaultColorAndCategory(tag).color == s.Value.Replace(':', ',')))
                 return Ignore;
             return s;
+        }
+
+        private static bool IsMidas(string tag)
+        {
+            return tag != null && MidasTags.Contains(tag);
         }
 
         public static KeyValuePair<string, string> NormalizeGeneral(KeyValuePair<string, string> s, bool isMiddas, Dictionary<string, string> flatten, bool isGDrag)
@@ -2753,6 +2792,14 @@ ORDER BY l.`AuctionId`  DESC;
 
         public static readonly HashSet<string> HyperionGroup = new() { "SCYLLA", "VALKYRIE", "NECRON_BLADE", "ASTRAEA" };
         public static readonly HashSet<string> WinterFragmentGroup = new() { "STARRED_GLACIAL_SCYTHE", "STARRED_ICE_SPRAY_WAND", "STARRED_YETI_SWORD" };
+        private static readonly HashSet<string> MidasTags = new HashSet<string>
+        {
+            "MIDAS_STAFF",
+            "MIDAS_SWORD",
+            "STARRED_MIDAS_STAFF",
+            "STARRED_MIDAS_SWORD"
+        };
+        private static readonly HashSet<string> CombinableStarred = new();
         /// <summary>
         /// Remaps item tags into one item if they are easily switchable
         /// </summary>
@@ -2762,9 +2809,8 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (HyperionGroup.Contains(itemGroupTag))
                 return ("HYPERION", GetPriceForItem("GIANT_FRAGMENT_LASER") * 8); // easily craftable from one into the other
-            if (itemGroupTag.StartsWith("STARRED_")
-                && !itemGroupTag.Contains("MIDAS_") && !itemGroupTag.StartsWith("STARRED_DAEDALUS_AXE"))
-            {// midas and daedalus needs golden fragments which are expensive
+            if (CombinableStarred.Contains(itemGroupTag))
+            {
                 // technically neds 8 for crafting but looses the value on craft so using 7
                 var isFrozen = WinterFragmentGroup.Contains(itemGroupTag);
                 var cost = GetPriceForItem(isFrozen ? "WINTER_FRAGMENT" : "LIVID_FRAGMENT") * 7;
