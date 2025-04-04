@@ -970,6 +970,7 @@ ORDER BY l.`AuctionId`  DESC;
             (ReferenceAuctions bucket, var key) = GetBucketForAuction(auction);
             var extraValue = GetExtraValue(auction, key);
             var time = AddAuctionToBucket(auction, preventMedianUpdate, bucket, key.ValueSubstract, extraValue);
+            HigherValueLbinMapLookup.TryRemove(((string, AuctionKey))(auction.Tag, key), out _);
             try
             {
                 var attributesOnAuction = auction.FlatenedNBT.Where(a => Constants.AttributeKeys.Contains(a.Key)).ToList();
