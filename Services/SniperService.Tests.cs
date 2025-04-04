@@ -172,7 +172,11 @@ namespace Coflnet.Sky.Sniper.Services
             SetBazaarPrice("ENCHANTMENT_MANA_VAMPIRE_6", 2_100_000);
             SetBazaarPrice("ENCHANTMENT_SHARPNESS_6", 4_100_000);
             SetBazaarPrice("ENCHANTMENT_GROWTH_6", 4_100_000);
-            SetBazaarPrice("TEST", 60_000_000);
+            AddVolume(new SaveAuction()
+            {
+                Tag = "TEST",
+                HighestBidAmount = 60_000_000
+            });
             var key = service.KeyFromSaveAuction(new SaveAuction()
             {
                 Tag = "TEST",

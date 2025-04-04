@@ -781,7 +781,7 @@ ORDER BY l.`AuctionId`  DESC;
             var minDay = GetDay() - maxAge;
             var values = ComparisonValue(itemKey.Enchants, itemKey.Modifiers.ToList(), itemTag, null).ToList();
             return l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0 && !l.Key.Modifiers.Any(m => m.Key == "virtual"))
-                            .OrderByDescending(m => itemKey.Similarity(m.Key, this, ComparisonValue(m.Key.Enchants, m.Key.Modifiers.ToList(), itemTag, null).ToList(), values) + (m.Value.OldestRef > minDay ? 0 : -10));
+                            .OrderByDescending(m => itemKey.Similarity(m.Key, this, [.. ComparisonValue(m.Key.Enchants, m.Key.Modifiers, itemTag, null)], values) + (m.Value.OldestRef > minDay ? 0 : -10));
         }
 
         void AssignMedian(PriceEstimate result, AuctionKey key, ReferenceAuctions bucket, long gemVal)
@@ -1911,22 +1911,14 @@ ORDER BY l.`AuctionId`  DESC;
             var underlyingItemValue = 0L;
             if (auction.Tag != null && Lookups.TryGetValue(auction.Tag, out var lookups))
             {
-                var generalRelevant = lookups.Lookup.Where(v => v.Value.Price > 0).ToList();
-                var percise = generalRelevant.Where(v => v.Key.Tier == auction.Tier).ToList();
-                var relevant = percise.Count > 0 ? percise : generalRelevant;
-                if (relevant.Count > 0)
+                var price = lookups.CleanPricePerTier.GetValueOrDefault(auction.Tier);
+                if (price > 0)
                 {
-                    var firthPercentile = relevant.OrderBy(v => v.Value.Price).Skip((int)(relevant.Count * 0.05)).First().Value.Price;
-                    underlyingItemValue = firthPercentile;
-                    threshold = Math.Max(firthPercentile / 20, threshold);
+                    underlyingItemValue = price;
+                    threshold = Math.Max(price / 20, threshold);
                 }
             }
 
-            if (auction.Tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false)
-            {
-                // Jasper0 slot can't be accessed on starred (Fragged) items
-                modifiers?.RemoveAll(m => m.Key == "JASPER_0");
-            }
             var gems = modifiers.Where(m => m.Value == "PERFECT").ToList();
             long valueSubstracted = 0;
             foreach (var item in gems)
@@ -2027,7 +2019,7 @@ ORDER BY l.`AuctionId`  DESC;
             return includeReforge;
         }
 
-        private IEnumerable<RankElem> ComparisonValue(IEnumerable<Enchant> enchants, List<KeyValuePair<string, string>> modifiers, string tag, Dictionary<string, string> flatNbt)
+        private IEnumerable<RankElem> ComparisonValue(IEnumerable<Enchant> enchants, IList<KeyValuePair<string, string>> modifiers, string tag, Dictionary<string, string> flatNbt)
         {
             var valuePerEnchant = enchants?.Select(item => new RankElem(item, mapper.EnchantValue(new Core.Enchantment(item.Type, item.Lvl), null, BazaarPrices, tag)));
 
@@ -2065,7 +2057,7 @@ ORDER BY l.`AuctionId`  DESC;
             return combined;
         }
 
-        private RankElem ModifierEstimate(List<KeyValuePair<string, string>> modifiers, string tag, Dictionary<string, string> flatNbt, KeyValuePair<string, string> mod)
+        private RankElem ModifierEstimate(IList<KeyValuePair<string, string>> modifiers, string tag, Dictionary<string, string> flatNbt, KeyValuePair<string, string> mod)
         {
             var items = GetItemKeysForModifier(tag, mod);
             var sum = 0L;
@@ -2131,7 +2123,7 @@ ORDER BY l.`AuctionId`  DESC;
             };
         }
 
-        private long GetGemstoneSlotWorth(List<KeyValuePair<string, string>> modifiers, string tag, KeyValuePair<string, string> mod)
+        private long GetGemstoneSlotWorth(IList<KeyValuePair<string, string>> modifiers, string tag, KeyValuePair<string, string> mod)
         {
             var valueAdd = 0L;
             var present = mod.Value.Split(',').ToList();
@@ -2145,7 +2137,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (costs.unavailable.Count() > 0)
             {
-                modifiers.RemoveAll(m => m.Key == "unlocked_slots");
+                (modifiers as List<KeyValuePair<string,string>>)?.RemoveAll(m => m.Key == "unlocked_slots");
                 var remaining = present.Except(costs.unavailable);
                 if (remaining.Count() > 0)
                     modifiers.Add(new(mod.Key, string.Join(",", remaining.OrderBy(s => s))));
@@ -2178,7 +2170,7 @@ ORDER BY l.`AuctionId`  DESC;
         private class ModifierMetadata
         {
             public string ItemTag;
-            public List<KeyValuePair<string, string>> RelevantModifiers;
+            public IList<KeyValuePair<string, string>> RelevantModifiers;
             public KeyValuePair<string, string> Modifier;
         }
 
