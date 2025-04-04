@@ -540,18 +540,10 @@ ORDER BY l.`AuctionId`  DESC;
                     result.LbinKey = res.result.LbinKey;
                 }
             }
-            var lbinCap = HigherValueLbinMapLookup.GetOrAdd(((string, AuctionKey))(auction.Tag, itemKey), a =>
+            ReferencePrice lbinCap = GetLbinCap(auction, l, itemKey);
+            if (lbinCap.Price != 0 && result.Lbin.Price > lbinCap.Price)
             {
-                var higherValue = l.Where(k => k.Value.Lbin.Price != 0
-                                    && IsHigherValue(auction.Tag, itemKey, k.Key) && k.Key.Reforge == itemKey.Reforge);
-                var MaxValue = higherValue.OrderBy(b => b.Value.Lbin.Price).FirstOrDefault();
-                if (MaxValue.Key == a.Item2)
-                    return (default, DateTime.UtcNow); // best match is itself, skip
-                return (MaxValue.Value?.Lbin ?? default, DateTime.UtcNow);
-            });
-            if (lbinCap.result.Price != 0 && result.Lbin.Price > lbinCap.result.Price)
-            {
-                result.Lbin = lbinCap.result;
+                result.Lbin = lbinCap;
                 result.LbinKey += $"+HV";
             }
             // correct for combined items
@@ -563,6 +555,19 @@ ORDER BY l.`AuctionId`  DESC;
             return result;
         }
 
+        private ReferencePrice GetLbinCap(SaveAuction auction, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKeyWithValue itemKey)
+        {
+            var lbinCap = HigherValueLbinMapLookup.GetOrAdd(((string, AuctionKey))(auction.Tag, itemKey), a =>
+            {
+                var higherValue = l.Where(k => k.Value.Lbin.Price != 0
+                                    && IsHigherValue(auction.Tag, itemKey, k.Key) && k.Key.Reforge == itemKey.Reforge);
+                var MaxValue = higherValue.OrderBy(b => b.Value.Lbin.Price).FirstOrDefault();
+                if (MaxValue.Key == a.Item2)
+                    return (default, DateTime.UtcNow); // best match is itself, skip
+                return (MaxValue.Value?.Lbin ?? default, DateTime.UtcNow);
+            }).result;
+            return lbinCap;
+        }
 
         private (PriceEstimate result, DateTime addedAt) GetEstimatedMedian(SaveAuction auction, PriceEstimate result, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, KeyWithValueBreakdown itemKey, long gemVal, DateTime now)
         {
@@ -2659,7 +2664,7 @@ ORDER BY l.`AuctionId`  DESC;
                         risky?.Log(e.ToString());
                     }
                 });
-                if(MIN_TARGET == 0)
+                if (MIN_TARGET == 0)
                     riskyFind.Wait(); // test
             }
 
@@ -3385,25 +3390,14 @@ ORDER BY l.`AuctionId`  DESC;
 
         private bool PotentialSnipe(SaveAuction auction, double lbinPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue, KeyWithValueBreakdown breakdown)
         {
+            var lowestHigherBin = GetLbinCap(auction, l, breakdown);
             var higherValueLowerBin = bucket.Lbin.Price;
-            if (HigherValueKeys(key, l, lbinPrice).Any(k =>
-            {
-                if (l.TryGetValue(k, out ReferenceAuctions altBucket))
-                {
-                    if (altBucket.Lbin.Price != 0 && altBucket.Lbin.Price < lbinPrice)
-                    {
-                        Activity.Current.Log($"Higher value key {k} has lower lbin {altBucket.Lbin.Price} < {lbinPrice}");
-                        return true;
-                    }
-                    if (altBucket.Lbin.Price != 0 && altBucket.Lbin.Price < higherValueLowerBin)
-                        higherValueLowerBin = altBucket.Lbin.Price;// cheaper lbin found
-                }
-                return false;
-            }))
-            {
-                Activity.Current.Log("Higher value key has lower lbin");
-                return false;
-            }
+            if (lowestHigherBin.AuctionId != default)
+                if (lowestHigherBin.Price < lbinPrice)
+                    return false;
+                else
+                    higherValueLowerBin = lowestHigherBin.Price;
+
             if (IsStacksize1Cheaper(lbinPrice, key, l))
             {
                 Activity.Current.Log("Stacksize 1 is cheaper");
@@ -3537,17 +3531,18 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static bool IsStacksize1Cheaper(double lbinPrice, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)
         {
-            if (key.Count > 1)
+            if (key.Count <= 1)
             {
-                var lowerCountKey = new AuctionKey(key)
-                {
-                    Count = 1
-                };
-                if (l.TryGetValue(lowerCountKey, out ReferenceAuctions lowerCountBucket))
-                {
-                    if (lowerCountBucket.Price != 0 && lowerCountBucket.Price * key.Count < lbinPrice)
-                        return true;
-                }
+                return false;
+            }
+            var lowerCountKey = new AuctionKey(key)
+            {
+                Count = 1
+            };
+            if (l.TryGetValue(lowerCountKey, out ReferenceAuctions lowerCountBucket))
+            {
+                if (lowerCountBucket.Price != 0 && lowerCountBucket.Price * key.Count < lbinPrice)
+                    return true;
             }
             return false;
         }
