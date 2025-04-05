@@ -2396,7 +2396,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (s.Key == "yogsKilled")
                 return NormalizeNumberTo(s, 5_000, 2);
             if (s.Key == "thunder_charge")
-                return NormalizeNumberTo(s, 1_000_000, 5);
+                return NormalizeGroupNumber(s, 150_000, 1_000_000, 2_500_000, 5_000_000);
             if (s.Key == "mined_crops")
                 return NormalizeNumberTo(s, 500_000_000);
             if (s.Key == "blocksBroken")

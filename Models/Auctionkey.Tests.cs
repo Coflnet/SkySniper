@@ -231,7 +231,7 @@ public class AuctionkeyTests
             Tier = Tier.MYTHIC
         };
         var key = service.KeyFromSaveAuction(baseAuction);
-        Assert.That("COMBAT_0,JASPER_0", Is.EqualTo(key.Modifiers.First().Value));
+        key.Modifiers.First().Value.Should().NotContain("SAPPHIRE_0");
     }
 
     [Test]

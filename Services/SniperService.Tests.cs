@@ -2985,7 +2985,7 @@ namespace Coflnet.Sky.Sniper.Services
             AddVolume(highestValAuction); // refresh median after noticing multiple rarities
 
             var price = service.GetPrice(higherValue);
-            Assert.That(price.Median, Is.EqualTo(86000000), "estimate for charge + recomb");
+            Assert.That(price.Median, Is.EqualTo(90000000), "estimate for charge + recomb");
             service.TestNewAuction(highestValAuction);
             var rarePriceCapped = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).First();
             rarePriceCapped.TargetPrice.Should().Be(20_000_000);
