@@ -3118,12 +3118,13 @@ ORDER BY l.`AuctionId`  DESC;
             var expValue = GetValueDifferenceForExp(auction, key, l);
             var volume = bucket.Volume;
             var medianPrice = bucket.Price + extraValue;
+            var groupTag = GetAuctionGroupTag(auction.Tag);
             var foundSnipe = false;
             if ((bucket.Lbin.Price > lbinPrice || bucket.Price == 0) && (MaxMedianPriceForSnipe(bucket, breakdown) > lbinPrice)
                 && (!fastMode || bucket.Volume > 5)
                )
             {
-                foundSnipe = PotentialSnipe(auction, lbinPrice, bucket, key, l, extraValue, breakdown);
+                foundSnipe = PotentialSnipe(auction, groupTag, lbinPrice, bucket, key, l, extraValue, breakdown);
             }
             if (medianPrice > minMedPrice && BucketHasEnoughReferencesForPrice(bucket, lookup))
             {
@@ -3389,7 +3390,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private bool PotentialSnipe(SaveAuction auction, double lbinPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue, KeyWithValueBreakdown breakdown)
+        private bool PotentialSnipe(SaveAuction auction, (string tag, long costSubstract) groupTag, double lbinPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue, KeyWithValueBreakdown breakdown)
         {
             var lowestHigherBin = GetLbinCap(auction, l, breakdown);
             var higherValueLowerBin = bucket.Lbin.Price;
@@ -3429,7 +3430,7 @@ ORDER BY l.`AuctionId`  DESC;
 
                 // no references, check against all lbins
                 // all key modifiers and enchants need to be in the reference bucket or higher
-                var higherValueKeys = l.Where(x => IsHigherValue(auction.Tag, key, x.Key)).ToList();
+                var higherValueKeys = l.Where(x => IsHigherValue(groupTag.tag, key, x.Key)).ToList();
                 var lowestLbin = higherValueKeys
                                 .Where(x => x.Value.Lbin.Price > 0 && x.Value.Lbin.Price < bucket.Lbin.Price)
                                 .Select(x => x.Value.Lbin.Price).DefaultIfEmpty(long.MaxValue).Min();
@@ -3461,7 +3462,7 @@ ORDER BY l.`AuctionId`  DESC;
                     percentile = Math.Min(percentile, Math.Min(targetPrice * 95 / 100, (long)(referencePrice * 1.5)));
                     props["noHigherLbin"] = percentile.ToString();
                 }
-                var reduced = CapAtCraftCost(auction.Tag, percentile, breakdown, 0);
+                var reduced = CapAtCraftCost(groupTag.tag, percentile, breakdown, 0);
                 if (reduced > 0)
                 {
                     if (percentile != reduced)
@@ -3477,8 +3478,8 @@ ORDER BY l.`AuctionId`  DESC;
             else
             {
                 long capped = 0;
-                if ((craftCostService?.TryGetCost(auction.Tag, out var craftCost) ?? false) || key.Modifiers.Count > 0 || key.Enchants.Count > 0)
-                    capped = CapAtCraftCost(auction.Tag, higherValueLowerBin, breakdown, 0);
+                if ((craftCostService?.TryGetCost(groupTag.tag, out var craftCost) ?? false) || key.Modifiers.Count > 0 || key.Enchants.Count > 0)
+                    capped = CapAtCraftCost(groupTag.tag, higherValueLowerBin, breakdown, 0);
                 else
                     targetPrice = Math.Min(higherValueLowerBin * 99 / 100, bucket.Price * 4 / 3 + 1_000_000); // pull target up for non craftable clean
                 if (capped > 0)
