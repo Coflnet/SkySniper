@@ -2944,8 +2944,8 @@ ORDER BY l.`AuctionId`  DESC;
                     props.Add("fromExp", fromExp.ToString());
                 }
                 toSubstract -= fromExp;
-                if (missingModifiers.Any(m => m.Key == "candyUsed" && m.Value == "0"))
-                    toSubstract += (long)(closest.Value.Price * 0.1); // 10% for pet candy
+                if (missingModifiers.Any(m => m.Key == "candyUsed" && m.Value == "1"))
+                    toSubstract += (long)(closest.Value.Price * 0.1 + 400_000); // 10% for pet candy
                 var killModifier = missingModifiers.FirstOrDefault(m => m.Key.EndsWith("kills"));
                 if (killModifier.Key != default)
                 {

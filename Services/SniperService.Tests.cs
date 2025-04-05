@@ -1763,17 +1763,17 @@ namespace Coflnet.Sky.Sniper.Services
         [Test]
         public void StonksPetCandyReduction()
         {
-            highestValAuction.FlatenedNBT = new() { { "candyUsed", "1" } };
-            var withoutCandy = Dupplicate(highestValAuction);
-            withoutCandy.HighestBidAmount = 10_000_000;
-            withoutCandy.FlatenedNBT["candyUsed"] = "0";
-            AddVolume(withoutCandy);
+            highestValAuction.FlatenedNBT = new() { { "candyUsed", "0" } };
+            var withCandy = Dupplicate(highestValAuction);
+            withCandy.HighestBidAmount = 10_000_000;
+            withCandy.FlatenedNBT["candyUsed"] = "1";
+            AddVolume(withCandy);
 
             TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
-            Assert.That(8100000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
-            Assert.That("candyUsed:0 (1000000)", Is.EqualTo(estimate.AdditionalProps["missingModifiers"]));
+            Assert.That(7740000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That("candyUsed:1 (1400000)", Is.EqualTo(estimate.AdditionalProps["missingModifiers"]));
         }
 
         private void TestNewAuction(SaveAuction a)
