@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using System.Net;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
+using System.Globalization;
 
 namespace Coflnet.Sky.Sniper.Services
 {
@@ -1506,6 +1507,10 @@ ORDER BY l.`AuctionId`  DESC;
             }
             var modifierSum = breakdown.Select(v =>
             {
+                if(v.Modifier.Key == "candyUsed")
+                {
+                    return 0;
+                }
                 if (!Constants.AttributeKeys.Contains(v.Modifier.Key))
                     return v.Value;
                 return AttributeValueEstimateForCap(tag, v, breakdown, lookup);
@@ -2196,7 +2201,7 @@ ORDER BY l.`AuctionId`  DESC;
                 && lookup.Lookup.TryGetValue(maxLevel, out var maxLevelValue) && maxLevelValue.Price > 100)
             {
                 var precise = Math.Max((maxLevelValue.Price - baseLevel.Price) / int.Parse(maxExp), 200_000);
-                return (int)(precise * Math.Max(float.Parse(mod.Value), 0.5));
+                return (int)(precise * Math.Max(float.Parse(mod.Value, CultureInfo.InvariantCulture), 0.5));
             }
             var factor = Math.Max(GetPriceForItem(tag) / 6, 10_000_000);
             var value = (int)(factor * (float.Parse(mod.Value) + 1));

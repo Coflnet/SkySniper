@@ -780,14 +780,8 @@ public class DropOffTests
     [Test]
     public void EndermanStonksLevelComparison()
     {
-        var converted = LoadLookupMock("Enderman.json");
         SetBazaarPrice("ENDERMAN_SLAYER", 400_000); // not on bazaar but for price test enough
-        SniperService.StartTime = new DateTime(2021, 9, 25) + (DateTime.UtcNow - new DateTime(2025, 3, 23));
-        sniperService.AddLookupData("PET_ENDERMAN", converted);
-        foreach (var item in converted.Lookup)
-        {
-            sniperService.UpdateMedian(item.Value, ("PET_ENDERMAN", sniperService.GetBreakdownKey(item.Key, "PET_ENDERMAN")));
-        }
+        AddLookupAndUpdateMeidans("Enderman.json","PET_ENDERMAN", new DateTime(2025, 3, 23));
         var auction = new SaveAuction()
         {
             Tag = "PET_ENDERMAN",
@@ -802,6 +796,25 @@ public class DropOffTests
         sniperService.TestNewAuction(auction);
         var flip = found.FirstOrDefault(f => f.Finder == LowPricedAuction.FinderType.STONKS);
         flip.TargetPrice.Should().Be(712500L, "exp adjusted");
+    }
+    [Test]
+    public void PetCraftCostCandyNegative()
+    {
+        AddLookupAndUpdateMeidans("Enderman.json","PET_ENDERMAN", new DateTime(2025, 3, 23));
+        var auction = new SaveAuction()
+        {
+            Tag = "PET_ENDERMAN",
+            StartingBid = 100_000,
+            UId = 4,
+            FlatenedNBT = new Dictionary<string, string>() { { "exp", "1166478" }, { "candyUsed", "0" } },
+            AuctioneerId = "12aaa",
+            Tier = Tier.COMMON,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var flip = found.FirstOrDefault(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
+        flip.TargetPrice.Should().BeLessThan(3307238L, "exp value adjusted"); // by default was 5m+
     }
 
     private static PriceLookup LoadLookupMock(string mockFileName)

@@ -2411,9 +2411,9 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
 
-        [TestCase(4300000, 4821272)]
-        [TestCase(8400000, 5234066)]
-        [TestCase(20_400000, 5_000_000)]
+        [TestCase(4300000, 1554604)]
+        [TestCase(8400000, 1967398)]
+        [TestCase(20_400000, 3933330)]
         public void MedianAdjustForBucketExpDiff(int exp, int expectedPrice)
         {
             highestValAuction.Count = 1;
@@ -2434,7 +2434,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.TestNewAuction(sample);
             var flip = found.Where(a => a.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
             Assert.That(flip, Is.Not.Null, "flip should have been found");
-            Assert.That(expectedPrice, Is.EqualTo(flip.TargetPrice), "median should be adjusted for exp diff");
+            Assert.That(flip.TargetPrice, Is.EqualTo(expectedPrice), "median should be adjusted for exp diff (craft cost capped)");
         }
 
         //[TestCase(31023190, 31023190, 409489302, LowPricedAuction.FinderType.SNIPER_MEDIAN)] // is adusted downwards
