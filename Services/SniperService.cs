@@ -2765,7 +2765,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return; // makes only sense if there is something combined
             }
             // get enough relevant to build a median and try to get highest value (most enchantments and modifiers)
-            var combined = relevant.SelectMany(r => r.e.Value.References.Select(ri => (ri, relevancy: r.value * (ri.Day-GetDay() + 10) * Math.Log10(ri.Price + 1))))
+            var combined = relevant.SelectMany(r => r.e.Value.References.Select(ri => (ri, relevancy: r.value * (ri.Day - GetDay() + 10) * Math.Log10(ri.Price + 1))))
                                 .OrderByDescending(r => r.relevancy).Select(r => r.ri).Take(targetVolume).ToList();
             if (combined.Count == 0)
             {
@@ -3458,7 +3458,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (lowestLbin > 10_000_000_000)
                 {
                     Activity.Current.Log($"Reduced because no higher value lbin");
-                    percentile = Math.Min(percentile, targetPrice * 95 / 100);
+                    percentile = Math.Min(percentile, Math.Min(targetPrice * 95 / 100, (long)(referencePrice * 1.5)));
                     props["noHigherLbin"] = percentile.ToString();
                 }
                 var reduced = CapAtCraftCost(auction.Tag, percentile, breakdown, 0);
