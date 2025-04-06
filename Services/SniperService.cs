@@ -1628,6 +1628,14 @@ ORDER BY l.`AuctionId`  DESC;
                     var secondType = tag.Split("_")[1];
                     options = CrimsonArmors.SelectMany(s => Lookups.TryGetValue(s + secondType, out var lookup) ? lookup.Lookup.AsEnumerable() : []);
                 }
+                if(tag == "HELLFIRE_ROD")
+                {
+                    // hellfire rod can be easily upgraded from magma rod
+                    if(Lookups.TryGetValue("INFERNO_ROD", out var inferno))
+                        options = options.Concat(inferno.Lookup);
+                    if (Lookups.TryGetValue("MAGMA_ROD", out var magma))
+                        options = options.Concat(magma.Lookup);
+                }
                 double quarterPercentile = CheckPaths(v, options);
                 return (long)(Math.Pow(2, baseLevel) * quarterPercentile * 1.20);
             }
