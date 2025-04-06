@@ -498,7 +498,7 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.HighestBidAmount = 4000000;
             var overvalued = Dupplicate(highestValAuction);
             overvalued.HighestBidAmount = 1_500_000_000;
-            service.AddSoldItem(Dupplicate(overvalued));
+            AddVolume(Dupplicate(overvalued));
             TestNewAuction(overvalued);
             var higherValue = Dupplicate(highestValAuction);
             higherValue.FlatenedNBT["ability_scroll"] = "IMPLOSION_SCROLL WITHER_SHIELD_SCROLL";
@@ -506,7 +506,7 @@ namespace Coflnet.Sky.Sniper.Services
             TestNewAuction(higherValue);
             TestNewAuction(highestValAuction);
             var foundFlip = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER).Last().TargetPrice;
-            Assert.That(foundFlip, Is.EqualTo(1_000_000_000), JsonConvert.SerializeObject(found, Formatting.Indented));
+            Assert.That(foundFlip, Is.EqualTo(1_000_000_000 -1), JsonConvert.SerializeObject(found, Formatting.Indented));
         }
         /// <summary>
         /// https://discord.com/channels/267680588666896385/1264680179624706050/1264685231063961753
@@ -3045,7 +3045,7 @@ namespace Coflnet.Sky.Sniper.Services
             service.AddSoldItem(referenceSale);
             referenceSale = Dupplicate(highestValAuction);
             referenceSale.HighestBidAmount = 5_400_000;
-            service.AddSoldItem(referenceSale);
+            AddVolume(referenceSale);
             var flip = Dupplicate(highestValAuction);
             flip.StartingBid = 5;
             highestValAuction.FlatenedNBT["rarity_upgrades"] = "1";
@@ -3054,7 +3054,7 @@ namespace Coflnet.Sky.Sniper.Services
 
             TestNewAuction(flip);
             Assert.That(5_400_000, Is.EqualTo(found.Last().TargetPrice));
-            Assert.That(2, Is.EqualTo(found.Last().DailyVolume));
+            Assert.That(found.Last().DailyVolume, Is.EqualTo(5));
         }
         [Test]
         public void SniperLimitedByIngredientCostEstimation()
@@ -3086,7 +3086,7 @@ namespace Coflnet.Sky.Sniper.Services
             flip.StartingBid = 5;
             highestValAuction.FlatenedNBT["rarity_upgrades"] = "1";
             highestValAuction.HighestBidAmount = 12_000_000;
-            service.AddSoldItem(highestValAuction);
+            AddVolume(highestValAuction, 5);
 
             TestNewAuction(flip);
             Assert.That(found.Last().TargetPrice, Is.EqualTo(12_000_000));
@@ -3243,7 +3243,7 @@ namespace Coflnet.Sky.Sniper.Services
 
             service.TestNewAuction(flip);
             service.FinishedUpdate();
-            found.First().TargetPrice.Should().Be(39_000_000, "limited by 20% above reference and halfed by same seller");
+            found.First().TargetPrice.Should().Be(16250000L, "limited by 20% above reference and halfed by same seller and not many higher value sells");
         }
 
         [TestCase(10, 39_200_000)] // at 10 volume the two buckets are combined 

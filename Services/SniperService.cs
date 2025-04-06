@@ -1507,7 +1507,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             var modifierSum = breakdown.Select(v =>
             {
-                if(v.Modifier.Key == "candyUsed")
+                if (v.Modifier.Key == "candyUsed")
                 {
                     return 0;
                 }
@@ -1973,8 +1973,7 @@ ORDER BY l.`AuctionId`  DESC;
                         filtered.Add(c);
                 }
                 filtered.Sort((a, b) => b.Value.CompareTo(a.Value));
-                combined = filtered;
-                return combined;
+                return filtered;
             }
 
             static List<RankElem> GetOrdered(int elements, IEnumerable<RankElem> combined)
@@ -2066,7 +2065,7 @@ ORDER BY l.`AuctionId`  DESC;
 
             var handler = (KeyValuePair<string, string> mod) =>
             {
-                var lookupKey = new ModifierLookupKey() { ItemTag = tag, Modifier = mod, RelevantModifiers = modifiers.ToDictionary() };
+                var lookupKey = new ModifierLookupKey() { ItemTag = tag, Modifier = mod, RelevantModifiers = modifiers.GroupBy(m => m.Key).Select(m => m.First()).ToDictionary() };
                 if (ModifierValueLookup.TryGetValue(lookupKey, out var value))
                 {
                     return value.Item1;
@@ -3443,17 +3442,22 @@ ORDER BY l.`AuctionId`  DESC;
                 var allReferences = higherValueKeys.SelectMany(x => x.Value.References.Select(r => r.Price / (x.Key.Count == 0 ? 1 : x.Key.Count))).ToList();
                 var referencePrice = allReferences
                                 .OrderBy(p => p).Skip(allReferences.Count / 4)
-                                .DefaultIfEmpty(targetPrice / 4).Min() * Math.Max(1, allReferences.Count / 20);
-                if (bucket.Price == 0 && bucket.References.Count > 2 && higherValueKeys.Count <= 2) // manip indicator
-                {
-                    percentile /= 5;
-                }
-                percentile = Math.Min(percentile, referencePrice);
+                                .DefaultIfEmpty(targetPrice / 2).Min() * Math.Max(1, allReferences.Count / 20);
+                
                 var sumBrekdown = breakdown.ValueBreakdown.Sum(v => v.Value);
                 if (percentile < sumBrekdown * 0.7)
                 {
                     percentile = (long)Math.Min((sumBrekdown * 1.6 + percentile) / 3, referencePrice * 1.2);
                 }
+                if (bucket.Price == 0 && bucket.References.Count > 2 && higherValueKeys.Count <= 2) // manip indicator
+                {
+                    percentile /= 5;
+                }
+                else if (bucket.References.Count < 4 && allReferences.Count < 5)
+                {
+                    percentile = Math.Min(percentile, referencePrice / 2);
+                }
+                percentile = Math.Min(percentile, referencePrice);
                 if (bucket.Price == 0 && bucket.Lbin.Seller == GetSellerId(auction))
                 {
                     props["sellerMatch"] = percentile.ToString();
