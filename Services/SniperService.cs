@@ -2390,6 +2390,8 @@ ORDER BY l.`AuctionId`  DESC;
                 return NormalizeGroupNumber(s, 1_000_000, 10_000_000, 20_000_000, 100_000_000);
             if (s.Key == "expertise_kills")
                 return NormalizeGroupNumber(s, 5_500, 15_000);
+            if(s.Key == "raider_kills")
+                return NormalizeGroupNumber(s, 10_000, 17500);
             if (s.Key.EndsWith("_kills"))
                 return NormalizeNumberTo(s, 10_000);
             if (s.Key == "yogsKilled")
