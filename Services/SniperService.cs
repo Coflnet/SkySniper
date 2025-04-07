@@ -3411,7 +3411,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (lowestHigherBin.AuctionId != default)
                 if (lowestHigherBin.Price < lbinPrice)
                     return false;
-                else
+                else if(higherValueLowerBin > lowestHigherBin.Price || higherValueLowerBin == 0)
                     higherValueLowerBin = lowestHigherBin.Price;
 
             if (IsStacksize1Cheaper(lbinPrice, key, l))
