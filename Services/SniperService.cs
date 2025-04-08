@@ -1628,10 +1628,10 @@ ORDER BY l.`AuctionId`  DESC;
                     var secondType = tag.Split("_")[1];
                     options = CrimsonArmors.SelectMany(s => Lookups.TryGetValue(s + secondType, out var lookup) ? lookup.Lookup.AsEnumerable() : []);
                 }
-                if(tag == "HELLFIRE_ROD")
+                if (tag == "HELLFIRE_ROD")
                 {
                     // hellfire rod can be easily upgraded from magma rod
-                    if(Lookups.TryGetValue("INFERNO_ROD", out var inferno))
+                    if (Lookups.TryGetValue("INFERNO_ROD", out var inferno))
                         options = options.Concat(inferno.Lookup);
                     if (Lookups.TryGetValue("MAGMA_ROD", out var magma))
                         options = options.Concat(magma.Lookup);
@@ -2398,7 +2398,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return NormalizeGroupNumber(s, 1_000_000, 10_000_000, 20_000_000, 100_000_000);
             if (s.Key == "expertise_kills")
                 return NormalizeGroupNumber(s, 5_500, 15_000);
-            if(s.Key == "raider_kills")
+            if (s.Key == "raider_kills")
                 return NormalizeGroupNumber(s, 10_000, 17500);
             if (s.Key.EndsWith("_kills"))
                 return NormalizeNumberTo(s, 10_000);
@@ -2651,6 +2651,8 @@ ORDER BY l.`AuctionId`  DESC;
                     }, fastMode))
                         shouldTryToFindClosest = false; // found a snipe, no need to check other lower value buckets
                 }
+                else
+                    return;
             }
             if (!triggerEvents || fastMode)
                 return; // no need to check for closest, just storing
@@ -3411,7 +3413,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (lowestHigherBin.AuctionId != default)
                 if (lowestHigherBin.Price < lbinPrice)
                     return false;
-                else if(higherValueLowerBin > lowestHigherBin.Price || higherValueLowerBin == 0)
+                else if (higherValueLowerBin > lowestHigherBin.Price || higherValueLowerBin == 0)
                     higherValueLowerBin = lowestHigherBin.Price;
 
             if (IsStacksize1Cheaper(lbinPrice, key, l))
@@ -3453,7 +3455,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var referencePrice = allReferences
                                 .OrderBy(p => p).Skip(allReferences.Count / 4)
                                 .DefaultIfEmpty(targetPrice / 2).Min() * Math.Max(1, allReferences.Count / 20);
-                
+
                 var sumBrekdown = breakdown.ValueBreakdown.Sum(v => v.Value);
                 if (percentile < sumBrekdown * 0.7)
                 {
