@@ -2928,7 +2928,7 @@ namespace Coflnet.Sky.Sniper.Services
             var flip = Dupplicate(highestValAuction);
             flip.StartingBid = 5;
             TestNewAuction(flip);
-            Assert.That(24999999, Is.EqualTo(found.Last().TargetPrice));
+            Assert.That(found.Last().TargetPrice, Is.EqualTo(12499999), "is halfed 3 times in value because no median");
             Assert.That(0, Is.EqualTo(found.Last().DailyVolume));
         }
         [Test]
@@ -3071,6 +3071,9 @@ namespace Coflnet.Sky.Sniper.Services
             flip.StartingBid = 12_000_000;
             var overvalued = Dupplicate(flip);
             overvalued.StartingBid = 120_000_000;
+            var sale = Dupplicate(overvalued);
+            sale.HighestBidAmount = 85_000_000;
+            AddVolume(sale,1);
             TestNewAuction(overvalued);
             TestNewAuction(flip);
             Assert.That(found.Last().TargetPrice, Is.EqualTo((10_000_000 + 9_000_000 * 1.1) * 1.05));

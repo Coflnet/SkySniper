@@ -3466,6 +3466,8 @@ ORDER BY l.`AuctionId`  DESC;
                 else if (bucket.References.Count < 4 && allReferences.Count < 5)
                 {
                     percentile = Math.Min(percentile, referencePrice / 2);
+                    if (allReferences.Count == 0)
+                        percentile /= 2;
                 }
                 percentile = Math.Min(percentile, referencePrice);
                 if (bucket.Price == 0 && bucket.Lbin.Seller == GetSellerId(auction))
