@@ -3145,7 +3145,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (medianPrice > minMedPrice && BucketHasEnoughReferencesForPrice(bucket, lookup))
             {
                 long adjustedMedianPrice = CheckHigherValueKeyForLowerPrice(bucket, key, l, medianPrice);
-                Activity.Current.Log($"Bucket {key} has enough references {bucket.References.Count} and medianPrice > minMedPrice {medianPrice} > {minMedPrice} adjusted {adjustedMedianPrice} {extraValue} {expValue}");
+                Activity.Current.Log($"Bucket has enough references {bucket.References.Count} and medianPrice > minMedPrice {medianPrice} > {minMedPrice} adjusted {adjustedMedianPrice} {extraValue} {expValue}");
                 if (adjustedMedianPrice + extraValue < minMedPrice)
                 {
                     LogNonFlip(auction, bucket, key, extraValue, volume, medianPrice, $"Adjusted median {adjustedMedianPrice} lower than min price {minMedPrice} {extraValue}");
@@ -3185,7 +3185,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             else
             {
-                Activity.Current.Log($"Bucket {key} has too few references {bucket.References.Count} or medianPrice > minMedPrice {medianPrice} > {minMedPrice}");
+                Activity.Current.Log($"Bucket has too few references {bucket.References.Count} or medianPrice > minMedPrice {medianPrice} > {minMedPrice}");
                 LogNonFlip(auction, bucket, key, extraValue, volume, medianPrice, $"Median {medianPrice} lower than min price {minMedPrice} {bucket.References.Count}");
             }
             return foundSnipe;
@@ -3574,7 +3574,17 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static void AddMedianSample(IEnumerable<ReferencePrice> bucket, Dictionary<string, string> props)
         {
-            props["med"] = string.Join(',', bucket.Reverse().Take(10).Select(a => AuctionService.Instance.GetUuid(a.AuctionId)));
+            var references = bucket.Reverse().Take(5).ToArray();
+            if (references.Length > 0)
+            {
+                var sb = new System.Text.StringBuilder(180);
+                for (int i = 0; i < references.Length; i++)
+                {
+                    if (i > 0) sb.Append(',');
+                    sb.Append(references[i].AuctionId);
+                }
+                props["med"] = sb.ToString();
+            }
         }
 
         private static long MaxMedianPriceForSnipe(ReferenceAuctions bucket, KeyWithValueBreakdown breakdown)
