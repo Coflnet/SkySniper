@@ -457,7 +457,7 @@ namespace Coflnet.Sky.Sniper.Services
                 new Core.Enchantment(Enchantment.EnchantmentType.critical,6)
             };
             service.TestNewAuction(anotherAuction);
-            Assert.That(1000, Is.EqualTo(found.First(f=>f.Finder==LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
+            Assert.That(1000, Is.EqualTo(found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
         }
         /// <summary>
         /// szenario: overvaluing of " Any Rare 1"
@@ -479,6 +479,7 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.FlatenedNBT.Add("rarity_upgrades", "1");
             highestValAuction.HighestBidAmount = 1000000;
             AddVolume(highestValAuction);
+            UpdateAllMedianFromUpdate();
             // set to production amount
             SniperService.MIN_TARGET = 200_000;
             service.TestNewAuction(toTest);
@@ -506,7 +507,7 @@ namespace Coflnet.Sky.Sniper.Services
             TestNewAuction(higherValue);
             TestNewAuction(highestValAuction);
             var foundFlip = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER).Last().TargetPrice;
-            Assert.That(foundFlip, Is.EqualTo(1_000_000_000 -1), JsonConvert.SerializeObject(found, Formatting.Indented));
+            Assert.That(foundFlip, Is.EqualTo(1_000_000_000 - 1), JsonConvert.SerializeObject(found, Formatting.Indented));
         }
         /// <summary>
         /// https://discord.com/channels/267680588666896385/1264680179624706050/1264685231063961753
@@ -695,8 +696,9 @@ namespace Coflnet.Sky.Sniper.Services
             Assert.That(estimate.Median, Is.EqualTo(5_000_000));
 
             var bucket = service.Lookups[moreValue.Tag].Lookup.Where(l => l.Key.Modifiers.Count == 1).First().Value;
-            bucket.OldestRef += 11;
-            service.AddSoldItem(Dupplicate(sample)); // if newer should override it
+            moreValue.End = DateTime.UtcNow;
+            AddVolume(moreValue,4); // if newer should override it
+            UpdateAllMedianFromUpdate();
             estimate = service.GetPrice(sample);
             Assert.That(estimate.Median, Is.EqualTo(1_000_000));
         }
@@ -888,11 +890,13 @@ namespace Coflnet.Sky.Sniper.Services
         public void CheckBelowHigherTier()
         {
             highestValAuction.Tier = Tier.MYTHIC;
+            highestValAuction.Category = Category.WEAPON;
             highestValAuction.HighestBidAmount = 1000000;
             AddVolume(highestValAuction);
             highestValAuction.Tier = Tier.LEGENDARY;
             highestValAuction.HighestBidAmount = 50000000;
             AddVolume(highestValAuction);
+            UpdateAllMedianFromUpdate();
             highestValAuction.HighestBidAmount = 5000;
             service.TestNewAuction(highestValAuction);
             Assert.That(1000000, Is.EqualTo(found.Last().TargetPrice));
@@ -914,6 +918,7 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.Enchantments.RemoveAt(1);
             highestValAuction.HighestBidAmount = 50000000;
             AddVolume(highestValAuction);
+            UpdateAllMedianFromUpdate();
             highestValAuction.HighestBidAmount = 5000;
             service.TestNewAuction(highestValAuction);
             Assert.That(1000000, Is.EqualTo(found.First().TargetPrice), JsonConvert.SerializeObject(found.First()));
@@ -1356,15 +1361,16 @@ namespace Coflnet.Sky.Sniper.Services
             var price = service.GetPrice(expensive);
             price.Median.Should().Be(15_000_000);
 
-            // equivilent to InternalDataLoader update all active
-            void UpdateAllMedianFromUpdate()
+        }
+
+        // equivilent to InternalDataLoader update all active
+        void UpdateAllMedianFromUpdate()
+        {
+            foreach (var lookup in service.Lookups)
             {
-                foreach (var lookup in service.Lookups)
+                foreach (var item in lookup.Value.Lookup)
                 {
-                    foreach (var item in lookup.Value.Lookup)
-                    {
-                        service.UpdateMedian(item.Value, (lookup.Key, service.GetBreakdownKey(item.Key, lookup.Key)));
-                    }
+                    service.UpdateMedian(item.Value, (lookup.Key, service.GetBreakdownKey(item.Key, lookup.Key)));
                 }
             }
         }
@@ -3073,7 +3079,7 @@ namespace Coflnet.Sky.Sniper.Services
             overvalued.StartingBid = 120_000_000;
             var sale = Dupplicate(overvalued);
             sale.HighestBidAmount = 85_000_000;
-            AddVolume(sale,1);
+            AddVolume(sale, 1);
             TestNewAuction(overvalued);
             TestNewAuction(flip);
             Assert.That(found.Last().TargetPrice, Is.EqualTo((10_000_000 + 9_000_000 * 1.1) * 1.05));

@@ -1218,7 +1218,7 @@ ORDER BY l.`AuctionId`  DESC;
                         && lowerCountBucket.Price != 0
                         && lowerCountBucket.Price * keyCombo.Item2.Key.Count < medianPrice)
                     {
-                        medianPrice = Math.Min(medianPrice, lowerCountBucket.Price * keyWithNoEnchants.Count);
+                        medianPrice = Math.Min(medianPrice, lowerCountBucket.Price * keyCombo.Item2.Key.Count);
                     }
                 }
             }
@@ -1282,11 +1282,13 @@ ORDER BY l.`AuctionId`  DESC;
                     return limitedPrice;
                 }
                 var cheaperHigherValue = Lookups[keyCombo.tag].Lookup
-                    .Where(k => k.Value.Price < limitedPrice && k.Value.Price != 0
+                    .Where(k => 
+                            k.Value.Price < limitedPrice && k.Value.Price != 0
+                            && keyCombo.key.Key != k.Key
                             && !k.Key.Modifiers.Any(m => m.Key == "virtual")
                             && k.Value.OldestRef >= oldestDay // only relevant if price dropped recently
-                            && k.Value.DeduplicatedReferenceCount > 3 && k.Value.Price > limitedPrice / 20
-                            && k.Value.Volatility > bucket.Volume
+                            && k.Value.DeduplicatedReferenceCount > 3
+                            && k.Value.Volume * 5 >= bucket.Volume
                             && IsHigherValue(keyCombo.tag, keyCombo.key, k.Key) && k.Key.Reforge == keyCombo.key.Key.Reforge)
                     .OrderBy(b => b.Value.Price).FirstOrDefault();
                 if (cheaperHigherValue.Value != default
@@ -3194,7 +3196,9 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (medianPrice > minMedPrice && BucketHasEnoughReferencesForPrice(bucket, lookup))
             {
-                long adjustedMedianPrice = CheckHigherValueKeyForLowerPrice(bucket, key, l, medianPrice);
+                long adjustedMedianPrice = bucket.Price;
+                if (key.Count > 1)
+                    adjustedMedianPrice = CheckHigherValueKeyForLowerPrice(bucket, key, l, medianPrice);
                 Activity.Current.Log($"Bucket has enough references {bucket.References.Count} and medianPrice > minMedPrice {medianPrice} > {minMedPrice} adjusted {adjustedMedianPrice} {extraValue} {expValue}");
                 if (adjustedMedianPrice + extraValue < minMedPrice)
                 {
@@ -3305,17 +3309,6 @@ ORDER BY l.`AuctionId`  DESC;
         /// <returns></returns>
         private long CheckHigherValueKeyForLowerPrice(ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long medianPrice)
         {
-            // this check could be preloaded to calculating the median
-            var higherValueLowerPrice = HigherValueKeys(key, l, medianPrice).Select(k =>
-            {
-                if (l.TryGetValue(k, out ReferenceAuctions altBucket))
-                {
-                    if (altBucket.Price != 0 && altBucket.Volume > bucket.Volume / 2)
-                        return altBucket.Price;
-                }
-                return long.MaxValue;
-            }).DefaultIfEmpty(long.MaxValue).Min();
-
             if (key.Count > 1)
             {
                 var lowerCountKey = new AuctionKey(key)
@@ -3325,11 +3318,10 @@ ORDER BY l.`AuctionId`  DESC;
                 if (l.TryGetValue(lowerCountKey, out ReferenceAuctions lowerCountBucket))
                 {
                     if (lowerCountBucket.Price != 0)
-                        higherValueLowerPrice = Math.Min(higherValueLowerPrice, lowerCountBucket.Price * key.Count);
+                        return Math.Min(bucket.Price, lowerCountBucket.Price * key.Count);
                 }
             }
-            var adjustedMedianPrice = Math.Min(bucket.Price, higherValueLowerPrice);
-            return adjustedMedianPrice;
+            return bucket.Price;
         }
 
         private static bool BucketHasEnoughReferencesForPrice(ReferenceAuctions bucket, PriceLookup lookup)
