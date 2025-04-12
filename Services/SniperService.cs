@@ -1282,7 +1282,7 @@ ORDER BY l.`AuctionId`  DESC;
                     return limitedPrice;
                 }
                 var cheaperHigherValue = Lookups[keyCombo.tag].Lookup
-                    .Where(k => 
+                    .Where(k =>
                             k.Value.Price < limitedPrice && k.Value.Price != 0
                             && keyCombo.key.Key != k.Key
                             && !k.Key.Modifiers.Any(m => m.Key == "virtual")
@@ -3487,31 +3487,38 @@ ORDER BY l.`AuctionId`  DESC;
                     percentile = targetPrice * 9 / 11;
 
                 // no references, check against all lbins
-                // all key modifiers and enchants need to be in the reference bucket or higher
-                var higherValueKeys = l.Where(x => IsHigherValue(groupTag.tag, key, x.Key)).ToList();
-                var lowestLbin = higherValueKeys
+                var lowestLbin = lowestHigherBin.Price;
+                if (lowestHigherBin.AuctionId == default)
+                    lowestLbin = long.MaxValue;
+                var referencePrice = bucket.Price;
+                if (bucket.References.Count < 5)
+                {
+                    // all key modifiers and enchants need to be in the reference bucket or higher
+                    var higherValueKeys = l.Where(x => IsHigherValue(groupTag.tag, key, x.Key)).ToList();
+                    lowestLbin = higherValueKeys
                                 .Where(x => x.Value.Lbin.Price > 0 && x.Value.Lbin.Price < bucket.Lbin.Price)
                                 .Select(x => x.Value.Lbin.Price).DefaultIfEmpty(long.MaxValue).Min();
-                // 25th percentile of all references
-                var allReferences = higherValueKeys.SelectMany(x => x.Value.References.Select(r => r.Price / (x.Key.Count == 0 ? 1 : x.Key.Count))).ToList();
-                var referencePrice = allReferences
-                                .OrderBy(p => p).Skip(allReferences.Count / 4)
-                                .DefaultIfEmpty(targetPrice / 2).Min() * Math.Max(1, allReferences.Count / 20);
+                    // 25th percentile of all references
+                    var allReferences = higherValueKeys.SelectMany(x => x.Value.References.Select(r => r.Price / (x.Key.Count == 0 ? 1 : x.Key.Count))).ToList();
+                    referencePrice = allReferences
+                                    .OrderBy(p => p).Skip(allReferences.Count / 4)
+                                    .DefaultIfEmpty(targetPrice / 2).Min() * Math.Max(1, allReferences.Count / 20);
 
-                var sumBrekdown = breakdown.ValueBreakdown.Sum(v => v.Value);
-                if (percentile < sumBrekdown * 0.7)
-                {
-                    percentile = (long)Math.Min((sumBrekdown * 1.6 + percentile) / 3, referencePrice * 1.2);
-                }
-                if (bucket.Price == 0 && bucket.References.Count > 2 && higherValueKeys.Count <= 2) // manip indicator
-                {
-                    percentile /= 5;
-                }
-                else if (bucket.References.Count < 4 && allReferences.Count < 5)
-                {
-                    percentile = Math.Min(percentile, referencePrice / 2);
-                    if (allReferences.Count == 0)
-                        percentile /= 2;
+                    var sumBrekdown = breakdown.ValueBreakdown.Sum(v => v.Value);
+                    if (percentile < sumBrekdown * 0.7)
+                    {
+                        percentile = (long)Math.Min((sumBrekdown * 1.6 + percentile) / 3, referencePrice * 1.2);
+                    }
+                    if (bucket.Price == 0 && bucket.References.Count > 2 && higherValueKeys.Count <= 2) // manip indicator
+                    {
+                        percentile /= 5;
+                    }
+                    else if (bucket.References.Count < 4 && allReferences.Count < 5)
+                    {
+                        percentile = Math.Min(percentile, referencePrice / 2);
+                        if (allReferences.Count == 0)
+                            percentile /= 2;
+                    }
                 }
                 percentile = Math.Min(percentile, referencePrice);
                 if (bucket.Price == 0 && bucket.Lbin.Seller == GetSellerId(auction))

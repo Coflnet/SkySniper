@@ -121,9 +121,7 @@ public class MedianCalcTests
         var sample = bare.Dupplicate();
         sample.StartingBid = 10_000_000;
         service.TestNewAuction(sample);
-        Assert.That(flips.Count, Is.EqualTo(1));
-        // median is 0 because anti manipulation, reference price is devided by 5
-        Assert.That(flips.First().TargetPrice, Is.EqualTo(80_000_000));
+        Assert.That(flips.Count, Is.EqualTo(0));
 
         // craft cost can cap it lower
         SetupPlain(out bare, out key, out flips);
@@ -137,7 +135,7 @@ public class MedianCalcTests
         sample = bare.Dupplicate();
         sample.StartingBid = 1_000_000;
         service.TestNewAuction(sample);
-        Assert.That(flips.First().TargetPrice, Is.EqualTo(7644000));
+        Assert.That(flips.First().TargetPrice, Is.EqualTo(2000000));
 
         void SetupPlain(out SaveAuction bare, out AuctionKeyWithValue key, out List<LowPricedAuction> flips)
         {

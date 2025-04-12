@@ -452,7 +452,7 @@ public class DropOffTests
         medianSnipe.TargetPrice.Should().Be(97399150, JsonConvert.SerializeObject(found, Formatting.Indented));
     }
 
-    [TestCase(9, 55415716L)]
+    [TestCase(9, 50000000L)]
     [TestCase(10, 63360000L)] // lbin based up to 99% at 10 volume
     public void SniperEstimate(byte volumeOverride, long target)
     {
