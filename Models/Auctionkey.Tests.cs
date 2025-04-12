@@ -733,6 +733,7 @@ public class AuctionkeyTests
         {
             FlatenedNBT = new(),
             Enchantments = new() { new(EnchantmentType.ultimate_the_one, 4) },
+            ItemName = "Enchanted Book Bundle",
             Tag = "ENCHANTED_BOOK_BUNDLE_THE_ONE"
         };
         var key = service.ValueKeyForTest(auction);

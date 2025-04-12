@@ -270,9 +270,9 @@ namespace Coflnet.Sky.Sniper.Models
 
         public AuctionKey(AuctionKey key)
         {
-            Enchants = key.Enchants?.Select(e => new Enchant() { Lvl = e.Lvl, Type = e.Type }).ToList().AsReadOnly();
+            Enchants = key.Enchants;
             Reforge = key.Reforge;
-            Modifiers = key.Modifiers?.Select(m => new KeyValuePair<string, string>(m.Key, m.Value)).ToList().AsReadOnly();
+            Modifiers = key.Modifiers;
             Tier = key.Tier;
             Count = key.Count;
         }

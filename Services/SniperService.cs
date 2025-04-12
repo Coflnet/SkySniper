@@ -1908,13 +1908,63 @@ ORDER BY l.`AuctionId`  DESC;
             return tier;
         }
 
+
+        private static HashSet<string> SoulKeys = new()
+        {
+            "MASTER_CRYPT_TANK_ZOMBIE_70",
+            "MASTER_CRYPT_TANK_ZOMBIE_80",
+            "MASTER_CRYPT_TANK_ZOMBIE_60",
+            "MINOS_INQUISITOR_750",
+            "MINOS_CHAMPION_310",
+            "MINOS_CHAMPION_175",
+            "MASTER_CRYPT_UNDEAD_25",
+            "MASTER_CRYPT_UNDEAD_HYPIXEL_25",
+            "MASTER_CRYPT_UNDEAD_VALENTIN_40",
+            "MASTER_CRYPT_UNDEAD_CONNORLINFOOT_25",
+            "MASTER_CRYPT_UNDEAD_PIETER_40",
+            "MASTER_CRYPT_UNDEAD_NICHOLAS_40",
+            "MASTER_CRYPT_UNDEAD_MINIKLOON_25",
+            "MASTER_CRYPT_UNDEAD_LIKAOS_25",
+            "MASTER_CRYPT_UNDEAD_JAMIETHEGEEK_25",
+            "MASTER_CRYPT_UNDEAD_FRIEDRICH_40",
+            "MASTER_CRYPT_UNDEAD_PLANCKE_25",
+            "MASTER_CRYPT_UNDEAD_BLOOZING_25",
+            "MASTER_CRYPT_UNDEAD_SYLENT_25",
+            "MASTER_CRYPT_UNDEAD_CODENAME_B_25",
+            "MASTER_CRYPT_UNDEAD_JAYAVARMEN_25",
+            "MASTER_CRYPT_UNDEAD_ALEXANDER_40",
+            "MASTER_CRYPT_UNDEAD_ORANGEMARSHALL_25",
+            "MASTER_CRYPT_UNDEAD_BERNHARD_40",
+            "MASTER_CRYPT_UNDEAD_CECER_25",
+            "MASTER_CRYPT_UNDEAD_APUNCH_25",
+            "MASTER_CRYPT_UNDEAD_DCTR_25",
+            "MASTER_CRYPT_UNDEAD_RELENTER_25",
+            "MASTER_CRYPT_UNDEAD_NITROHOLIC__25",
+            "MASTER_CRYPT_UNDEAD_DONPIRESO_25",
+            "MASTER_CRYPT_UNDEAD_LADYBLEU_25",
+            "MASTER_CRYPT_UNDEAD_DUECES_25",
+            "MASTER_CRYPT_UNDEAD_JUDG3_25",
+            "MASTER_CRYPT_UNDEAD_BEMBO_25",
+            "MASTER_CRYPT_UNDEAD_REZZUS_25",
+            "MASTER_CRYPT_UNDEAD_SKYERZZ_25",
+            "MASTER_CRYPT_UNDEAD_THEMGRF_25",
+            "MASTER_CRYPT_UNDEAD__ONAH_25",
+            "MASTER_CRYPT_UNDEAD_EXTERNALIZABLE_25",
+            "MASTER_CRYPT_UNDEAD_REVENGEEE_25",
+            "MASTER_CRYPT_UNDEAD_MAGICBOYS_25",
+            "MASTER_CRYPT_UNDEAD_AGENTK_25",
+            "MASTER_CRYPT_UNDEAD_FLAMEBOY101_25",
+            "MASTER_CRYPT_UNDEAD_SFARNHAM_25",
+            "MASTER_CRYPT_UNDEAD_THORLON_25",
+            "MASTER_CRYPT_UNDEAD_CHILYNN_25",
+            "MASTER_CRYPT_UNDEAD_MARIUS_40",
+            "MASTER_CRYPT_UNDEAD_WILLIAMTIGER_25",
+            "MASTER_CRYPT_UNDEAD_CHRISTIAN_40"
+        };
         private static bool IsSoul(KeyValuePair<string, string> n)
         {
             // captured souls
-            return n.Key.StartsWith("MASTER_CRYPT_TANK_ZOMBIE")
-                    || n.Key.StartsWith("MINOS_CHAMPION_")
-                    || n.Key == "MINOS_INQUISITOR_750"
-                    || n.Key.Length > 23 && n.Key.StartsWith("MASTER_CRYPT_UNDEAD_");
+            return SoulKeys.Contains(n.Key);
         }
 
         /// <summary>
@@ -2240,7 +2290,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 ench = RemoveEnchantFromKey(ench, item.Item1, item.level);
             }
-            if (auction.Tag.StartsWith("ENCHANTED_BOOK_BUNDLE_"))
+            if (auction.ItemName == "Enchanted Book Bundle")
                 ench = new(); // book bundles themselfs are equivilient to the enchants
             return ench;
         }
@@ -2758,17 +2808,17 @@ ORDER BY l.`AuctionId`  DESC;
         private void CheckCombined(SaveAuction auction, PriceLookup lookup, double lbinPrice, double medPrice, KeyWithValueBreakdown longKey, RankElem topAttrib)
         {
             var topKey = longKey.GetReduced(0);
+            var targetVolume = 11;
+            if (lookup.Lookup.TryGetValue(topKey, out var topBucket) && topBucket.References.Count >= targetVolume)
+            {
+                return; // enough references in previous check
+            }
             var l = lookup.Lookup;
             var similar = l.Where(e => topAttrib.Modifier.Key != default && !e.Key.Modifiers.Any(m => m.Key == "virtual") || e.Key.Enchants.Contains(topAttrib.Enchant)).ToList();
             if (similar.Count == 1)
             {
                 // include all if no match otherwise
                 similar = l.ToList();
-            }
-            var targetVolume = 11;
-            if (lookup.Lookup.TryGetValue(topKey, out var topBucket) && topBucket.References.Count >= targetVolume)
-            {
-                return; // enough references in previous check
             }
             var fullKey = GetFullKey(auction);
             var relevant = similar.Where(e => (e.Key.Reforge == topKey.Reforge || topKey.Reforge == ItemReferences.Reforge.Any)
