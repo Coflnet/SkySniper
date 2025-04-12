@@ -441,8 +441,9 @@ public class AuctionkeyTests
         }
     }
     [Test]
-    public void IncludeRuneLevelsOnRunes()
+    public async Task IncludeRuneLevelsOnRunes()
     {
+        await service.Init();
         var auction = new SaveAuction()
         {
             Tag = "RUNE_SNOW",

@@ -841,7 +841,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (NBT.IsPet(itemTag) && !item.Modifiers.Any(m => m.Key == "exp"))
                     loadedVal.Lookup.TryRemove(item, out _); // bugged
             }
-            if (itemTag.Contains("RUNE_"))
+            if (IsRune(itemTag))
             {
                 foreach (var item in loadedVal.Lookup.Keys.ToList())
                 {
@@ -958,6 +958,16 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 CombinableStarred.Add(itemTag);
             }
+            if (itemTag.Contains("RUNE_"))
+            {
+                RuneLookup.Add(itemTag);
+                RuneLookup.Add(itemTag.Replace("UNIQUE_", ""));
+            }
+        }
+
+        private static bool IsRune(string itemTag)
+        {
+            return RuneLookup.Contains(itemTag);
         }
 
         private static void CapBucketSize(ReferenceAuctions bucket)
@@ -1503,7 +1513,7 @@ ORDER BY l.`AuctionId`  DESC;
             long minValue = GetCleanItemPrice(tag, key, lookup);
             if (minValue == 0 || currentPrice == minValue)
                 return medianPrice;
-            if (tag.Contains("RUNE_"))
+            if (IsRune(tag))
             {
                 return LimitRuneToFuseCost(medianPrice, breakdown, lookup);
             }
@@ -1824,7 +1834,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (modifiers.Any(m => m.Key == "rarity_upgrades") && !Constants.DoesRecombMatter(auction.Category, auction.Tag))
             {
                 modifiers.RemoveAll(m => m.Key == "rarity_upgrades");
-                if (!auction.Tag.Contains("RUNE_"))
+                if (!IsRune(auction.Tag))
                     tier = ReduceRarity(tier);
             }
 
@@ -1843,7 +1853,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (auction.FlatenedNBT != null)
                 foreach (var item in auction.FlatenedNBT)
                 {
-                    if (!IncludeKeys.Contains(item.Key) && item.Value != "PERFECT" && !item.Key.StartsWith("RUNE_") && !IsSoul(item))
+                    if (!IncludeKeys.Contains(item.Key) && item.Value != "PERFECT" && !IsRune(item.Key) && !IsSoul(item))
                     {
                         continue;
                     }
@@ -2168,7 +2178,7 @@ ORDER BY l.`AuctionId`  DESC;
                     sum += BazaarPrices.TryGetValue(item.tag, out var price) ? (long)price * item.amount : 0;
                     continue;
                 }
-                if (mod.Key.StartsWith("RUNE_"))
+                if (IsRune(mod.Key))
                 {
                     var fromlevel1 = lookup.Lookup.Where(f => f.Value.Price != 0)
                         .OrderBy(v => (v.Key.Count + 1) * (v.Key.Modifiers.Count == 0 ? 1 : int.Parse(v.Key.Modifiers.First().Value)))
@@ -2311,7 +2321,7 @@ ORDER BY l.`AuctionId`  DESC;
                     return new List<KeyValuePair<string, string>>(EmptyPetModifiers) { new(PetItemKey, TierBoostShorthand) };
                 else
                     return EmptyPetModifiers.ToList();
-            if (auction.Tag.Contains("RUNE_"))
+            if (IsRune(auction.Tag))
                 return auction.FlatenedNBT.ToList();
             if (auction.FlatenedNBT.Any(n => NeverDrop.Contains(n.Key)))
                 return auction.FlatenedNBT.Where(n => NeverDrop.Contains(n.Key)).ToList();
@@ -2415,7 +2425,7 @@ ORDER BY l.`AuctionId`  DESC;
                     return new KeyValuePair<string, string>("item_tier", "10");
                 return Ignore;
             }
-            if (s.Key.StartsWith("RUNE_") && !IncludeKeys.Contains(s.Key) && !tag.Contains("RUNE_"))
+            if (IsRune(s.Key) && !IncludeKeys.Contains(s.Key) && !IsRune(tag))
             {
                 return Ignore;
             }
@@ -2780,8 +2790,7 @@ ORDER BY l.`AuctionId`  DESC;
                 "rarity_upgrades" => 0.5,
                 "upgrade_level" => 0.8,
                 "talisman_enrichment" => 0.10,
-                var s when s.StartsWith("RUNE_") => 0.55,
-                var s when s.StartsWith("UNIQUE_RUNE_") => 0.55,
+                var s when IsRune(s) => 0.55,
                 _ => 0.85
             } * v.Value)).Sum();
             if (cleanCost == componentGuess)
@@ -2917,6 +2926,7 @@ ORDER BY l.`AuctionId`  DESC;
             "STARRED_MIDAS_SWORD"
         };
         private static readonly HashSet<string> CombinableStarred = new();
+        private static readonly HashSet<string> RuneLookup = new();
         /// <summary>
         /// Remaps item tags into one item if they are easily switchable
         /// </summary>
@@ -2938,12 +2948,12 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static bool ShouldIgnoreMostSimilar(SaveAuction auction)
         {
-            return auction.Tag.StartsWith("RUNE_");
+            return IsRune(auction.Tag);
         }
 
         private void TryFindClosestRisky(SaveAuction auction, PriceLookup l, ref double lbinPrice, ref double medPrice)
         {
-            if (auction.Tag.StartsWith("RUNE_")) // TODO: compare levels
+            if (IsRune(auction.Tag)) // TODO: compare levels
                 return;
             if (auction.Tag == "NEW_YEAR_CAKE")
                 return; // can't use closest for years
@@ -3747,6 +3757,70 @@ ORDER BY l.`AuctionId`  DESC;
             await itemService.GetItemsAsync();
             await mapper.LoadNeuConstants();
             UpdateToday();
+            AddRunes();
+        }
+
+
+        private void AddRunes()
+        {
+            foreach (var item in new string[]{
+                "RUNE",
+                "RUNEBOOK",
+                "RUNE_BITE",
+                "RUNE_BLOOD_2",
+                "RUNE_CLOUDS",
+                "RUNE_COUTURE",
+                "RUNE_DRAGON",
+                "RUNE_ENCHANT",
+                "RUNE_ENDERSNAKE",
+                "RUNE_FIERY_BURST",
+                "RUNE_FIRE_SPIRAL",
+                "RUNE_GEM",
+                "RUNE_GOLDEN",
+                "RUNE_GRAND_SEARING",
+                "RUNE_HEARTS",
+                "RUNE_HOT",
+                "RUNE_ICE",
+                "RUNE_JERRY",
+                "RUNE_LAVA",
+                "RUNE_LAVATEARS",
+                "RUNE_LIGHTNING",
+                "RUNE_MAGIC",
+                "RUNE_MUSIC",
+                "RUNE_RAINBOW",
+                "RUNE_REDSTONE",
+                "RUNE_SACK",
+                "RUNE_SLIMY",
+                "RUNE_SMOKEY",
+                "RUNE_SNAKE",
+                "RUNE_SNOW",
+                "RUNE_SOULTWIST",
+                "RUNE_SPARKLING",
+                "RUNE_SPELLBOUND",
+                "RUNE_SPIRIT",
+                "RUNE_TIDAL",
+                "RUNE_WAKE",
+                "RUNE_WHITE_SPIRAL",
+                "RUNE_ZAP",
+                "RUNE_ZOMBIE_SLAYER",
+                "SMALL_RUNES_SACK",
+                "UNIQUE_RUNE",
+                "UNIQUE_RUNE_BARK_TUNES",
+                "UNIQUE_RUNE_GOLDEN_CARPET",
+                "UNIQUE_RUNE_GRAND_FREEZING",
+                "UNIQUE_RUNE_HEARTSPLOSION",
+                "UNIQUE_RUNE_ICE_SKATES",
+                "UNIQUE_RUNE_MEOW_MUSIC",
+                "UNIQUE_RUNE_ORNAMENTAL",
+                "UNIQUE_RUNE_PRIMAL_FEAR",
+                "UNIQUE_RUNE_RAINY_DAY",
+                "UNIQUE_RUNE_SMITTEN",
+                "UNIQUE_RUNE_SPELLBOUND",
+                "UNIQUE_RUNE_SUPER_PUMPKIN"
+            })
+            {
+                RuneLookup.Add(item);
+            }
         }
     }
 }
