@@ -2245,12 +2245,12 @@ ORDER BY l.`AuctionId`  DESC;
                 else
                     valueAdd += cost.Coins;
             }
-            if (costs.unavailable.Count() > 0)
+            if (costs.unavailable.Count() > 0 && modifiers is List<KeyValuePair<string, string>> modList)
             {
-                (modifiers as List<KeyValuePair<string, string>>)?.RemoveAll(m => m.Key == "unlocked_slots");
+                modList.RemoveAll(m => m.Key == "unlocked_slots");
                 var remaining = present.Except(costs.unavailable);
                 if (remaining.Count() > 0)
-                    modifiers.Add(new(mod.Key, string.Join(",", remaining.OrderBy(s => s))));
+                    modList.Add(new(mod.Key, string.Join(",", remaining.OrderBy(s => s))));
             }
 
             return valueAdd;
