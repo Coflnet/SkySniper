@@ -3530,6 +3530,8 @@ ORDER BY l.`AuctionId`  DESC;
                         if (allReferences.Count == 0)
                             percentile /= 2;
                     }
+                    else if (bucket.References.Count <= 3)
+                        percentile = percentile / 3; // not enough statistical evidence
                 }
                 percentile = Math.Min(percentile, referencePrice);
                 if (bucket.Price == 0 && bucket.Lbin.Seller == GetSellerId(auction))
