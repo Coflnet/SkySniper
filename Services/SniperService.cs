@@ -3512,11 +3512,12 @@ ORDER BY l.`AuctionId`  DESC;
                     var allReferences = higherValueKeys.SelectMany(x => x.Value.References.Select(r => r.Price / (x.Key.Count == 0 ? 1 : x.Key.Count))).ToList();
                     referencePrice = allReferences
                                     .OrderBy(p => p).Skip(allReferences.Count / 4)
-                                    .DefaultIfEmpty(targetPrice / 2).Min() * Math.Max(1, allReferences.Count / 20);
+                                    .DefaultIfEmpty(targetPrice / 2).Min();
 
                     var sumBrekdown = breakdown.ValueBreakdown.Sum(v => v.Value);
                     if (percentile < sumBrekdown * 0.7)
                     {
+                        props["sumAdj"] = sumBrekdown.ToString();
                         percentile = (long)Math.Min((sumBrekdown * 1.6 + percentile) / 3, referencePrice * 1.2);
                     }
                     if (bucket.Price == 0 && bucket.References.Count > 2 && higherValueKeys.Count <= 2) // manip indicator
@@ -3541,14 +3542,17 @@ ORDER BY l.`AuctionId`  DESC;
                 if (lowestLbin > 10_000_000_000)
                 {
                     Activity.Current.Log($"Reduced because no higher value lbin");
-                    percentile = Math.Min(percentile, Math.Min(targetPrice * 95 / 100, (long)(referencePrice * 1.5)));
+                    percentile = Math.Min(percentile, Math.Min(targetPrice * 60 / 100, (long)(referencePrice * 1.2)));
                     props["noHigherLbin"] = percentile.ToString();
                 }
                 var reduced = CapAtCraftCost(groupTag.tag, percentile, breakdown, 0);
                 if (reduced > 0)
                 {
                     if (percentile != reduced)
-                        reduced = reduced * 21 / 20; // 5% extra for snipe
+                        if (lowestLbin > 10_000_000_000 && higherValueLowerBin > 10_000_000_000)
+                            reduced = reduced * 80 / 100; // 80% for no higher lbin
+                        else
+                            reduced = reduced * 21 / 20; // 5% extra for snipe
                     percentile = Math.Min(reduced, percentile);
                     Activity.Current.Log($"Reduced to craft cost {reduced}");
                     props["craftCost"] = reduced.ToString();

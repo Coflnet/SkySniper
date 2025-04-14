@@ -452,7 +452,7 @@ public class DropOffTests
         medianSnipe.TargetPrice.Should().Be(97399150, JsonConvert.SerializeObject(found, Formatting.Indented));
     }
 
-    [TestCase(9, 50000000L)]
+    [TestCase(9, 34999399L)]
     [TestCase(10, 63360000L)] // lbin based up to 99% at 10 volume
     public void SniperEstimate(byte volumeOverride, long target)
     {
@@ -682,7 +682,7 @@ public class DropOffTests
         flip.TargetPrice.Should().Be(972428570L);
         flip.AdditionalProps["breakdown"].Should().StartWith("[{\"Value\":371999999,");
         var sniper = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
-        sniper.TargetPrice.Should().Be(996501550L); // should be limited by a little bit over craft cost and not target 1.1b
+        sniper.TargetPrice.Should().Be(629369400L); // should be limited by a little bit over craft cost and not target 1.1b
 
         // check that exp is not dropped on lvl 1
         auction.FlatenedNBT["exp"] = "1";
