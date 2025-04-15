@@ -1154,19 +1154,36 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var breakdown = keyCombo.key.ValueBreakdown;
                 var volatMedian = medianPrice;
-                if (bucket.Price > 0 && bucket.Price == 547790144 || medianPrice == 547790144 ||
-                    bucket.Price > 0 && keyCombo.key.Key.Enchants.FirstOrDefault().Type == Enchantment.EnchantmentType.champion && keyCombo.key.Key.Enchants.FirstOrDefault().Lvl == 10)
+                var limitedPrice = CapPriceAtHigherLevelKey(keyCombo, medianPrice, bucket);
+
+                // check higher value keys for lower price 
+                if (keyCombo.key.Key.Modifiers.Any(m => m.Key == "pgems"))
                 {
-                    Console.WriteLine("test");
+                    var lookupKey = new AuctionKey(keyCombo.key)
+                    {
+                        Modifiers = new(keyCombo.key.Key.Modifiers.Where(m => m.Key != "pgems").ToList())
+                    };
+                    if (lookup.Lookup.TryGetValue(lookupKey, out var lookupBucket))
+                    {
+                        limitedPrice = Math.Max(limitedPrice, lookupBucket.Price);
+                    }
                 }
-                long limitedPrice = CapAtCraftCost(keyCombo.tag, medianPrice, keyCombo.key, bucket.Price);
+                else if (lookup.CleanPricePerTier?.TryGetValue(keyCombo.key.Key.Tier, out var tierval) ?? false)
+                {
+                    if (keyCombo.key.Key.Modifiers.Count == 0 && keyCombo.key.Key.Reforge == ItemReferences.Reforge.jaded)
+                    {
+                        var lowest = lookup.Lookup.Where(l=>l.Value.Price > 0).OrderBy(l => l.Value.Price).Take(5).ToList();
+                        Console.WriteLine("sample");
+                    }
+                    if (limitedPrice < tierval / 1.2 && !keyCombo.key.Key.Modifiers.Any(m => m.Key == "virtual" || Constants.AttributeKeys.Contains(m.Key)))
+                            limitedPrice = Math.Max(limitedPrice, tierval);
+                }
+                limitedPrice = CapAtCraftCost(keyCombo.tag, limitedPrice, keyCombo.key, bucket.Price);
                 var craftCostCap = limitedPrice;
                 if (limitedPrice == 0 || IsLevel100CleanPet(keyCombo.key))
                 {
                     limitedPrice = medianPrice;
                 }
-                // check higher value keys for lower price 
-                limitedPrice = CapPriceAtHigherLevelKey(keyCombo, limitedPrice, bucket);
 
                 if (size > 40 || bucket.Volatility <= 8 && size > 8)
                 {
@@ -1572,12 +1589,13 @@ ORDER BY l.`AuctionId`  DESC;
             }
             var select = (NBT.IsPet(tag) ?
                             lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value) :
-                             lookup.Lookup.Values.Where(v => v.Price > 0)).ToList();
+                             lookup.Lookup.Where(v => v.Value.Price > 0 && !v.Key.Modifiers.Any(m=>m.Key=="pgems")).Select(l=>l.Value)).ToList();
             var count = select.Count;
             var all = select.SelectMany(v => v.References).ToList();
             var size = (int)Math.Max(lookup.Volume * 10, 50);
-            var target = all.OrderByDescending(a => a.Day).ThenBy(l => l.Price)
-                .Take(size).OrderBy(r => r.Price).Skip(size / 50 + 1).FirstOrDefault();
+            var sample = all.OrderByDescending(a => a.Day).ThenBy(l => l.Price)
+                .Take(size).OrderBy(r => r.Price);
+            var target = sample.Skip(size / 50 + 1).FirstOrDefault();
             return target.Price;
         }
 

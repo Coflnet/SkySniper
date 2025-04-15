@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Models;
+using Coflnet.Sky.Sniper.Services;
 using dev;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -15,7 +16,7 @@ using Microsoft.VisualBasic;
 using Newtonsoft.Json;
 using NUnit.Framework;
 
-namespace Coflnet.Sky.Sniper.Services
+namespace Coflnet.Sky.Sniper
 {
     public class SniperServiceTests
     {
@@ -473,12 +474,13 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.Enchantments = new List<Core.Enchantment>();
             highestValAuction.Tag = "CRYPT_DREADLORD_SWORD";
             highestValAuction.HighestBidAmount = 4000000;
-            AddVolume(highestValAuction);
+            var overvalued = Dupplicate(highestValAuction);
             highestValAuction.Enchantments.Add(new Core.Enchantment(Enchantment.EnchantmentType.scavenger, 5));
             var toTest = Dupplicate(highestValAuction);
             highestValAuction.FlatenedNBT.Add("rarity_upgrades", "1");
             highestValAuction.HighestBidAmount = 1000000;
             AddVolume(highestValAuction);
+            AddVolume(overvalued);
             UpdateAllMedianFromUpdate();
             // set to production amount
             SniperService.MIN_TARGET = 200_000;
@@ -634,11 +636,11 @@ namespace Coflnet.Sky.Sniper.Services
             higherValue.Tag = "PET_LION";
             higherValue.FlatenedNBT = new() { { "exp", "27000000" }, { "candyUsed", "0" } };
             higherValue.HighestBidAmount = 10_000_000;
-            AddVolume(higherValue);
             var lowerValue = Dupplicate(higherValue);
             lowerValue.FlatenedNBT["exp"] = "0";
             lowerValue.HighestBidAmount = 5_000_000;
             AddVolume(lowerValue);
+            AddVolume(higherValue);
             var sample = Dupplicate(higherValue);
             sample.FlatenedNBT.Add("heldItem", "PET_ITEM_EXP_SHARE");
             sample.FlatenedNBT["exp"] = "3000000";
@@ -840,18 +842,19 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [TestCase("2", 8_250_000)]
-        [TestCase("3", 24_750_000)] // capped at level 3 (reduced attribute value for applied path)
+        [TestCase("3", 33000000)] // capped at level 3 (reduced attribute value for applied path)
         public void CapRuneCraftCostAtCorrectLevel(string inputLevel, int targetPrice)
         {
             highestValAuction.Tag = "RUNE_MUSIC";
             var lvl3 = Dupplicate(highestValAuction);
             lvl3.HighestBidAmount = 45_000_000;
             lvl3.FlatenedNBT = new() { { "RUNE_MUSIC", "3" } };
-            AddVolume(lvl3);
-            var lvl1 = Dupplicate(lvl3);
+             var lvl1 = Dupplicate(lvl3);
             lvl1.FlatenedNBT["RUNE_MUSIC"] = "1";
             lvl1.HighestBidAmount = 5_000_000;
             AddVolume(lvl1);
+            AddVolume(lvl3);
+           
             var sample = Dupplicate(lvl1);
             sample.HighestBidAmount = 0;
             sample.FlatenedNBT["RUNE_MUSIC"] = inputLevel;
@@ -1130,6 +1133,15 @@ namespace Coflnet.Sky.Sniper.Services
         public void UpdateMedianWithShortTermAfterDerpy()
         {
             var bucket = new ReferenceAuctions();
+            SetBazaarPrice("RECOMBOBULATOR_3000", 8_200_000);
+            AddVolume(new SaveAuction
+            {
+                Tag = "1",
+                FlatenedNBT = new() {  },
+                StartingBid = 25_000_000,
+                HighestBidAmount = 25_000_000,
+                End = DateTime.UtcNow
+            });
             AddSell(bucket, 39000000, 5);
             AddSell(bucket, 38999000, 5);
             AddSell(bucket, 37000000, 5);
@@ -1807,6 +1819,10 @@ namespace Coflnet.Sky.Sniper.Services
         {
             firstAuction.FlatenedNBT = new() { { "candyUsed", "0" }, { "exp", "5000000" } };
             firstAuction.Count = 1;
+            var noExp = Dupplicate(firstAuction);
+            noExp.FlatenedNBT["exp"] = "0";
+            noExp.HighestBidAmount = 5_000_000;
+            AddVolume(noExp);
             var higherExp = Dupplicate(firstAuction);
             higherExp.FlatenedNBT["exp"] = "9000000";
             higherExp.HighestBidAmount = 10_000_000;
@@ -1816,10 +1832,6 @@ namespace Coflnet.Sky.Sniper.Services
             maxExp.FlatenedNBT["exp"] = "100000000";
             maxExp.HighestBidAmount = 20_000_000;
             AddVolume(maxExp);
-            var noExp = Dupplicate(firstAuction);
-            noExp.FlatenedNBT["exp"] = "0";
-            noExp.HighestBidAmount = 5_000_000;
-            AddVolume(noExp);
 
             TestNewAuction(firstAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
@@ -2014,12 +2026,12 @@ namespace Coflnet.Sky.Sniper.Services
             var biggerStack = Dupplicate(highestValAuction);
             biggerStack.Count = 3;
             biggerStack.HighestBidAmount = 100_000_000;
-            AddVolume(biggerStack, 8);
-
             var single = Dupplicate(highestValAuction);
             single.Count = 1;
             single.HighestBidAmount = 1_000_000;
             AddVolume(single);
+            AddVolume(biggerStack, 8);
+
 
             var toTest = Dupplicate(highestValAuction);
             toTest.Count = 3;
@@ -2427,13 +2439,14 @@ namespace Coflnet.Sky.Sniper.Services
             highestValAuction.FlatenedNBT = new(){
                 {"exp",SniperService.PetExpMaxlevel.ToString()}
             };
+            var lowerExp = Dupplicate(highestValAuction);
+            lowerExp.FlatenedNBT["exp"] = "0";
+            lowerExp.FlatenedNBT["candyUsed"] = "0";
+            lowerExp.HighestBidAmount = 1_000_000;
+            AddVolume(lowerExp);
             highestValAuction.HighestBidAmount = 5_000_000;
             AddVolume(highestValAuction, 5);
             highestValAuction.FlatenedNBT["candyUsed"] = "0";
-            var lowerExp = Dupplicate(highestValAuction);
-            lowerExp.FlatenedNBT["exp"] = "0";
-            lowerExp.HighestBidAmount = 1_000_000;
-            AddVolume(lowerExp);
             var sample = Dupplicate(highestValAuction);
             sample.FlatenedNBT["exp"] = exp.ToString();
             AddVolume(sample);
@@ -2444,7 +2457,7 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         //[TestCase(31023190, 31023190, 409489302, LowPricedAuction.FinderType.SNIPER_MEDIAN)] // is adusted downwards
-        [TestCase(31023190, 355244041, 546028820, LowPricedAuction.FinderType.STONKS)]
+        [TestCase(31023190, 355244041, 619200000, LowPricedAuction.FinderType.STONKS)]
         public void MedianAdjustForBucketExpDiffGoldenDrag(int exp, int referncesExp, int expectedPrice, LowPricedAuction.FinderType finder)
         {
             highestValAuction.Count = 1;

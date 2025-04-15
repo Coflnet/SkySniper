@@ -181,6 +181,11 @@ public class DropOffTests
         SniperService.StartTime += DateTime.UtcNow - simulatedTime - TimeSpan.FromDays(10000);
         var converted = LoadLookupMock(fileName);
         sniperService.AddLookupData(itemTag, converted);
+        UpdateMedian(itemTag, converted);
+    }
+
+    private void UpdateMedian(string itemTag, PriceLookup converted)
+    {
         foreach (var item in converted.Lookup)
         {
             sniperService.UpdateMedian(item.Value, (itemTag, sniperService.GetBreakdownKey(item.Key, itemTag)));
@@ -624,20 +629,14 @@ public class DropOffTests
     [Test]
     public async Task CleanValueCorrect()
     {
-        var converted = LoadLookupMock("HYPERION.json");
         await sniperService.Init();
-        SniperService.StartTime += DateTime.UtcNow - new DateTime(2025, 3, 10) - TimeSpan.FromDays(10000);
         SetBazaarPrice("RECOMBOBULATOR_3000", 9_000_000);
         SetBazaarPrice("THE_ART_OF_WAR", 8_000_000);
         SetBazaarPrice("FUMING_POTATO_BOOK", 3_000_000);
         SetBazaarPrice("IMPLOSION_SCROLL", 250_000_000);
         SetBazaarPrice("ENCHANTMENT_ULTIMATE_CHIMERA_5", 300_000_000);
         SetBazaarPrice("FIRST_MASTER_STAR", 18_000_000);
-        sniperService.AddLookupData("HYPERION", converted);
-        foreach (var item in converted.Lookup)
-        {
-            sniperService.UpdateMedian(item.Value, ("HYPERION", sniperService.GetBreakdownKey(item.Key, "HYPERION")));
-        }
+        AddLookupAndUpdateMeidans("HYPERION.json", "HYPERION", new DateTime(2025, 3, 10));
         var cleanPrices = sniperService.Lookups["HYPERION"].Lookup.Where(p => p.Value.Price > 0 && p.Value.TimeToSell > 3).ToList().OrderBy(v => v.Value.Price).Skip(1).Take(5);
         cleanPrices.First().Value.Price.Should().BeGreaterThan(897_000_000, cleanPrices.First().Key.ToString());
         var auction = new SaveAuction()
@@ -660,18 +659,31 @@ public class DropOffTests
     }
 
     /// <summary>
+    /// Median tended to sometimes limit itself to below clean value, assert that thats not the case
+    /// </summary>
+    /// <returns></returns>
+    [Test]
+    public async Task MinValueAboveClean()
+    {
+        await sniperService.Init();
+        SetBazaarPrice("RECOMBOBULATOR_3000", 9_000_000);
+        SetBazaarPrice("GEMSTONE_CHAMBER", 6_000_000);
+        SetBazaarPrice("JADERALD", 4_400_000);
+        AddLookupAndUpdateMeidans("divan.json", "DIVAN_BOOTS", new DateTime(2025, 4, 15));
+        UpdateMedian("DIVAN_BOOTS", sniperService.Lookups["DIVAN_BOOTS"]);
+        var pgems= sniperService.Lookups["DIVAN_BOOTS"].Lookup.Where(p => p.Key.ToString() == " Any [pgems, 5],[rarity_upgrades, 1],[unlocked_slots, AMBER_0,AMBER_1,JADE_0,JADE_1,TOPAZ_0] MYTHIC 1").First();
+        pgems.Value.Price.Should().BeGreaterThan(42_000_000, "unlocked gem slots are expensive");
+        var cheapest = sniperService.Lookups["DIVAN_BOOTS"].Lookup.Where(p => p.Value.Price > 0 && p.Value.TimeToSell > 3).ToList().OrderBy(v => v.Value.Price).Take(15).ToList();
+        cheapest.Skip(1).First().Value.Price.Should().BeGreaterThan(20_000_000, string.Join('\n', cheapest.Select(c => c.Key.ToString() + " " + c.Value.Price)));
+    }
+
+    /// <summary>
     /// Price drop protection should adjust to volume and not miss good flips
     /// </summary>
     [Test]
     public void PetPriceDropIgnore()
     {
-        var converted = LoadLookupMock("petHigherRisk.json");
-        SniperService.StartTime = new DateTime(2021, 9, 25) + (DateTime.UtcNow - new DateTime(2025, 1, 31));
-        sniperService.AddLookupData("PET_G", converted);
-        foreach (var item in converted.Lookup)
-        {
-            sniperService.UpdateMedian(item.Value, ("PET_G", sniperService.GetBreakdownKey(item.Key, "PET_G")));
-        }
+        AddLookupAndUpdateMeidans("petHigherRisk.json", "PET_G", new DateTime(2025, 1, 31));
         var auction = new SaveAuction()
         {
             Tag = "PET_G",
