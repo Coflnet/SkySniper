@@ -3532,12 +3532,6 @@ ORDER BY l.`AuctionId`  DESC;
                                     .OrderBy(p => p).Skip(allReferences.Count / 4)
                                     .DefaultIfEmpty(targetPrice / 2).Min();
 
-                    var sumBrekdown = breakdown.ValueBreakdown.Sum(v => v.Value);
-                    if (percentile < sumBrekdown * 0.7)
-                    {
-                        props["sumAdj"] = sumBrekdown.ToString();
-                        percentile = (long)Math.Min((sumBrekdown * 1.6 + percentile) / 3, referencePrice * 1.2);
-                    }
                     if (bucket.Price == 0 && bucket.References.Count > 2 && higherValueKeys.Count <= 2) // manip indicator
                     {
                         percentile /= 5;

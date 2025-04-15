@@ -540,17 +540,6 @@ public class DropOffTests
     public void LimitLowReferceSnipe()
     {
         AddLookupAndUpdateMeidans("gauntlet.json", "VANQUISHED_GLOWSTONE_GAUNTLET", new DateTime(2025, 4, 14));
-        /*,
-        {
-        y [rarity_upgrades, 1],[mana_regeneration, 7],[mana_pool, 10] LEGENDARY 1
-          "auctionId": 2135622478075558400,
-          "price": 160000000,
-          "day": 1297,
-          "seller": 27328,
-          "buyer": 28067,
-          "sellTime": 0
-        }
-        */
         var auction = new SaveAuction()
         {
             Tag = "VANQUISHED_GLOWSTONE_GAUNTLET",
@@ -565,10 +554,10 @@ public class DropOffTests
         sniperService.TestNewAuction(auction);
         found.Should().BeEmpty();
         var cheaper = auction.Dupplicate();
-        cheaper.StartingBid = 40_000_000;
+        cheaper.StartingBid = 20_000_000;
         sniperService.TestNewAuction(cheaper);
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
-        flip.TargetPrice.Should().Be(62000000L);
+        flip.TargetPrice.Should().Be(31000000L);
     }
 
     [Test]
