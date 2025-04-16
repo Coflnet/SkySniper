@@ -3002,8 +3002,6 @@ ORDER BY l.`AuctionId`  DESC;
                 return; // probably overvalues tier boost on enderdragon
             if (closest.Key == key)
                 return; // already found - or rather not - by median
-            else
-                logger.LogInformation($"Would estimate closest to {key} {closest.Key} {auction.Uuid} for {closest.Value.Price}");
             if (closest.Value.Price <= medPrice)
                 return;
             var props = new Dictionary<string, string>() { { "closest", closest.Key.ToString() } };
