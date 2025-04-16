@@ -209,7 +209,7 @@ namespace Coflnet.Sky.Sniper.Services
         public async Task<Dictionary<string,double>> LoadCraftCost()
         {
             using var result = await GetStreamForObject("group-craft");
-            return await MessagePackSerializer.DeserializeAsync<Dictionary<string,double>>(result);
+            return await MessagePackSerializer.DeserializeAsync<Dictionary<string,double>>(result, GroupOptions());
         }
 
         public async Task<List<KeyValuePair<string, PriceLookup>>> LoadGroup(int key)
