@@ -21,9 +21,10 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly IConfiguration config;
         private readonly ILogger<S3PersistanceManager> logger;
         private readonly AmazonS3Client s3Client;
+        private readonly ICraftCostService craftCostService;
         private DateTime LastSave = DateTime.Now;
 
-        public S3PersistanceManager(IConfiguration config, ILogger<S3PersistanceManager> logger)
+        public S3PersistanceManager(IConfiguration config, ILogger<S3PersistanceManager> logger, ICraftCostService craftCostService)
         {
             this.config = config;
             this.logger = logger;
@@ -40,6 +41,7 @@ namespace Coflnet.Sky.Sniper.Services
                     config["SECRET_KEY"] ?? config["MINIO_SECRET"],
                     awsCofig
                     );
+            this.craftCostService = craftCostService;
         }
 
         public async Task LoadLookups(SniperService service)
@@ -74,30 +76,17 @@ namespace Coflnet.Sky.Sniper.Services
 
         public async Task SaveLookup(ConcurrentDictionary<string, PriceLookup> lookups)
         {
-            using var stream = new MemoryStream();
-            await MessagePackSerializer.SerializeAsync(stream, lookups.Keys.ToList());
-            stream.Position = 0;
-            logger.LogInformation("saving list" + stream.Length);
             // group by md5 hash
             await SaveGroups(lookups);
-            return;
-            // upload to s3
-            await s3Client.PutObjectAsync(new PutObjectRequest()
-            {
-                BucketName = "sky-sniper",
-                Key = "itemList",
-                DisablePayloadSigning = true,
-                InputStream = stream
-            });
-            logger.LogInformation("saved list ");
-            await Parallel.ForEachAsync(lookups, new ParallelOptions()
-            {
-                MaxDegreeOfParallelism = 2
-            }, async (item, cancleToken) =>
-            {
-                await SaveLookup(item.Key, item.Value);
-            });
-            Console.WriteLine();
+            await SaveCrafts();
+        }
+
+        private async Task SaveCrafts()
+        {
+            var craftCost = craftCostService.Costs;
+            using var stream = new MemoryStream();
+            await MessagePackSerializer.SerializeAsync(stream, craftCost, GroupOptions());
+            await SaveData("group-craft", stream);
         }
 
         private async Task SaveGroups(ConcurrentDictionary<string, PriceLookup> lookups)
@@ -118,6 +107,11 @@ namespace Coflnet.Sky.Sniper.Services
         {
             using var stream = new MemoryStream();
             await MessagePackSerializer.SerializeAsync(stream, list, GroupOptions());
+            await SaveData("group" + key, stream);
+        }
+
+        private async Task SaveData(string key, MemoryStream stream)
+        {
             stream.Position = 0;
             var length = stream.Length;
             try
@@ -125,7 +119,7 @@ namespace Coflnet.Sky.Sniper.Services
                 var putResponse = await s3Client.PutObjectAsync(new PutObjectRequest()
                 {
                     BucketName = "sky-sniper",
-                    Key = "group" + key,
+                    Key = key,
                     DisablePayloadSigning = true,
                     InputStream = stream
                 });
@@ -133,7 +127,7 @@ namespace Coflnet.Sky.Sniper.Services
             }
             catch (Exception e)
             {
-                logger.LogError(e, "failed to save group " + list.First().Key);
+                logger.LogError(e, "failed to save group " + key);
             }
         }
 
@@ -212,10 +206,10 @@ namespace Coflnet.Sky.Sniper.Services
             return stream;
         }
 
-        private async Task<PriceLookup> LoadItem(string itemName)
+        public async Task<Dictionary<string,double>> LoadCraftCost()
         {
-            using var result = await GetStreamForObject(itemName);
-            return await MessagePackSerializer.DeserializeAsync<PriceLookup>(result);
+            using var result = await GetStreamForObject("group-craft");
+            return await MessagePackSerializer.DeserializeAsync<Dictionary<string,double>>(result);
         }
 
         public async Task<List<KeyValuePair<string, PriceLookup>>> LoadGroup(int key)

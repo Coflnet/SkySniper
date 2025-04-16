@@ -12,5 +12,6 @@ namespace Coflnet.Sky.Sniper.Services
         Task<ConcurrentDictionary<string, AttributeLookup>> GetWeigths();
         Task SaveWeigths(ConcurrentDictionary<string, AttributeLookup> lookups);
         Task<List<KeyValuePair<string, PriceLookup>>> LoadGroup(int groupId);
+        Task<Dictionary<string, double>> LoadCraftCost();
     }
 }

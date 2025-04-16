@@ -3334,6 +3334,11 @@ namespace Coflnet.Sky.Sniper
             return Task.FromResult(new ConcurrentDictionary<string, AttributeLookup>());
         }
 
+        public Task<Dictionary<string, double>> LoadCraftCost()
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<List<KeyValuePair<string, PriceLookup>>> LoadGroup(int groupId)
         {
             throw new NotImplementedException();
