@@ -49,8 +49,7 @@ namespace Coflnet.Sky.Sniper.Services
             {
                 foreach (var modifier in RelevantModifiers)
                 {
-                    hash = hash * 23 + modifier.Key.GetHashCode();
-                    hash = hash * 23 + (modifier.Value?.GetHashCode() ?? 0);
+                    hash = hash * 23 *  modifier.Key.GetHashCode() * (modifier.Value?.GetHashCode() ?? 1);
                 }
             }
 
