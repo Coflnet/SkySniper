@@ -841,30 +841,6 @@ namespace Coflnet.Sky.Sniper
             craftCost.Should().BeNull("they are not crafted so should not be reported");
         }
 
-        [TestCase("2", 8_250_000)]
-        [TestCase("3", 33000000)] // capped at level 3 (reduced attribute value for applied path)
-        public void CapRuneCraftCostAtCorrectLevel(string inputLevel, int targetPrice)
-        {
-            highestValAuction.Tag = "RUNE_MUSIC";
-            var lvl3 = Dupplicate(highestValAuction);
-            lvl3.HighestBidAmount = 45_000_000;
-            lvl3.FlatenedNBT = new() { { "RUNE_MUSIC", "3" } };
-             var lvl1 = Dupplicate(lvl3);
-            lvl1.FlatenedNBT["RUNE_MUSIC"] = "1";
-            lvl1.HighestBidAmount = 5_000_000;
-            AddVolume(lvl1);
-            AddVolume(lvl3);
-           
-            var sample = Dupplicate(lvl1);
-            sample.HighestBidAmount = 0;
-            sample.FlatenedNBT["RUNE_MUSIC"] = inputLevel;
-            sample.StartingBid = 10_000;
-            TestNewAuction(sample);
-            var craftFind = found.Last(f => f.Finder == LowPricedAuction.FinderType.CraftCost);
-            Assert.That(craftFind, Is.Not.Null);
-            Assert.That(craftFind.TargetPrice, Is.EqualTo(targetPrice), "should target at craft cost");
-        }
-
         [Test]
         public void Level100NotPriceCappedByItself()
         {

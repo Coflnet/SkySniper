@@ -194,6 +194,20 @@ namespace Coflnet.Sky.Sniper.Services
             "hook.part",
         };
 
+        private static readonly HashSet<string> KillKeys = [
+            "blaze_kills",
+            "blood_god_kills",
+            "bow_kills",
+            "eman_kills",
+            "expertise_kills",
+            "raider_kills",
+            "runic_kills",
+            "skeletorKills",
+            "spider_kills",
+            "sword_kills",
+            "zombie_kills"
+            ];
+
         private static readonly Dictionary<string, short> ShardAttributes = new(){
             {"mana_pool", 1},
             {"breeze", 2},
@@ -541,7 +555,7 @@ ORDER BY l.`AuctionId`  DESC;
                     result.LbinKey = res.result.LbinKey;
                 }
             }
-            ReferencePrice lbinCap = GetLbinCap(auction, l, itemKey);
+            ReferencePrice lbinCap = GetLbinCap(tagGroup.tag, l, itemKey);
             if (lbinCap.Price != 0 && result.Lbin.Price > lbinCap.Price)
             {
                 result.Lbin = lbinCap;
@@ -556,12 +570,12 @@ ORDER BY l.`AuctionId`  DESC;
             return result;
         }
 
-        private ReferencePrice GetLbinCap(SaveAuction auction, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKeyWithValue itemKey)
+        public ReferencePrice GetLbinCap(string tag, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKey itemKey)
         {
-            var lbinCap = HigherValueLbinMapLookup.GetOrAdd(((string, AuctionKey))(auction.Tag, itemKey), a =>
+            var lbinCap = HigherValueLbinMapLookup.GetOrAdd((tag, itemKey), a =>
             {
                 var higherValue = l.Where(k => k.Value.Lbin.Price != 0
-                                    && IsHigherValue(auction.Tag, itemKey, k.Key) && k.Key.Reforge == itemKey.Reforge);
+                                    && IsHigherValue(tag, itemKey, k.Key) && k.Key.Reforge == itemKey.Reforge);
                 var MaxValue = higherValue.OrderBy(b => b.Value.Lbin.Price).FirstOrDefault();
                 if (MaxValue.Key == a.Item2)
                     return (default, DateTime.UtcNow); // best match is itself, skip
@@ -726,7 +740,7 @@ ORDER BY l.`AuctionId`  DESC;
             return missingModifiers.Select(m =>
             {
                 if (Constants.AttributeKeys.Contains(m.Key)
-                    || m.Key == "exp" || m.Key == "candyUsed" || m.Key.EndsWith("kills"))
+                    || m.Key == "exp" || m.Key == "candyUsed" || KillKeys.Contains(m.Key))
                 {
                     return 0;
                 }
@@ -752,11 +766,6 @@ ORDER BY l.`AuctionId`  DESC;
                 else
                     // some of the items actually don't have the prefix, skins on pets may but other skins don't
                     return new (string, int)[] { (prefix + m.Value.ToUpper(), 1), (m.Value.ToUpper(), 1) };
-            if ((tag?.StartsWith("STARRED_SHADOW_ASSASSIN") ?? false) && m.Key.StartsWith("JASPER_0"))
-            {
-                // Jasper0 slot can't be accessed on starred (Fragged) items
-                return EmptyArray;
-            }
 
             if (m.Key == "upgrade_level" && !(itemService?.IsDungeonItemSync(tag) ?? true))
             {
@@ -1172,11 +1181,11 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (keyCombo.key.Key.Modifiers.Count == 0 && keyCombo.key.Key.Reforge == ItemReferences.Reforge.jaded)
                     {
-                        var lowest = lookup.Lookup.Where(l=>l.Value.Price > 0).OrderBy(l => l.Value.Price).Take(5).ToList();
+                        var lowest = lookup.Lookup.Where(l => l.Value.Price > 0).OrderBy(l => l.Value.Price).Take(5).ToList();
                         Console.WriteLine("sample");
                     }
                     if (limitedPrice < tierval / 1.2 && !keyCombo.key.Key.Modifiers.Any(m => m.Key == "virtual" || Constants.AttributeKeys.Contains(m.Key)))
-                            limitedPrice = Math.Max(limitedPrice, tierval);
+                        limitedPrice = Math.Max(limitedPrice, tierval);
                 }
                 limitedPrice = CapAtCraftCost(keyCombo.tag, limitedPrice, keyCombo.key, bucket.Price);
                 var craftCostCap = limitedPrice;
@@ -1589,7 +1598,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             var select = (NBT.IsPet(tag) ?
                             lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value) :
-                             lookup.Lookup.Where(v => v.Value.Price > 0 && !v.Key.Modifiers.Any(m=>m.Key=="pgems")).Select(l=>l.Value)).ToList();
+                             lookup.Lookup.Where(v => v.Value.Price > 0 && !v.Key.Modifiers.Any(m => m.Key == "pgems")).Select(l => l.Value)).ToList();
             var count = select.Count;
             var all = select.SelectMany(v => v.References).ToList();
             var size = (int)Math.Max(lookup.Volume * 10, 50);
@@ -2230,7 +2239,7 @@ ORDER BY l.`AuctionId`  DESC;
                     RelevantModifiers = modifiers
                 });
             }
-            if (mod.Key.EndsWith("_kills"))
+            if (KillKeys.Contains(mod.Key))
             {
                 sum += 300_000 * (int)Math.Pow(2, int.Parse(mod.Value)) + 300_000;
             }
@@ -2480,7 +2489,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return NormalizeGroupNumber(s, 5_500, 15_000);
             if (s.Key == "raider_kills")
                 return NormalizeGroupNumber(s, 10_000, 17500);
-            if (s.Key.EndsWith("_kills"))
+            if (KillKeys.Contains(s.Key))
                 return NormalizeNumberTo(s, 10_000);
             if (s.Key == "yogsKilled")
                 return NormalizeNumberTo(s, 5_000, 2);
@@ -2776,7 +2785,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 return;
             }
-            if (itemGroupTag.tag.StartsWith("UNIQUE_RUNE_"))
+            if (IsRune(itemGroupTag.tag))
             {
                 return; // runes are not crafted so makes not sense to report them
             }
@@ -3035,7 +3044,7 @@ ORDER BY l.`AuctionId`  DESC;
                 toSubstract -= fromExp;
                 if (missingModifiers.Any(m => m.Key == "candyUsed" && m.Value == "1"))
                     toSubstract += (long)(closest.Value.Price * 0.1 + 400_000); // 10% for pet candy
-                var killModifier = missingModifiers.FirstOrDefault(m => m.Key.EndsWith("kills"));
+                var killModifier = missingModifiers.FirstOrDefault(m => KillKeys.Contains(m.Key));
                 if (killModifier.Key != default)
                 {
                     var killCount = int.Parse(killModifier.Value);
@@ -3476,7 +3485,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private bool PotentialSnipe(SaveAuction auction, (string tag, long costSubstract) groupTag, double lbinPrice, ReferenceAuctions bucket, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, long extraValue, KeyWithValueBreakdown breakdown)
         {
-            var lowestHigherBin = GetLbinCap(auction, l, breakdown);
+            var lowestHigherBin = GetLbinCap(groupTag.tag, l, breakdown);
             var higherValueLowerBin = bucket.Lbin.Price;
             if (lowestHigherBin.AuctionId != default)
                 if (lowestHigherBin.Price < lbinPrice)
@@ -3557,6 +3566,8 @@ ORDER BY l.`AuctionId`  DESC;
                     percentile = Math.Min(percentile, Math.Min(targetPrice * 60 / 100, (long)(referencePrice * 1.2)));
                     props["noHigherLbin"] = percentile.ToString();
                 }
+                if (percentile < lbinPrice)
+                    return false; // to low already don't waste time
                 var reduced = CapAtCraftCost(groupTag.tag, percentile, breakdown, 0);
                 if (reduced > 0)
                 {
@@ -3575,24 +3586,29 @@ ORDER BY l.`AuctionId`  DESC;
             }
             else
             {
-                long capped = 0;
-                if ((craftCostService?.TryGetCost(groupTag.tag, out var craftCost) ?? false) || key.Modifiers.Count > 0 || key.Enchants.Count > 0)
-                    capped = CapAtCraftCost(groupTag.tag, higherValueLowerBin, breakdown, 0);
-                else
-                    targetPrice = Math.Min(higherValueLowerBin * 99 / 100, bucket.Price * 4 / 3 + 1_000_000); // pull target up for non craftable clean
-                if (capped > 0)
-                {
-                    percentile = Math.Min(percentile, capped * 12 / 11) + 500_000; // 500k extra since this is high volume
-                    Activity.Current.Log($"Capped at craft cost {capped}");
-                    props["breakdown"] = JsonConvert.SerializeObject(breakdown.ValueBreakdown);
-                    props["craftCost"] = capped.ToString();
-                }
-                else
-                    props["nocapped"] = capped.ToString();
+                CapHighValue(groupTag, bucket, key, breakdown, higherValueLowerBin, ref targetPrice, ref percentile, props);
             }
             props["percentile"] = percentile.ToString();
             targetPrice = Math.Min(targetPrice, percentile);
             return FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props);
+        }
+
+        private void CapHighValue((string tag, long costSubstract) groupTag, ReferenceAuctions bucket, AuctionKey key, KeyWithValueBreakdown breakdown, long higherValueLowerBin, ref long targetPrice, ref long percentile, Dictionary<string, string> props)
+        {
+            long capped = 0;
+            if ((craftCostService?.TryGetCost(groupTag.tag, out var craftCost) ?? false) || key.Modifiers.Count > 0 || key.Enchants.Count > 0)
+                capped = CapAtCraftCost(groupTag.tag, higherValueLowerBin, breakdown, 0);
+            else
+                targetPrice = Math.Min(higherValueLowerBin * 99 / 100, bucket.Price * 4 / 3 + 1_000_000); // pull target up for non craftable clean
+            if (capped > 0)
+            {
+                percentile = Math.Min(percentile, capped * 12 / 11) + 500_000; // 500k extra since this is high volume
+                Activity.Current.Log($"Capped at craft cost {capped}");
+                props["breakdown"] = JsonConvert.SerializeObject(breakdown.ValueBreakdown);
+                props["craftCost"] = capped.ToString();
+            }
+            else
+                props["nocapped"] = capped.ToString();
         }
 
         private bool IsHigherValue(string tag, AuctionKey baseKey, AuctionKey toCheck)
