@@ -665,6 +665,15 @@ public class DropOffTests
         var cheapest = sniperService.Lookups["DIVAN_BOOTS"].Lookup.Where(p => p.Value.Price > 0 && p.Value.TimeToSell > 3).ToList().OrderBy(v => v.Value.Price).Take(15).ToList();
         cheapest.Skip(1).First().Value.Price.Should().BeGreaterThan(20_000_000, string.Join('\n', cheapest.Select(c => c.Key.ToString() + " " + c.Value.Price)));
     }
+    [Test]
+    public async Task SellTimeIsNotTooLow()
+    {
+        await sniperService.Init();
+        AddLookupAndUpdateMeidans("selltime.json", "AURORA_CHESTPLATE", new DateTime(2025, 4, 19));
+        var updated = sniperService.Lookups["AURORA_CHESTPLATE"].Lookup.First();
+        updated.Value.TimeToSell.Should().BeGreaterThan(60, "at least 60 minutes estimate");
+    }
+
 
     /// <summary>
     /// Price drop protection should adjust to volume and not miss good flips

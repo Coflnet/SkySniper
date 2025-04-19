@@ -1091,7 +1091,6 @@ ORDER BY l.`AuctionId`  DESC;
             List<ReferencePrice> deduplicated = ApplyAntiMarketManipulation(bucket);
             DropUnderlistings(deduplicated);
 
-
             size = deduplicated.Count();
             if (size <= 3 || deduplicated.Count(d => d.Day >= GetDay() - 20) < 3 && !(keyCombo.Item2?.Key.IsClean() ?? false) && !IsMaxAttrib(keyCombo))
             {
@@ -1155,9 +1154,7 @@ ORDER BY l.`AuctionId`  DESC;
             bucket.StonksHits = 0;
             bucket.DeduplicatedReferenceCount = (short)deduplicated.Count();
             PreCalculateVolume(keyCombo);
-            bucket.TimeToSell = (int)deduplicated
-                        .Where(d => d.SellTime > 0 && d.Price > medianPrice * 0.93 && d.Price < medianPrice * 1.1)
-                        .DefaultIfEmpty().Average(d => d.SellTime);
+            bucket.TimeToSell = (int)EstimateTimeTosell(deduplicated, medianPrice, bucket.Volume);
             // get price of item without enchants and add enchant value 
             if (keyCombo != default)
             {
@@ -1378,6 +1375,13 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 var estimate = Math.Min(Math.Min(riskyShort, riskyLongTerm), marketManipLimit);
                 return estimate;
+            }
+
+            static double EstimateTimeTosell(List<ReferencePrice> deduplicated, long medianPrice, float volume)
+            {
+                var relevant = deduplicated
+                    .Where(d => d.SellTime > 0 && d.Price > medianPrice * 0.96 && d.Price < medianPrice * 1.1);
+                return relevant.DefaultIfEmpty().Average(d => d.SellTime) * Math.Max(1, 2/volume);
             }
         }
 
