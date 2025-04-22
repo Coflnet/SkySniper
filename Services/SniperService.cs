@@ -1381,7 +1381,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var relevant = deduplicated
                     .Where(d => d.SellTime > 0 && d.Price > medianPrice * 0.96 && d.Price < medianPrice * 1.1);
-                return relevant.DefaultIfEmpty().Average(d => d.SellTime) * Math.Max(1, 2/volume);
+                return relevant.DefaultIfEmpty().Average(d => d.SellTime) * Math.Max(1, 2 / volume);
             }
         }
 
@@ -3567,7 +3567,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (lowestLbin > 10_000_000_000)
                 {
                     Activity.Current.Log($"Reduced because no higher value lbin");
-                    percentile = Math.Min(percentile, Math.Min(targetPrice * 60 / 100, (long)(referencePrice * 1.2)));
+                    percentile = Math.Min(percentile, Math.Min(targetPrice * (60 + (int)(bucket.Volume * 5)) / 100, (long)(referencePrice * 1.2)));
                     props["noHigherLbin"] = percentile.ToString();
                 }
                 if (percentile < lbinPrice)

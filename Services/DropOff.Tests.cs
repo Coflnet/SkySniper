@@ -457,7 +457,7 @@ public class DropOffTests
         medianSnipe.TargetPrice.Should().Be(97399150, JsonConvert.SerializeObject(found, Formatting.Indented));
     }
 
-    [TestCase(9, 34999399L)]
+    [TestCase(9, 50000000L)]
     [TestCase(10, 63360000L)] // lbin based up to 99% at 10 volume
     public void SniperEstimate(byte volumeOverride, long target)
     {
@@ -673,6 +673,29 @@ public class DropOffTests
         var updated = sniperService.Lookups["AURORA_CHESTPLATE"].Lookup.First();
         updated.Value.TimeToSell.Should().BeGreaterThan(60, "at least 60 minutes estimate");
     }
+    [Test]
+    public async Task SniperLimitShouldBeModerate()
+    {
+        await sniperService.Init();
+        SetBazaarPrice("RECOMBOBULATOR_3000", 9_000_000);
+        SetBazaarPrice("TALISMAN_ENRICHMENT_FEROCITY", 7_000_000);
+        AddLookupAndUpdateMeidans("relict.json", "WITHER_RELIC", new DateTime(2025, 4, 22));
+        // {"enchantments":[],"uuid":"261c6b1ae9144c59a4899743b3c4c598","count":1,"startingBid":100999999,"tag":"WITHER_RELIC","itemName":"Wither Relic","start":"2025-04-22T08:43:52","end":"2025-04-22T08:44:23","auctioneerId":"4617b0253ac54726b1e8a087a8c6b0d2","profileId":"e5b698baf5e94b3d86c9a59cca3552f1","coop":null,"coopMembers":null,"highestBidAmount":100999999,"bids":[{"bidder":"fbcc09e738b5404f9a534497f7748ade","profileId":"unknown","amount":100999999,"timestamp":"2025-04-22T08:44:23"}],"anvilUses":0,"nbtData":{"data":{"rarity_upgrades":1,"talisman_enrichment":"critical_chance","uid":"fd7387ac1ccd","uuid":"6ec00445-3ba6-4168-b87d-fd7387ac1ccd"}},"itemCreatedAt":"2020-08-28T01:56:00","reforge":"None","category":"UNKNOWN","tier":"MYTHIC","bin":true,"flatNbt":{"rarity_upgrades":"1","talisman_enrichment":"critical_chance","uid":"fd7387ac1ccd","uuid":"6ec00445-3ba6-4168-b87d-fd7387ac1ccd"}}
+        var auction = new SaveAuction()
+        {
+            Tag = "WITHER_RELIC",
+            StartingBid = 100_000_000,
+            UId = 4,
+            FlatenedNBT = new Dictionary<string, string>() { { "rarity_upgrades", "1" }, { "talisman_enrichment", "critical_chance" } },
+            AuctioneerId = "12aaa",
+            Tier = Tier.MYTHIC,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
+        flip.TargetPrice.Should().BeGreaterThan(188_000_000L, "should be not much limited by the starting bid");
+    }
 
 
     /// <summary>
@@ -727,7 +750,7 @@ public class DropOffTests
         flip.TargetPrice.Should().Be(972428570L);
         flip.AdditionalProps["breakdown"].Should().StartWith("[{\"Value\":371999999,");
         var sniper = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
-        sniper.TargetPrice.Should().Be(629369400L); // should be limited by a little bit over craft cost and not target 1.1b
+        sniper.TargetPrice.Should().Be(734264300L); // should be limited by a little bit over craft cost and not target 1.1b
 
         // check that exp is not dropped on lvl 1
         auction.FlatenedNBT["exp"] = "1";

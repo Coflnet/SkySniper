@@ -1,0 +1,2167 @@
+{
+    "lookup": {
+      " Any [rarity_upgrades, 1] MYTHIC 1": {
+        "price": 195120400,
+        "references": [
+          {
+            "auctionId": -4352692642299431000,
+            "price": 192700001,
+            "day": 1297,
+            "seller": -5104,
+            "buyer": 3785,
+            "sellTime": 28
+          },
+          {
+            "auctionId": -1860938522944352000,
+            "price": 202200001,
+            "day": 1297,
+            "seller": -27352,
+            "buyer": -478,
+            "sellTime": 49
+          },
+          {
+            "auctionId": 7915823557774264000,
+            "price": 165662580,
+            "day": 1297,
+            "seller": 28714,
+            "buyer": -22961,
+            "sellTime": 0
+          },
+          {
+            "auctionId": -5347524998342370000,
+            "price": 192700001,
+            "day": 1297,
+            "seller": -22961,
+            "buyer": 15682,
+            "sellTime": 31
+          },
+          {
+            "auctionId": 5886973981073598000,
+            "price": 192700001,
+            "day": 1297,
+            "seller": 18294,
+            "buyer": -16161,
+            "sellTime": 61
+          },
+          {
+            "auctionId": -3410446944304331300,
+            "price": 202700000,
+            "day": 1297,
+            "seller": -29257,
+            "buyer": 2892,
+            "sellTime": 319
+          },
+          {
+            "auctionId": -6593144787356845000,
+            "price": 201580001,
+            "day": 1297,
+            "seller": 25657,
+            "buyer": -8684,
+            "sellTime": 75
+          },
+          {
+            "auctionId": -3089972108179139600,
+            "price": 202700001,
+            "day": 1297,
+            "seller": 3785,
+            "buyer": 6234,
+            "sellTime": 539
+          },
+          {
+            "auctionId": -8895200561381775000,
+            "price": 200750001,
+            "day": 1297,
+            "seller": 24389,
+            "buyer": 9976,
+            "sellTime": 55
+          },
+          {
+            "auctionId": 1467722759096713700,
+            "price": 202000000,
+            "day": 1297,
+            "seller": -25584,
+            "buyer": 23200,
+            "sellTime": 27
+          },
+          {
+            "auctionId": 5719087255444140000,
+            "price": 202700000,
+            "day": 1297,
+            "seller": -30195,
+            "buyer": 18740,
+            "sellTime": 898
+          },
+          {
+            "auctionId": 5004834219271052000,
+            "price": 202700000,
+            "day": 1297,
+            "seller": 12473,
+            "buyer": -1761,
+            "sellTime": 14
+          },
+          {
+            "auctionId": 4514919902444818400,
+            "price": 206000000,
+            "day": 1297,
+            "seller": -12139,
+            "buyer": 12280,
+            "sellTime": 158
+          },
+          {
+            "auctionId": 5216287781104324000,
+            "price": 214600000,
+            "day": 1297,
+            "seller": -30518,
+            "buyer": 9439,
+            "sellTime": 9332
+          },
+          {
+            "auctionId": 3761278325070445000,
+            "price": 144400112,
+            "day": 1298,
+            "seller": -4027,
+            "buyer": 7496,
+            "sellTime": 2
+          },
+          {
+            "auctionId": -8237943781166019000,
+            "price": 192650000,
+            "day": 1298,
+            "seller": -16078,
+            "buyer": -30466,
+            "sellTime": 22
+          },
+          {
+            "auctionId": -470179705438008900,
+            "price": 199000000,
+            "day": 1298,
+            "seller": -25088,
+            "buyer": -1014,
+            "sellTime": 246
+          },
+          {
+            "auctionId": -3698887756123791000,
+            "price": 187650000,
+            "day": 1298,
+            "seller": -7113,
+            "buyer": 18230,
+            "sellTime": 25
+          },
+          {
+            "auctionId": 1199131985176331800,
+            "price": 173088142,
+            "day": 1298,
+            "seller": -5637,
+            "buyer": -23077,
+            "sellTime": 0
+          },
+          {
+            "auctionId": 4470949114749729000,
+            "price": 192750000,
+            "day": 1298,
+            "seller": -23988,
+            "buyer": 6652,
+            "sellTime": 0
+          },
+          {
+            "auctionId": 8563333287542625000,
+            "price": 199650000,
+            "day": 1298,
+            "seller": -1354,
+            "buyer": -19338,
+            "sellTime": 43
+          },
+          {
+            "auctionId": -1207419440989974500,
+            "price": 192750001,
+            "day": 1298,
+            "seller": 16754,
+            "buyer": 14439,
+            "sellTime": 0
+          },
+          {
+            "auctionId": -6636118946220392000,
+            "price": 188750001,
+            "day": 1298,
+            "seller": -29100,
+            "buyer": 18023,
+            "sellTime": 0
+          },
+          {
+            "auctionId": -6221103536022760000,
+            "price": 194800000,
+            "day": 1299,
+            "seller": -5642,
+            "buyer": -1498,
+            "sellTime": 39
+          },
+          {
+            "auctionId": 1863377663528642300,
+            "price": 194800000,
+            "day": 1299,
+            "seller": -23077,
+            "buyer": -3347,
+            "sellTime": 54
+          },
+          {
+            "auctionId": 6963635011045689000,
+            "price": 192800000,
+            "day": 1299,
+            "seller": -28163,
+            "buyer": 23610,
+            "sellTime": 28
+          },
+          {
+            "auctionId": 5689097238040926000,
+            "price": 196133334,
+            "day": 1299,
+            "seller": 16241,
+            "buyer": 30836,
+            "sellTime": 556
+          },
+          {
+            "auctionId": 2872547554690336000,
+            "price": 173333242,
+            "day": 1299,
+            "seller": -13790,
+            "buyer": 21945,
+            "sellTime": 0
+          },
+          {
+            "auctionId": 2250627089099112200,
+            "price": 187461000,
+            "day": 1299,
+            "seller": 7496,
+            "buyer": 4081,
+            "sellTime": 135
+          },
+          {
+            "auctionId": -8207423037722471000,
+            "price": 163702212,
+            "day": 1299,
+            "seller": 15965,
+            "buyer": -19498,
+            "sellTime": 1
+          },
+          {
+            "auctionId": 2496624369655283000,
+            "price": 181000000,
+            "day": 1299,
+            "seller": -19311,
+            "buyer": 28750,
+            "sellTime": 46
+          },
+          {
+            "auctionId": -8179166891740928000,
+            "price": 181600000,
+            "day": 1299,
+            "seller": -19498,
+            "buyer": -9432,
+            "sellTime": 98
+          },
+          {
+            "auctionId": -685412047498195500,
+            "price": 193000000,
+            "day": 1299,
+            "seller": 21945,
+            "buyer": -2771,
+            "sellTime": 426
+          },
+          {
+            "auctionId": -1536209172383688700,
+            "price": 197696969,
+            "day": 1299,
+            "seller": 31061,
+            "buyer": 22353,
+            "sellTime": 1141
+          },
+          {
+            "auctionId": 7211994825395335000,
+            "price": 199990000,
+            "day": 1299,
+            "seller": 11583,
+            "buyer": 30719,
+            "sellTime": 1284
+          },
+          {
+            "auctionId": 3330018415136774700,
+            "price": 200000000,
+            "day": 1299,
+            "seller": 16356,
+            "buyer": -23039,
+            "sellTime": 1428
+          },
+          {
+            "auctionId": 7080538233826790000,
+            "price": 183000000,
+            "day": 1299,
+            "seller": 3874,
+            "buyer": -20261,
+            "sellTime": 0
+          },
+          {
+            "auctionId": -4542112026166105600,
+            "price": 203000000,
+            "day": 1299,
+            "seller": 16373,
+            "buyer": -14213,
+            "sellTime": 31
+          },
+          {
+            "auctionId": 9065735604613202000,
+            "price": 210000000,
+            "day": 1299,
+            "seller": -6899,
+            "buyer": 6237,
+            "sellTime": 219
+          },
+          {
+            "auctionId": -943709694257200600,
+            "price": 186850000,
+            "day": 1300,
+            "seller": -631,
+            "buyer": -26862,
+            "sellTime": 40
+          },
+          {
+            "auctionId": -7029541793366274000,
+            "price": 182850000,
+            "day": 1300,
+            "seller": 21917,
+            "buyer": 4367,
+            "sellTime": 32
+          },
+          {
+            "auctionId": 2866267891033192000,
+            "price": 190000000,
+            "day": 1300,
+            "seller": 8551,
+            "buyer": 15564,
+            "sellTime": 139
+          },
+          {
+            "auctionId": -8246654702855472000,
+            "price": 192799999,
+            "day": 1300,
+            "seller": -8085,
+            "buyer": -14493,
+            "sellTime": 29
+          },
+          {
+            "auctionId": -5729816958345274000,
+            "price": 190800000,
+            "day": 1300,
+            "seller": 30603,
+            "buyer": -8888,
+            "sellTime": 47
+          },
+          {
+            "auctionId": -8541704288789751000,
+            "price": 192928812,
+            "day": 1300,
+            "seller": -19787,
+            "buyer": -25702,
+            "sellTime": 33
+          },
+          {
+            "auctionId": 5600345919573437000,
+            "price": 192799990,
+            "day": 1300,
+            "seller": -16957,
+            "buyer": -20738,
+            "sellTime": 256
+          },
+          {
+            "auctionId": -139063623055273060,
+            "price": 192800000,
+            "day": 1300,
+            "seller": 14745,
+            "buyer": -15553,
+            "sellTime": 488
+          },
+          {
+            "auctionId": -5161191822018412000,
+            "price": 185000000,
+            "day": 1300,
+            "seller": -6813,
+            "buyer": -29373,
+            "sellTime": 26
+          },
+          {
+            "auctionId": 6036201639735584000,
+            "price": 193800000,
+            "day": 1300,
+            "seller": -8703,
+            "buyer": -15020,
+            "sellTime": 0
+          },
+          {
+            "auctionId": 8598265621749966000,
+            "price": 187800000,
+            "day": 1300,
+            "seller": 15156,
+            "buyer": 23133,
+            "sellTime": 7
+          },
+          {
+            "auctionId": 8953015054072920000,
+            "price": 200000000,
+            "day": 1301,
+            "seller": -32577,
+            "buyer": -25275,
+            "sellTime": 414
+          },
+          {
+            "auctionId": -2934925434868667000,
+            "price": 197405000,
+            "day": 1301,
+            "seller": 23133,
+            "buyer": -30005,
+            "sellTime": 396
+          },
+          {
+            "auctionId": -1192777239593153000,
+            "price": 195999000,
+            "day": 1301,
+            "seller": -30764,
+            "buyer": 24556,
+            "sellTime": 246
+          },
+          {
+            "auctionId": 3220047606966339600,
+            "price": 200000000,
+            "day": 1301,
+            "seller": -17403,
+            "buyer": -9757,
+            "sellTime": 521
+          },
+          {
+            "auctionId": 416219516239375170,
+            "price": 201000000,
+            "day": 1301,
+            "seller": -22253,
+            "buyer": -26618,
+            "sellTime": 28
+          },
+          {
+            "auctionId": 2773460553324127700,
+            "price": 199000000,
+            "day": 1301,
+            "seller": -12116,
+            "buyer": -12070,
+            "sellTime": 46
+          },
+          {
+            "auctionId": -5684145739151203000,
+            "price": 194800000,
+            "day": 1302,
+            "seller": 3869,
+            "buyer": -31050,
+            "sellTime": 162
+          },
+          {
+            "auctionId": -2514144365524987000,
+            "price": 203000000,
+            "day": 1302,
+            "seller": 3967,
+            "buyer": -11950,
+            "sellTime": 337
+          },
+          {
+            "auctionId": 1360178762376323300,
+            "price": 197800001,
+            "day": 1302,
+            "seller": 7335,
+            "buyer": -487,
+            "sellTime": 185
+          },
+          {
+            "auctionId": 3787426866690486300,
+            "price": 210000000,
+            "day": 1302,
+            "seller": 20059,
+            "buyer": 28384,
+            "sellTime": 31
+          },
+          {
+            "auctionId": 5859518112411306000,
+            "price": 211111111,
+            "day": 1302,
+            "seller": -27914,
+            "buyer": -30582,
+            "sellTime": 307
+          },
+          {
+            "auctionId": 3114165876999748600,
+            "price": 203700000,
+            "day": 1303,
+            "seller": -18338,
+            "buyer": -16890,
+            "sellTime": 3
+          },
+          {
+            "auctionId": 1445918662528671500,
+            "price": 203399888,
+            "day": 1303,
+            "seller": -27408,
+            "buyer": 15561,
+            "sellTime": 71
+          },
+          {
+            "auctionId": -2409754754230264300,
+            "price": 202401000,
+            "day": 1303,
+            "seller": -13051,
+            "buyer": -13421,
+            "sellTime": 183
+          },
+          {
+            "auctionId": -2633746174513029000,
+            "price": 202501000,
+            "day": 1303,
+            "seller": -14213,
+            "buyer": 31620,
+            "sellTime": 335
+          },
+          {
+            "auctionId": 8341651164183750000,
+            "price": 204500000,
+            "day": 1303,
+            "seller": 5271,
+            "buyer": -10305,
+            "sellTime": 69
+          },
+          {
+            "auctionId": 6905157037505019000,
+            "price": 213000000,
+            "day": 1304,
+            "seller": -19313,
+            "buyer": 26276,
+            "sellTime": 924
+          },
+          {
+            "auctionId": -2323587450131085000,
+            "price": 205500000,
+            "day": 1304,
+            "seller": -20818,
+            "buyer": 23661,
+            "sellTime": 683
+          },
+          {
+            "auctionId": -2318801931354827300,
+            "price": 205600000,
+            "day": 1304,
+            "seller": 4256,
+            "buyer": 4896,
+            "sellTime": 580
+          },
+          {
+            "auctionId": 7740778625854632000,
+            "price": 192635102,
+            "day": 1304,
+            "seller": 6734,
+            "buyer": -3141,
+            "sellTime": 74
+          },
+          {
+            "auctionId": -1958420369260480300,
+            "price": 192711141,
+            "day": 1304,
+            "seller": -1639,
+            "buyer": -14890,
+            "sellTime": 37
+          },
+          {
+            "auctionId": -1390383640685399300,
+            "price": 195120396,
+            "day": 1304,
+            "seller": 25881,
+            "buyer": 15106,
+            "sellTime": 2
+          },
+          {
+            "auctionId": -4903791388207000000,
+            "price": 194644155,
+            "day": 1304,
+            "seller": -26393,
+            "buyer": 11164,
+            "sellTime": 72
+          },
+          {
+            "auctionId": -244392136331299870,
+            "price": 194965416,
+            "day": 1304,
+            "seller": -31726,
+            "buyer": 6481,
+            "sellTime": 295
+          },
+          {
+            "auctionId": -1115574052833738600,
+            "price": 199000000,
+            "day": 1304,
+            "seller": 5271,
+            "buyer": 3687,
+            "sellTime": 87
+          },
+          {
+            "auctionId": 3182770037305952000,
+            "price": 204999000,
+            "day": 1305,
+            "seller": 14117,
+            "buyer": -10089,
+            "sellTime": 33
+          },
+          {
+            "auctionId": -4917203923979014000,
+            "price": 178395966,
+            "day": 1305,
+            "seller": -21404,
+            "buyer": -7497,
+            "sellTime": 0
+          },
+          {
+            "auctionId": 3950522350254957600,
+            "price": 197645177,
+            "day": 1305,
+            "seller": -19432,
+            "buyer": 9530,
+            "sellTime": 82
+          },
+          {
+            "auctionId": 2746187636112934400,
+            "price": 97376669,
+            "day": 1305,
+            "seller": 17943,
+            "buyer": -1076,
+            "sellTime": 0
+          },
+          {
+            "auctionId": -6878303505636368000,
+            "price": 119100465,
+            "day": 1305,
+            "seller": -1076,
+            "buyer": 30078,
+            "sellTime": 0
+          }
+        ],
+        "oldestRef": 1305,
+        "lbins": [
+          {
+            "auctionId": 5377682983098634000,
+            "price": 206000000,
+            "day": 1318,
+            "seller": -4898,
+            "buyer": 0,
+            "sellTime": -19282
+          },
+          {
+            "auctionId": 5364194199485874000,
+            "price": 211000000,
+            "day": 1318,
+            "seller": 21418,
+            "buyer": 0,
+            "sellTime": -19536
+          },
+          {
+            "auctionId": 5074916908680506000,
+            "price": 218200000,
+            "day": 1306,
+            "seller": -7497,
+            "buyer": 0,
+            "sellTime": -1275
+          },
+          {
+            "auctionId": 7261924417303001000,
+            "price": 220000000,
+            "day": 1318,
+            "seller": -14890,
+            "buyer": 0,
+            "sellTime": -19372
+          }
+        ],
+        "hitsSinceCalculating": 0,
+        "stonksHits": 0,
+        "volatility": 0,
+        "riskyEstimate": 199000000,
+        "timeToSell": 285,
+        "volume": 7
+      },
+      " Any [rarity_upgrades, 1],[talisman_enrichment, yes] MYTHIC 1": {
+        "price": 205000000,
+        "references": [
+          {
+            "auctionId": 8771085485743827000,
+            "price": 195000000,
+            "day": 1274,
+            "seller": 7156,
+            "buyer": 0,
+            "sellTime": 37
+          },
+          {
+            "auctionId": -8269476629512713000,
+            "price": 213000000,
+            "day": 1274,
+            "seller": -26940,
+            "buyer": 0,
+            "sellTime": 354
+          },
+          {
+            "auctionId": -6818112111419293000,
+            "price": 211111111,
+            "day": 1275,
+            "seller": -927,
+            "buyer": 0,
+            "sellTime": 180
+          },
+          {
+            "auctionId": -1553259478269400800,
+            "price": 190000000,
+            "day": 1275,
+            "seller": -28965,
+            "buyer": 0,
+            "sellTime": 1
+          },
+          {
+            "auctionId": -5454808122915663000,
+            "price": 200000000,
+            "day": 1275,
+            "seller": 18958,
+            "buyer": 0,
+            "sellTime": 134
+          },
+          {
+            "auctionId": 4923913518229159000,
+            "price": 209000000,
+            "day": 1275,
+            "seller": -22015,
+            "buyer": 0,
+            "sellTime": 57
+          },
+          {
+            "auctionId": -4529193008059810300,
+            "price": 209990000,
+            "day": 1275,
+            "seller": 14075,
+            "buyer": 0,
+            "sellTime": 305
+          },
+          {
+            "auctionId": 8690003222459871000,
+            "price": 160000000,
+            "day": 1276,
+            "seller": -31391,
+            "buyer": 28549,
+            "sellTime": 0
+          },
+          {
+            "auctionId": -6252940379476320000,
+            "price": 193000000,
+            "day": 1276,
+            "seller": 28549,
+            "buyer": 24635,
+            "sellTime": 45
+          },
+          {
+            "auctionId": -6369514990497651000,
+            "price": 184999999,
+            "day": 1276,
+            "seller": 21881,
+            "buyer": 9925,
+            "sellTime": 0
+          },
+          {
+            "auctionId": -2585437860732719000,
+            "price": 193888000,
+            "day": 1276,
+            "seller": 9925,
+            "buyer": 25447,
+            "sellTime": 2
+          },
+          {
+            "auctionId": -957478213028489500,
+            "price": 194000000,
+            "day": 1276,
+            "seller": -31069,
+            "buyer": 4126,
+            "sellTime": 231
+          },
+          {
+            "auctionId": -3080152748078938000,
+            "price": 185000000,
+            "day": 1276,
+            "seller": -18431,
+            "buyer": 9068,
+            "sellTime": 0
+          },
+          {
+            "auctionId": 5294593360853408000,
+            "price": 180000000,
+            "day": 1276,
+            "seller": -26912,
+            "buyer": 28853,
+            "sellTime": 0
+          },
+          {
+            "auctionId": -4004728167653790700,
+            "price": 195800000,
+            "day": 1276,
+            "seller": 28853,
+            "buyer": -3861,
+            "sellTime": 7
+          },
+          {
+            "auctionId": -2001223882580034800,
+            "price": 185000000,
+            "day": 1276,
+            "seller": -1783,
+            "buyer": -6082,
+            "sellTime": 0
+          },
+          {
+            "auctionId": -29119261072406790,
+            "price": 190000000,
+            "day": 1276,
+            "seller": 15917,
+            "buyer": -3269,
+            "sellTime": 32
+          },
+          {
+            "auctionId": 2706805126278397000,
+            "price": 197800000,
+            "day": 1276,
+            "seller": -6082,
+            "buyer": -16039,
+            "sellTime": 50
+          },
+          {
+            "auctionId": 6278474649865397000,
+            "price": 185000000,
+            "day": 1276,
+            "seller": -3881,
+            "buyer": 3134,
+            "sellTime": 13
+          },
+          {
+            "auctionId": -5150627974960803000,
+            "price": 189000000,
+            "day": 1276,
+            "seller": -5350,
+            "buyer": 7335,
+            "sellTime": 23
+          },
+          {
+            "auctionId": 77213185503508030,
+            "price": 199000000,
+            "day": 1277,
+            "seller": -27774,
+            "buyer": 19157,
+            "sellTime": 292
+          },
+          {
+            "auctionId": 9215283002025574000,
+            "price": 199876543,
+            "day": 1277,
+            "seller": -20261,
+            "buyer": 15034,
+            "sellTime": 547
+          },
+          {
+            "auctionId": 8424476834664070000,
+            "price": 200000000,
+            "day": 1277,
+            "seller": 19859,
+            "buyer": 3519,
+            "sellTime": 645
+          },
+          {
+            "auctionId": -5715564610592083000,
+            "price": 227300000,
+            "day": 1277,
+            "seller": 26419,
+            "buyer": -15663,
+            "sellTime": 8683
+          },
+          {
+            "auctionId": -3304319046780238000,
+            "price": 199950000,
+            "day": 1278,
+            "seller": 20738,
+            "buyer": 31171,
+            "sellTime": 3
+          },
+          {
+            "auctionId": -8970516271711341000,
+            "price": 190000000,
+            "day": 1278,
+            "seller": -5774,
+            "buyer": -1843,
+            "sellTime": 0
+          },
+          {
+            "auctionId": 7151046191899692000,
+            "price": 180000000,
+            "day": 1278,
+            "seller": -17775,
+            "buyer": 26164,
+            "sellTime": 1
+          },
+          {
+            "auctionId": 2882716563265492500,
+            "price": 207500000,
+            "day": 1278,
+            "seller": -1843,
+            "buyer": -13353,
+            "sellTime": 143
+          },
+          {
+            "auctionId": -7238194819143585000,
+            "price": 210000000,
+            "day": 1278,
+            "seller": 26669,
+            "buyer": -23276,
+            "sellTime": 326
+          },
+          {
+            "auctionId": -4443930722233634000,
+            "price": 215000000,
+            "day": 1278,
+            "seller": 20286,
+            "buyer": 30366,
+            "sellTime": 949
+          },
+          {
+            "auctionId": -3035758498210696000,
+            "price": 200000000,
+            "day": 1278,
+            "seller": -2281,
+            "buyer": -27313,
+            "sellTime": 9
+          },
+          {
+            "auctionId": 8764332426925666000,
+            "price": 212000000,
+            "day": 1278,
+            "seller": 8697,
+            "buyer": 0,
+            "sellTime": 32
+          },
+          {
+            "auctionId": 213834422078864100,
+            "price": 199000000,
+            "day": 1279,
+            "seller": -25062,
+            "buyer": -6512,
+            "sellTime": 26
+          },
+          {
+            "auctionId": 8838699073687308000,
+            "price": 225000000,
+            "day": 1279,
+            "seller": 10355,
+            "buyer": 26618,
+            "sellTime": 405
+          },
+          {
+            "auctionId": 4915171861549084000,
+            "price": 192000000,
+            "day": 1279,
+            "seller": -17775,
+            "buyer": -13030,
+            "sellTime": 21
+          },
+          {
+            "auctionId": 1430267663998179800,
+            "price": 211999998,
+            "day": 1279,
+            "seller": -13030,
+            "buyer": -18037,
+            "sellTime": 5
+          },
+          {
+            "auctionId": -1501665681133651200,
+            "price": 180000000,
+            "day": 1279,
+            "seller": -25062,
+            "buyer": -1138,
+            "sellTime": 0
+          },
+          {
+            "auctionId": 4057977835720036400,
+            "price": 202000000,
+            "day": 1279,
+            "seller": -1138,
+            "buyer": 17291,
+            "sellTime": 12
+          },
+          {
+            "auctionId": -375415181089097000,
+            "price": 200000000,
+            "day": 1279,
+            "seller": 22573,
+            "buyer": -10177,
+            "sellTime": 0
+          },
+          {
+            "auctionId": 3912585530469981700,
+            "price": 205000000,
+            "day": 1280,
+            "seller": -24732,
+            "buyer": -2473,
+            "sellTime": 110
+          },
+          {
+            "auctionId": -5532558823112898000,
+            "price": 209000000,
+            "day": 1280,
+            "seller": -23274,
+            "buyer": -1015,
+            "sellTime": 88
+          },
+          {
+            "auctionId": -7312617077557870000,
+            "price": 210000000,
+            "day": 1280,
+            "seller": -7113,
+            "buyer": 24571,
+            "sellTime": 211
+          },
+          {
+            "auctionId": 6810800677164558000,
+            "price": 235000000,
+            "day": 1280,
+            "seller": -14515,
+            "buyer": -26912,
+            "sellTime": 3929
+          },
+          {
+            "auctionId": -6284862662235608000,
+            "price": 230000000,
+            "day": 1280,
+            "seller": 23972,
+            "buyer": -9356,
+            "sellTime": 61
+          },
+          {
+            "auctionId": -4465097589501116400,
+            "price": 209000000,
+            "day": 1281,
+            "seller": 32134,
+            "buyer": -2510,
+            "sellTime": 160
+          },
+          {
+            "auctionId": 6784812796314029000,
+            "price": 225000000,
+            "day": 1281,
+            "seller": -32015,
+            "buyer": 9067,
+            "sellTime": 17
+          },
+          {
+            "auctionId": -8877446475963361000,
+            "price": 239000000,
+            "day": 1281,
+            "seller": 14745,
+            "buyer": 0,
+            "sellTime": 1116
+          },
+          {
+            "auctionId": 2459453204943776000,
+            "price": 215000000,
+            "day": 1281,
+            "seller": -1783,
+            "buyer": 32555,
+            "sellTime": 18
+          },
+          {
+            "auctionId": -2328703561179509000,
+            "price": 228000000,
+            "day": 1281,
+            "seller": -18793,
+            "buyer": 3468,
+            "sellTime": 406
+          },
+          {
+            "auctionId": 5559470354315531000,
+            "price": 240000000,
+            "day": 1282,
+            "seller": -31742,
+            "buyer": -18096,
+            "sellTime": 18320
+          },
+          {
+            "auctionId": 320857997915969600,
+            "price": 220000000,
+            "day": 1282,
+            "seller": -10891,
+            "buyer": -29194,
+            "sellTime": 336
+          },
+          {
+            "auctionId": -535545257602912400,
+            "price": 213000000,
+            "day": 1282,
+            "seller": -27765,
+            "buyer": -14579,
+            "sellTime": 2
+          },
+          {
+            "auctionId": 1567328617761752800,
+            "price": 200000000,
+            "day": 1282,
+            "seller": -14469,
+            "buyer": 19401,
+            "sellTime": 22
+          },
+          {
+            "auctionId": 5744685464060766000,
+            "price": 213000000,
+            "day": 1282,
+            "seller": 25331,
+            "buyer": -28488,
+            "sellTime": 14
+          },
+          {
+            "auctionId": 1239282529934231300,
+            "price": 217999999,
+            "day": 1282,
+            "seller": -1705,
+            "buyer": 29643,
+            "sellTime": 170
+          },
+          {
+            "auctionId": 5373925936253648000,
+            "price": 217000000,
+            "day": 1282,
+            "seller": -24171,
+            "buyer": 19035,
+            "sellTime": 16
+          },
+          {
+            "auctionId": 7544691275494860000,
+            "price": 215000000,
+            "day": 1282,
+            "seller": -3479,
+            "buyer": -12246,
+            "sellTime": 121
+          },
+          {
+            "auctionId": 6590260976231626000,
+            "price": 219999999,
+            "day": 1282,
+            "seller": 12038,
+            "buyer": -8387,
+            "sellTime": 127
+          },
+          {
+            "auctionId": -7847106751647066000,
+            "price": 199800000,
+            "day": 1282,
+            "seller": 9068,
+            "buyer": -426,
+            "sellTime": 90
+          },
+          {
+            "auctionId": 7552815783154350000,
+            "price": 205000000,
+            "day": 1283,
+            "seller": 9013,
+            "buyer": -18656,
+            "sellTime": 49
+          },
+          {
+            "auctionId": 3886916607785233400,
+            "price": 204000000,
+            "day": 1283,
+            "seller": -27989,
+            "buyer": 32125,
+            "sellTime": 10
+          },
+          {
+            "auctionId": 3671361961258884000,
+            "price": 207000000,
+            "day": 1283,
+            "seller": -16956,
+            "buyer": -24635,
+            "sellTime": 253
+          },
+          {
+            "auctionId": -6918792579637652000,
+            "price": 210000000,
+            "day": 1283,
+            "seller": 14797,
+            "buyer": 21520,
+            "sellTime": 384
+          },
+          {
+            "auctionId": -3086214310662607000,
+            "price": 207990000,
+            "day": 1283,
+            "seller": 22755,
+            "buyer": -14658,
+            "sellTime": 130
+          },
+          {
+            "auctionId": 2965003767908423000,
+            "price": 215000000,
+            "day": 1283,
+            "seller": -15011,
+            "buyer": 0,
+            "sellTime": 22
+          },
+          {
+            "auctionId": 4658563626543021000,
+            "price": 195000000,
+            "day": 1283,
+            "seller": -11487,
+            "buyer": 9925,
+            "sellTime": 0
+          },
+          {
+            "auctionId": 1938052726876427000,
+            "price": 204999990,
+            "day": 1283,
+            "seller": -27000,
+            "buyer": -29478,
+            "sellTime": 103
+          },
+          {
+            "auctionId": 5540391109582540000,
+            "price": 210000000,
+            "day": 1283,
+            "seller": 3211,
+            "buyer": -17520,
+            "sellTime": 306
+          },
+          {
+            "auctionId": -6208449644978423000,
+            "price": 207000000,
+            "day": 1284,
+            "seller": -21635,
+            "buyer": -7233,
+            "sellTime": 97
+          },
+          {
+            "auctionId": 2066450445378418200,
+            "price": 208999999,
+            "day": 1284,
+            "seller": -8085,
+            "buyer": 13581,
+            "sellTime": 38
+          },
+          {
+            "auctionId": 1410099982301648600,
+            "price": 209000000,
+            "day": 1284,
+            "seller": -19432,
+            "buyer": 20355,
+            "sellTime": 545
+          },
+          {
+            "auctionId": -2603806184652252700,
+            "price": 218000000,
+            "day": 1284,
+            "seller": -24983,
+            "buyer": -24798,
+            "sellTime": 2633
+          },
+          {
+            "auctionId": -2136004585435305500,
+            "price": 212000000,
+            "day": 1284,
+            "seller": 16696,
+            "buyer": 27099,
+            "sellTime": 130
+          },
+          {
+            "auctionId": -8577002499019951000,
+            "price": 198000000,
+            "day": 1285,
+            "seller": -24205,
+            "buyer": -28550,
+            "sellTime": 62
+          },
+          {
+            "auctionId": -1298531262741480000,
+            "price": 194900000,
+            "day": 1285,
+            "seller": -28586,
+            "buyer": -31980,
+            "sellTime": 54
+          },
+          {
+            "auctionId": 771165903245903000,
+            "price": 204000000,
+            "day": 1285,
+            "seller": -25124,
+            "buyer": 2891,
+            "sellTime": 4
+          },
+          {
+            "auctionId": -5116079091339273000,
+            "price": 204999999,
+            "day": 1285,
+            "seller": -31014,
+            "buyer": 18855,
+            "sellTime": 37
+          },
+          {
+            "auctionId": 5092916489930478000,
+            "price": 214500000,
+            "day": 1286,
+            "seller": -25486,
+            "buyer": -7860,
+            "sellTime": 1381
+          },
+          {
+            "auctionId": 7732007936533480000,
+            "price": 200000000,
+            "day": 1286,
+            "seller": -29606,
+            "buyer": 14005,
+            "sellTime": 45
+          },
+          {
+            "auctionId": 9195934458038777000,
+            "price": 207500000,
+            "day": 1286,
+            "seller": 30137,
+            "buyer": -7298,
+            "sellTime": 473
+          }
+        ],
+        "oldestRef": 1285,
+        "lbins": [],
+        "hitsSinceCalculating": 0,
+        "stonksHits": 0,
+        "volatility": 1,
+        "riskyEstimate": 0,
+        "timeToSell": 515,
+        "volume": 1
+      },
+      " None  UNKNOWN 0": {
+        "price": 0,
+        "references": [],
+        "oldestRef": 0,
+        "lbins": [],
+        "hitsSinceCalculating": 0,
+        "stonksHits": 0,
+        "volatility": 0,
+        "riskyEstimate": 0,
+        "timeToSell": 0,
+        "volume": 0
+      },
+      " Any  LEGENDARY 1": {
+        "price": 194800000,
+        "references": [
+          {
+            "auctionId": 7271700492203169000,
+            "price": 200500000,
+            "day": 1289,
+            "seller": 12876,
+            "buyer": -5013,
+            "sellTime": 0
+          },
+          {
+            "auctionId": 8119280728849126000,
+            "price": 200000000,
+            "day": 1289,
+            "seller": -24046,
+            "buyer": 18729,
+            "sellTime": 34
+          },
+          {
+            "auctionId": -6710197370805805000,
+            "price": 200500000,
+            "day": 1289,
+            "seller": 12876,
+            "buyer": 11405,
+            "sellTime": 241
+          },
+          {
+            "auctionId": 2502039041104456700,
+            "price": 201000000,
+            "day": 1289,
+            "seller": -24046,
+            "buyer": 5769,
+            "sellTime": 6725
+          },
+          {
+            "auctionId": -7894657316805303000,
+            "price": 200699000,
+            "day": 1289,
+            "seller": 2465,
+            "buyer": -18699,
+            "sellTime": 1746
+          },
+          {
+            "auctionId": -2248873332606679600,
+            "price": 196000000,
+            "day": 1289,
+            "seller": -27848,
+            "buyer": -14778,
+            "sellTime": 109
+          },
+          {
+            "auctionId": 605472056305704100,
+            "price": 197000000,
+            "day": 1289,
+            "seller": 5582,
+            "buyer": -7445,
+            "sellTime": 246
+          },
+          {
+            "auctionId": -1862374613584490800,
+            "price": 200000000,
+            "day": 1289,
+            "seller": -24046,
+            "buyer": 11505,
+            "sellTime": 489
+          },
+          {
+            "auctionId": 5749528636151599000,
+            "price": 210000000,
+            "day": 1290,
+            "seller": 19434,
+            "buyer": 18979,
+            "sellTime": 455
+          },
+          {
+            "auctionId": -379375396179749250,
+            "price": 199500000,
+            "day": 1290,
+            "seller": -4507,
+            "buyer": 3478,
+            "sellTime": 143
+          },
+          {
+            "auctionId": 6659474022113358000,
+            "price": 200000000,
+            "day": 1290,
+            "seller": -24046,
+            "buyer": 32687,
+            "sellTime": 332
+          },
+          {
+            "auctionId": 1511445234837400600,
+            "price": 202000000,
+            "day": 1290,
+            "seller": 31078,
+            "buyer": 13343,
+            "sellTime": 108
+          },
+          {
+            "auctionId": -1117202294989738500,
+            "price": 204999999,
+            "day": 1290,
+            "seller": -31893,
+            "buyer": -20066,
+            "sellTime": 72
+          },
+          {
+            "auctionId": -7917176748372676000,
+            "price": 204000000,
+            "day": 1291,
+            "seller": -25056,
+            "buyer": 31689,
+            "sellTime": 220
+          },
+          {
+            "auctionId": 7515451579841753000,
+            "price": 204999999,
+            "day": 1291,
+            "seller": 12876,
+            "buyer": -20936,
+            "sellTime": 25
+          },
+          {
+            "auctionId": -421529138254212400,
+            "price": 205000000,
+            "day": 1291,
+            "seller": -24046,
+            "buyer": -8029,
+            "sellTime": 1725
+          },
+          {
+            "auctionId": -8132607999225055000,
+            "price": 209999999,
+            "day": 1291,
+            "seller": -31893,
+            "buyer": 13087,
+            "sellTime": 167
+          },
+          {
+            "auctionId": -6105888320993517000,
+            "price": 210000000,
+            "day": 1291,
+            "seller": 10240,
+            "buyer": 14130,
+            "sellTime": 350
+          },
+          {
+            "auctionId": -3342951860002029600,
+            "price": 172000000,
+            "day": 1293,
+            "seller": -1480,
+            "buyer": 14118,
+            "sellTime": 0
+          },
+          {
+            "auctionId": -6749291177595978000,
+            "price": 191000000,
+            "day": 1293,
+            "seller": -14534,
+            "buyer": 21079,
+            "sellTime": 37
+          },
+          {
+            "auctionId": -8750625337640241000,
+            "price": 192999000,
+            "day": 1294,
+            "seller": 2298,
+            "buyer": 32166,
+            "sellTime": 1449
+          },
+          {
+            "auctionId": 5397726409151271000,
+            "price": 192999000,
+            "day": 1294,
+            "seller": 14118,
+            "buyer": -10743,
+            "sellTime": 1454
+          },
+          {
+            "auctionId": -1591379431242460700,
+            "price": 192999000,
+            "day": 1295,
+            "seller": -23274,
+            "buyer": 4877,
+            "sellTime": 410
+          },
+          {
+            "auctionId": 1256063398461888300,
+            "price": 193000000,
+            "day": 1295,
+            "seller": -22161,
+            "buyer": 22098,
+            "sellTime": 1287
+          },
+          {
+            "auctionId": 2841687181930974000,
+            "price": 193000000,
+            "day": 1295,
+            "seller": -22161,
+            "buyer": 31614,
+            "sellTime": 1305
+          },
+          {
+            "auctionId": 5942986374756818000,
+            "price": 193000000,
+            "day": 1296,
+            "seller": -1023,
+            "buyer": -28737,
+            "sellTime": 4454
+          },
+          {
+            "auctionId": 8097905509210879000,
+            "price": 209999998,
+            "day": 1296,
+            "seller": -13030,
+            "buyer": 1319,
+            "sellTime": 537
+          },
+          {
+            "auctionId": 5794547843422795000,
+            "price": 205000000,
+            "day": 1296,
+            "seller": 31049,
+            "buyer": 0,
+            "sellTime": 65
+          },
+          {
+            "auctionId": 3409680303239239000,
+            "price": 201000000,
+            "day": 1296,
+            "seller": 9538,
+            "buyer": 10153,
+            "sellTime": 238
+          },
+          {
+            "auctionId": -1281630269217257500,
+            "price": 204000000,
+            "day": 1296,
+            "seller": 5519,
+            "buyer": 17579,
+            "sellTime": 259
+          },
+          {
+            "auctionId": 5921869008963510000,
+            "price": 200000000,
+            "day": 1297,
+            "seller": 13519,
+            "buyer": 13912,
+            "sellTime": 65
+          },
+          {
+            "auctionId": -3226416716329902000,
+            "price": 200000000,
+            "day": 1297,
+            "seller": 23224,
+            "buyer": -11141,
+            "sellTime": 0
+          },
+          {
+            "auctionId": 7954265692010290000,
+            "price": 195000000,
+            "day": 1297,
+            "seller": 10717,
+            "buyer": -8645,
+            "sellTime": 22
+          },
+          {
+            "auctionId": 2572445450553936000,
+            "price": 199000000,
+            "day": 1297,
+            "seller": 23224,
+            "buyer": 19343,
+            "sellTime": 95
+          },
+          {
+            "auctionId": -2560822520906372600,
+            "price": 194999999,
+            "day": 1297,
+            "seller": -4813,
+            "buyer": 14653,
+            "sellTime": 22
+          },
+          {
+            "auctionId": -6970032170730376000,
+            "price": 195000000,
+            "day": 1297,
+            "seller": -28641,
+            "buyer": 3869,
+            "sellTime": 118
+          },
+          {
+            "auctionId": 6711466798744508000,
+            "price": 199900000,
+            "day": 1298,
+            "seller": 5582,
+            "buyer": -25088,
+            "sellTime": 624
+          },
+          {
+            "auctionId": 2069844408477943300,
+            "price": 198000000,
+            "day": 1298,
+            "seller": -29839,
+            "buyer": 8873,
+            "sellTime": 37
+          },
+          {
+            "auctionId": 1405220329380377900,
+            "price": 199999999,
+            "day": 1298,
+            "seller": 16788,
+            "buyer": 22997,
+            "sellTime": 1601
+          },
+          {
+            "auctionId": 1667238084671448800,
+            "price": 201000000,
+            "day": 1298,
+            "seller": -28641,
+            "buyer": 4268,
+            "sellTime": 112
+          },
+          {
+            "auctionId": 2157174776347508200,
+            "price": 198000000,
+            "day": 1298,
+            "seller": -28641,
+            "buyer": -5956,
+            "sellTime": 0
+          },
+          {
+            "auctionId": -4634738038724520000,
+            "price": 195000000,
+            "day": 1298,
+            "seller": -24932,
+            "buyer": -2508,
+            "sellTime": 3
+          },
+          {
+            "auctionId": 5938766694891661000,
+            "price": 199000000,
+            "day": 1298,
+            "seller": -27390,
+            "buyer": 29127,
+            "sellTime": 220
+          },
+          {
+            "auctionId": 108062438070456290,
+            "price": 200000000,
+            "day": 1299,
+            "seller": -28641,
+            "buyer": -1498,
+            "sellTime": 363
+          },
+          {
+            "auctionId": -2793404410682341000,
+            "price": 196000000,
+            "day": 1299,
+            "seller": 10765,
+            "buyer": -1498,
+            "sellTime": 2
+          },
+          {
+            "auctionId": -882029285202780200,
+            "price": 199000000,
+            "day": 1299,
+            "seller": 15471,
+            "buyer": -1498,
+            "sellTime": 19
+          },
+          {
+            "auctionId": -3310422565470036000,
+            "price": 199999999,
+            "day": 1299,
+            "seller": -17403,
+            "buyer": -3979,
+            "sellTime": 689
+          },
+          {
+            "auctionId": 4876740159712670000,
+            "price": 200000000,
+            "day": 1299,
+            "seller": 23224,
+            "buyer": 0,
+            "sellTime": 1295
+          },
+          {
+            "auctionId": -8633702440068362000,
+            "price": 195000000,
+            "day": 1299,
+            "seller": 23224,
+            "buyer": -21098,
+            "sellTime": 52
+          },
+          {
+            "auctionId": -1544692894872726000,
+            "price": 194999998,
+            "day": 1300,
+            "seller": -21435,
+            "buyer": -27340,
+            "sellTime": 81
+          },
+          {
+            "auctionId": -9113190536583821000,
+            "price": 191999999,
+            "day": 1300,
+            "seller": -13030,
+            "buyer": -18412,
+            "sellTime": 452
+          },
+          {
+            "auctionId": 1893196644050173000,
+            "price": 190000000,
+            "day": 1300,
+            "seller": -28641,
+            "buyer": 30649,
+            "sellTime": 47
+          },
+          {
+            "auctionId": -5439622508532293000,
+            "price": 191999998,
+            "day": 1300,
+            "seller": -4813,
+            "buyer": -6146,
+            "sellTime": 3
+          },
+          {
+            "auctionId": 4582267848034410000,
+            "price": 189900000,
+            "day": 1300,
+            "seller": 3640,
+            "buyer": -18531,
+            "sellTime": 116
+          },
+          {
+            "auctionId": -2958771167063660000,
+            "price": 187000000,
+            "day": 1301,
+            "seller": 9518,
+            "buyer": -4130,
+            "sellTime": 160
+          },
+          {
+            "auctionId": -3276325219114660000,
+            "price": 190000000,
+            "day": 1301,
+            "seller": -17403,
+            "buyer": -2111,
+            "sellTime": 370
+          },
+          {
+            "auctionId": 247655311141149220,
+            "price": 191999999,
+            "day": 1301,
+            "seller": -4813,
+            "buyer": -27145,
+            "sellTime": 721
+          },
+          {
+            "auctionId": -5487555831847402000,
+            "price": 191000000,
+            "day": 1301,
+            "seller": -17403,
+            "buyer": 395,
+            "sellTime": 238
+          },
+          {
+            "auctionId": 5972130581458588000,
+            "price": 192000000,
+            "day": 1301,
+            "seller": -28641,
+            "buyer": -19329,
+            "sellTime": 156
+          },
+          {
+            "auctionId": 7715999936144939000,
+            "price": 193200000,
+            "day": 1301,
+            "seller": -32079,
+            "buyer": 17816,
+            "sellTime": 246
+          },
+          {
+            "auctionId": 5072557962517705000,
+            "price": 193333330,
+            "day": 1301,
+            "seller": -17225,
+            "buyer": 17103,
+            "sellTime": 1863
+          },
+          {
+            "auctionId": 2894446643136385500,
+            "price": 193499000,
+            "day": 1301,
+            "seller": -32079,
+            "buyer": 28315,
+            "sellTime": 114
+          },
+          {
+            "auctionId": -5711340804420954000,
+            "price": 193500000,
+            "day": 1301,
+            "seller": -28641,
+            "buyer": 9730,
+            "sellTime": 667
+          },
+          {
+            "auctionId": 5021170330493011000,
+            "price": 194999999,
+            "day": 1301,
+            "seller": -13938,
+            "buyer": 24221,
+            "sellTime": 2914
+          },
+          {
+            "auctionId": 5716246023654511000,
+            "price": 199000000,
+            "day": 1302,
+            "seller": 9403,
+            "buyer": 10831,
+            "sellTime": 131
+          },
+          {
+            "auctionId": -5783472835693374000,
+            "price": 195000000,
+            "day": 1302,
+            "seller": 19833,
+            "buyer": 21741,
+            "sellTime": 0
+          },
+          {
+            "auctionId": -5526887772683959000,
+            "price": 203000000,
+            "day": 1302,
+            "seller": 21423,
+            "buyer": -1255,
+            "sellTime": 134
+          },
+          {
+            "auctionId": 7623817757144525000,
+            "price": 205000000,
+            "day": 1302,
+            "seller": 15471,
+            "buyer": -30400,
+            "sellTime": 4390
+          },
+          {
+            "auctionId": -4977810468191407000,
+            "price": 205999000,
+            "day": 1302,
+            "seller": 29217,
+            "buyer": 13382,
+            "sellTime": 8862
+          },
+          {
+            "auctionId": 6252376437209505000,
+            "price": 205999998,
+            "day": 1302,
+            "seller": 22115,
+            "buyer": 10163,
+            "sellTime": 181
+          },
+          {
+            "auctionId": 5326755842605997000,
+            "price": 209999999,
+            "day": 1303,
+            "seller": -3777,
+            "buyer": 680,
+            "sellTime": 9879
+          },
+          {
+            "auctionId": 787867368088496600,
+            "price": 211000000,
+            "day": 1303,
+            "seller": 21224,
+            "buyer": -17147,
+            "sellTime": 13730
+          },
+          {
+            "auctionId": -2581366225163846700,
+            "price": 210000000,
+            "day": 1303,
+            "seller": -18943,
+            "buyer": -9719,
+            "sellTime": 271
+          },
+          {
+            "auctionId": 5517112020407462000,
+            "price": 197000000,
+            "day": 1303,
+            "seller": 2975,
+            "buyer": -29136,
+            "sellTime": 165
+          },
+          {
+            "auctionId": -2457103749365400600,
+            "price": 199000000,
+            "day": 1303,
+            "seller": 21591,
+            "buyer": 11636,
+            "sellTime": 312
+          },
+          {
+            "auctionId": 5619116697141517000,
+            "price": 200999999,
+            "day": 1303,
+            "seller": -13030,
+            "buyer": -27191,
+            "sellTime": 240
+          },
+          {
+            "auctionId": -8948808047557510000,
+            "price": 204000000,
+            "day": 1303,
+            "seller": 5582,
+            "buyer": -15702,
+            "sellTime": 23
+          },
+          {
+            "auctionId": -7595254668078957000,
+            "price": 205000000,
+            "day": 1303,
+            "seller": -1749,
+            "buyer": -10789,
+            "sellTime": 47
+          },
+          {
+            "auctionId": -1400794217280391000,
+            "price": 200000000,
+            "day": 1304,
+            "seller": -5925,
+            "buyer": 16600,
+            "sellTime": 177
+          },
+          {
+            "auctionId": 4021366167447311400,
+            "price": 200000000,
+            "day": 1304,
+            "seller": -4908,
+            "buyer": 13709,
+            "sellTime": 156
+          }
+        ],
+        "oldestRef": 1303,
+        "lbins": [
+          {
+            "auctionId": -4255869706733961000,
+            "price": 197000000,
+            "day": 1305,
+            "seller": -30806,
+            "buyer": 0,
+            "sellTime": 503
+          },
+          {
+            "auctionId": -3815152113922278400,
+            "price": 198800000,
+            "day": 1305,
+            "seller": 3976,
+            "buyer": 0,
+            "sellTime": 362
+          },
+          {
+            "auctionId": 4006264315808542700,
+            "price": 198888888,
+            "day": 1319,
+            "seller": -7344,
+            "buyer": 0,
+            "sellTime": -19919
+          },
+          {
+            "auctionId": 2442726891822930000,
+            "price": 198999000,
+            "day": 1311,
+            "seller": -21821,
+            "buyer": 0,
+            "sellTime": -8467
+          },
+          {
+            "auctionId": -3029585773863412700,
+            "price": 199000000,
+            "day": 1310,
+            "seller": -32041,
+            "buyer": 0,
+            "sellTime": -7255
+          },
+          {
+            "auctionId": -2044369102775577000,
+            "price": 200000000,
+            "day": 1311,
+            "seller": -859,
+            "buyer": 0,
+            "sellTime": -8913
+          },
+          {
+            "auctionId": 1044238681671369600,
+            "price": 203000000,
+            "day": 1318,
+            "seller": 28441,
+            "buyer": 0,
+            "sellTime": -19271
+          },
+          {
+            "auctionId": 333198476164316400,
+            "price": 204692599,
+            "day": 1308,
+            "seller": -13030,
+            "buyer": 0,
+            "sellTime": -5166
+          },
+          {
+            "auctionId": -8924304415595739000,
+            "price": 208870000,
+            "day": 1318,
+            "seller": -27933,
+            "buyer": 0,
+            "sellTime": -19597
+          },
+          {
+            "auctionId": -3260545385026877400,
+            "price": 208880000,
+            "day": 1313,
+            "seller": -27152,
+            "buyer": 0,
+            "sellTime": -13794
+          },
+          {
+            "auctionId": -2903446807517301000,
+            "price": 210499999,
+            "day": 1317,
+            "seller": 11365,
+            "buyer": 0,
+            "sellTime": -19491
+          },
+          {
+            "auctionId": -3348154695342750700,
+            "price": 211000000,
+            "day": 1307,
+            "seller": 21224,
+            "buyer": 0,
+            "sellTime": -19374
+          },
+          {
+            "auctionId": -2198120818022905300,
+            "price": 211111111,
+            "day": 1305,
+            "seller": 7875,
+            "buyer": 0,
+            "sellTime": -19905
+          },
+          {
+            "auctionId": -4336432409609648600,
+            "price": 211111111,
+            "day": 1305,
+            "seller": 7875,
+            "buyer": 0,
+            "sellTime": -19905
+          }
+        ],
+        "hitsSinceCalculating": 3,
+        "stonksHits": 0,
+        "volatility": 2,
+        "riskyEstimate": 200000000,
+        "timeToSell": 1288,
+        "volume": 2
+      }
+    },
+    "category": "ACCESSORIES",
+    "volume": 4,
+    "cleanPricePerDay": {
+      "1273": 205000000,
+      "1274": 197000000,
+      "1275": 193500000,
+      "1276": 186952400,
+      "1277": 189000000,
+      "1278": 193000000,
+      "1279": 193000000,
+      "1280": 193000000,
+      "1281": 193000000,
+      "1282": 193800000,
+      "1284": 193900000,
+      "1285": 199999984,
+      "1286": 199999984,
+      "1287": 199990000,
+      "1288": 190000000,
+      "1289": 197000000,
+      "1290": 199999904,
+      "1291": 199500000,
+      "1293": 199000000,
+      "1294": 192999008,
+      "1295": 192999008,
+      "1296": 199000000,
+      "1297": 195000000,
+      "1298": 198000000,
+      "1299": 199000000,
+      "1300": 192000000,
+      "1301": 193333328,
+      "1302": 195000000,
+      "1303": 197000000,
+      "1304": 199000000
+    },
+    "cleanKey": {
+      "enchants": [],
+      "reforge": "Any",
+      "modifiers": [],
+      "tier": "LEGENDARY",
+      "count": 1
+    },
+    "cleanPricePerTier": {
+      "MYTHIC": 178395966,
+      "LEGENDARY": 190000000
+    },
+    "hasMultipleRarities": false
+  }
