@@ -3275,6 +3275,8 @@ ORDER BY l.`AuctionId`  DESC;
                     target = (long)Math.Min(target, bucket.Lbin.Price * 1.05);
                 if (bucket.Price != 0)
                     target = (long)Math.Min(target, bucket.Price * 1.10 + 1_000_000);
+                if ((GetDay() - bucket.OldestRef) > 10 || bucket.DeduplicatedReferenceCount < 8)
+                    target = target * 11 / 12;
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.STONKS, target, props);
             }
             else

@@ -485,7 +485,7 @@ namespace Coflnet.Sky.Sniper
             // set to production amount
             SniperService.MIN_TARGET = 200_000;
             service.TestNewAuction(toTest);
-            Assert.That(1000000, Is.EqualTo(found.Last().TargetPrice), JsonConvert.SerializeObject(found));
+            Assert.That(1000000, Is.EqualTo(found.First().TargetPrice), JsonConvert.SerializeObject(found));
         }
         /// <summary>
         /// Some attributes are string based and might include item keys that should be included
@@ -878,7 +878,7 @@ namespace Coflnet.Sky.Sniper
             UpdateAllMedianFromUpdate();
             highestValAuction.HighestBidAmount = 5000;
             service.TestNewAuction(highestValAuction);
-            Assert.That(1000000, Is.EqualTo(found.Last().TargetPrice));
+            Assert.That(1000000, Is.EqualTo(found.First().TargetPrice));
         }
         /// <summary>
         /// Checks if references with more valuable things are cheaper
