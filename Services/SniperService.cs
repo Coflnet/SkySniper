@@ -490,7 +490,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (auction == null || auction.Tag == null)
                 return null;
             if (BazaarPrices.TryGetValue(auction.Tag, out var bazaar))
-                return new() { Median = (long)bazaar };
+                return new() { Median = (long)bazaar * auction.Count };
             var tagGroup = GetAuctionGroupTag(auction.Tag);
 
             var result = new PriceEstimate();
