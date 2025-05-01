@@ -3734,7 +3734,7 @@ ORDER BY l.`AuctionId`  DESC;
             props["refCount"] = bucket.DeduplicatedReferenceCount.ToString();
             props["oldRef"] = (GetDay() - (bucket.References?.Select(r => r.Day).FirstOrDefault(GetDay()) ?? GetDay())).ToString();
             props["volat"] = bucket.Volatility.ToString();
-            props["minToSell"] = bucket.TimeToSell.ToString();
+            props["minToSell"] = (bucket.TimeToSell * (refAge / 10 + 1)).ToString();
 
             if (type == LowPricedAuction.FinderType.SNIPER_MEDIAN && bucket.HitsSinceCalculating < 10
                 && IsProbablyNotBait(auction, targetPrice))
