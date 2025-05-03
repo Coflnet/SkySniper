@@ -2989,6 +2989,8 @@ ORDER BY l.`AuctionId`  DESC;
                 return;
             if (auction.Tag == "NEW_YEAR_CAKE")
                 return; // can't use closest for years
+            if(auction.FlatenedNBT.TryGetValue("exp", out var exp) && exp.Length < "1234567".Length)
+                return; // don't use closest for low exp pets
 
             // special case for items that have no reference bucket, search using most similar
             var detailedKey = DetailedKeyFromSaveAuction(auction);

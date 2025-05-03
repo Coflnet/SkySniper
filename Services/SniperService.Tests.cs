@@ -1524,7 +1524,7 @@ namespace Coflnet.Sky.Sniper
                 })
             };
 
-            highestValAuction.FlatenedNBT = new() { { "skin", "DIFF" }, { "exp", "50" } };
+            highestValAuction.FlatenedNBT = new() { { "skin", "DIFF" }, { "exp", "5000000" } };
             var withSkin = Dupplicate(highestValAuction);
             withSkin.HighestBidAmount = 60_000_000;
             withSkin.FlatenedNBT["skin"] = "SKELETON";
