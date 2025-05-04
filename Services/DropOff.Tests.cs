@@ -580,6 +580,19 @@ public class DropOffTests
         found.Should().BeEmpty();
     }
 
+    /// <summary>
+    /// Craft cost estimate was to low because median samples were too low
+    /// After calculating 5th percentile to use for value of attribute estimation is mostly correct (could be up to ~9m)
+    /// </summary>
+    [Test]
+    public void MolteBeltMedian()
+    {
+        AddLookupAndUpdateMeidans("Molten_Belt.json", "MOLTEN_BELT", new DateTime(2025, 5, 4));
+        var price = sniperService.Lookups["MOLTEN_BELT"].Lookup.First(l => l.Key.Modifiers.Count == 1 && l.Key.Modifiers.First().Key == "mana_pool" && l.Key.Modifiers.First().Value == "5");
+        sniperService.UpdateMedian(price.Value, ("MOLTEN_BELT", sniperService.GetBreakdownKey(price.Key, "MOLTEN_BELT")));
+        price.Value.Price.Should().Be(6800000L);
+    }
+
     [Test]
     public void LowerToLbinIfLowVolume()
     {

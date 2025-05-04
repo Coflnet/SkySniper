@@ -1643,9 +1643,9 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var values = options.Where(l => l.Value.Price > 0
                                             && (l.Key.Modifiers.Count == 2 && l.Key.Modifiers.Last().Key == "virtual" || l.Key.Modifiers.Count == 1) && l.Key.Modifiers.Any(m => m.Key == v.Modifier.Key))
-                                .Select(l => l.Value.Price / Math.Pow(2, int.Parse(l.Key.Modifiers.First().Value)))
+                                .SelectMany(l => l.Value.References.Select(r=> r.Price / Math.Pow(2, int.Parse(l.Key.Modifiers.First().Value))))
                                 .ToList();
-                var quarterPercentile = values.Count > 0 ? values.OrderBy(v => v).Skip(values.Count / 4).First() : 0;
+                var quarterPercentile = values.Count > 0 ? values.OrderBy(v => v).Skip(values.Count / 5).First() : 0;
                 return quarterPercentile;
             }
 
