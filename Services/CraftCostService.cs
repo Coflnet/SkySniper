@@ -35,7 +35,7 @@ public class CraftCostService : BackgroundService, ICraftCostService
             List<Crafts.Client.Model.ProfitableCraft> all = null;
             try
             {
-                all = await craftsApi.CraftsAllGetAsync();
+                all = await craftsApi.GetAllAsync();
             }
             catch (System.Exception e)
             {

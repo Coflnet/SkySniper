@@ -28,11 +28,14 @@ namespace Coflnet.Sky.Sniper.Services
         {
             this.config = config;
             this.logger = logger;
-            AmazonS3Config awsCofig = new AmazonS3Config();
+            AmazonS3Config awsCofig = new();
             var prefix = "https://";
             if (config["MINIO_HOST"]?.StartsWith("minio") ?? false)
                 prefix = "http://";
             awsCofig.ServiceURL = prefix + (config["S3_HOST"] ?? config["MINIO_HOST"]);
+
+            awsCofig.RequestChecksumCalculation = Amazon.Runtime.RequestChecksumCalculation.WHEN_REQUIRED;
+            awsCofig.ResponseChecksumValidation = Amazon.Runtime.ResponseChecksumValidation.WHEN_REQUIRED;
             // use path style access
             awsCofig.ForcePathStyle = true;
 
