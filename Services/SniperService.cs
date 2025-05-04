@@ -1643,7 +1643,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var values = options.Where(l => l.Value.Price > 0
                                             && (l.Key.Modifiers.Count == 2 && l.Key.Modifiers.Last().Key == "virtual" || l.Key.Modifiers.Count == 1) && l.Key.Modifiers.Any(m => m.Key == v.Modifier.Key))
-                                .SelectMany(l => l.Value.References.Select(r=> r.Price / Math.Pow(2, int.Parse(l.Key.Modifiers.First().Value))))
+                                .SelectMany(l => l.Value.References.Select(r => r.Price / Math.Pow(2, int.Parse(l.Key.Modifiers.First().Value))))
                                 .ToList();
                 var quarterPercentile = values.Count > 0 ? values.OrderBy(v => v).Skip(values.Count / 5).First() : 0;
                 return quarterPercentile;
@@ -2767,7 +2767,7 @@ ORDER BY l.`AuctionId`  DESC;
                     using var risky = !triggerEvents ? null : activitySource?.StartActivity("Risky", ActivityKind.Internal);
                     try
                     {
-                        TryFindClosestRisky(auction, lookup, ref lbinPrice, ref medPrice);
+                        TryFindClosestRisky(auction, lookup, basekey, ref medPrice);
                     }
                     catch (System.Exception e)
                     {
@@ -2983,13 +2983,13 @@ ORDER BY l.`AuctionId`  DESC;
             return IsRune(auction.Tag);
         }
 
-        private void TryFindClosestRisky(SaveAuction auction, PriceLookup l, ref double lbinPrice, ref double medPrice)
+        private void TryFindClosestRisky(SaveAuction auction, PriceLookup l, KeyWithValueBreakdown keyWithBreakdown, ref double medPrice)
         {
             if (IsRune(auction.Tag)) // TODO: compare levels
                 return;
             if (auction.Tag == "NEW_YEAR_CAKE")
                 return; // can't use closest for years
-            if(auction.FlatenedNBT.TryGetValue("exp", out var exp) && exp.Length < "1234567".Length)
+            if (auction.FlatenedNBT.TryGetValue("exp", out var exp) && exp.Length < "1234567".Length)
                 return; // don't use closest for low exp pets
 
             // special case for items that have no reference bucket, search using most similar
@@ -3116,7 +3116,10 @@ ORDER BY l.`AuctionId`  DESC;
                 targetPrice -= tierDifference;
                 props.Add("tierVal", $"{closest.Key.Tier} -> {auction.Tier} ({tierDifference})");
             }
-            var modifierValue = (detailedKey.ValueBreakdown.Sum(v => v.Value) + GetCleanItemPrice(auction.Tag, detailedKey, l)) * 1.1;
+            props.Add("breakdown", JsonConvert.SerializeObject(detailedKey.ValueBreakdown));
+            var cleanPrice = GetCleanItemPrice(auction.Tag, detailedKey, l);
+            props.Add("cleanPrice", cleanPrice.ToString());
+            var modifierValue = (detailedKey.ValueBreakdown.Sum(v => v.Value) + cleanPrice * 1.1);
             targetPrice = Math.Min(targetPrice, (long)modifierValue);
             closest.Value.StonksHits++;
             FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, props);

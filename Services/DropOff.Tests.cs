@@ -567,7 +567,7 @@ public class DropOffTests
         var auction = new SaveAuction()
         {
             Tag = "PET_SHEEP",
-            StartingBid = 400_000,
+            StartingBid = 300_000,
             UId = 4,
             FlatenedNBT = new() { { "candyUsed", "0" }, { "exp", "0" } },
             AuctioneerId = "12aaa",
