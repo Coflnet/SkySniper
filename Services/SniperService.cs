@@ -3119,7 +3119,7 @@ ORDER BY l.`AuctionId`  DESC;
             props.Add("breakdown", JsonConvert.SerializeObject(detailedKey.ValueBreakdown));
             var cleanPrice = GetCleanItemPrice(auction.Tag, detailedKey, l);
             props.Add("cleanPrice", cleanPrice.ToString());
-            var modifierValue = (detailedKey.ValueBreakdown.Sum(v => v.Value) + cleanPrice) * 1.1;
+            var modifierValue = (detailedKey.ValueBreakdown.Where(v=>v?.Modifier.Key != "candyUsed").Sum(v => v.Value) + cleanPrice) * 1.1;
             targetPrice = Math.Min(targetPrice, (long)modifierValue);
             closest.Value.StonksHits++;
             FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, props);
