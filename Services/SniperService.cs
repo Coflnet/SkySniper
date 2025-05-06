@@ -802,7 +802,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         void AssignMedian(PriceEstimate result, AuctionKey key, ReferenceAuctions bucket, long gemVal)
         {
-            result.Median = bucket.Price + gemVal;
+            result.Median = bucket.Price + gemVal + (((key as AuctionKeyWithValue)?.ValueSubstract - gemVal * 20/19) / 3  ?? 0);
             result.Volume = bucket.Volume;
             result.MedianKey = key.ToString();
             result.Volatility = bucket.Volatility;
@@ -3119,7 +3119,7 @@ ORDER BY l.`AuctionId`  DESC;
             props.Add("breakdown", JsonConvert.SerializeObject(detailedKey.ValueBreakdown));
             var cleanPrice = GetCleanItemPrice(auction.Tag, detailedKey, l);
             props.Add("cleanPrice", cleanPrice.ToString());
-            var modifierValue = (detailedKey.ValueBreakdown.Where(v=>v?.Modifier.Key != "candyUsed").Sum(v => v.Value) + cleanPrice) * 1.1;
+            var modifierValue = (detailedKey.ValueBreakdown.Where(v => v?.Modifier.Key != "candyUsed").Sum(v => v.Value) + cleanPrice) * 1.1;
             targetPrice = Math.Min(targetPrice, (long)modifierValue);
             closest.Value.StonksHits++;
             FoundAFlip(auction, closest.Value, LowPricedAuction.FinderType.STONKS, targetPrice, props);

@@ -381,7 +381,7 @@ namespace Coflnet.Sky.Sniper
                 Tag = "test",
                 FlatenedNBT = new() { { "AMBER_0", "PERFECT" } }
             });
-            Assert.That(9_500_000, Is.EqualTo(actualPrice.Median));
+            Assert.That(9_535_088, Is.EqualTo(actualPrice.Median));
         }
 
         [Test]
@@ -2186,7 +2186,7 @@ namespace Coflnet.Sky.Sniper
             lessStars.FlatenedNBT["upgrade_level"] = "3";
             var price = service.GetPrice(lessStars);
             Assert.That(price.MedianKey, Is.EqualTo("ultimate_wisdom=5 Any [upgrade_level, 7],[rarity_upgrades, 1] MYTHIC 1- 7*0.60"), JsonConvert.SerializeObject(price));
-            Assert.That(price.Median, Is.EqualTo(17262640), JsonConvert.SerializeObject(price));
+            Assert.That(price.Median, Is.EqualTo(17273296), JsonConvert.SerializeObject(price));
         }
 
         [Test]
