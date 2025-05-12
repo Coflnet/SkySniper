@@ -581,6 +581,49 @@ public class DropOffTests
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
         flip.TargetPrice.Should().Be(31000000L);
     }
+
+    [Test]
+    public async Task AddBackValuetoMedianManyModifiers()
+    {
+        await sniperService.Init();
+        SetBazaarPrice("ENCHANTMENT_ULTIMATE_SOUL_EATER_5", 20_000_000);
+        SetBazaarPrice("ENCHANTMENT_OVERLOAD_5", 19_000_000);
+        SetBazaarPrice("ENCHANTMENT_DRAGON_HUNTER_5", 18_000_000);
+        SetBazaarPrice("ENCHANTMENT_TABASCO_3", 10_000_000);
+        SetBazaarPrice("ENCHANTMENT_TOXOPHILITE_10", 8_000_000);
+        SetBazaarPrice("FUMING_POTATO_BOOK", 2_000_000);
+        SetBazaarPrice("RECOMBOBULATOR_3000", 8_000_000);
+        SetBazaarPrice("FIRST_MASTER_STAR", 18_000_000);
+        SetBazaarPrice("SECOND_MASTER_STAR", 22_000_000);
+        SetBazaarPrice("THIRD_MASTER_STAR", 45_000_000);
+        SetBazaarPrice("FOURTH_MASTER_STAR", 80_000_000);
+        SetBazaarPrice("FIFTH_MASTER_STAR", 95_000_000);
+        SetBazaarPrice("ESSENCE_DRAGON", 4800);
+        
+        AddLookupAndUpdateMeidans("Terminator.json", "TERMINATOR", new DateTime(2025, 5, 12));
+        var auction = new SaveAuction()
+        {
+            Tag = "TERMINATOR",
+            StartingBid = 720_000_000,
+            UId = 4,
+            Enchantments = [new (){Type=Enchantment.EnchantmentType.ultimate_soul_eater, Level=5 },
+                new (){Type=Enchantment.EnchantmentType.overload, Level=5 },
+                new (){Type=Enchantment.EnchantmentType.dragon_hunter, Level=5 },
+                new (){Type=Enchantment.EnchantmentType.tabasco, Level=3 },
+                new (){Type=Enchantment.EnchantmentType.toxophilite, Level=10 },
+                new (){Type=Enchantment.EnchantmentType.infinite_quiver, Level=10 },
+                new (){Type=Enchantment.EnchantmentType.chance, Level=4 },
+                new (){Type=Enchantment.EnchantmentType.power, Level=6 }],
+            FlatenedNBT = new() { { "rarity_upgrades", "1" }, { "hpc", "15" }, { "upgrade_level", "10" } },
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        flip.TargetPrice.Should().BeGreaterThanOrEqualTo(844_000_000L, "median of 781m + craft cost partial");
+    }
     [Test]
     public void Level1SheepNotFoundOnStonks()
     {
@@ -1102,7 +1145,7 @@ public class DropOffTests
         sniperService.TestNewAuction(item);
         Assert.That(found.Count, Is.GreaterThanOrEqualTo(1));
         // combines buckets to reach estimation
-        Assert.That(289472337 - 3, Is.EqualTo(found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
+        found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice.Should().Be(324872335);
     }
 
     [Test]

@@ -627,7 +627,7 @@ namespace Coflnet.Sky.Sniper
             sample.FlatenedNBT.Add("PERIDOT_1", "PERFECT");
             found.Clear();
             TestNewAuction(sample);
-            Assert.That(57_000_000, Is.EqualTo(found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice));
+            found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice.Should().BeInRange(57_000_000, 57_000_050);
         }
         [Test]
         public void HigherValueCheckChecksSmallerValueForHigherPrice()
@@ -2850,7 +2850,7 @@ namespace Coflnet.Sky.Sniper
                 Products = new() { CreateGemPrice("JADE"), CreateGemPrice("AMBER"), CreateGemPrice("SAPPHIRE"), CreateGemPrice("TOPAZ"), CreateGemPrice("AMETHYST") }
             });
             service.TestNewAuction(highestValAuction);
-            Assert.That(referencePrice + 6000000, Is.EqualTo(found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).First().TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
+            Assert.That(referencePrice + 6500000, Is.EqualTo(found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).First().TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
             service.FinishedUpdate();
             // lbin is now the starting bid of that auction
             var price = service.GetPrice(highestValAuction);

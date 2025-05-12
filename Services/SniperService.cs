@@ -802,7 +802,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         void AssignMedian(PriceEstimate result, AuctionKey key, ReferenceAuctions bucket, long gemVal)
         {
-            result.Median = bucket.Price + gemVal + (((key as AuctionKeyWithValue)?.ValueSubstract - gemVal * 20/19) / 3  ?? 0);
+            result.Median = bucket.Price + gemVal + (((key as AuctionKeyWithValue)?.ValueSubstract - gemVal * 20 / 19) / 3 ?? 0);
             result.Volume = bucket.Volume;
             result.MedianKey = key.ToString();
             result.Volatility = bucket.Volatility;
@@ -1224,7 +1224,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (bucket.Volume >= 4 && bucket.Lbin.AuctionId != default && bucket.Lbin.Day < GetDay() + 3)
                 { // volume high enought to risk higher percentile
                     var cappedPrice = preLimitedPrice == medianPrice ? preLimitedPrice * 12 / 10 : limitedPrice;
-                    var recent = bucket.References.AsEnumerable().Reverse().Take(Math.Max(12,(int)bucket.Volume)).ToList();
+                    var recent = bucket.References.AsEnumerable().Reverse().Take(Math.Max(12, (int)bucket.Volume)).ToList();
                     var prices = recent.Select(r => r.Price).ToList();
                     var percentileRecent = GetMedian(recent, cleanPriceLookup, 3f);
                     medianPrice = Math.Min(Math.Max(bucket.RiskyEstimate, medianPrice), Math.Min(cappedPrice, percentileRecent));
@@ -3266,7 +3266,8 @@ ORDER BY l.`AuctionId`  DESC;
                     props.Add("lbin", JsonConvert.SerializeObject(bucket.Lbin));
                     adjustedMedianPrice = Math.Min(adjustedMedianPrice, bucket.Lbin.Price);
                 }
-                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, adjustedMedianPrice + extraValue + expValue, props);
+                var keyMissing = key.ValueSubstract > 5_000_000 ? (key.ValueSubstract - extraValue - 1_000_000) / 2 + MoreIfExpensive(bucket.Price, key) : 0;
+                FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, adjustedMedianPrice + extraValue + expValue + keyMissing, props);
             }
             if (medianPrice - auction.StartingBid < 2_500_000 && bucket.RiskyEstimate > minMedPrice
                 && (bucket.Lbin.AuctionId == default || bucket.Lbin.Price * 1.04 > lbinPrice))
@@ -3291,6 +3292,13 @@ ORDER BY l.`AuctionId`  DESC;
             }
             return foundSnipe;
 
+            long MoreIfExpensive(long Median, AuctionKeyWithValue key)
+            {
+                // attributes keep more of their value on expensive items
+                if (Median < 500_000_000)
+                    return 0;
+                return (key.ValueSubstract - extraValue - 2_000_000) / 4;
+            }
         }
         void LogNonFlip(SaveAuction auction, ReferenceAuctions bucket, AuctionKey key, long extraValue, float volume, long medianPrice, string v = null)
         {
