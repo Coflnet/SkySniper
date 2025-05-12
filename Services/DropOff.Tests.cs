@@ -148,6 +148,28 @@ public class DropOffTests
     }
 
     [Test]
+    public void PestVestSniperFind()
+    {
+        AddLookupAndUpdateMeidans("pest_vest.json", "PEST_VEST", new DateTime(2025, 5, 12));
+        var testAuction = new SaveAuction()
+        {
+            Tag = "PEST_VEST",
+            FlatenedNBT = new(),
+            Enchantments = [],
+            StartingBid = 5_200_000,
+            HighestBidAmount = 0,
+            UId = 4,
+            AuctioneerId = "12aaa",
+            Tier = Tier.EPIC,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(testAuction);
+        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
+        flip.TargetPrice.Should().Be(6989400L);
+    }
+
+    [Test]
     public void HermitCrabLevel100NotLimited()
     {
         AddLookupAndUpdateMeidans("HermitCrab.json", "PET_HERMIT_CRAB", new DateTime(2025, 1, 5));
@@ -297,7 +319,7 @@ public class DropOffTests
             sniperService.UpdateMedian(item.Value, ("SCARF", sniperService.GetBreakdownKey(item.Key, "SCARF")));
         }
         var scarf = sniperService.Lookups["SCARF"].Lookup.Where(l => l.Key.Count == 1 && l.Key.Modifiers.Count == 0).First();
-        scarf.Value.Price.Should().Be(1499000L);
+        scarf.Value.Price.Should().Be(1550000L);
     }
 
     [Test]
@@ -813,7 +835,7 @@ public class DropOffTests
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(auction);
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
-        flip.TargetPrice.Should().Be(24_000_000L, "pulled down by 66th percentile on last 12 sales (5th highest)");
+        flip.TargetPrice.Should().Be(25_000_000L, "pulled down by 66th percentile on last 12 sales (5th highest)");
     }
     /// <summary>
     /// if manipulation is detected within references the time window should be longer
