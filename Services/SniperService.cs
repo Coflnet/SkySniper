@@ -2054,6 +2054,10 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (item.Modifier.Key == "exp")
                         continue; // even if its valued at very little this needs to stay
+                    if (adjustedRemoveValue > 50_000_000 && Constants.AttributeKeys.Contains(item.Modifier.Key))
+                        adjustedRemoveValue -= 50_000_000;
+                    if (item.IsEstimate)
+                        adjustedRemoveValue /= 10;
                     if (modifiers.Remove(item.Modifier))
                         valueSubstracted += adjustedRemoveValue;
                     if (item.Modifier.Key == "skin")
@@ -3267,6 +3271,7 @@ ORDER BY l.`AuctionId`  DESC;
                     adjustedMedianPrice = Math.Min(adjustedMedianPrice, bucket.Lbin.Price);
                 }
                 var keyMissing = key.ValueSubstract > 5_000_000 ? (key.ValueSubstract - extraValue - 1_000_000) / 2 + MoreIfExpensive(bucket.Price, key) : 0;
+                props.Add("keyMissing", keyMissing.ToString());
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, adjustedMedianPrice + extraValue + expValue + keyMissing, props);
             }
             if (medianPrice - auction.StartingBid < 2_500_000 && bucket.RiskyEstimate > minMedPrice

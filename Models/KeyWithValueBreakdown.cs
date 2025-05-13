@@ -43,11 +43,16 @@ namespace Coflnet.Sky.Sniper.Models
                 }
                 else
                 {
+                    var adjustedRemoveValue = item.Value;
                     modifiers = modifiers.Where(x => x.Key != item.Modifier.Key);
                     modifierchanged = true;
+                    if (adjustedRemoveValue > 50_000_000 && Constants.AttributeKeys.Contains(item.Modifier.Key))
+                        adjustedRemoveValue -= 50_000_000;
+                    if (item.IsEstimate)
+                        adjustedRemoveValue /= 10;
                     // only substract (and save adding) value for keys which are lower when removed
                     if (!SniperService.InvertedValueKey.Contains(item.Modifier.Key))
-                        valueSubstracted += item.Value;
+                        valueSubstracted += adjustedRemoveValue;
                     if (item.Modifier.Key == "rarity_upgrades")
                         tier = SniperService.ReduceRarity(tier);
                     if (item.Modifier.Value == SniperService.TierBoostShorthand)

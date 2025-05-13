@@ -657,6 +657,39 @@ public class DropOffTests
         sniperService.UpdateMedian(price.Value, ("MOLTEN_BELT", sniperService.GetBreakdownKey(price.Key, "MOLTEN_BELT")));
         price.Value.Price.Should().Be(6800000L);
     }
+    /// <summary>
+    /// comparison combination extra value for "godroll" was partially added to median if the attributes were dropped
+    /// sample suggested (sell): https://sky.coflnet.com/auction/fb84cd7fd0fc4eca80d58f26faae1082
+    /// </summary>
+    [Test]
+    public void MolteBeltMedianAttributeNotReaddingComparisonvalue()
+    {
+        AddLookupAndUpdateMeidans("Molten_Belt.json", "MOLTEN_BELT", new DateTime(2025, 5, 4));
+        var auction = new SaveAuction()
+        {
+            Tag = "MOLTEN_BELT",
+            StartingBid = 500_000,
+            UId = 4,
+            FlatenedNBT = new() { { "dominance", "3" }, { "mana_pool", "3" } },
+            AuctioneerId = "12aaa",
+            Tier = Tier.EPIC,
+            Count = 1
+        };
+        var dupplicate = auction.Dupplicate();
+        dupplicate.FlatenedNBT.Clear();
+        dupplicate.HighestBidAmount = 1_200_000;
+        sniperService.AddSoldItem(dupplicate);
+        sniperService.AddSoldItem(dupplicate.Dupplicate());
+        sniperService.AddSoldItem(dupplicate.Dupplicate());
+        sniperService.AddSoldItem(dupplicate.Dupplicate());
+
+        var clean = sniperService.Lookups["MOLTEN_BELT"].Lookup.First(l => l.Key.Modifiers.Count == 0 && l.Key.Count == 1).Value;
+        clean.Price.Should().BeGreaterThanOrEqualTo(700_000L);
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var flip = found.OrderByDescending(f => f.TargetPrice).First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        flip.TargetPrice.Should().BeLessThan(5_000_000L);
+    }
 
     [Test]
     public void LowerToLbinIfLowVolume()
