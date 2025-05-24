@@ -1228,6 +1228,11 @@ ORDER BY l.`AuctionId`  DESC;
                     var prices = recent.Select(r => r.Price).ToList();
                     var percentileRecent = GetMedian(recent, cleanPriceLookup, 3f);
                     medianPrice = Math.Min(Math.Max(bucket.RiskyEstimate, medianPrice), Math.Min(cappedPrice, percentileRecent));
+                    var deduplicatedRecent = deduplicated.OrderByDescending(r => r.Day).Take(9).OrderBy(r => r.Price).Skip(6).FirstOrDefault();
+                    if (deduplicatedRecent.AuctionId != default && deduplicatedRecent.Price < medianPrice)
+                    {
+                        medianPrice = Math.Min(medianPrice, deduplicatedRecent.Price);
+                    }
                 }
                 lookup.HasMultipleRarities = lookup.Lookup
                         .Where(l => l.Key.Tier != Tier.UNKNOWN)

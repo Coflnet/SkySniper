@@ -319,7 +319,7 @@ public class DropOffTests
             sniperService.UpdateMedian(item.Value, ("SCARF", sniperService.GetBreakdownKey(item.Key, "SCARF")));
         }
         var scarf = sniperService.Lookups["SCARF"].Lookup.Where(l => l.Key.Count == 1 && l.Key.Modifiers.Count == 0).First();
-        scarf.Value.Price.Should().Be(1550000L);
+        scarf.Value.Price.Should().Be(1450000L);
     }
 
     [Test]
