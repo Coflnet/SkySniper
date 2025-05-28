@@ -3193,7 +3193,7 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     if (!Lookups.TryGetValue(value.ToUpper(), out var itemLookup))
                         continue;
-                    var prices = itemLookup.Lookup.GetValueOrDefault(itemLookup.CleanKey ?? itemLookup.Lookup.First(k => k.Value.Price > 0).Key);
+                    var prices = itemLookup.Lookup.GetValueOrDefault(itemLookup.CleanKey ?? itemLookup.Lookup.FirstOrDefault(k => k.Value.Price > 0).Key);
                     const int RemovalCost = 50_000;
                     extraValue += (prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price)) * 97 / 100 - RemovalCost;
                 }

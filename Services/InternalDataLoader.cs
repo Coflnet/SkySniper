@@ -28,6 +28,7 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly PartialCalcService partialCalcService;
         private readonly IMayorService mayorService;
         public event Action<LowPricedAuction> FoundPartialFlip;
+        private readonly ItemDetails itemDetails;
 
         private readonly ILogger<InternalDataLoader> logger;
         private IProducer<string, LowPricedAuction> FlipProducer;
@@ -48,7 +49,8 @@ namespace Coflnet.Sky.Sniper.Services
             ActiveUpdater activeUpdater,
             Kafka.KafkaCreator kafkaCreator,
             PartialCalcService partialCalcService,
-            IMayorService mayorService)
+            IMayorService mayorService,
+            ItemDetails itemDetails)
         {
             this.sniper = sniper;
             this.config = config;
@@ -60,6 +62,7 @@ namespace Coflnet.Sky.Sniper.Services
             this.kafkaCreator = kafkaCreator;
             this.partialCalcService = partialCalcService;
             this.mayorService = mayorService;
+            this.itemDetails = itemDetails;
         }
 
 
@@ -328,7 +331,7 @@ namespace Coflnet.Sky.Sniper.Services
             var context = new HypixelContext();
             using var scope = logger.BeginScope("partial analysis");
             logger.LogInformation("loading aote from db");
-            var id = ItemDetails.Instance.GetItemIdForTag(targetTag);
+            var id = itemDetails.GetItemIdForTag(targetTag);
             if (totalStart == default)
                 totalStart = DateTime.UtcNow - TimeSpan.FromDays(100);
 
@@ -365,7 +368,7 @@ namespace Coflnet.Sky.Sniper.Services
             //ApplyData(sold, 0.2);
             for (int i = 0; i < 5; i++)
             {
-                ApplyData(batch, 0.023);
+                await ApplyData(batch, 0.023);
                 await Task.Delay(MillisecondsDelay);
             }
             batch = batch.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(30)).ToList();
@@ -373,7 +376,7 @@ namespace Coflnet.Sky.Sniper.Services
                 return newSample;
             for (int i = 0; i < 5; i++)
             {
-                ApplyData(batch, 0.03);
+                await ApplyData(batch, 0.03);
                 await Task.Delay(MillisecondsDelay);
             }
             var lastWeek = batch.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(5)).ToList();
@@ -381,7 +384,7 @@ namespace Coflnet.Sky.Sniper.Services
                 batch = lastWeek;
             for (int i = 0; i < 50; i++)
             {
-                ApplyData(batch, 0.015);
+                await ApplyData(batch, 0.015);
                 await Task.Delay(MillisecondsDelay);
             }
             var recent = batch.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(1))
@@ -389,13 +392,13 @@ namespace Coflnet.Sky.Sniper.Services
             if (recent.Count > 10)
                 for (int i = 0; i < 20; i++)
                 {
-                    ApplyData(recent, 0.005);
+                    await ApplyData(recent, 0.005);
                 }
             return newSample;
         }
 
 
-        private void ApplyData(List<SaveAuction> sold, double v)
+        private async Task ApplyData(List<SaveAuction> sold, double v)
         {
             if (v == 1)
                 foreach (var item in sold)
@@ -407,11 +410,11 @@ namespace Coflnet.Sky.Sniper.Services
                     sniper.AddAuctionToBucket(item, true, references, bucket.key.ValueSubstract);
                 }
             partialCalcService.SetLearningRate(v);
-            Parallel.ForEach(sold, item =>
+            Parallel.ForEach(sold, async item =>
             {
                 try
                 {
-                    partialCalcService.AddSell(item);
+                    await partialCalcService.AddSell(item);
                 }
                 catch (Exception e)
                 {
@@ -420,7 +423,7 @@ namespace Coflnet.Sky.Sniper.Services
                 }
             });
             if (v > 0.01 && sold.Count > 1000)
-                partialCalcService.CapAtCraftCost();
+                await partialCalcService.CapAtCraftCost();
         }
 
         private void UpdateAllMedian()
@@ -465,7 +468,7 @@ namespace Coflnet.Sky.Sniper.Services
             }
             partialCalcService.SetLearningRate(0.01);
             foreach (var item in sold)
-                partialCalcService.AddSell(item);
+                await partialCalcService.AddSell(item);
 
             if (shouldLog)
                 Console.WriteLine($"Applied batch {batchStart} - {end}");

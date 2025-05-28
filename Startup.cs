@@ -54,10 +54,12 @@ namespace Coflnet.Sky.Sniper
             services.AddHostedService<CraftCostService>(d => d.GetRequiredService<ICraftCostService>() as CraftCostService);
             services.AddSingleton<Mayor.Client.Api.IMayorApi, Mayor.Client.Api.MayorApi>(d => new Mayor.Client.Api.MayorApi(Configuration["MAYOR_BASE_URL"]));
             services.AddSingleton<Mayor.Client.Api.IElectionPeriodsApi>(d => new Mayor.Client.Api.ElectionPeriodsApi(Configuration["MAYOR_BASE_URL"]));
+            services.AddSingleton<Items.Client.Api.IItemsApi, Items.Client.Api.ItemsApi>(d => new Items.Client.Api.ItemsApi(Configuration["ITEMS_BASE_URL"]));
             services.AddSingleton<ITrackerApi, TrackerApi>(d => new TrackerApi(Configuration["FLIPTRACKER_BASE_URL"]));
             services.AddSingleton<IMayorService, MayorService>();
             services.AddHostedService<MayorService>(d => d.GetRequiredService<IMayorService>() as MayorService);
             services.AddSingleton<RetrainService>();
+            services.AddSingleton<ItemDetails>();
             services.AddHostedService<RetrainService>(d => d.GetRequiredService<RetrainService>());
             // register redis connectionmultiplexer
             services.AddSingleton<IConnectionMultiplexer>(d =>
