@@ -2856,7 +2856,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return basekey.ValueBreakdown.Count == 1 && basekey.Key.Modifiers.FirstOrDefault(m => m.Key == itemGroupTag.tag).Key != default;
             }
 
-            static long GetValueEstimate(RankElem c)
+            long GetValueEstimate(RankElem c)
             {
                 if (c.Modifier.Key == "candyUsed")
                     return 0;
@@ -2865,6 +2865,11 @@ ORDER BY l.`AuctionId`  DESC;
                         return -120_000_000;
                     else
                         return 0;
+                if (Constants.AttributeKeys.Contains(c.Modifier.Key))
+                {
+                    if (basekey.Key.Modifiers.Any(m => m.Key != c.Modifier.Key && Constants.AttributeKeys.Contains(m.Key)))
+                        return (c.Value - 50_000_000) / 2; // godroll
+                }
                 return c.Value / 10;
             }
         }
