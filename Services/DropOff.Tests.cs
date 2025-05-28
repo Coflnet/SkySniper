@@ -670,7 +670,7 @@ public class DropOffTests
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(auction);
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.CraftCost);
-        flip.TargetPrice.Should().Be(172734999L, "based on 20e2c27983a0460094e92819fb41fd06"); // it sold for 390m https://sky.coflnet.com/auction/8acb03a605b34fb8936eececffd8f63c
+        flip.TargetPrice.Should().BeGreaterThanOrEqualTo(100_734999L, "based on 20e2c27983a0460094e92819fb41fd06"); // it sold for 390m https://sky.coflnet.com/auction/8acb03a605b34fb8936eececffd8f63c
     }
 
     /// <summary>

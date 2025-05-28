@@ -2867,10 +2867,17 @@ ORDER BY l.`AuctionId`  DESC;
                         return 0;
                 if (Constants.AttributeKeys.Contains(c.Modifier.Key))
                 {
-                    if (basekey.Key.Modifiers.Any(m => m.Key != c.Modifier.Key && Constants.AttributeKeys.Contains(m.Key)))
-                        return (c.Value - 50_000_000) / 4; // godroll
+                    var key = VirtualAttributeKey(c.Modifier);
+                    var virtualList = lookup.Lookup.Where(e => e.Key.Modifiers.Any(m => m.Key == "virtual")).ToList();
+                    if (!lookup.Lookup.TryGetValue(key, out var references) || references.Price == 0)
+                        return 0;
+                    if (!int.TryParse(c.Modifier.Value, out var level))
+                        return 0;
+                    return (long)(references.Price * Math.Pow(2, level - 1));
                 }
-                return c.Value / 10;
+                if (KillKeys.Contains(c.Modifier.Key))
+                    return c.Value / 50;
+                return c.Value / 20;
             }
         }
 
