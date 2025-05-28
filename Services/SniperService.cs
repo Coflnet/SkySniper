@@ -2868,7 +2868,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (Constants.AttributeKeys.Contains(c.Modifier.Key))
                 {
                     if (basekey.Key.Modifiers.Any(m => m.Key != c.Modifier.Key && Constants.AttributeKeys.Contains(m.Key)))
-                        return (c.Value - 50_000_000) / 2; // godroll
+                        return (c.Value - 50_000_000) / 4; // godroll
                 }
                 return c.Value / 10;
             }
