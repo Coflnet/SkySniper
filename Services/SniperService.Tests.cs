@@ -728,7 +728,7 @@ namespace Coflnet.Sky.Sniper
             sample.HighestBidAmount = 0;
             sample.StartingBid = 1000;
             TestNewAuction(sample);
-            Assert.That(490_000_000, Is.EqualTo(found.Last().TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
+            Assert.That(490_000_000, Is.EqualTo(found.First().TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
         }
         [Test]
         public void HigherValueCheckUsedOnLbinGetPrice()
@@ -3021,7 +3021,7 @@ namespace Coflnet.Sky.Sniper
             var flip = Dupplicate(highestValAuction);
             flip.StartingBid = 5;
             TestNewAuction(flip);
-            Assert.That(12_000_000, Is.EqualTo(found.Last().TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
+            Assert.That(12_000_000, Is.EqualTo(found.First().TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
             Assert.That(0, Is.EqualTo(found.Last().DailyVolume));
         }
         [Test]

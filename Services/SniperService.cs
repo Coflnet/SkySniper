@@ -2794,7 +2794,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private void CraftCostFinder(SaveAuction auction, (string tag, long costSubstract) itemGroupTag, PriceLookup lookup, double medPrice, KeyWithValueBreakdown basekey)
         {
-            var componentGuess = basekey.ValueBreakdown.Sum(c => c.IsEstimate ? -long.MaxValue / 20 : c.Value);
+            var componentGuess = basekey.ValueBreakdown.Sum(c => c.IsEstimate ? GetValueEstimate(c) : c.Value);
             if (componentGuess <= medPrice / 8) // no need to check if sum is too low
             {
                 return;
@@ -2810,7 +2810,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (v.Reforge != default)
                     return v.Reforge.ToString();
                 return v.Enchant.Type.ToString();
-            }, c => c.IsEstimate ? c.Value / 20 : c.Value);
+            }, c => c.IsEstimate ? GetValueEstimate(c) : c.Value);
             var cleanCost = GetCleanItemPrice(itemGroupTag.tag, basekey, lookup);
             if (BreakDownIncludesItem(itemGroupTag, basekey))
             {
@@ -2855,6 +2855,18 @@ ORDER BY l.`AuctionId`  DESC;
                 // breakdown already includes cheapest item (rune probably)
                 return basekey.ValueBreakdown.Count == 1 && basekey.Key.Modifiers.FirstOrDefault(m => m.Key == itemGroupTag.tag).Key != default;
             }
+
+            static long GetValueEstimate(RankElem c)
+            {
+                if (c.Modifier.Key == "candyUsed")
+                    return 0;
+                if (c.Modifier.Key == PetItemKey)
+                    if (c.Modifier.Value == TierBoostShorthand)
+                        return -120_000_000;
+                    else
+                        return 0;
+                return c.Value / 10;
+            }
         }
 
         private void CheckCombined(SaveAuction auction, PriceLookup lookup, double lbinPrice, double medPrice, KeyWithValueBreakdown longKey, RankElem topAttrib)
@@ -2875,7 +2887,7 @@ ORDER BY l.`AuctionId`  DESC;
             var fullKey = GetFullKey(auction);
             var relevant = similar.Where(e => (e.Key.Reforge == topKey.Reforge || topKey.Reforge == ItemReferences.Reforge.Any)
                         && IsHigherValue(auction.Tag, e.Key, fullKey))
-                .Select(e => (e, value: e.Value.Volume * ComparisonValue(e.Key.Enchants, e.Key.Modifiers.ToList(), GetAuctionGroupTag(auction.Tag).tag, null).Sum(s => s.Value)))
+                .Select(e => (e, value: Math.Max(e.Value.Volume, 0.5) * Math.Pow(ComparisonValue(e.Key.Enchants, e.Key.Modifiers.ToList(), GetAuctionGroupTag(auction.Tag).tag, null).Sum(s => s.Value), 1.8)))
                 .OrderByDescending(e => e.value)
                 .ToList();
             if (relevant.Count < 2)
@@ -2883,7 +2895,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return; // makes only sense if there is something combined
             }
             // get enough relevant to build a median and try to get highest value (most enchantments and modifiers)
-            var combined = relevant.SelectMany(r => r.e.Value.References.Select(ri => (ri, relevancy: r.value * (ri.Day - GetDay() + 10) * Math.Log10(ri.Price + 1))))
+            var combined = relevant.SelectMany(r => r.e.Value.References.Select(ri => (ri, relevancy: r.value * (ri.Day - GetDay() + 12) * Math.Log10(ri.Price + 1))))
                                 .OrderByDescending(r => r.relevancy).Select(r => r.ri).Take(targetVolume).ToList();
             if (combined.Count == 0)
             {

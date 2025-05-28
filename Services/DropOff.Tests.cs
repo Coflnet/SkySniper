@@ -645,6 +645,34 @@ public class DropOffTests
         found.Should().BeEmpty();
     }
 
+    [Test]
+    public void MolteNecklaceFind()
+    {
+        SetBazaarPrice("RECOMBOBULATOR_3000", 9_000_000);
+        SetBazaarPrice("ENCHANTMENT_ULTIMATE_THE_ONE_5", 100000000);
+        SetBazaarPrice("ENCHANTMENT_CAYENNE_5", 20000000);
+        SetBazaarPrice("ENCHANTMENT_QUANTUM_5", 1500000);
+        AddLookupAndUpdateMeidans("Molten_Necklace.json", "MOLTEN_NECKLACE", new DateTime(2025, 5, 28));
+        // based on 20e2c27983a0460094e92819fb41fd06
+        var auction = new SaveAuction()
+        {
+            Tag = "MOLTEN_NECKLACE",
+            StartingBid = 15_000_000,
+            UId = 4,
+            Enchantments = [new Enchantment() { Type = Enchantment.EnchantmentType.ultimate_the_one, Level = 5 },
+                new Enchantment() { Type = Enchantment.EnchantmentType.cayenne, Level = 5 },
+                new Enchantment() { Type = Enchantment.EnchantmentType.quantum, Level = 5 }],
+            FlatenedNBT = new() { { "dominance", "10" }, { "speed", "9" }, { "rarity_upgrades", "1" }, { "boss_tier", "3" } },
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.CraftCost);
+        flip.TargetPrice.Should().Be(141913999L, "based on 20e2c27983a0460094e92819fb41fd06"); // it sold for 390m https://sky.coflnet.com/auction/8acb03a605b34fb8936eececffd8f63c
+    }
+
     /// <summary>
     /// Craft cost estimate was to low because median samples were too low
     /// After calculating 5th percentile to use for value of attribute estimation is mostly correct (could be up to ~9m)
@@ -1208,7 +1236,7 @@ public class DropOffTests
         sniperService.AddSoldItem(auction.Dupplicate(49742295, DateTime.UtcNow - TimeSpan.FromDays(2)));
 
         sniperService.TestNewAuction(auction.Dupplicate());
-        Assert.That(1, Is.EqualTo(found.Count));
+        Assert.That(2, Is.EqualTo(found.Count));
         Assert.That(24222066 - 3, Is.EqualTo(found.First().TargetPrice));
     }
 
