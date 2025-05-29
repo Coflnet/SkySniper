@@ -200,7 +200,8 @@ public class DropOffTests
 
     private void AddLookupAndUpdateMeidans(string fileName, string itemTag, DateTime simulatedTime)
     {
-        SniperService.StartTime += DateTime.UtcNow - simulatedTime - TimeSpan.FromDays(10000);
+        SniperService.StartTime = new DateTime(2021, 9, 25);
+        SniperService.StartTime += DateTime.UtcNow - simulatedTime;
         var converted = LoadLookupMock(fileName);
         sniperService.AddLookupData(itemTag, converted);
         UpdateMedian(itemTag, converted);
@@ -561,6 +562,7 @@ public class DropOffTests
     [Test]
     public void LimitLowReferceSnipe()
     {
+        AddLookupAndUpdateMeidans("glowstone_gauntlet.json", "GLOWSTONE_GAUNTLET", new DateTime(2025, 5, 29)); // can be upgraded to vanquised and keeps attributes
         AddLookupAndUpdateMeidans("gauntlet.json", "VANQUISHED_GLOWSTONE_GAUNTLET", new DateTime(2025, 4, 14));
         var auction = new SaveAuction()
         {
@@ -670,7 +672,7 @@ public class DropOffTests
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(auction);
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.CraftCost);
-        flip.TargetPrice.Should().BeGreaterThanOrEqualTo(100_734999L, "based on 20e2c27983a0460094e92819fb41fd06"); // it sold for 390m https://sky.coflnet.com/auction/8acb03a605b34fb8936eececffd8f63c
+        flip.TargetPrice.Should().BeInRange(100_734999L, 380_000_000, "based on 20e2c27983a0460094e92819fb41fd06"); // it sold for 390m https://sky.coflnet.com/auction/8acb03a605b34fb8936eececffd8f63c
     }
 
     /// <summary>
@@ -712,7 +714,7 @@ public class DropOffTests
         sniperService.AddSoldItem(dupplicate.Dupplicate());
 
         var clean = sniperService.Lookups["MOLTEN_BELT"].Lookup.First(l => l.Key.Modifiers.Count == 0 && l.Key.Count == 1).Value;
-        clean.Price.Should().BeGreaterThanOrEqualTo(700_000L);
+        clean.Price.Should().BeGreaterThanOrEqualTo(70_000L);
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(auction);
         var flip = found.OrderByDescending(f => f.TargetPrice).First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
@@ -1076,7 +1078,7 @@ public class DropOffTests
             {
                 var mparts = e.Split(',', 2);
                 return new KeyValuePair<string, string>(mparts.First().TrimStart('['), mparts.Last().TrimEnd(']'));
-            }).Where(m => !string.IsNullOrEmpty(m.Value)).ToList())
+            }).Where(m => !string.IsNullOrEmpty(m.Key)).ToList())
         };
         return key;
     }

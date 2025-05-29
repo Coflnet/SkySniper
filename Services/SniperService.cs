@@ -462,6 +462,22 @@ ORDER BY l.`AuctionId`  DESC;
                 MinEnchantMap[item.Type] = item.Level;
             }
 
+            string[] armorPieces = ["HELMET", "CHESTPLATE", "LEGGINGS", "BOOTS"];
+            foreach (var toAdd in CrimsonArmors)
+            {
+                // each kind of armor piece is combinable with each other of the same type
+                // eg "CRIMSON_HELMET", "AURORA_HELMET", "FERVOR_HELMET" etc.
+                foreach (var item in armorPieces)
+                {
+                    var list = new List<string>();
+                    foreach (var adding in CrimsonArmors)
+                    {
+                        list.Add($"{adding}{item}");
+                    }
+                    SharedAttributeGroup[$"{toAdd}{item}"] = list.ToArray();
+                }
+            }
+
             this.itemService = itemService;
             this.activitySource = activitySource;
             this.logger = logger;
@@ -2792,6 +2808,14 @@ ORDER BY l.`AuctionId`  DESC;
             activity.Log($"BaseKey value {JsonConvert.SerializeObject(basekey.ValueBreakdown)}");
         }
 
+
+        private static Dictionary<string, string[]> SharedAttributeGroup = new()
+        {
+            {"VANQUISHED_GLOWSTONE_GAUNTLET", ["GLOWSTONE_GAUNTLET"]},
+            {"HELLFIRE_ROD",["MAGMA_ROD", "INFERNO_ROD"]},
+            {"INFERNO_ROD", ["MAGMA_ROD"]}
+        };
+
         private void CraftCostFinder(SaveAuction auction, (string tag, long costSubstract) itemGroupTag, PriceLookup lookup, double medPrice, KeyWithValueBreakdown basekey)
         {
             var componentGuess = basekey.ValueBreakdown.Sum(c => c.IsEstimate ? GetValueEstimate(c) : c.Value);
@@ -2832,6 +2856,7 @@ ORDER BY l.`AuctionId`  DESC;
                 "upgrade_level" => 0.8,
                 "talisman_enrichment" => 0.10,
                 var s when IsRune(s) => 0.55,
+                var s when Constants.AttributeKeys.Contains(s) => 0.75,
                 _ => 0.85
             } * v.Value)).Sum();
             if (cleanCost == componentGuess)
@@ -2875,6 +2900,18 @@ ORDER BY l.`AuctionId`  DESC;
                     {
                         if (shardBucket.References.Count > 5 && shardBucket.Price > 0 && shardBucket.Price < references.Price)
                             references = shardBucket; // use shard price if it is cheaper as it can be used on all items
+                    }
+                    if (SharedAttributeGroup.TryGetValue(auction.Tag, out var sharedGroup))
+                    {
+                        foreach (var item in sharedGroup)
+                        {
+                            if (Lookups.TryGetValue(item, out var sharedLookup)
+                                && sharedLookup.Lookup.TryGetValue(key, out var sharedBucket)
+                                && sharedBucket.References.Count > 5 && sharedBucket.Price > 0 && sharedBucket.Price < references.Price)
+                            {
+                                references = sharedBucket; // use the shared group price if available
+                            }
+                        }
                     }
                     if (!int.TryParse(c.Modifier.Value, out var level))
                         return 0;
