@@ -463,6 +463,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
 
             string[] armorPieces = ["HELMET", "CHESTPLATE", "LEGGINGS", "BOOTS"];
+            string[] tiers = ["", "HOT_", "BURNING_", "FIERY_", "INFERNAL_"];
             foreach (var toAdd in CrimsonArmors)
             {
                 // each kind of armor piece is combinable with each other of the same type
@@ -474,7 +475,10 @@ ORDER BY l.`AuctionId`  DESC;
                     {
                         list.Add($"{adding}{item}");
                     }
-                    SharedAttributeGroup[$"{toAdd}{item}"] = list.ToArray();
+                    foreach (var tier in tiers)
+                    {
+                        SharedAttributeGroup[$"{tier}{toAdd}{item}"] = list.ToArray();
+                    }
                 }
             }
 
