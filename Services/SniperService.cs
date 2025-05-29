@@ -2812,7 +2812,11 @@ ORDER BY l.`AuctionId`  DESC;
         private static Dictionary<string, string[]> SharedAttributeGroup = new()
         {
             {"VANQUISHED_GLOWSTONE_GAUNTLET", ["GLOWSTONE_GAUNTLET"]},
-            {"HELLFIRE_ROD",["MAGMA_ROD", "INFERNO_ROD"]},
+            {"VANQUISHED_GHAST_CLOAK",[ "GHAST_CLOAK"]},
+            {"VANQUISHED_BLAZE_BELT", ["BLAZE_BELT"]},
+            {"VANQUISHED_MAGMA_NECKLACE", ["MAGMA_NECKLACE"]},
+            {"VANQUISHED_INFERNO_ROD", ["INFERNO_ROD"]},
+            { "HELLFIRE_ROD",["MAGMA_ROD", "INFERNO_ROD"]},
             {"INFERNO_ROD", ["MAGMA_ROD"]}
         };
 
