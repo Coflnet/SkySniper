@@ -2868,9 +2868,14 @@ ORDER BY l.`AuctionId`  DESC;
                 if (Constants.AttributeKeys.Contains(c.Modifier.Key))
                 {
                     var key = VirtualAttributeKey(c.Modifier);
-                    var virtualList = lookup.Lookup.Where(e => e.Key.Modifiers.Any(m => m.Key == "virtual")).ToList();
+                    //var virtualList = lookup.Lookup.Where(e => e.Key.Modifiers.Any(m => m.Key == "virtual")).ToList();
                     if (!lookup.Lookup.TryGetValue(key, out var references) || references.Price == 0)
                         return 0;
+                    if (Lookups.TryGetValue("ATTRIBUTE_SHARD", out var shardLookup) && shardLookup.Lookup.TryGetValue(key, out var shardBucket))
+                    {
+                        if (shardBucket.References.Count > 5 && shardBucket.Price > 0 && shardBucket.Price < references.Price)
+                            references = shardBucket; // use shard price if it is cheaper as it can be used on all items
+                    }
                     if (!int.TryParse(c.Modifier.Value, out var level))
                         return 0;
                     return (long)(references.Price * Math.Pow(2, level - 1));
