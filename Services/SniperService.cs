@@ -2842,7 +2842,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (v.Reforge != default)
                     return v.Reforge.ToString();
                 return v.Enchant.Type.ToString();
-            }, c => c.IsEstimate ? GetValueEstimate(c) : c.Value);
+            }, c => c.IsEstimate ? GetValueEstimate(c) : AdjustFixedValue(c));
             var cleanCost = GetCleanItemPrice(itemGroupTag.tag, basekey, lookup);
             if (BreakDownIncludesItem(itemGroupTag, basekey))
             {
@@ -2893,11 +2893,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 if (c.Modifier.Key == "candyUsed")
                     return 0;
-                if (c.Modifier.Key == PetItemKey)
-                    if (c.Modifier.Value == TierBoostShorthand)
-                        return -120_000_000;
-                    else
-                        return 0;
+
                 if (Constants.AttributeKeys.Contains(c.Modifier.Key))
                 {
                     var key = VirtualAttributeKey(c.Modifier);
@@ -2928,6 +2924,16 @@ ORDER BY l.`AuctionId`  DESC;
                 if (KillKeys.Contains(c.Modifier.Key))
                     return c.Value / 50;
                 return c.Value / 20;
+            }
+
+            static long AdjustFixedValue(RankElem c)
+            {
+                if (c.Modifier.Key == PetItemKey)
+                    if (c.Modifier.Value == TierBoostShorthand)
+                        return -120_000_000; // this negates the upgrade cost of a pet item
+                    else
+                        return c.Value / 2;
+                return c.Value;
             }
         }
 
