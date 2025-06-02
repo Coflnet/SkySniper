@@ -260,7 +260,7 @@ namespace Coflnet.Sky.Sniper.Services
                     new (){new("magic_find", "mending")}), // vitality = mending
             new(new(){"MOLTEN_BRACELET", "MOLTEN_CLOAK", "MAGMA_LORD_GAUNTLET"}, new (){new("lifeline", "mana_pool")}),
             new(new(){"TAURUS_HELMET", "FLAMING_CHESTPLATE", "MOOGMA_LEGGINGS", "SLUG_BOOTS"}, new (){new("magic_find", "magic_find")}),
-            new(new(){"GAUNTLET_OF_CONTAGION"}, new (){new("veteran", "mana_regeneration"),new("veteran", "breeze"),new("veteran", "mana_pool")}),
+            new(new(){"GAUNTLET_OF_CONTAGION"}, new (){new("veteran", "mana_regeneration"),new("veteran", "breeze"),new("veteran", "mana_pool"),new("lifeline", "mana_pool")}),
         ];
 
         private readonly List<KeyValuePair<List<string>, List<string>>> AttributesToIgnoreOn = [
