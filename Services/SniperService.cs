@@ -140,7 +140,7 @@ namespace Coflnet.Sky.Sniper.Services
         private Dictionary<string, Func<ModifierMetadata, RankElem>> Converters = new()
         {
             { "full_bid", m => new (m.Modifier, (int)(float.Parse(m.Modifier.Value) * 48_000_000))},
-            { "winning_bid", m => new (m.Modifier, (int)(float.Parse(m.Modifier.Value) * 10_000_000))},
+            { "winning_bid", m => new (m.Modifier, (int)(float.Parse(m.Modifier.Value) * 25_000_000))},
             //{ "rarity_upgrades", m => new (m.Modifier, 50_000_000)}, item value
             { "eman_kills", m => new (m.Modifier, 3_000_000 * (int)Math.Pow(2, int.Parse(m.Modifier.Value))) {IsEstimate=true}},
             { "expertise_kills", m => new (m.Modifier, 3_000_000 * (int)Math.Pow(2, int.Parse(m.Modifier.Value))) {IsEstimate=true}},
@@ -2852,7 +2852,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 "STARRED_MIDAS_STAFF" => 200_000_000,
                 "MIDAS_STAFF" => 100_000_000,
-                "MIDAS_SWORD" => 50_000_000,
+                "MIDAS_SWORD" => 80_000_000,
                 "STARRED_MIDAS_SWORD" => 150_000_000,
                 _ => cleanCost
             });
