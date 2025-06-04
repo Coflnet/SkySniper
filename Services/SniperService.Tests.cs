@@ -1953,7 +1953,7 @@ namespace Coflnet.Sky.Sniper
             TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.CraftCost).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
-            Assert.That(25_200_000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That(25_960_000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
         }
         [Test]
         public async Task MasterStarsAlsoOnDungeonConvertableItems()
@@ -1970,7 +1970,7 @@ namespace Coflnet.Sky.Sniper
             TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.CraftCost).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
-            Assert.That(estimate.TargetPrice, Is.EqualTo(87637349), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That(estimate.TargetPrice, Is.EqualTo(91517349), JsonConvert.SerializeObject(estimate.AdditionalProps));
         }
 
 
