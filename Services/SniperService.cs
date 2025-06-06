@@ -3356,6 +3356,14 @@ ORDER BY l.`AuctionId`  DESC;
                     adjustedMedianPrice = Math.Min(adjustedMedianPrice, bucket.Lbin.Price);
                 }
                 var keyMissing = key.ValueSubstract > 5_000_000 ? (key.ValueSubstract - extraValue - 1_000_000) / 2 + MoreIfExpensive(bucket.Price, key) : 0;
+                if (keyMissing > 0 && lookup.CleanPricePerTier.TryGetValue(key.Tier, out var cleanPricePerTier))
+                {
+                    var basePrice = Math.Min(auction.StartingBid, cleanPricePerTier * 2);
+                    // on very cheap items expensive modifiers don't add much value
+                    var adjusted = Math.Min(keyMissing, Math.Max(basePrice * 3 - 100_000, basePrice));
+                    if(adjusted > 0)
+                        keyMissing = adjusted;
+                }
                 props.Add("keyMissing", keyMissing.ToString());
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, adjustedMedianPrice + extraValue + expValue + keyMissing, props);
             }

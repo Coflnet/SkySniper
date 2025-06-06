@@ -14,6 +14,7 @@ using Newtonsoft.Json;
 using NUnit.Framework;
 
 namespace Coflnet.Sky.Sniper.Services;
+
 public class DropOffTests
 {
     string loaded = null;
@@ -131,9 +132,9 @@ public class DropOffTests
         var testAuction = new SaveAuction()
         {
             Tag = "INFERNAL_CRIMSON_LEGGINGS",
-            FlatenedNBT = new Dictionary<string, string>() { { "magic_find", "10" },{ "veteran", "10" }, 
+            FlatenedNBT = new Dictionary<string, string>() { { "magic_find", "10" },{ "veteran", "10" },
                 { "dye_item", "DYE_BLACK_ICE" }, {"rarity_upgrades", "1" } },
-            Enchantments = [new(){Type = Enchantment.EnchantmentType.mana_vampire, Level = 10 }, new(){Type = Enchantment.EnchantmentType.ultimate_habanero_tactics, Level = 5 }],
+            Enchantments = [new() { Type = Enchantment.EnchantmentType.mana_vampire, Level = 10 }, new() { Type = Enchantment.EnchantmentType.ultimate_habanero_tactics, Level = 5 }],
             StartingBid = 830_000_000,
             HighestBidAmount = 0,
             UId = 4,
@@ -185,15 +186,15 @@ public class DropOffTests
         craftCostService.Costs["PERFECT_JASPER_GEM"] = 20_000_000_000;
         SetBazaarPrice("PERFECT_JASPER_GEM", 30_000_000);
         foreach (var item in sniperService.Lookups)
+        {
+            foreach (var bucket in item.Value.Lookup)
             {
-                foreach (var bucket in item.Value.Lookup)
-                {
-                    if (bucket.Value.References.Count < 4)
-                        continue; // can't have a median
-                    // make sure all medians are up to date
-                    sniperService.UpdateMedian(bucket.Value, (item.Key, sniperService.GetBreakdownKey(bucket.Key, item.Key)));
-                }
+                if (bucket.Value.References.Count < 4)
+                    continue; // can't have a median
+                              // make sure all medians are up to date
+                sniperService.UpdateMedian(bucket.Value, (item.Key, sniperService.GetBreakdownKey(bucket.Key, item.Key)));
             }
+        }
         var price = sniperService.Lookups["PERFECT_JASPER_GEM"].Lookup.First().Value;
         price.Price.Should().Be(30491442L, "Median bazaar price");
     }
@@ -601,7 +602,7 @@ public class DropOffTests
         SetBazaarPrice("FOURTH_MASTER_STAR", 80_000_000);
         SetBazaarPrice("FIFTH_MASTER_STAR", 95_000_000);
         SetBazaarPrice("ESSENCE_DRAGON", 4800);
-        
+
         AddLookupAndUpdateMeidans("Terminator.json", "TERMINATOR", new DateTime(2025, 5, 12));
         var auction = new SaveAuction()
         {
@@ -745,6 +746,28 @@ public class DropOffTests
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
         flip.TargetPrice.Should().Be(2_990_000_000L);
     }
+    [Test]
+    public void CheapDungeonitemNoOvervalueforRarity()
+    {
+        AddLookupAndUpdateMeidans("sniper_bow.json", "SNIPER_BOW", new DateTime(2025, 6, 6));
+        SetBazaarPrice("RECOMBOBULATOR_3000", 9_000_000);
+        var auction = new SaveAuction()
+        {
+            Tag = "SNIPER_BOW",
+            StartingBid = 5_000,
+            UId = 4,
+            FlatenedNBT = new() { { "rarity_upgrades", "1" } },
+            AuctioneerId = "12aaa",
+            Tier = Tier.EPIC,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        foreach (var item in found.Where(f=>f.Finder != LowPricedAuction.FinderType.CraftCost))
+        {
+            item.TargetPrice.Should().BeLessThan(300_000L, JsonConvert.SerializeObject(found, Formatting.Indented));
+        }
+    }
 
     [Test]
     public void AllowHigherEstimateOnCleanHighVolumeLbin()
@@ -821,7 +844,7 @@ public class DropOffTests
         SetBazaarPrice("JADERALD", 4_400_000);
         AddLookupAndUpdateMeidans("divan.json", "DIVAN_BOOTS", new DateTime(2025, 4, 15));
         UpdateMedian("DIVAN_BOOTS", sniperService.Lookups["DIVAN_BOOTS"]);
-        var pgems= sniperService.Lookups["DIVAN_BOOTS"].Lookup.Where(p => p.Key.ToString() == " Any [pgems, 5],[rarity_upgrades, 1],[unlocked_slots, AMBER_0,AMBER_1,JADE_0,JADE_1,TOPAZ_0] MYTHIC 1").First();
+        var pgems = sniperService.Lookups["DIVAN_BOOTS"].Lookup.Where(p => p.Key.ToString() == " Any [pgems, 5],[rarity_upgrades, 1],[unlocked_slots, AMBER_0,AMBER_1,JADE_0,JADE_1,TOPAZ_0] MYTHIC 1").First();
         pgems.Value.Price.Should().BeGreaterThan(42_000_000, "unlocked gem slots are expensive");
         var cheapest = sniperService.Lookups["DIVAN_BOOTS"].Lookup.Where(p => p.Value.Price > 0 && p.Value.TimeToSell > 3).ToList().OrderBy(v => v.Value.Price).Take(15).ToList();
         cheapest.Skip(1).First().Value.Price.Should().BeGreaterThan(20_000_000, string.Join('\n', cheapest.Select(c => c.Key.ToString() + " " + c.Value.Price)));
@@ -1010,7 +1033,7 @@ public class DropOffTests
     public void EndermanStonksLevelComparison()
     {
         SetBazaarPrice("ENDERMAN_SLAYER", 400_000); // not on bazaar but for price test enough
-        AddLookupAndUpdateMeidans("Enderman.json","PET_ENDERMAN", new DateTime(2025, 3, 23));
+        AddLookupAndUpdateMeidans("Enderman.json", "PET_ENDERMAN", new DateTime(2025, 3, 23));
         var auction = new SaveAuction()
         {
             Tag = "PET_ENDERMAN",
@@ -1029,7 +1052,7 @@ public class DropOffTests
     [Test]
     public void PetCraftCostCandyNegative()
     {
-        AddLookupAndUpdateMeidans("Enderman.json","PET_ENDERMAN", new DateTime(2025, 3, 23));
+        AddLookupAndUpdateMeidans("Enderman.json", "PET_ENDERMAN", new DateTime(2025, 3, 23));
         var auction = new SaveAuction()
         {
             Tag = "PET_ENDERMAN",
