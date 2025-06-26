@@ -622,9 +622,7 @@ public class DropOffTests
             Tier = Tier.LEGENDARY,
             Count = 1
         };
-        sniperService.State = SniperState.FullyLoaded;
-        sniperService.TestNewAuction(auction);
-        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        LowPricedAuction flip = TestAuctionLoaded(auction);
         flip.TargetPrice.Should().BeGreaterThanOrEqualTo(844_000_000L, "median of 781m + craft cost partial");
     }
     [Test]
@@ -741,9 +739,7 @@ public class DropOffTests
             Tier = Tier.LEGENDARY,
             Count = 1
         };
-        sniperService.State = SniperState.FullyLoaded;
-        sniperService.TestNewAuction(auction);
-        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        LowPricedAuction flip = TestAuctionLoaded(auction);
         flip.TargetPrice.Should().Be(2_990_000_000L);
     }
     [Test]
@@ -899,10 +895,53 @@ public class DropOffTests
             Tier = Tier.LEGENDARY,
             Count = 1
         };
-        sniperService.State = SniperState.FullyLoaded;
-        sniperService.TestNewAuction(auction);
-        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        LowPricedAuction flip = TestAuctionLoaded(auction);
         flip.TargetPrice.Should().Be(21_780_000);
+    }
+
+    /// <summary>
+    /// Got estimated as 47m target but there were offers with hpc 15 that at ~40m
+    /// </summary>
+    /// <returns></returns>
+    [Test]
+    public async Task SnipeLimitedByHigherLevelkey()
+    {
+        await sniperService.Init();
+        SetBazaarPrice("RECOMBOBULATOR_3000", 9_000_000);
+        SetBazaarPrice("ENCHANTMENT_ULTIMATE_SOUL_EATER_5", 25_000_000);
+        SetBazaarPrice("ENCHANTMENT_OVERLOAD_5", 19_000_000);
+        SetBazaarPrice("HOT_POTATO_BOOK", 90_000);
+        SetBazaarPrice("FUMING_POTATO_BOOK", 2_000_000);
+        SetBazaarPrice("SPIRIT_DECOY", 785_815);
+        SetBazaarPrice("ENCHANTMENT_INFINITE_QUIVER_10", 100_000);
+        SetBazaarPrice("ESSENCE_DRAGON", 2_900);
+        AddLookupAndUpdateMeidans("juju.json", "JUJU_SHORTBOW", new DateTime(2025, 6, 26));
+        // {"enchantments":[{"color":"§d","value":24999991,"type":"ultimate_soul_eater","level":5},{"color":"§5","value":19306490,"type":"overload","level":5},{"color":"§5","value":100000,"type":"infinite_quiver","level":10},{"color":"§9","value":-1,"type":"impaling","level":3},{"color":"§9","value":-1,"type":"chance","level":3},{"color":"§9","value":-1,"type":"piercing","level":1},{"color":"§9","value":-1,"type":"power","level":5},{"color":"§9","value":-1,"type":"snipe","level":3},{"color":"§9","value":-1,"type":"cubism","level":5},{"color":"§9","value":-1,"type":"aiming","level":5}],"uuid":"6e4fa4876e80414a83bea7d3d5ff14c6","count":1,"startingBid":39999990,"tag":"JUJU_SHORTBOW","itemName":"Spiritual Juju Shortbow ✪✪✪✪✪","start":"2025-06-26T12:32:24","end":"2025-06-26T12:32:43","auctioneerId":"431da38b74fa46e9aa3a94b781e011cd","profileId":null,"coop":null,"coopMembers":null,"highestBidAmount":39999990,"bids":[],"anvilUses":0,"nbtData":{"data":{"rarity_upgrades":1,"hpc":10,"dungeon_item":1,"upgrade_level":5,"uid":"96ad3e44a84c","uuid":"701f6b6a-99c6-49d3-bcb4-96ad3e44a84c"}},"itemCreatedAt":"2024-07-23T22:48:36","reforge":"Spiritual","category":"WEAPON","tier":"LEGENDARY","bin":true,"flatNbt":{"rarity_upgrades":"1","hpc":"10","dungeon_item":"1","upgrade_level":"5","uid":"96ad3e44a84c","uuid":"701f6b6a-99c6-49d3-bcb4-96ad3e44a84c"}}
+        var auction = new SaveAuction()
+        {
+            Tag = "JUJU_SHORTBOW",
+            StartingBid = 35_000_000,
+            UId = 4,
+            FlatenedNBT = new Dictionary<string, string>()
+            {
+                { "rarity_upgrades", "1" },
+                { "hpc", "10" },
+                { "dungeon_item", "1" },
+                { "upgrade_level", "5" },
+                { "uid", "96ad3e44a84c" },
+                { "uuid", "701f6b6a-99c6-49d3-bcb4-96ad3e44a84c" }
+            },
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Reforge = ItemReferences.Reforge.Spiritual,
+            Enchantments = [new Enchantment() { Type = Enchantment.EnchantmentType.ultimate_soul_eater, Level = 5 },
+                new Enchantment() { Type = Enchantment.EnchantmentType.overload, Level = 5 },
+                new Enchantment() { Type = Enchantment.EnchantmentType.infinite_quiver, Level = 10 },
+            ],
+            Count = 1
+        };
+        LowPricedAuction flip = TestAuctionLoaded(auction, LowPricedAuction.FinderType.SNIPER);
+        flip.TargetPrice.Should().BeLessThan(40_000_000, JsonConvert.SerializeObject(flip.AdditionalProps));
     }
     /// <summary>
     /// Golden dragon should have craft cost based on level (exp) and rarity
@@ -928,9 +967,7 @@ public class DropOffTests
             Tier = Tier.LEGENDARY,
             Count = 1
         };
-        sniperService.State = SniperState.FullyLoaded;
-        sniperService.TestNewAuction(auction);
-        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        LowPricedAuction flip = TestAuctionLoaded(auction);
         flip.TargetPrice.Should().Be(972428570L);
         flip.AdditionalProps["breakdown"].Should().StartWith("[{\"Value\":371999999,");
         var sniper = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
@@ -961,11 +998,18 @@ public class DropOffTests
             Tier = Tier.LEGENDARY,
             Count = 1
         };
-        sniperService.State = SniperState.FullyLoaded;
-        sniperService.TestNewAuction(auction);
-        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        LowPricedAuction flip = TestAuctionLoaded(auction);
         flip.TargetPrice.Should().Be(25_000_000L, "pulled down by 66th percentile on last 12 sales (5th highest)");
     }
+
+    private LowPricedAuction TestAuctionLoaded(SaveAuction auction, LowPricedAuction.FinderType finder = LowPricedAuction.FinderType.SNIPER_MEDIAN)
+    {
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var flip = found.First(f => f.Finder == finder);
+        return flip;
+    }
+
     /// <summary>
     /// if manipulation is detected within references the time window should be longer
     /// </summary>
