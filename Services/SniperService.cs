@@ -133,6 +133,7 @@ namespace Coflnet.Sky.Sniper.Services
             "RUNE_PRIMAL_FEAR",
             "RUNE_RAINY_DAY",
             "bass_weight",
+            "polarvoid",
             "chimera_found", // Diana's Bookshelf
             "is_shiny", // cosmetic effect on wither armor ~5% drop chance on Master Mode 7
         };
