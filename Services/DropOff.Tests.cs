@@ -898,6 +898,27 @@ public class DropOffTests
         LowPricedAuction flip = TestAuctionLoaded(auction);
         flip.TargetPrice.Should().Be(21_780_000);
     }
+    /// <summary>
+    /// Price drop protection should adjust to volume and not miss good flips
+    /// </summary>
+    [Test]
+    public void PriceDropsQuicklyEnough()
+    {
+        AddLookupAndUpdateMeidans("SNOWGLOBE.json", "SNOWGLOBE", new DateTime(2025, 7, 3));
+        var auction = new SaveAuction()
+        {
+            Tag = "SNOWGLOBE",
+            StartingBid = 400_000_000,
+            UId = 4,
+            FlatenedNBT = new Dictionary<string, string>() { },
+            AuctioneerId = "12aaa",
+            Tier = Tier.EPIC,
+            Count = 1
+        };
+        sniperService.Lookups["SNOWGLOBE"].Lookup.First().Value.Price.Should().Be(500_000_000, "should be based on 5% of lbin");
+        LowPricedAuction flip = TestAuctionLoaded(auction);
+        flip.TargetPrice.Should().Be(500_000_000);
+    }
 
     /// <summary>
     /// Got estimated as 47m target but there were offers with hpc 15 that at ~40m
@@ -943,6 +964,7 @@ public class DropOffTests
         LowPricedAuction flip = TestAuctionLoaded(auction, LowPricedAuction.FinderType.SNIPER);
         flip.TargetPrice.Should().BeLessThan(40_000_000, JsonConvert.SerializeObject(flip.AdditionalProps));
     }
+
     /// <summary>
     /// Golden dragon should have craft cost based on level (exp) and rarity
     /// </summary>

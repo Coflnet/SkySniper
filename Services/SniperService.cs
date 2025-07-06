@@ -1201,7 +1201,6 @@ ORDER BY l.`AuctionId`  DESC;
                     if (keyCombo.key.Key.Modifiers.Count == 0 && keyCombo.key.Key.Reforge == ItemReferences.Reforge.jaded)
                     {
                         var lowest = lookup.Lookup.Where(l => l.Value.Price > 0).OrderBy(l => l.Value.Price).Take(5).ToList();
-                        Console.WriteLine("sample");
                     }
                     if (limitedPrice < tierval / 1.2 && !keyCombo.key.Key.Modifiers.Any(m => m.Key == "virtual" || Constants.AttributeKeys.Contains(m.Key)))
                         limitedPrice = Math.Max(limitedPrice, tierval);
@@ -1242,12 +1241,11 @@ ORDER BY l.`AuctionId`  DESC;
                 else
                     bucket.Price = medianPrice;
 
+                var recent = bucket.References.AsEnumerable().Reverse().Take(Math.Max(bucket.Volume < 0.5 ? 6 : 12, (int)bucket.Volume)).ToList();
+                var percentileRecent = GetMedian(recent, cleanPriceLookup, 3f);
                 if (bucket.Volume >= 4 && bucket.Lbin.AuctionId != default && bucket.Lbin.Day < GetDay() + 3)
                 { // volume high enought to risk higher percentile
                     var cappedPrice = preLimitedPrice == medianPrice ? preLimitedPrice * 12 / 10 : limitedPrice;
-                    var recent = bucket.References.AsEnumerable().Reverse().Take(Math.Max(12, (int)bucket.Volume)).ToList();
-                    var prices = recent.Select(r => r.Price).ToList();
-                    var percentileRecent = GetMedian(recent, cleanPriceLookup, 3f);
                     medianPrice = Math.Min(Math.Max(bucket.RiskyEstimate, medianPrice), Math.Min(cappedPrice, percentileRecent));
                     var deduplicatedRecent = deduplicated.OrderByDescending(r => r.Day).Take(9).OrderBy(r => r.Price).Skip(6).FirstOrDefault();
                     if (deduplicatedRecent.AuctionId != default && deduplicatedRecent.Price < medianPrice)
@@ -1255,6 +1253,8 @@ ORDER BY l.`AuctionId`  DESC;
                         medianPrice = Math.Min(medianPrice, deduplicatedRecent.Price);
                     }
                 }
+                else if (keyCombo.key.Key.Modifiers.Count <= 1) // this condition could be extended to everything but the calculation can cause undervaluations on eg gems
+                    medianPrice = Math.Min(medianPrice, percentileRecent);
                 lookup.HasMultipleRarities = lookup.Lookup
                         .Where(l => l.Key.Tier != Tier.UNKNOWN)
                         .GroupBy(l => l.Key.Tier).Count() > 2;
@@ -3362,7 +3362,7 @@ ORDER BY l.`AuctionId`  DESC;
                     var basePrice = Math.Min(auction.StartingBid, cleanPricePerTier * 2);
                     // on very cheap items expensive modifiers don't add much value
                     var adjusted = Math.Min(keyMissing, Math.Max(basePrice * 3 - 100_000, basePrice));
-                    if(adjusted > 0)
+                    if (adjusted > 0)
                         keyMissing = adjusted;
                 }
                 props.Add("keyMissing", keyMissing.ToString());

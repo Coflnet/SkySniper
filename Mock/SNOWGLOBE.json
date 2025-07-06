@@ -1,0 +1,182 @@
+{
+  "lookup": {
+    " None  UNKNOWN 0": {
+      "price": 0,
+      "references": [],
+      "oldestRef": 0,
+      "lbins": [],
+      "hitsSinceCalculating": 0,
+      "stonksHits": 0,
+      "volatility": 0,
+      "riskyEstimate": 0,
+      "timeToSell": 0,
+      "volume": 0
+    },
+    " Any  EPIC 1": {
+      "price": 511328124,
+      "references": [
+        {
+          "auctionId": 2137306182984814300,
+          "price": 750000000,
+          "day": 1288,
+          "seller": 5455,
+          "buyer": 0,
+          "sellTime": 0
+        },
+        {
+          "auctionId": -363243466992772540,
+          "price": 999999999,
+          "day": 1290,
+          "seller": -25414,
+          "buyer": 0,
+          "sellTime": 2
+        },
+        {
+          "auctionId": -5933439719196670000,
+          "price": 999000000,
+          "day": 1296,
+          "seller": -2688,
+          "buyer": 0,
+          "sellTime": 1
+        },
+        {
+          "auctionId": 6256634012004568000,
+          "price": 995000000,
+          "day": 1308,
+          "seller": 18363,
+          "buyer": 0,
+          "sellTime": 1
+        },
+        {
+          "auctionId": 2203902973201635600,
+          "price": 700000000,
+          "day": 1313,
+          "seller": 17541,
+          "buyer": 0,
+          "sellTime": 1
+        },
+        {
+          "auctionId": -8440672975566002000,
+          "price": 665000000,
+          "day": 1316,
+          "seller": -27209,
+          "buyer": 0,
+          "sellTime": 1
+        },
+        {
+          "auctionId": 3811177970134785000,
+          "price": 679000000,
+          "day": 1316,
+          "seller": -14377,
+          "buyer": 0,
+          "sellTime": 1
+        },
+        {
+          "auctionId": 8930322828650045000,
+          "price": 665000000,
+          "day": 1319,
+          "seller": -26242,
+          "buyer": 0,
+          "sellTime": 1
+        },
+        {
+          "auctionId": 3695672160642522000,
+          "price": 640000000,
+          "day": 1319,
+          "seller": 5599,
+          "buyer": 0,
+          "sellTime": 1
+        },
+        {
+          "auctionId": -7102173236170038000,
+          "price": 655000000,
+          "day": 1319,
+          "seller": -6082,
+          "buyer": 0,
+          "sellTime": 1
+        },
+        {
+          "auctionId": 3579155635941033500,
+          "price": 710000000,
+          "day": 1321,
+          "seller": -9891,
+          "buyer": 29552,
+          "sellTime": 6523
+        },
+        {
+          "auctionId": 5221231221406082000,
+          "price": 444000000,
+          "day": 1359,
+          "seller": -20370,
+          "buyer": -8112,
+          "sellTime": 0
+        },
+        {
+          "auctionId": 8181241820688220000,
+          "price": 500000000,
+          "day": 1362,
+          "seller": -27442,
+          "buyer": -27770,
+          "sellTime": 80
+        },
+        {
+          "auctionId": -4955914242486609000,
+          "price": 500000000,
+          "day": 1362,
+          "seller": 11145,
+          "buyer": -8112,
+          "sellTime": 0
+        },
+        {
+          "auctionId": -9159543902539539000,
+          "price": 500000000,
+          "day": 1368,
+          "seller": 29815,
+          "buyer": -161,
+          "sellTime": 2692
+        },
+        {
+          "auctionId": 6792997083573511000,
+          "price": 500000000,
+          "day": 1368,
+          "seller": -27442,
+          "buyer": -161,
+          "sellTime": 7985
+        },
+        {
+          "auctionId": -8028415028225574000,
+          "price": 500000000,
+          "day": 1368,
+          "seller": 29815,
+          "buyer": -161,
+          "sellTime": 2691
+        }
+      ],
+      "oldestRef": 1321,
+      "lbins": [],
+      "hitsSinceCalculating": 0,
+      "stonksHits": 0,
+      "volatility": 23,
+      "riskyEstimate": 511328124,
+      "timeToSell": 27208,
+      "volume": 0.1978022
+    }
+  },
+  "category": "MISC",
+  "volume": 0.3,
+  "cleanPricePerDay": {
+    "1368": 640000000,
+    "1377": 550000000
+  },
+  "cleanKey": {
+    "enchants": [],
+    "reforge": "Any",
+    "modifiers": [],
+    "tier": "EPIC",
+    "count": 1
+  },
+  "cleanPricePerTier": {
+    "EPIC": 500000000
+  },
+  "hasMultipleRarities": false
+}
