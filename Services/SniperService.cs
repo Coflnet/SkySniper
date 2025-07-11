@@ -1305,35 +1305,6 @@ ORDER BY l.`AuctionId`  DESC;
                 return matchCount == 2;
             }
 
-            static void DropUnderlistings(List<ReferencePrice> deduplicated)
-            {
-                var bucketSize = deduplicated.Count();
-                var toRemove = new List<ReferencePrice>();
-                for (int i = 0; i < bucketSize; i++)
-                {
-                    var batch = deduplicated.Skip(i).Take(5).ToList();
-                    if (batch.Count < 3)
-                        break;
-                    var targetAuction = deduplicated[i];
-                    var hit = batch.Where(a => a.Buyer == targetAuction.Seller).FirstOrDefault();
-                    if (hit.AuctionId == default)
-                        continue;
-                    if (i < 3 && batch.Take(3).Where(a => a.AuctionId != hit.AuctionId).Select(a => a.Price).Average() < hit.Price)
-                        continue;// skip if median would be pulled down, the point of this is to remove to low value
-                    toRemove.Add(hit);
-                }
-                if (deduplicated.Count - toRemove.Count < 4)
-                {
-                    return;
-                }
-                foreach (var item in toRemove)
-                {
-                    deduplicated.Remove(item);
-                }
-            }
-
-
-
             long CapPriceAtHigherLevelKey((string tag, KeyWithValueBreakdown key) keyCombo, long limitedPrice, ReferenceAuctions bucket)
             {
                 var oldestDay = bucket.OldestRef;
@@ -1409,6 +1380,34 @@ ORDER BY l.`AuctionId`  DESC;
                 var relevant = deduplicated
                     .Where(d => d.SellTime > 0 && d.Price > medianPrice * 0.96 && d.Price < medianPrice * 1.1);
                 return relevant.DefaultIfEmpty().Average(d => d.SellTime) * Math.Max(1, 2 / volume);
+            }
+        }
+
+        static void DropUnderlistings(List<ReferencePrice> deduplicated, int scanSize = 5)
+        {
+            var bucketSize = deduplicated.Count();
+            var toRemove = new List<ReferencePrice>();
+            var lookup = deduplicated.ToLookup(d => d.Buyer);
+            for (int i = 0; i < bucketSize; i++)
+            {
+                var batch = deduplicated.Skip(i).Take(scanSize).ToList();
+                if (batch.Count < 3)
+                    break;
+                var targetAuction = deduplicated[i];
+                var hit = lookup.Contains(targetAuction.Seller) ? lookup[targetAuction.Seller].FirstOrDefault() : default;
+                if (hit.AuctionId == default)
+                    continue;
+                if (i < 3 && batch.Take(3).Where(a => a.AuctionId != hit.AuctionId).Select(a => a.Price).Average() < hit.Price)
+                    continue;// skip if median would be pulled down, the point of this is to remove to low value
+                toRemove.Add(hit);
+            }
+            if (deduplicated.Count - toRemove.Count < 4)
+            {
+                return;
+            }
+            foreach (var item in toRemove)
+            {
+                deduplicated.Remove(item);
             }
         }
 
@@ -1628,10 +1627,13 @@ ORDER BY l.`AuctionId`  DESC;
                 return cleanPrice;
             }
             var select = (NBT.IsPet(tag) ?
-                            lookup.Lookup.Where(v => v.Value.Price > 0 && key.Key.Tier == v.Key.Tier).Select(v => v.Value) :
-                             lookup.Lookup.Where(v => v.Value.Price > 0 && !v.Key.Modifiers.Any(m => m.Key == "pgems")).Select(l => l.Value)).ToList();
+                            lookup.Lookup.Where(v => key.Key.Tier == v.Key.Tier && !v.Key.Modifiers.Any(m => m.Value == TierBoostShorthand)).Select(v => v.Value) :
+                             lookup.Lookup.Where(v => !v.Key.Modifiers.Any(m => m.Key == "pgems")).Select(l => l.Value)).ToList();
             var count = select.Count;
             var all = select.SelectMany(v => v.References).ToList();
+
+            if (NBT.IsPet(tag))
+                DropUnderlistings(all, 18);
             var size = (int)Math.Max(lookup.Volume * 10, 50);
             var sample = all.OrderByDescending(a => a.Day).ThenBy(l => l.Price)
                 .Take(size).OrderBy(r => r.Price);

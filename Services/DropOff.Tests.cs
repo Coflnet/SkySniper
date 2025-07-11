@@ -34,6 +34,7 @@ public class DropOffTests
     public void Setup()
     {
         SniperService.StartTime = new DateTime(2021, 9, 25);
+        System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
         if (loaded == null)
         {
             loaded = File.ReadAllText("Mock/boots.json");
@@ -759,7 +760,7 @@ public class DropOffTests
         };
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(auction);
-        foreach (var item in found.Where(f=>f.Finder != LowPricedAuction.FinderType.CraftCost))
+        foreach (var item in found.Where(f => f.Finder != LowPricedAuction.FinderType.CraftCost))
         {
             item.TargetPrice.Should().BeLessThan(300_000L, JsonConvert.SerializeObject(found, Formatting.Indented));
         }
@@ -874,7 +875,7 @@ public class DropOffTests
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(auction);
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
-        flip.TargetPrice.Should().BeGreaterThan(188_000_000L, "should be not much limited by the starting bid");
+        flip.TargetPrice.Should().BeGreaterThan(185_000_000L, "should be not much limited by the starting bid");
     }
 
 
@@ -1093,6 +1094,25 @@ public class DropOffTests
         sniperService.TestNewAuction(testAuction);
         found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN)
             .First().TargetPrice.Should().Be(409_000_000);
+    }
+
+    [Test]
+    public void DoNotUndervalueScatha()
+    {
+        AddLookupAndUpdateMeidans("scatha2025.json", "PET_SCATHA", new DateTime(2025, 7, 11));
+        // 840cf31723e544cdbcda1b8a18a5ce8c -> 105c3fa7bcf248b7ba205b898d00973f missed because tier boost affected craft cost capping
+        var auction = new SaveAuction()
+        {
+            Tag = "PET_SCATHA",
+            StartingBid = 260_000_000,
+            UId = 4,
+            FlatenedNBT = new Dictionary<string, string>() { { "exp", "94217.62144542648" }, { "candyUsed", "0" }, { "heldItem", "PET_ITEM_MINING_SKILL_BOOST_RARE" } },
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1
+        };
+        var found = TestAuctionLoaded(auction);
+        found.TargetPrice.Should().BeGreaterThan(341_000_000, "could also be up to 370m");
     }
 
     [Test]
