@@ -1119,7 +1119,7 @@ public class DropOffTests
     {
         SetBazaarPrice("ENCHANTMENT_CULTIVATING_1", 4_000_000);
         SetBazaarPrice("ENCHANTMENT_DEDICATION_3", 4499992);
-        AddLookupAndUpdateMeidans("whathoe.json", "THEORETICAL_HOE_WHEAT_3", new DateTime(2025, 7, 11));
+        AddLookupAndUpdateMeidans("whathoe.json", "THEORETICAL_HOE_WHEAT_3", new DateTime(2025, 7, 12));
         // {"enchantments":[{"color":"§5","value":14504671,"type":"cultivating","level":10},{"color":"§5","value":4499992,"type":"dedication","level":3},{"color":"§5","value":1653168,"type":"replenish","level":1},{"color":"§5","value":878051,"type":"harvesting","level":6},{"color":"§9","value":819999,"type":"turbo_wheat","level":5},{"color":"§5","value":699998,"type":"delicate","level":5},{"color":"§9","value":-1,"type":"efficiency","level":5}],"uuid":"bc8b0f2d6e99442ebfeb4bd031fb6c5b","count":1,"startingBid":60000000,"tag":"THEORETICAL_HOE_WHEAT_3","itemName":"Bountiful Euclid's Wheat Hoe","start":"2025-07-11T15:56:21","end":"2025-07-11T15:56:40","auctioneerId":"9d47ecc5dba74a9281d8ec8cf0c8c9cd","profileId":"bc1587f644c644579f9ac937a5b93c3b","coop":null,"coopMembers":null,"highestBidAmount":60000000,"bids":[{"bidder":"447d3329e7a94bca9ee0842004dfc5cb","profileId":"unknown","amount":60000000,"timestamp":"2025-07-11T15:56:40"}],"anvilUses":0,"nbtData":{"data":{"farmed_cultivating":158763761,"gems":{"unlocked_slots":["PERIDOT_0","PERIDOT_1","PERIDOT_2"],"PERIDOT_2":"FINE","PERIDOT_1":"FINE","PERIDOT_0":"FINE"},"mined_crops":63517340,"uid":"ddd626bdd833","uuid":"e8e32434-414d-49a0-bc48-ddd626bdd833"}},"itemCreatedAt":"2025-07-06T11:00:48","reforge":"bountiful","category":"MISC","tier":"LEGENDARY","bin":true,"flatNbt":{"farmed_cultivating":"158763761","unlocked_slots":"PERIDOT_0,PERIDOT_1,PERIDOT_2","PERIDOT_2":"FINE","PERIDOT_1":"FINE","PERIDOT_0":"FINE","mined_crops":"63517340","uid":"ddd626bdd833","uuid":"e8e32434-414d-49a0-bc48-ddd626bdd833"}}
         var auction = new SaveAuction()
         {
@@ -1145,6 +1145,33 @@ public class DropOffTests
         sniperService.Lookups["THEORETICAL_HOE_WHEAT_3"].CleanPricePerTier[Tier.LEGENDARY].Should().BeGreaterThan(30_000_000);
         var found = TestAuctionLoaded(auction);
         found.TargetPrice.Should().BeGreaterThan(58_000_000, "could also be up to 70m");
+    }
+
+    /// <summary>
+    /// Estimate was at only 18m flip didn't get shown
+    /// </summary>
+    [Test]
+    public void MedianForMossyReforge()
+    {
+        SetBazaarPrice("OVERGROWN_GRASS", 50_000_000);
+        SetBazaarPrice("ENCHANTMENT_PESTERMINATOR_5", 2_400_000);
+        AddLookupAndUpdateMeidans("FermentoBoots.json", "FERMENTO_BOOTS", new DateTime(2025, 7, 12));
+        var auction = new SaveAuction()
+        {
+            Tag = "FERMENTO_BOOTS",
+            StartingBid = 45_000_000,
+            UId = 4,
+            FlatenedNBT = new (),
+            Reforge = ItemReferences.Reforge.mossy,
+            Enchantments = [new Enchantment() { Type = Enchantment.EnchantmentType.pesterminator, Level = 5 }],
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1
+        };
+        sniperService.Lookups["FERMENTO_BOOTS"].Lookup.First(l => l.Key.Modifiers.Count == 0 && l.Key.Reforge == ItemReferences.Reforge.mossy && l.Key.Enchants.Count == 0).Value.Price
+            .Should().BeGreaterThan(50_000_000);
+        var found = TestAuctionLoaded(auction);
+        found.TargetPrice.Should().BeGreaterThan(50_000_000, "mossy is expensive");
     }
 
 

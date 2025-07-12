@@ -1390,10 +1390,10 @@ ORDER BY l.`AuctionId`  DESC;
             var lookup = deduplicated.ToLookup(d => d.Buyer);
             for (int i = 0; i < bucketSize; i++)
             {
+                var targetAuction = deduplicated[i];
                 var batch = deduplicated.Skip(i).Take(scanSize).ToList();
                 if (batch.Count < 3)
                     break;
-                var targetAuction = deduplicated[i];
                 var hit = lookup.Contains(targetAuction.Seller) ? lookup[targetAuction.Seller].FirstOrDefault() : default;
                 if (hit.AuctionId == default)
                     continue;
