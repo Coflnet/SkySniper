@@ -3288,6 +3288,11 @@ ORDER BY l.`AuctionId`  DESC;
             long gemValue = GetGemValue(auction, key);
             extraValue += gemValue;
 
+            if (NBT.IsPet(auction.Tag) && key.Modifiers.Any(m => m.Value == TierBoostShorthand))
+            {
+                extraValue -= 110_000_000;
+            }
+
             return extraValue;
         }
 
