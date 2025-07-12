@@ -699,7 +699,7 @@ namespace Coflnet.Sky.Sniper
 
             var bucket = service.Lookups[moreValue.Tag].Lookup.Where(l => l.Key.Modifiers.Count == 1).First().Value;
             moreValue.End = DateTime.UtcNow;
-            AddVolume(moreValue,4); // if newer should override it
+            AddVolume(moreValue, 4); // if newer should override it
             UpdateAllMedianFromUpdate();
             estimate = service.GetPrice(sample);
             Assert.That(estimate.Median, Is.EqualTo(1_000_000));
@@ -1113,7 +1113,7 @@ namespace Coflnet.Sky.Sniper
             AddVolume(new SaveAuction
             {
                 Tag = "1",
-                FlatenedNBT = new() {  },
+                FlatenedNBT = new() { },
                 StartingBid = 25_000_000,
                 HighestBidAmount = 25_000_000,
                 End = DateTime.UtcNow
@@ -3216,10 +3216,17 @@ namespace Coflnet.Sky.Sniper
             var toTest = Dupplicate(lbin);
             toTest.HighestBidAmount = 0;
             toTest.StartingBid = 22_000_000;
-
-            service.TestNewAuction(toTest);
-            var snipe = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
-            snipe.TargetPrice.Should().Be(27266666L, "limited by 33% over median");
+            SniperService.WorkingSize = 3;
+            try
+            {
+                service.TestNewAuction(toTest);
+                var snipe = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
+                snipe.TargetPrice.Should().Be(27266666L, "limited by 33% over median");
+            }
+            finally
+            {
+                SniperService.WorkingSize = 60;
+            }
         }
 
         [Test]

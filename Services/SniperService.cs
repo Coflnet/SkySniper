@@ -19,6 +19,7 @@ namespace Coflnet.Sky.Sniper.Services
         public const string PetItemKey = "petItem";
         public const string TierBoostShorthand = "TIER_BOOST";
         private const int SizeToKeep = 80;
+        public static int WorkingSize {get; set;} = 60;
         public const int PetExpMaxlevel = 4_225_538 * 6;
         private const int GoldenDragonMaxExp = 30_036_483 * 7;
         public static short CurrentDayCache = 0;
@@ -1456,7 +1457,7 @@ ORDER BY l.`AuctionId`  DESC;
                 .Select(a => a.OrderBy(ai => ai.Price).Skip(a.Count() / 3).First())  // only use one (the cheapest) price from each seller
                 .GroupBy(a => a.Buyer == 0 ? buyerCounter++ : a.Buyer)
                 .Select(a => a.OrderBy(ai => ai.Price).Skip(a.Count() / 3).First())  // only use cheapest price from each buyer 
-                .Take(60)
+                .Take(WorkingSize)
                 .ToList();
             if (isPersonManipulating != default)
             {
@@ -3723,7 +3724,11 @@ ORDER BY l.`AuctionId`  DESC;
             if ((craftCostService?.TryGetCost(groupTag.tag, out var craftCost) ?? false) || key.Modifiers.Count > 0 || key.Enchants.Count > 0)
                 capped = CapAtCraftCost(groupTag.tag, higherValueLowerBin, breakdown, 0);
             else
+            {
                 targetPrice = Math.Min(higherValueLowerBin * 99 / 100, bucket.Price * 4 / 3 + 1_000_000); // pull target up for non craftable clean
+                if (bucket.References.Count < WorkingSize && bucket.References.All(r => r.Day >= GetDay() - 1)) // no full context window (~80 sales) indicates new item that is probably dorpping in price
+                    targetPrice = Math.Min(targetPrice, bucket.Price); // limit at median (which may also still drop)
+            }
             if (capped > 0)
             {
                 percentile = Math.Min(percentile, capped * 12 / 11) + 500_000; // 500k extra since this is high volume

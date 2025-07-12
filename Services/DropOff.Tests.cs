@@ -1173,6 +1173,25 @@ public class DropOffTests
         var found = TestAuctionLoaded(auction);
         found.TargetPrice.Should().BeGreaterThan(50_000_000, "mossy is expensive");
     }
+    [Test]
+    public void DropPriceQuicklyOnSkinRelease()
+    {
+        AddLookupAndUpdateMeidans("BarnSkin.json", "PINA_COOLADA_BARN_SKIN", new DateTime(2025, 7, 12));
+        var auction = new SaveAuction()
+        {
+            Tag = "PINA_COOLADA_BARN_SKIN",
+            StartingBid = 28_000_000,
+            UId = 4,
+            FlatenedNBT = new (),
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1
+        };
+        sniperService.Lookups["PINA_COOLADA_BARN_SKIN"].Lookup.First(l => l.Key.Count == 1 ).Value.Price
+            .Should().Be(34_000_000);
+        var found = TestAuctionLoaded(auction, LowPricedAuction.FinderType.SNIPER);
+        found.TargetPrice.Should().BeLessThan(35_000_000, "not high, will drop");
+    }
 
 
     [Test]
