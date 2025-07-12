@@ -1561,7 +1561,8 @@ namespace Coflnet.Sky.Sniper
             SimulateNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
-            var expectedValue = (moreEnchants.HighestBidAmount - 3_000_000 - 1_000_000 * 9) * 9 / 10;
+            var cultivatingVAlue = 1_000_000 * 9 * 1.3;
+            var expectedValue = (moreEnchants.HighestBidAmount - 3_000_000 - cultivatingVAlue) * 9 / 10;
             Assert.That(expectedValue, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
         }
 

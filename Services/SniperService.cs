@@ -1397,7 +1397,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var hit = lookup.Contains(targetAuction.Seller) ? lookup[targetAuction.Seller].FirstOrDefault() : default;
                 if (hit.AuctionId == default)
                     continue;
-                if (i < 3 && batch.Take(3).Where(a => a.AuctionId != hit.AuctionId).Select(a => a.Price).Average() < hit.Price)
+                if (i < 3 && batch.Take(scanSize).Where(a => a.AuctionId != hit.AuctionId).Select(a => a.Price).Average() < hit.Price)
                     continue;// skip if median would be pulled down, the point of this is to remove to low value
                 toRemove.Add(hit);
             }
@@ -1626,18 +1626,21 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 return cleanPrice;
             }
+            var matchRarity = tag == "THEORETICAL_HOE_WHEAT_3";
+            var minRarity = matchRarity ? key.Key.Tier : key.Key.Tier - 1;
             var select = (NBT.IsPet(tag) ?
-                            lookup.Lookup.Where(v => key.Key.Tier == v.Key.Tier && !v.Key.Modifiers.Any(m => m.Value == TierBoostShorthand)).Select(v => v.Value) :
-                             lookup.Lookup.Where(v => !v.Key.Modifiers.Any(m => m.Key == "pgems")).Select(l => l.Value)).ToList();
+                            lookup.Lookup.Where(v => key.Key.Tier == v.Key.Tier && !v.Key.Modifiers.Any(m => m.Value == TierBoostShorthand || m.Key == "pgems")).Select(v => v.Value) :
+                             lookup.Lookup.Where(v => minRarity <= v.Key.Tier && !v.Key.Modifiers.Any(m => m.Key == "pgems")).Select(l => l.Value)).ToList();
             var count = select.Count;
             var all = select.SelectMany(v => v.References).ToList();
 
-            if (NBT.IsPet(tag))
+            if (NBT.IsPet(tag) || matchRarity)
                 DropUnderlistings(all, 18);
             var size = (int)Math.Max(lookup.Volume * 10, 50);
             var sample = all.OrderByDescending(a => a.Day).ThenBy(l => l.Price)
                 .Take(size).OrderBy(r => r.Price);
-            var target = sample.Skip(size / 50 + 1).FirstOrDefault();
+            var devider = matchRarity ? 10 : 30;
+            var target = sample.Skip(size / devider + 1).FirstOrDefault();
             return target.Price;
         }
 

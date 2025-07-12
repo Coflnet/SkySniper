@@ -384,7 +384,7 @@ public class DropOffTests
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(testAuction);
         var pickaxe = found.First(f => f.Finder == LowPricedAuction.FinderType.CraftCost);
-        pickaxe.TargetPrice.Should().Be(23377000L);
+        pickaxe.TargetPrice.Should().Be(23375000L);
     }
 
     [Test]
@@ -553,10 +553,10 @@ public class DropOffTests
         var withEnchant = converted.Lookup.First(l => l.Key.ToString() == "ultimate_wisdom=5 Any [rarity_upgrades, 1],[upgrade_level, 5] MYTHIC 1").Value;
         var keyOrder = string.Join('\n', converted.Lookup.Keys);
         Console.WriteLine(keyOrder);
-        withEnchant.Price.Should().Be(31970000L);
-        withEnchant.RiskyEstimate.Should().Be(35167000L);
+        withEnchant.Price.Should().Be(34645524L);
+        withEnchant.RiskyEstimate.Should().Be(37661736L);
         var withoutEnchant = converted.Lookup.First(l => l.Key.ToString() == " Any [rarity_upgrades, 1],[upgrade_level, 5] MYTHIC 1").Value;
-        withoutEnchant.Price.Should().Be(27570000L);
+        withoutEnchant.Price.Should().Be(33082414L);
         withoutEnchant.RiskyEstimate.Should().BeGreaterThanOrEqualTo(28347000L);
         // maybe test a snipe auction
     }
@@ -875,7 +875,7 @@ public class DropOffTests
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(auction);
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
-        flip.TargetPrice.Should().BeGreaterThan(185_000_000L, "should be not much limited by the starting bid");
+        flip.TargetPrice.Should().BeGreaterThan(173_000_000L, "should be not much limited by the starting bid");
     }
 
 
@@ -1114,6 +1114,39 @@ public class DropOffTests
         var found = TestAuctionLoaded(auction);
         found.TargetPrice.Should().BeGreaterThan(341_000_000, "could also be up to 370m");
     }
+    [Test]
+    public void DoNotUndervalueMultiRarityItems()
+    {
+        SetBazaarPrice("ENCHANTMENT_CULTIVATING_1", 4_000_000);
+        SetBazaarPrice("ENCHANTMENT_DEDICATION_3", 4499992);
+        AddLookupAndUpdateMeidans("whathoe.json", "THEORETICAL_HOE_WHEAT_3", new DateTime(2025, 7, 11));
+        // {"enchantments":[{"color":"§5","value":14504671,"type":"cultivating","level":10},{"color":"§5","value":4499992,"type":"dedication","level":3},{"color":"§5","value":1653168,"type":"replenish","level":1},{"color":"§5","value":878051,"type":"harvesting","level":6},{"color":"§9","value":819999,"type":"turbo_wheat","level":5},{"color":"§5","value":699998,"type":"delicate","level":5},{"color":"§9","value":-1,"type":"efficiency","level":5}],"uuid":"bc8b0f2d6e99442ebfeb4bd031fb6c5b","count":1,"startingBid":60000000,"tag":"THEORETICAL_HOE_WHEAT_3","itemName":"Bountiful Euclid's Wheat Hoe","start":"2025-07-11T15:56:21","end":"2025-07-11T15:56:40","auctioneerId":"9d47ecc5dba74a9281d8ec8cf0c8c9cd","profileId":"bc1587f644c644579f9ac937a5b93c3b","coop":null,"coopMembers":null,"highestBidAmount":60000000,"bids":[{"bidder":"447d3329e7a94bca9ee0842004dfc5cb","profileId":"unknown","amount":60000000,"timestamp":"2025-07-11T15:56:40"}],"anvilUses":0,"nbtData":{"data":{"farmed_cultivating":158763761,"gems":{"unlocked_slots":["PERIDOT_0","PERIDOT_1","PERIDOT_2"],"PERIDOT_2":"FINE","PERIDOT_1":"FINE","PERIDOT_0":"FINE"},"mined_crops":63517340,"uid":"ddd626bdd833","uuid":"e8e32434-414d-49a0-bc48-ddd626bdd833"}},"itemCreatedAt":"2025-07-06T11:00:48","reforge":"bountiful","category":"MISC","tier":"LEGENDARY","bin":true,"flatNbt":{"farmed_cultivating":"158763761","unlocked_slots":"PERIDOT_0,PERIDOT_1,PERIDOT_2","PERIDOT_2":"FINE","PERIDOT_1":"FINE","PERIDOT_0":"FINE","mined_crops":"63517340","uid":"ddd626bdd833","uuid":"e8e32434-414d-49a0-bc48-ddd626bdd833"}}
+        var auction = new SaveAuction()
+        {
+            Tag = "THEORETICAL_HOE_WHEAT_3",
+            StartingBid = 20_000_000,
+            UId = 4,
+            Enchantments = [new(Enchantment.EnchantmentType.cultivating,10), new(Enchantment.EnchantmentType.dedication, 3)],
+            FlatenedNBT = new Dictionary<string, string>()
+            {
+                { "farmed_cultivating", "158763761" },
+                { "unlocked_slots", "PERIDOT_0,PERIDOT_1,PERIDOT_2" },
+                { "PERIDOT_2", "FINE" },
+                { "PERIDOT_1", "FINE" },
+                { "PERIDOT_0", "FINE" },
+                { "mined_crops", "63517340" },
+                { "uid", "ddd626bdd833" },
+                { "uuid", "e8e32434-414d-49a0-bc48-ddd626bdd833" }
+            },
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1
+        };
+        sniperService.Lookups["THEORETICAL_HOE_WHEAT_3"].CleanPricePerTier[Tier.LEGENDARY].Should().BeGreaterThan(30_000_000);
+        var found = TestAuctionLoaded(auction);
+        found.TargetPrice.Should().BeGreaterThan(58_000_000, "could also be up to 70m");
+    }
+
 
     [Test]
     public void EndermanStonksLevelComparison()

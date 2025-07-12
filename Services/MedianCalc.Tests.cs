@@ -211,7 +211,7 @@ public class MedianCalcTests
         service.FoundSnipe += flips.Add;
         service.TestNewAuction(bare);
         service.FinishedUpdate();
-        Assert.That(flips.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice, Is.EqualTo(1164000000), "capped by median dropping");
+        Assert.That(flips.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice, Is.EqualTo(1144600064), "capped by median dropping");
     }
     [Test]
     public void InflationCanChangeMedianUpwardsOverTime()
