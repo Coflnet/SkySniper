@@ -19,7 +19,7 @@ namespace Coflnet.Sky.Sniper.Services
         public const string PetItemKey = "petItem";
         public const string TierBoostShorthand = "TIER_BOOST";
         private const int SizeToKeep = 80;
-        public static int WorkingSize {get; set;} = 60;
+        public static int WorkingSize { get; set; } = 60;
         public const int PetExpMaxlevel = 4_225_538 * 6;
         private const int GoldenDragonMaxExp = 30_036_483 * 7;
         public static short CurrentDayCache = 0;
@@ -2331,7 +2331,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private int GetExpValue(string tag, KeyValuePair<string, string> mod)
         {
-            (var maxExp, var second) = tag == "PET_GOLDEN_DRAGON" ? ("7", GoldenDragonMaxExp) : ("6", PetExpMaxlevel);
+            (var maxExp, var second) = HighExp(tag) ? ("7", GoldenDragonMaxExp) : ("6", PetExpMaxlevel);
             var lvl1Key = new AuctionKey(new(), ItemReferences.Reforge.Any, EmptyPetModifiers.ToList(), Tier.LEGENDARY, 1);
             var maxLevel = new AuctionKey(new(), ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>>() { new("exp", maxExp) }, Tier.LEGENDARY, 1);
             if (Lookups.TryGetValue(tag, out var lookup) && lookup.Lookup.TryGetValue(lvl1Key, out var baseLevel)
@@ -2343,6 +2343,11 @@ ORDER BY l.`AuctionId`  DESC;
             var factor = Math.Max(GetPriceForItem(tag) / 6, 10_000_000);
             var value = (int)(factor * (float.Parse(mod.Value) + 1));
             return value;
+        }
+
+        private static bool HighExp(string tag)
+        {
+            return tag == "PET_GOLDEN_DRAGON" || tag == "PET_JADE_DRAGON";
         }
 
         private class ModifierMetadata
@@ -2404,20 +2409,20 @@ ORDER BY l.`AuctionId`  DESC;
                 return s; // don't normalize attribute shards only one attribute on them
             if (s.Key == "exp")
             {
-                var expMulti = tag == "PET_GOLDEN_DRAGON" ? GoldenDragonMaxExp / PetExpMaxlevel : 1;
+                var expMulti = HighExp(tag) ? GoldenDragonMaxExp / PetExpMaxlevel : 1;
                 var exp = GetNumeric(s);
                 if (exp >= 1_000_000 * expMulti && exp <= 2_500_000 * expMulti)
                     return new KeyValuePair<string, string>(s.Key, "0.3");
                 else if (exp > 2_500_000 * expMulti && exp < PetExpMaxlevel * expMulti / 6)
                     return new KeyValuePair<string, string>(s.Key, "0.6");
-                if (tag == "PET_GOLDEN_DRAGON")
+                if (HighExp(tag))
                     return NormalizeNumberTo(s, GoldenDragonMaxExp / 7, 7);
                 else
                     return NormalizeNumberTo(s, PetExpMaxlevel / 6, 6);
             }
             var generalNormalizations = NormalizeGeneral(s, IsMidas(tag),
                 flattenedNbt,
-                tag == "PET_GOLDEN_DRAGON"
+                HighExp(tag)
                 );
             if (generalNormalizations.Value != "continue")
                 return generalNormalizations;
@@ -3431,7 +3436,7 @@ ORDER BY l.`AuctionId`  DESC;
             // determine extra expvalue
             if (auction.FlatenedNBT.TryGetValue("exp", out var expString))
             {
-                var maxExp = auction.Tag == "PET_GOLDEN_DRAGON" ? ("7", GoldenDragonMaxExp) : ("6", PetExpMaxlevel);
+                var maxExp = HighExp(auction.Tag) ? ("7", GoldenDragonMaxExp) : ("6", PetExpMaxlevel);
                 var exp = Math.Min((long)double.Parse(expString), maxExp.Item2);
                 var lvl1Key = new AuctionKey(new(), ItemReferences.Reforge.Any, EmptyPetModifiers.ToList(), Tier.LEGENDARY, 1);
                 var lvl100Key = new AuctionKey(new(), ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>>() { new("exp", maxExp.Item1) }, Tier.LEGENDARY, 1);
