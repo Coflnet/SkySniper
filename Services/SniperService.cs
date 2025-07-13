@@ -2251,7 +2251,7 @@ ORDER BY l.`AuctionId`  DESC;
                     var fromlevel1 = lookup.Lookup.Where(f => f.Value.Price != 0)
                         .OrderBy(v => (v.Key.Count + 1) * (v.Key.Modifiers.Count == 0 ? 1 : int.Parse(v.Key.Modifiers.First().Value)))
                         .FirstOrDefault().Value?.Price * item.amount ?? 0;
-                    var matchingLevel = lookup.Lookup.Where(f => f.Value.Price != 0 && f.Key.Modifiers.First().Value == mod.Value)
+                    var matchingLevel = lookup.Lookup.Where(f => f.Value.Price != 0 && f.Key.Modifiers.FirstOrDefault().Value == mod.Value)
                         .Select(f => f.Value.Price).OrderBy(p => p).FirstOrDefault();
                     if (matchingLevel != 0 && matchingLevel < fromlevel1)
                         sum += matchingLevel;
