@@ -1630,8 +1630,8 @@ ORDER BY l.`AuctionId`  DESC;
             var matchRarity = tag == "THEORETICAL_HOE_WHEAT_3";
             var minRarity = matchRarity ? key.Key.Tier : key.Key.Tier - 1;
             var select = (NBT.IsPet(tag) ?
-                            lookup.Lookup.Where(v => key.Key.Tier == v.Key.Tier && !v.Key.Modifiers.Any(m => m.Value == TierBoostShorthand || m.Key == "pgems")).Select(v => v.Value) :
-                             lookup.Lookup.Where(v => minRarity <= v.Key.Tier && !v.Key.Modifiers.Any(m => m.Key == "pgems")).Select(l => l.Value)).ToList();
+                            lookup.Lookup.Where(v => key.Key.Tier == v.Key.Tier && !v.Key.Modifiers.Any(m => m.Value == TierBoostShorthand)).Select(v => v.Value) :
+                             lookup.Lookup.Where(v => minRarity <= v.Key.Tier && !v.Key.Modifiers.Any(m => m.Key == "pgems"  || Constants.AttributeKeys.Contains(m.Key))).Select(l => l.Value)).ToList();
             var count = select.Count;
             var all = select.SelectMany(v => v.References).ToList();
 

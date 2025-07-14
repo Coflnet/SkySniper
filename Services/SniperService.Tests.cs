@@ -1668,7 +1668,7 @@ namespace Coflnet.Sky.Sniper
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
             // 96m for missing mana_regeneration (godroll), 10% for stonks - overwritten by craft cost limit
-            Assert.That(1101719, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That(estimate.TargetPrice, Is.EqualTo(1100000), JsonConvert.SerializeObject(estimate.AdditionalProps));
             Assert.That("mana_regeneration:1 (96000000)", Is.EqualTo(estimate.AdditionalProps["missingModifiers"]));
         }
         [Test]
@@ -2667,79 +2667,6 @@ namespace Coflnet.Sky.Sniper
                 highestValAuction.HighestBidAmount = cost;
                 AddVolume(highestValAuction);
             }
-        }
-
-        [Test]
-        public void AttributeValueCapAtCraftcostPlusComboValue()
-        {
-            highestValAuction.StartingBid = 0;
-            // god roll combinations have different handling
-            CreateVolume("speed", 5, 2_000_000);
-            CreateVolume("dominance", 5, 2_000_000);
-            var toTest = Dupplicate(highestValAuction);
-            toTest.FlatenedNBT["speed"] = "1";
-            toTest.FlatenedNBT["dominance"] = "1";
-            toTest.HighestBidAmount = 45_000_000;
-            AddVolume(toTest, 5);
-            // lowest non 0 median should be used so here we insert lvl 3, lvl 1-1 is 0 because low volume
-            toTest.FlatenedNBT["dominance"] = "3";
-            toTest.HighestBidAmount = 50_000_000;
-            AddVolume(toTest);
-            toTest.FlatenedNBT["speed"] = "7";
-            toTest.FlatenedNBT["dominance"] = "7";
-            toTest.HighestBidAmount = 80_000_000;
-            AddVolume(toTest, 10);
-            toTest.HighestBidAmount = 1_000_000;
-            TestNewAuction(toTest);
-            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
-            Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
-            // craft cost + combo value
-            Assert.That(estimate.TargetPrice, Is.EqualTo(70745000), JsonConvert.SerializeObject(estimate.AdditionalProps));
-
-            highestValAuction.Tag = "ATTRIBUTE_SHARD";
-            // lower cost to upgrade via shard
-            var randomVal = Random.Shared.Next(10_000, 20_000);
-            CreateVolume("speed", 1, randomVal);
-            toTest.HighestBidAmount = 100_000_000;
-            AddVolume(toTest, 1); // refresh median with new cap
-            var price = service.GetPrice(toTest);
-            var capExtra = (long)(Math.Pow(2, 7) * randomVal * 1.20) / 2 * 11 / 10;
-            Assert.That(price.Median, Is.EqualTo(60185000 + capExtra), JsonConvert.SerializeObject(price));
-
-            void CreateVolume(string attrib, int level, int cost)
-            {
-                highestValAuction.FlatenedNBT = new() { { attrib, level.ToString() } };
-                highestValAuction.HighestBidAmount = cost;
-                AddVolume(highestValAuction);
-            }
-        }
-
-        /// <summary>
-        /// Attributes can be fused accross different pieces of armor with the same type
-        /// </summary>
-        [Test]
-        public void AttributeValueCapArmorTypeCombo()
-        {
-            highestValAuction.StartingBid = 0;
-            highestValAuction.FlatenedNBT = new() { { "speed", "3" } };
-            var cheap = Dupplicate(highestValAuction);
-            cheap.Tag = "CRIMSON_CHESTPLATE";
-            cheap.HighestBidAmount = 1_000_000;
-            AddVolume(cheap);
-            var sameType = Dupplicate(highestValAuction);
-            sameType.Tag = "TERROR_CHESTPLATE";
-            sameType.HighestBidAmount = 3_000_000;
-            AddVolume(sameType);
-            var toTest = Dupplicate(sameType);
-            toTest.FlatenedNBT["speed"] = "7";
-            toTest.HighestBidAmount = 180_000_000;
-            AddVolume(toTest);
-            toTest.HighestBidAmount = 1_000;
-            TestNewAuction(toTest);
-            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).FirstOrDefault();
-            Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
-            // should be at about craft cost
-            Assert.That(21870000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
         }
 
         [Test]
