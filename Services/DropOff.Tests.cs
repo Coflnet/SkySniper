@@ -1027,6 +1027,7 @@ public class DropOffTests
 
     private LowPricedAuction TestAuctionLoaded(SaveAuction auction, LowPricedAuction.FinderType finder = LowPricedAuction.FinderType.SNIPER_MEDIAN)
     {
+        found.Clear();
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(auction);
         var flip = found.First(f => f.Finder == finder);
@@ -1201,7 +1202,7 @@ public class DropOffTests
         var auction = new SaveAuction()
         {
             Tag = "PET_ENDER_DRAGON",
-            StartingBid = 500_000_000,
+            StartingBid = 420_000_000,
             UId = 4,
             FlatenedNBT = new Dictionary<string, string>() { { "exp", "33265737.057308994" }, { "candyUsed", "10" }, { "heldItem", "PET_ITEM_TIER_BOOST" } },
             AuctioneerId = "12aaa",
@@ -1211,6 +1212,10 @@ public class DropOffTests
         };
         var found = TestAuctionLoaded(auction);
         found.TargetPrice.Should().BeLessThan(555_000_000, "not higher than it should be");
+        auction.FlatenedNBT["exp"] = "52532"; // should not be adjusted
+        auction.FlatenedNBT["candyUsed"] = "0"; // should not be adjusted
+        found = TestAuctionLoaded(auction);
+        found.TargetPrice.Should().BeLessThan(505_000_000, "not higher than it should be even on low exp");
     }
 
 

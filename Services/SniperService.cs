@@ -1185,6 +1185,12 @@ ORDER BY l.`AuctionId`  DESC;
                 var volatMedian = medianPrice;
                 var limitedPrice = CapPriceAtHigherLevelKey(keyCombo, medianPrice, bucket);
 
+                var itemTier = keyCombo.key.Key.Tier;
+                if (keyCombo.key.Key.Modifiers.Any(m => m.Value == TierBoostShorthand))
+                {
+                    itemTier--;
+                }
+
                 // check higher value keys for lower price 
                 if (keyCombo.key.Key.Modifiers.Any(m => m.Key == "pgems"))
                 {
@@ -1197,12 +1203,13 @@ ORDER BY l.`AuctionId`  DESC;
                         limitedPrice = Math.Max(limitedPrice, lookupBucket.Price);
                     }
                 }
-                else if (lookup.CleanPricePerTier?.TryGetValue(keyCombo.key.Key.Tier, out var tierval) ?? false)
+                else if (lookup.CleanPricePerTier?.TryGetValue(itemTier, out var tierval) ?? false)
                 {
                     if (keyCombo.key.Key.Modifiers.Count == 0 && keyCombo.key.Key.Reforge == ItemReferences.Reforge.jaded)
                     {
                         var lowest = lookup.Lookup.Where(l => l.Value.Price > 0).OrderBy(l => l.Value.Price).Take(5).ToList();
                     }
+                    // check clean item value is higher
                     if (limitedPrice < tierval / 1.2 && !keyCombo.key.Key.Modifiers.Any(m => m.Key == "virtual" || Constants.AttributeKeys.Contains(m.Key)))
                         limitedPrice = Math.Max(limitedPrice, tierval);
                 }
@@ -1631,7 +1638,7 @@ ORDER BY l.`AuctionId`  DESC;
             var minRarity = matchRarity ? key.Key.Tier : key.Key.Tier - 1;
             var select = (NBT.IsPet(tag) ?
                             lookup.Lookup.Where(v => key.Key.Tier == v.Key.Tier && !v.Key.Modifiers.Any(m => m.Value == TierBoostShorthand)).Select(v => v.Value) :
-                             lookup.Lookup.Where(v => minRarity <= v.Key.Tier && !v.Key.Modifiers.Any(m => m.Key == "pgems"  || Constants.AttributeKeys.Contains(m.Key))).Select(l => l.Value)).ToList();
+                             lookup.Lookup.Where(v => minRarity <= v.Key.Tier && !v.Key.Modifiers.Any(m => m.Key == "pgems" || Constants.AttributeKeys.Contains(m.Key))).Select(l => l.Value)).ToList();
             var count = select.Count;
             var all = select.SelectMany(v => v.References).ToList();
 
@@ -3292,11 +3299,6 @@ ORDER BY l.`AuctionId`  DESC;
             }
             long gemValue = GetGemValue(auction, key);
             extraValue += gemValue;
-
-            if (NBT.IsPet(auction.Tag) && key.Modifiers.Any(m => m.Value == TierBoostShorthand))
-            {
-                extraValue -= 110_000_000;
-            }
 
             return extraValue;
         }

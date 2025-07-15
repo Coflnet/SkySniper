@@ -9348,7 +9348,7 @@
       "volume": 0.2635135
     },
     " Any [exp, 0],[petItem, TIER_BOOST],[candyUsed, 0] LEGENDARY 1": {
-      "price": 650000000,
+      "price": 450000000,
       "references": [
         {
           "auctionId": -3910531187493485000,
@@ -21750,54 +21750,6 @@
           "day": 1386,
           "seller": -13258,
           "buyer": 7603,
-          "sellTime": 0
-        },
-        {
-          "auctionId": 1017552543341226400,
-          "price": 545000000,
-          "day": 1386,
-          "seller": 30052,
-          "buyer": 0,
-          "sellTime": 1
-        },
-        {
-          "auctionId": -652048977234098800,
-          "price": 540749288,
-          "day": 1386,
-          "seller": -21348,
-          "buyer": -28487,
-          "sellTime": 0
-        },
-        {
-          "auctionId": 442281149847671230,
-          "price": 588000000,
-          "day": 1386,
-          "seller": -17638,
-          "buyer": 23610,
-          "sellTime": 0
-        },
-        {
-          "auctionId": 3791229926292899000,
-          "price": 569000000,
-          "day": 1386,
-          "seller": 7603,
-          "buyer": 15573,
-          "sellTime": 0
-        },
-        {
-          "auctionId": -3139869696987924000,
-          "price": 550000000,
-          "day": 1386,
-          "seller": 7603,
-          "buyer": 894,
-          "sellTime": 0
-        },
-        {
-          "auctionId": -9126783062027032000,
-          "price": 585000000,
-          "day": 1386,
-          "seller": 24956,
-          "buyer": 23610,
           "sellTime": 0
         }
       ],
