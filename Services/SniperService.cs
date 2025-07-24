@@ -2509,7 +2509,9 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 return Ignore;
             }
-            if (s.Key == "color" && (flattenedNbt.ContainsKey("dye_item") || itemService.GetDefaultColorAndCategory(tag).color == s.Value.Replace(':', ',')))
+            if (s.Key == "color" && (flattenedNbt.ContainsKey("dye_item")
+                || s.Value == "::" // no actual different color
+                || itemService.GetDefaultColorAndCategory(tag).color == s.Value.Replace(':', ',')))
                 return Ignore;
             return s;
         }
