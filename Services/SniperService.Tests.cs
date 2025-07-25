@@ -1938,11 +1938,12 @@ namespace Coflnet.Sky.Sniper
             var price = service.GetPrice(toTest);
             Assert.That(31500000, Is.EqualTo(price.Median));
         }
-        [Test]
-        public async Task MasterStarsOnlyOnDungeonItems()
+        [TestCase("GLOWSTONE_GAUNTLET", "9", 25_960_000)]
+        [TestCase("MOLTEN_BRACELET", "10", 20920000)]
+        public async Task MasterStarsOnlyOnDungeonItems(string tag, string level, long target)
         {
-            highestValAuction.FlatenedNBT["upgrade_level"] = "9";
-            highestValAuction.Tag = "GLOWSTONE_GAUNTLET";
+            highestValAuction.FlatenedNBT["upgrade_level"] = level;
+            highestValAuction.Tag = tag;
             await service.Init();
             highestValAuction.HighestBidAmount = 10_000_000;
             SetBazaarPrice("FOURTH_MASTER_STAR", 49_000_000);
@@ -1954,7 +1955,7 @@ namespace Coflnet.Sky.Sniper
             TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.CraftCost).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
-            Assert.That(25_960_000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That(estimate.TargetPrice, Is.EqualTo(target), JsonConvert.SerializeObject(estimate.AdditionalProps));
         }
         [Test]
         public async Task MasterStarsAlsoOnDungeonConvertableItems()

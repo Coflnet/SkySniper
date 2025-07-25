@@ -790,7 +790,7 @@ ORDER BY l.`AuctionId`  DESC;
                     // some of the items actually don't have the prefix, skins on pets may but other skins don't
                     return new (string, int)[] { (prefix + m.Value.ToUpper(), 1), (m.Value.ToUpper(), 1) };
 
-            if (m.Key == "upgrade_level" && !(itemService?.IsDungeonItemSync(tag) ?? true))
+            if (m.Key == "upgrade_level" && !(itemService?.IsDungeonItemSync(tag) ?? false))
             {
                 return EmptyArray;
             }
