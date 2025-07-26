@@ -1421,7 +1421,7 @@ public class DropOffTests
         sniperService.TestNewAuction(item);
         Assert.That(found.Count, Is.GreaterThanOrEqualTo(1));
         // combines buckets to reach estimation
-        found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice.Should().Be(342872335L);
+        found.Last(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice.Should().Be(347372335L);
     }
 
     [Test]

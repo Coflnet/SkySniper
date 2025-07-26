@@ -773,14 +773,21 @@ ORDER BY l.`AuctionId`  DESC;
                     deferred.Log($"Missing modifier value {m.Key} {m.Value} {auction.Uuid}");
                     return 4_000_000_000; // not found potentially very valuable
                 }
+                var value = elem.Value;
+                if (m.Key == "upgrade_level" && modifiers.FirstOrDefault(e => e.Key == m.Key).Value != default)
+                    value -= ModifierEstimate(modifiers.ToList(), auction.Tag, auction.FlatenedNBT, modifiers.FirstOrDefault(e => e.Key == m.Key)).Value;
                 if (calculate && elem.IsEstimate)
-                    return elem.Value / 20;
-                return elem.Value;
+                    return value / 20;
+                return value;
             }).Sum();
         }
 
         private IEnumerable<(string tag, int amount)> GetItemKeysForModifier(string tag, KeyValuePair<string, string> m)
         {
+            if (m.Key == "upgrade_level")
+            {
+                return EmptyArray;
+            }
             if (m.Key == null)
                 return EmptyArray;
             if (ModifierItemPrefixes.TryGetValue(m.Key, out var prefix))
@@ -790,10 +797,6 @@ ORDER BY l.`AuctionId`  DESC;
                     // some of the items actually don't have the prefix, skins on pets may but other skins don't
                     return new (string, int)[] { (prefix + m.Value.ToUpper(), 1), (m.Value.ToUpper(), 1) };
 
-            if (m.Key == "upgrade_level" && !(itemService?.IsDungeonItemSync(tag) ?? false))
-            {
-                return EmptyArray;
-            }
             if (mapper.TryGetIngredients(tag, m.Key, m.Value, null, out var ingredients))
             {
                 return ingredients.GroupBy(i => i).Select(i => (i.Key, i.Count()));

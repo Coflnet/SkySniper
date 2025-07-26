@@ -1919,6 +1919,7 @@ namespace Coflnet.Sky.Sniper
             await service.Init();
             highestValAuction.FlatenedNBT = new();
             highestValAuction.Tag = "HYPERION";
+            highestValAuction.ItemCreatedAt = DateTime.UtcNow.AddDays(-1);
             var upgradeLvl9 = Dupplicate(highestValAuction);
             upgradeLvl9.HighestBidAmount = 100_000_000;
             upgradeLvl9.FlatenedNBT["upgrade_level"] = "9";
@@ -1933,10 +1934,10 @@ namespace Coflnet.Sky.Sniper
             service.FinishedUpdate();
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
-            Assert.That(28350000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
-            estimate.AdditionalProps["missingModifiers"].Should().EndWith("(68500000)", "Third and fourth master star combned cost 68000000");
+            Assert.That(27000000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            estimate.AdditionalProps["missingModifiers"].Should().EndWith("(70000000)", "Third and fourth master star combned cost 68000000");
             var price = service.GetPrice(toTest);
-            Assert.That(31500000, Is.EqualTo(price.Median));
+            price.Median.Should().Be(30000000, "Median is the price of the item without stars");
         }
         [TestCase("GLOWSTONE_GAUNTLET", "9", 25_960_000)]
         [TestCase("MOLTEN_BRACELET", "10", 20920000)]
@@ -1972,7 +1973,7 @@ namespace Coflnet.Sky.Sniper
             TestNewAuction(highestValAuction);
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.CraftCost).FirstOrDefault();
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
-            Assert.That(estimate.TargetPrice, Is.EqualTo(91517349), JsonConvert.SerializeObject(estimate.AdditionalProps));
+            Assert.That(estimate.TargetPrice, Is.EqualTo(97397695), JsonConvert.SerializeObject(estimate.AdditionalProps));
         }
 
 
@@ -2187,8 +2188,8 @@ namespace Coflnet.Sky.Sniper
             var lessStars = Dupplicate(highestValAuction);
             lessStars.FlatenedNBT["upgrade_level"] = "3";
             var price = service.GetPrice(lessStars);
-            Assert.That(price.MedianKey, Is.EqualTo("ultimate_wisdom=5 Any [upgrade_level, 7],[rarity_upgrades, 1] MYTHIC 1- 7*0.60"), JsonConvert.SerializeObject(price));
-            Assert.That(price.Median, Is.EqualTo(17273296), JsonConvert.SerializeObject(price));
+            Assert.That(price.MedianKey, Is.EqualTo("ultimate_wisdom=5 Any [upgrade_level, 7],[rarity_upgrades, 1] MYTHIC 1- 7*0.58"), JsonConvert.SerializeObject(price));
+            Assert.That(price.Median, Is.EqualTo(16923267), JsonConvert.SerializeObject(price));
         }
 
         [Test]
