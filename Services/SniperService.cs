@@ -1633,7 +1633,10 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static long GetCleanItemPrice(string tag, KeyWithValueBreakdown key, PriceLookup lookup, bool force = false)
         {
-            if (!force && lookup.CleanPricePerTier.TryGetValue(key.Key.Tier, out var cleanPrice))
+            var tier = key.Key.Tier;
+            if (key.Key.Modifiers.Any(m => m.Value == TierBoostShorthand))
+                tier = ReduceRarity(tier);
+            if (!force && lookup.CleanPricePerTier.TryGetValue(tier, out var cleanPrice))
             {
                 return cleanPrice;
             }
@@ -2955,10 +2958,7 @@ ORDER BY l.`AuctionId`  DESC;
             static long AdjustFixedValue(RankElem c)
             {
                 if (c.Modifier.Key == PetItemKey)
-                    if (c.Modifier.Value == TierBoostShorthand)
-                        return -120_000_000; // this negates the upgrade cost of a pet item
-                    else
-                        return c.Value / 2;
+                    return c.Value / 2;
                 return c.Value;
             }
         }

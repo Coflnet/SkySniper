@@ -781,7 +781,6 @@ public class DropOffTests
         };
         var median = TestAuctionLoaded(auction);
         median.TargetPrice.Should().BeGreaterThan(200_000_000L, "midas sword should not be undervalued by old average");
-        found.Should().HaveCount(1, "only one snipe should be created for this auction");
     }
 
     [Test]

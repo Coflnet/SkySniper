@@ -1013,17 +1013,17 @@ namespace Coflnet.Sky.Sniper
             highestValAuction.Tier = Tier.LEGENDARY;
             highestValAuction.Tag = "PET_ENDER_DRAGON";
             var volumeLower = Dupplicate(highestValAuction);
-            volumeLower.HighestBidAmount = 650_000_000;
+            volumeLower.HighestBidAmount = 350_000_000;
             volumeLower.FlatenedNBT.Remove("heldItem");
             volumeLower.Tier = Tier.EPIC;
             AddVolume(volumeLower, 10);
-            highestValAuction.StartingBid = 650000000;
+            highestValAuction.StartingBid = 550000000;
             service.TestNewAuction(highestValAuction);
             Assert.That(found.FirstOrDefault(), Is.Null, JsonConvert.SerializeObject(found, Formatting.Indented));
-            highestValAuction.HighestBidAmount = 600_000_000;
-            highestValAuction.StartingBid = 600_000_000;
+            highestValAuction.HighestBidAmount = 0;
+            highestValAuction.StartingBid = 200_000_000;
             service.TestNewAuction(highestValAuction);
-            Assert.That(637000000, Is.EqualTo(found.Last().TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
+            Assert.That(502400000, Is.EqualTo(found.Last().TargetPrice), JsonConvert.SerializeObject(found, Formatting.Indented));
         }
 
         [Test]
