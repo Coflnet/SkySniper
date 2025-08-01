@@ -765,6 +765,24 @@ public class DropOffTests
             item.TargetPrice.Should().BeLessThan(300_000L, JsonConvert.SerializeObject(found, Formatting.Indented));
         }
     }
+    [Test]
+    public void MidasNoUndervauingForOldAverage()
+    {
+        AddLookupAndUpdateMeidans("midas_sword.json", "MIDAS_SWORD", new DateTime(2025, 8, 1));
+        var auction = new SaveAuction()
+        {
+            Tag = "MIDAS_SWORD",
+            StartingBid = 5_000,
+            UId = 4,
+            FlatenedNBT = new() { { "winning_bid", "54000000" } },
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1
+        };
+        var median = TestAuctionLoaded(auction);
+        median.TargetPrice.Should().BeGreaterThan(200_000_000L, "midas sword should not be undervalued by old average");
+        found.Should().HaveCount(1, "only one snipe should be created for this auction");
+    }
 
     [Test]
     public void AllowHigherEstimateOnCleanHighVolumeLbin()

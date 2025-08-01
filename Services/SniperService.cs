@@ -1652,6 +1652,8 @@ ORDER BY l.`AuctionId`  DESC;
                 .Take(size).OrderBy(r => r.Price);
             var devider = matchRarity ? 10 : 30;
             var target = sample.Skip(size / devider + 1).FirstOrDefault();
+            if (IsMidas(tag))
+                return target.Price + 80_000_000; // midas gets undersold very very often
             return target.Price;
         }
 
