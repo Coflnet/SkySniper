@@ -2893,7 +2893,7 @@ ORDER BY l.`AuctionId`  DESC;
                 "upgrade_level" => 0.84,
                 "talisman_enrichment" => 0.10,
                 var s when IsRune(s) => 0.55,
-                var s when Constants.AttributeKeys.Contains(s) => 0.75,
+                var s when Constants.AttributeKeys.Contains(s) => 0.01,
                 _ => 0.85
             } * v.Value)).Sum();
             if (cleanCost == componentGuess)
