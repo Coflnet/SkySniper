@@ -782,6 +782,29 @@ public class DropOffTests
         var median = TestAuctionLoaded(auction);
         median.TargetPrice.Should().BeGreaterThan(200_000_000L, "midas sword should not be undervalued by old average");
     }
+    [Test]
+    public async Task GemstoneValueCausingUndervaluing()
+    {
+        SetBazaarPrice("ENCHANTMENT_PRISTINE_2", 2_000_000);
+        await sniperService.Init();
+        AddLookupAndUpdateMeidans("GEMSTONE_DRILL_4.json", "GEMSTONE_DRILL_4", new DateTime(2025, 8, 6));
+        var auction = new SaveAuction()
+        {
+            Tag = "GEMSTONE_DRILL_4",
+            StartingBid = 35_000_000,
+            UId = 4,
+            FlatenedNBT = new(),
+            Enchantments = [new Enchantment() { Type = Enchantment.EnchantmentType.pristine, Level = 2 }],
+            AuctioneerId = "12aaa",
+            Tier = Tier.EPIC,
+            Count = 1
+        };
+        var median = TestAuctionLoaded(auction);
+        median.TargetPrice.Should().BeGreaterThan(38_000_000L, "removed gemstones should not cause median to undervalue");
+        var price = sniperService.GetPrice(auction);
+        sniperService.Lookups["GEMSTONE_DRILL_4"].CleanPricePerTier[Tier.EPIC].Should().BeInRange(36_000_000L, 40_000_000, "removed gemstones should not cause clean price to undervalue");
+        price.Median.Should().BeInRange(38_000_000L, 40_000_000, "removed gemstones should not cause median to undervalue");
+    }
 
     [Test]
     public void AllowHigherEstimateOnCleanHighVolumeLbin()

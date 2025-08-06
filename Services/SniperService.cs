@@ -1631,7 +1631,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private static long GetCleanItemPrice(string tag, KeyWithValueBreakdown key, PriceLookup lookup, bool force = false)
+        private long GetCleanItemPrice(string tag, KeyWithValueBreakdown key, PriceLookup lookup, bool force = false)
         {
             var tier = key.Key.Tier;
             if (key.Key.Modifiers.Any(m => m.Value == TierBoostShorthand))
@@ -1650,14 +1650,22 @@ ORDER BY l.`AuctionId`  DESC;
 
             if (NBT.IsPet(tag) || matchRarity)
                 DropUnderlistings(all, 18);
-            var size = (int)Math.Max(lookup.Volume * 10, 50);
+            var size = (int)Math.Min(Math.Max(lookup.Volume * 10, 50),all.Count);
             var sample = all.OrderByDescending(a => a.Day).ThenBy(l => l.Price)
                 .Take(size).OrderBy(r => r.Price);
             var devider = matchRarity ? 10 : 30;
+
+            if (CanHaveGems(tag))
+                devider = Math.Min(10, devider);
             var target = sample.Skip(size / devider + 1).FirstOrDefault();
             if (IsMidas(tag))
                 return target.Price + 80_000_000; // midas gets undersold very very often
             return target.Price;
+        }
+
+        private bool CanHaveGems(string tag)
+        {
+            return itemService?.GetUnlockableSlots(tag).Any() ?? false;
         }
 
         private long AttributeValueEstimateForCap(string tag, RankElem v, List<RankElem> breakdown, PriceLookup lookup)
