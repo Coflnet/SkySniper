@@ -63,7 +63,7 @@ public class MayorService : BackgroundService, IMayorService
 
     private async Task InitMayors()
     {
-        List<Mayor.Client.Model.ModelElectionPeriod> mayors = null;
+        List<Mayor.Client.Model.CoflnetSkyMayorModelsModelElectionPeriod> mayors = null;
         while (mayors == null)
         {
             try

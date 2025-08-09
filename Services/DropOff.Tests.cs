@@ -624,7 +624,7 @@ public class DropOffTests
             Count = 1
         };
         LowPricedAuction flip = TestAuctionLoaded(auction);
-        flip.TargetPrice.Should().BeGreaterThanOrEqualTo(844_000_000L, "median of 781m + craft cost partial");
+        flip.TargetPrice.Should().BeGreaterThanOrEqualTo(831_163_069L, "median of 781m + craft cost partial");
     }
     [Test]
     public void Level1SheepNotFoundOnStonks()
