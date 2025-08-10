@@ -1655,7 +1655,7 @@ ORDER BY l.`AuctionId`  DESC;
                 .Take(size).OrderBy(r => r.Price);
             var devider = matchRarity ? 10 : 30;
 
-            if (CanHaveGems(tag))
+            if (CanHaveGems(tag) && tag != "MELON_DICER_3")
                 devider = Math.Min(14, devider);
             var target = sample.Skip(size / devider + 1).FirstOrDefault();
             if (IsMidas(tag))
