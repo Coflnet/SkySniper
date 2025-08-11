@@ -1634,7 +1634,7 @@ ORDER BY l.`AuctionId`  DESC;
         private long GetCleanItemPrice(string tag, KeyWithValueBreakdown key, PriceLookup lookup, bool force = false)
         {
             var tier = key.Key.Tier;
-            if (key.Key.Modifiers.Any(m => m.Value == TierBoostShorthand))
+            if (key.Key.Modifiers.Any(m => m.Value == TierBoostShorthand || m.Key == "rarity_upgrades"))
                 tier = ReduceRarity(tier);
             if (!force && lookup.CleanPricePerTier.TryGetValue(tier, out var cleanPrice))
             {

@@ -553,10 +553,10 @@ public class DropOffTests
         var withEnchant = converted.Lookup.First(l => l.Key.ToString() == "ultimate_wisdom=5 Any [rarity_upgrades, 1],[upgrade_level, 5] MYTHIC 1").Value;
         var keyOrder = string.Join('\n', converted.Lookup.Keys);
         Console.WriteLine(keyOrder);
-        withEnchant.Price.Should().Be(34645524L);
-        withEnchant.RiskyEstimate.Should().Be(37661736L);
+        withEnchant.Price.Should().Be(31970000L);
+        withEnchant.RiskyEstimate.Should().Be(35167000L);
         var withoutEnchant = converted.Lookup.First(l => l.Key.ToString() == " Any [rarity_upgrades, 1],[upgrade_level, 5] MYTHIC 1").Value;
-        withoutEnchant.Price.Should().Be(33082414L);
+        withoutEnchant.Price.Should().Be(27570000L);
         withoutEnchant.RiskyEstimate.Should().BeGreaterThanOrEqualTo(28347000L);
         // maybe test a snipe auction
     }
@@ -1185,7 +1185,7 @@ public class DropOffTests
         };
         sniperService.Lookups["THEORETICAL_HOE_WHEAT_3"].CleanPricePerTier[Tier.LEGENDARY].Should().BeGreaterThan(30_000_000);
         var found = TestAuctionLoaded(auction);
-        found.TargetPrice.Should().BeGreaterThan(58_000_000, "could also be up to 70m");
+        found.TargetPrice.Should().BeGreaterThan(56_270_067L, "could also be up to 70m");
     }
 
     /// <summary>

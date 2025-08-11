@@ -2190,8 +2190,8 @@ namespace Coflnet.Sky.Sniper
             var lessStars = Dupplicate(highestValAuction);
             lessStars.FlatenedNBT["upgrade_level"] = "3";
             var price = service.GetPrice(lessStars);
-            Assert.That(price.MedianKey, Is.EqualTo("ultimate_wisdom=5 Any [upgrade_level, 7],[rarity_upgrades, 1] MYTHIC 1- 7*0.58"), JsonConvert.SerializeObject(price));
-            Assert.That(price.Median, Is.EqualTo(16923267), JsonConvert.SerializeObject(price));
+            Assert.That(price.MedianKey, Is.EqualTo("ultimate_wisdom=5 Any [upgrade_level, 7],[rarity_upgrades, 1] MYTHIC 1- 7*0.46"), JsonConvert.SerializeObject(price));
+            Assert.That(price.Median, Is.EqualTo(13427710), JsonConvert.SerializeObject(price));
         }
 
         [Test]
