@@ -118,7 +118,7 @@ public class AttributeFlipService : IAttributeFlipService
             return;
         if (matchingBaucket.Volume < 1)
             return;
-        if (key.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.champion // probably non-purchasable lvl 2-10
+        if (key.Enchants.Any(e => Constants.EnchantToAttribute.ContainsKey(e.Type) // probably non-purchasable lvl 2-10
             || e.Type == Enchantment.EnchantmentType.vampirism))
         {
             return;
