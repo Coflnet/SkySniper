@@ -132,12 +132,15 @@ public class AttributeFlipService : IAttributeFlipService
         {
             return;
         }
+        if (cheapestLbin.Value.Lbin.Price + modifierSum > medianPrice * 0.97)
+            return; // not profit
         logger.LogInformation($"Found potential flip for {flip.tag} {cheapestLbin.Key} to {key} with {cheapestLbin.Value.Lbin.Price}");
         using var context = new HypixelContext();
         var auction = await context.Auctions.Where(a => a.UId == cheapestLbin.Value.Lbin.AuctionId).Select(u => u.Uuid).FirstOrDefaultAsync();
         Flips[(flip.tag, cheapestLbin.Key)] = new AttributeFlip()
         {
             AuctionToBuy = auction,
+            AuctionPrice = cheapestLbin.Value.Lbin.Price,
             Ingredients = flip.FullKey.ValueBreakdown.SelectMany(b => NewMethod(flip.tag, b)).ToList(),
             StartingKey = cheapestLbin.Key,
             EndingKey = (AuctionKey)key,
@@ -192,6 +195,17 @@ public class AttributeFlipService : IAttributeFlipService
                 Price = b.Value
             };
         }
+        if (b.Modifier.Key == "exp" && NBT.IsPet(tag))
+        {
+            yield return new AttributeFlip.Ingredient()
+            {
+                AttributeName = $"Pet Exp {b.Modifier.Value}",
+                ItemId = null,
+                Amount = 1,
+                Price = b.Value
+            };
+            yield break;
+        }
 
         if (mapper.TryGetIngredients(tag, b.Modifier.Key, b.Modifier.Value, null, out var ingredients))
         {
@@ -217,6 +231,7 @@ public class AttributeFlip
 {
     public string Tag { get; set; }
     public string AuctionToBuy { get; set; }
+    public long AuctionPrice { get; set; }
     public List<Ingredient> Ingredients { get; set; }
     public AuctionKey StartingKey { get; set; }
     public AuctionKey EndingKey { get; set; }
