@@ -223,7 +223,7 @@ public class AttributeFlip
     public long Target { get; set; }
     public long EstimatedCraftingCost { get; set; }
     public DateTime FoundAt { get; set; } = DateTime.UtcNow;
-    public float Volume { get; internal set; }
+    public float Volume { get; set; }
 
     public class Ingredient
     {
