@@ -123,7 +123,9 @@ public class AttributeFlipService : IAttributeFlipService
         {
             return;
         }
-        var cheapestLbin = lookup.Lookup.Where(l => l.Value.Lbin.AuctionId != default && l.Value.Lbin.Price > l.Value.Price / 2).MinBy(l => l.Value.Lbin.Price);
+        var cheapestLbin = lookup.Lookup.Where(l => l.Value.Lbin.AuctionId != default
+                    && l.Value.Lbin.Price > l.Value.Price / 2
+                    && (!NBT.IsPet(flip.tag) || l.Key.Tier == key.Tier)).MinBy(l => l.Value.Lbin.Price);
         if (cheapestLbin.Value.Lbin.Price > cheapest)
         {
             return;
