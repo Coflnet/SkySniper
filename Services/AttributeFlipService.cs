@@ -214,9 +214,16 @@ public class AttributeFlipService : IAttributeFlipService
             foreach (var ingredient in ingredients.GroupBy(s => s))
             {
                 var amount = ingredient.Count();
+                var label = $"{b.Modifier} {b.Modifier.Value}";
+                if (ingredient.Key == "HOT_POTATO_BOOK")
+                    label = "Hot Potato Book x" + amount;
+                if (ingredient.Key == "FUMING_POTATO_BOOK")
+                    label = "Fuming Potato Book x" + amount;
+                if (ingredient.Key == "RECOMBOBULATOR_3000")
+                    label = "Recombobulator 3000";
                 yield return new AttributeFlip.Ingredient()
                 {
-                    AttributeName = $"{b.Modifier} {b.Modifier.Value}",
+                    AttributeName = label,
                     ItemId = ingredient.Key,
                     Amount = amount,
                     Price = sniperService.GetPriceForItem(ingredient.Key) * amount
