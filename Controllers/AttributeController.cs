@@ -28,7 +28,7 @@ public class AttributeController : ControllerBase
     [HttpGet]
     public IEnumerable<AttributeFlip> GetCrafts()
     {
-        return flipService.Flips.Values.Where(v => v.FoundAt < DateTime.UtcNow.AddMinutes(-1));
+        return flipService.Flips.Values;
     }
 
     [Route("combo/{leftAttrib}/{rightAttrib}")]
