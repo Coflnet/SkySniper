@@ -123,9 +123,7 @@ public class AttributeFlipService : IAttributeFlipService
         {
             return;
         }
-        var cheapestLbin = lookup.Lookup.Where(l => l.Value.Lbin.AuctionId != default
-                    && l.Value.Lbin.Price > l.Value.Price / 2
-                    && (!NBT.IsPet(flip.tag) || l.Key.Tier == key.Tier)).OrderBy(l => l.Value.Lbin.Price).Skip(1).FirstOrDefault();
+        KeyValuePair<AuctionKey, ReferenceAuctions> cheapestLbin = GetCheapest(flip, key, lookup);
         if (cheapestLbin.Value.Lbin.Price > cheapest)
         {
             return;
@@ -137,11 +135,10 @@ public class AttributeFlipService : IAttributeFlipService
         if (cheapestLbin.Value.Lbin.Price + modifierSum > medianPrice * 0.97)
             return; // not profit
         logger.LogInformation($"Found potential flip for {flip.tag} {cheapestLbin.Key} to {key} with {cheapestLbin.Value.Lbin.Price}");
-        using var context = new HypixelContext();
-        var auction = await context.Auctions.Where(a => a.UId == cheapestLbin.Value.Lbin.AuctionId).Select(u => u.Uuid).FirstOrDefaultAsync();
+        string auctionUuid = await GetAuctionUuid(cheapestLbin);
         Flips[(flip.tag, cheapestLbin.Key)] = new AttributeFlip()
         {
-            AuctionToBuy = auction,
+            AuctionToBuy = auctionUuid,
             AuctionPrice = cheapestLbin.Value.Lbin.Price,
             Ingredients = flip.FullKey.ValueBreakdown.SelectMany(b => NewMethod(flip.tag, b)).ToList(),
             StartingKey = cheapestLbin.Key,
@@ -152,6 +149,20 @@ public class AttributeFlipService : IAttributeFlipService
             Volume = matchingBaucket.Volume
         };
         RemoveSoldFlips(lookup, cheapestLbin);
+    }
+
+    private static async Task< string> GetAuctionUuid(KeyValuePair<AuctionKey, ReferenceAuctions> cheapestLbin)
+    {
+        using var context = new HypixelContext();
+        var auction = await context.Auctions.Where(a => a.UId == cheapestLbin.Value.Lbin.AuctionId).Select(u => u.Uuid).FirstOrDefaultAsync();
+        return  auction;
+    }
+
+    private static KeyValuePair<AuctionKey, ReferenceAuctions> GetCheapest(PotentialCraftFlip flip, AuctionKey key, PriceLookup lookup)
+    {
+        return lookup.Lookup.Where(l => l.Value.Lbin.AuctionId != default
+                    && l.Value.Lbin.Price > l.Value.Price / 2
+                    && (!NBT.IsPet(flip.tag) || l.Key.Tier == key.Tier)).OrderBy(l => l.Value.Lbin.Price).FirstOrDefault();
     }
 
     private void RemoveSoldFlips(PriceLookup lookup, KeyValuePair<AuctionKey, ReferenceAuctions> cheapestLbin)
