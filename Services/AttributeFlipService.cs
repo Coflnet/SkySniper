@@ -116,8 +116,10 @@ public class AttributeFlipService : IAttributeFlipService
         }
         if (!lookup.Lookup.TryGetValue(key, out var matchingBaucket))
             return;
+        if (flip.FullKey.ValueBreakdown.Any(v => v.Value < 0))
+            return; // this can't be obtained directly, not a good idea to recomend flip
         if (matchingBaucket.Volume < 1)
-            return;
+                return;
         if (key.Enchants.Any(e => Constants.EnchantToAttribute.ContainsKey(e.Type) // probably non-purchasable lvl 2-10
             || e.Type == Enchantment.EnchantmentType.vampirism))
         {
