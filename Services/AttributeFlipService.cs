@@ -72,7 +72,7 @@ public class AttributeFlipService : IAttributeFlipService
                 try
                 {
                     await CheckPotential(flip);
-                    await RemoveSoldFlips(lookup, cheapestLbin);
+                    await RemoveSoldFlips();
                 }
                 catch (Exception e)
                 {
