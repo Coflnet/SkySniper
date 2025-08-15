@@ -72,6 +72,7 @@ public class AttributeFlipService : IAttributeFlipService
                 try
                 {
                     await CheckPotential(flip);
+                    await RemoveSoldFlips(lookup, cheapestLbin);
                 }
                 catch (Exception e)
                 {
@@ -119,13 +120,13 @@ public class AttributeFlipService : IAttributeFlipService
         if (flip.FullKey.ValueBreakdown.Any(v => v.Value < 0))
             return; // this can't be obtained directly, not a good idea to recomend flip
         if (matchingBaucket.Volume < 1)
-                return;
+            return;
         if (key.Enchants.Any(e => Constants.EnchantToAttribute.ContainsKey(e.Type) // probably non-purchasable lvl 2-10
             || e.Type == Enchantment.EnchantmentType.vampirism))
         {
             return;
         }
-        KeyValuePair<AuctionKey, ReferenceAuctions> cheapestLbin = GetCheapest(flip, key, lookup);
+        KeyValuePair<AuctionKey, ReferenceAuctions> cheapestLbin = GetCheapest(flip.tag, key, lookup);
         if (cheapestLbin.Value.Lbin.Price > cheapest)
         {
             return;
@@ -150,30 +151,40 @@ public class AttributeFlipService : IAttributeFlipService
             Tag = flip.tag,
             Volume = matchingBaucket.Volume
         };
-        RemoveSoldFlips(lookup, cheapestLbin);
     }
 
-    private static async Task< string> GetAuctionUuid(KeyValuePair<AuctionKey, ReferenceAuctions> cheapestLbin)
+    private static async Task<string> GetAuctionUuid(KeyValuePair<AuctionKey, ReferenceAuctions> cheapestLbin)
     {
         using var context = new HypixelContext();
         var auction = await context.Auctions.Where(a => a.UId == cheapestLbin.Value.Lbin.AuctionId).Select(u => u.Uuid).FirstOrDefaultAsync();
-        return  auction;
+        return auction;
     }
 
-    private static KeyValuePair<AuctionKey, ReferenceAuctions> GetCheapest(PotentialCraftFlip flip, AuctionKey key, PriceLookup lookup)
+    private static KeyValuePair<AuctionKey, ReferenceAuctions> GetCheapest(string tag, AuctionKey key, PriceLookup lookup)
     {
         return lookup.Lookup.Where(l => l.Value.Lbin.AuctionId != default
                     && l.Value.Lbin.Price > l.Value.Price / 2
-                    && (!NBT.IsPet(flip.tag) || l.Key.Tier == key.Tier)).OrderBy(l => l.Value.Lbin.Price).FirstOrDefault();
+                    && (!NBT.IsPet(tag) || l.Key.Tier == key.Tier)).OrderBy(l => l.Value.Lbin.Price).FirstOrDefault();
     }
 
-    private void RemoveSoldFlips(PriceLookup lookup, KeyValuePair<AuctionKey, ReferenceAuctions> cheapestLbin)
+    private async Task RemoveSoldFlips()
     {
         foreach (var flip in Flips.ToList())
         {
-            if (lookup.Lookup.TryGetValue(flip.Key.Item2, out var value) && value.Lbins.Any(r => r.AuctionId == cheapestLbin.Value.Lbin.AuctionId))
+            var itemLookup = sniperService.Lookups.GetValueOrDefault(flip.Key.Item1, new PriceLookup());
+            if (itemLookup.Lookup.TryGetValue(flip.Key.Item2, out var value)
+                && value.Lbins.Any(r => r.Price == flip.Value.AuctionPrice)) // use price as proxy for id
                 continue;
-            Flips.TryRemove(flip.Key, out _);
+            var cheapest = GetCheapest(flip.Key.Item1, flip.Key.Item2, itemLookup);
+            if (cheapest.Value.Lbin.Price > flip.Value.Target * 0.97 - flip.Value.EstimatedCraftingCost)
+            {
+                Flips.TryRemove(flip.Key, out _);
+                continue;
+            }
+            var uuid = await GetAuctionUuid(cheapest);
+            flip.Value.AuctionToBuy = uuid;
+            flip.Value.AuctionPrice = cheapest.Value.Lbin.Price;
+            flip.Value.StartingKey = cheapest.Key;
         }
     }
 
