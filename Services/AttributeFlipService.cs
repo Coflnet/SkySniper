@@ -125,7 +125,7 @@ public class AttributeFlipService : IAttributeFlipService
         }
         var cheapestLbin = lookup.Lookup.Where(l => l.Value.Lbin.AuctionId != default
                     && l.Value.Lbin.Price > l.Value.Price / 2
-                    && (!NBT.IsPet(flip.tag) || l.Key.Tier == key.Tier)).MinBy(l => l.Value.Lbin.Price);
+                    && (!NBT.IsPet(flip.tag) || l.Key.Tier == key.Tier)).OrderBy(l => l.Value.Lbin.Price).Skip(1).FirstOrDefault();
         if (cheapestLbin.Value.Lbin.Price > cheapest)
         {
             return;
@@ -151,6 +151,17 @@ public class AttributeFlipService : IAttributeFlipService
             Tag = flip.tag,
             Volume = matchingBaucket.Volume
         };
+        RemoveSoldFlips(lookup, cheapestLbin);
+    }
+
+    private void RemoveSoldFlips(PriceLookup lookup, KeyValuePair<AuctionKey, ReferenceAuctions> cheapestLbin)
+    {
+        foreach (var flip in Flips.ToList())
+        {
+            if (lookup.Lookup.TryGetValue(flip.Key.Item2, out var value) && value.Lbins.Any(r => r.AuctionId == cheapestLbin.Value.Lbin.AuctionId))
+                continue;
+            Flips.TryRemove(flip.Key, out _);
+        }
     }
 
     private IEnumerable<AttributeFlip.Ingredient> NewMethod(string tag, SniperService.RankElem b)
