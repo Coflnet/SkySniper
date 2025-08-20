@@ -111,12 +111,10 @@ public class AttributeFlipService : IAttributeFlipService
         var modifierSum = flip.ModifierSum;
         var lookup = flip.Lookup;
         var medianPrice = flip.MedianPrice;
-        if (key.Modifiers.Any(m => m.Key.ToLower().EndsWith("kills")))
-        {
-            return; // can't buy kills
-        }
         if (!lookup.Lookup.TryGetValue(key, out var matchingBaucket))
             return;
+        if (flip.FullKey.ValueBreakdown.Any(v => v.IsEstimate))
+            return; // estimated values can't crafted, eg kills, pet exp, etc.
         if (flip.FullKey.ValueBreakdown.Any(v => v.Value < 0))
             return; // this can't be obtained directly, not a good idea to recomend flip
         if (matchingBaucket.Volume < 1)
