@@ -1650,7 +1650,7 @@ ORDER BY l.`AuctionId`  DESC;
 
             if (NBT.IsPet(tag) || matchRarity)
                 DropUnderlistings(all, 18);
-            var size = (int)Math.Min(Math.Max(lookup.Volume * 10, 50),all.Count);
+            var size = (int)Math.Min(Math.Max(lookup.Volume * 10, 50), all.Count);
             var sample = all.OrderByDescending(a => a.Day).ThenBy(l => l.Price)
                 .Take(size).OrderBy(r => r.Price);
             var devider = matchRarity ? 10 : 30;
@@ -3652,7 +3652,10 @@ ORDER BY l.`AuctionId`  DESC;
             }
             var targetPrice = Math.Min(higherValueLowerBin - 1, MaxMedianPriceForSnipe(bucket, breakdown)) + extraValue - MIN_TARGET / 200;
             if (bucket.Price != 0)
-                targetPrice = Math.Min(targetPrice, bucket.Price * 2);
+                if (bucket.Price > 500_000_000)
+                    targetPrice = Math.Min(targetPrice, (long)(bucket.Price * 1.1));
+                else
+                    targetPrice = Math.Min(targetPrice, bucket.Price * 2);
             if (targetPrice < auction.StartingBid * 1.03)
                 return false;
             var percentile = long.MaxValue;
