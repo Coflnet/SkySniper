@@ -135,6 +135,7 @@ namespace Coflnet.Sky.Sniper.Services
             "RUNE_RAINY_DAY",
             "bass_weight",
             "polarvoid",
+            "intelligence_earned",
             "chimera_found", // Diana's Bookshelf
             "is_shiny", // cosmetic effect on wither armor ~5% drop chance on Master Mode 7
         };
@@ -2588,6 +2589,11 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 return NormalizeEdition(s);
             }
+            if (s.Key == "intelligence_earned")
+                if (s.Value.Length >= 3)
+                    return new KeyValuePair<string, string>(s.Key, "100");
+                else
+                    return new KeyValuePair<string, string>(s.Key, "1");
             if (s.Key == "talisman_enrichment")
                 return new KeyValuePair<string, string>("talisman_enrichment", "yes");
             return new KeyValuePair<string, string>(Ignore.Key, "continue");
