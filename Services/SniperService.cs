@@ -465,6 +465,11 @@ ORDER BY l.`AuctionId`  DESC;
                 MinEnchantMap[item.Type] = item.Level;
             }
 
+            foreach (var item in ItemKeys)
+            {
+                IncludeKeys.Add(item);
+            }
+
             string[] armorPieces = ["HELMET", "CHESTPLATE", "LEGGINGS", "BOOTS"];
             string[] tiers = ["", "HOT_", "BURNING_", "FIERY_", "INFERNAL_"];
             foreach (var toAdd in CrimsonArmors)

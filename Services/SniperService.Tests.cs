@@ -1317,11 +1317,15 @@ namespace Coflnet.Sky.Sniper
             drill.FlatenedNBT["drill_part_engine"] = "component";
             AddVolume(drill);
             service.FinishedUpdate();
-            drill.FlatenedNBT = new();
-            var estimate = service.GetPrice(drill);
-            Assert.That(9_080_000, Is.EqualTo(estimate.Median), "10m base - 1m component incl removal cost");
-            Assert.That(estimate.MedianKey, Is.EqualTo(" Any  UNKNOWN 1"), "drill part not in key");
+            var withoutPart = Dupplicate(drill);
+            withoutPart.FlatenedNBT = new();
+            var estimate = service.GetPrice(withoutPart);
+            Assert.That(9_000_000, Is.EqualTo(estimate.Median), "10m base - 1m component incl removal cost");
+            Assert.That(estimate.MedianKey, Is.EqualTo(" Any [drill_part_engine, component] UNKNOWN 1- component"), "drill part not in key");
 
+            var estimateWithPart = service.GetPrice(drill);
+            Assert.That(10_000_000, Is.EqualTo(estimateWithPart.Median), "with part should be base");
+            Assert.That(estimateWithPart.MedianKey.Contains("drill_part_engine"));
         }
         [Test]
         public void AdjustMedianBasedOnCleanAvg()
