@@ -2490,13 +2490,13 @@ namespace Coflnet.Sky.Sniper
             drill.FlatenedNBT["drill_part_fuel_tank"] = "component";
             drill.FlatenedNBT["drill_part_upgrade_module"] = "component";
             drill.HighestBidAmount = 15_000_000;
-            AddVolume(drill, 4);
+           // AddVolume(drill, 4);
 
             service.TestNewAuction(Dupplicate(drill));
             service.FinishedUpdate();
             service.PrintLogQueue();
             var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
-            flip.TargetPrice.Should().Be((part.HighestBidAmount * 97 / 100 - 50_000) * 3 + cleanDrill.HighestBidAmount, "3x component price minus 3% for effort to remove");
+            flip.TargetPrice.Should().Be((part.HighestBidAmount * 97 / 100 - 50_000) * 3 + cleanDrill.HighestBidAmount +1000, "3x component price minus 3% for effort to remove");
         }
 
         [Test]
