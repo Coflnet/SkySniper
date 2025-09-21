@@ -136,6 +136,7 @@ namespace Coflnet.Sky.Sniper.Services
             "bass_weight",
             "polarvoid",
             "intelligence_earned",
+            "logs_cut",
             "chimera_found", // Diana's Bookshelf
             "is_shiny", // cosmetic effect on wither armor ~5% drop chance on Master Mode 7
         };
@@ -155,6 +156,7 @@ namespace Coflnet.Sky.Sniper.Services
             { "party_hat_color", m => new (m.Modifier, 20_000_000) {IsEstimate=true}},
             { "thunder_charge", m => new (m.Modifier, 50_000_000 * int.Parse(m.Modifier.Value) + 10_000_000){IsEstimate=true} },
             { "baseStatBoost", m => new (m.Modifier, (int)((float.Parse(m.Modifier.Value) - 45) * 500_000)) {IsEstimate=true}},
+            { "logs_cut", m=>  new(m.Modifier, m.Modifier.Value == "200k" ? 8_000_000 : 2_000_000){IsEstimate=true}},
             { "hotpc", m => new ("hotpc", m.Modifier.Value, m.Modifier.Value switch {
                 "1" => 5_000_000,
                 "0.1" => 2_000_000,
@@ -2580,6 +2582,8 @@ ORDER BY l.`AuctionId`  DESC;
                 return NormalizeGroupNumber(s, 100_000_000, 1_000_000_000);
             if (s.Key == "bass_weight")
                 return NormalizeGroupNumber(s, 2, 5, 10, 20, 50, 100, 200);
+            if (s.Key == "logs_cut")
+                return s.Value == "200000" ? new("logs_cut", "200k") : Ignore;
             if (s.Key == "candyUsed")
             {
                 var expAmount = GetNumeric(flatten.FirstOrDefault(f => f.Key == "exp"));

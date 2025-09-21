@@ -213,6 +213,24 @@ public class AuctionkeyTests
         Assert.That(key.Modifiers.First(m => m.Key == "candyUsed").Value, Is.EqualTo("0"));
         Assert.That(key.Modifiers.First(m => m.Key == "exp").Value, Is.EqualTo("0.6"));
     }
+    [Test]
+    public void LogsCutGroupAt200k()
+    {
+        var splitter = new SaveAuction()
+        {
+            Enchantments = [],
+            FlatenedNBT = new() { { "logs_cut", "200000" } },
+            Tag = "FIGSTONE_AXE"
+        };
+        var key = service.ValueKeyForTest(splitter);
+        Assert.That(key.Key.Modifiers.First(m => m.Key == "logs_cut").Value, Is.EqualTo("200k"));
+        Assert.That(key.ValueBreakdown.First().Value, Is.EqualTo(8_000_000));
+        splitter.FlatenedNBT["logs_cut"] = "150000";
+        key = service.ValueKeyForTest(splitter);
+        // gets ignored
+        Assert.That(key.Key.Modifiers.Any(m => m.Key == "logs_cut"), Is.False);
+        Assert.That(key.ValueBreakdown, Is.Empty);
+    }
 
     /// <summary>
     /// Slots only accessible when converting to another item are usually not worth it
