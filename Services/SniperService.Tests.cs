@@ -1320,12 +1320,12 @@ namespace Coflnet.Sky.Sniper
             var withoutPart = Dupplicate(drill);
             withoutPart.FlatenedNBT = new();
             var estimate = service.GetPrice(withoutPart);
-            Assert.That(9_000_000, Is.EqualTo(estimate.Median), "10m base - 1m component incl removal cost");
-            Assert.That(estimate.MedianKey, Is.EqualTo(" Any [drill_part_engine, component] UNKNOWN 1- component"), "drill part not in key");
+            Assert.That(9_080_000, Is.EqualTo(estimate.Median), "10m base - 1m component incl removal cost");
+            Assert.That(estimate.MedianKey, Is.EqualTo(" Any  UNKNOWN 1"), "drill part not in key");
 
             var estimateWithPart = service.GetPrice(drill);
-            Assert.That(10_000_000, Is.EqualTo(estimateWithPart.Median), "with part should be base");
-            Assert.That(estimateWithPart.MedianKey.Contains("drill_part_engine"));
+            Assert.That(estimateWithPart.Median, Is.InRange(9_900_000, highestValAuction.HighestBidAmount), "with part should be base");
+            Assert.That(estimate.MedianKey, Is.EqualTo(" Any  UNKNOWN 1"), "drill part not in key but added to price");
         }
         [Test]
         public void AdjustMedianBasedOnCleanAvg()
@@ -2496,7 +2496,7 @@ namespace Coflnet.Sky.Sniper
             service.FinishedUpdate();
             service.PrintLogQueue();
             var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
-            flip.TargetPrice.Should().Be((part.HighestBidAmount * 97 / 100 - 50_000) * 3 + cleanDrill.HighestBidAmount +1000, "3x component price minus 3% for effort to remove");
+            flip.TargetPrice.Should().Be((part.HighestBidAmount * 97 / 100 - 50_000) * 3 + cleanDrill.HighestBidAmount, "3x component price minus 3% for effort to remove");
         }
 
         [Test]

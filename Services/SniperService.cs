@@ -467,11 +467,6 @@ ORDER BY l.`AuctionId`  DESC;
                 MinEnchantMap[item.Type] = item.Level;
             }
 
-            foreach (var item in ItemKeys)
-            {
-                IncludeKeys.Add(item);
-            }
-
             string[] armorPieces = ["HELMET", "CHESTPLATE", "LEGGINGS", "BOOTS"];
             string[] tiers = ["", "HOT_", "BURNING_", "FIERY_", "INFERNAL_"];
             foreach (var toAdd in CrimsonArmors)
@@ -537,8 +532,8 @@ ORDER BY l.`AuctionId`  DESC;
             var itemKey = detailedKey.GetReduced(0);
             result.ItemKey = itemKey.ToString();
 
-            // add back gem value
-            var gemVal = GetGemValue(auction, itemKey);
+            // add back removed value (gem,drills and rod parts)
+            var gemVal = GetExtraValue(auction, itemKey);
             if (l.TryGetValue(itemKey, out ReferenceAuctions bucket))
             {
                 if (result.Lbin.AuctionId == default && bucket.Lbin.AuctionId != default)
@@ -835,7 +830,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         void AssignMedian(PriceEstimate result, AuctionKey key, ReferenceAuctions bucket, long gemVal)
         {
-            result.Median = bucket.Price + gemVal + (((key as AuctionKeyWithValue)?.ValueSubstract - gemVal * 20 / 19) / 3 ?? 0);
+            result.Median = bucket.Price + gemVal + (Math.Max((key as AuctionKeyWithValue)?.ValueSubstract - gemVal * 20 / 19 ?? 0, 0) / 3 );
             result.Volume = bucket.Volume;
             result.MedianKey = key.ToString();
             result.Volatility = bucket.Volatility;
