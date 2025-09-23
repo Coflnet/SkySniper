@@ -3156,7 +3156,7 @@ namespace Coflnet.Sky.Sniper
             {
                 service.TestNewAuction(toTest);
                 var snipe = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
-                snipe.TargetPrice.Should().Be(27266666L, "limited by 33% over median");
+                snipe.TargetPrice.Should().Be(25625000L, "limited by 25% over median");
             }
             finally
             {

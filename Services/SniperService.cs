@@ -3765,7 +3765,7 @@ ORDER BY l.`AuctionId`  DESC;
                 capped = CapAtCraftCost(groupTag.tag, higherValueLowerBin, breakdown, 0);
             else
             {
-                targetPrice = Math.Min(higherValueLowerBin * 99 / 100, bucket.Price * 4 / 3 + 1_000_000); // pull target up for non craftable clean
+                targetPrice = Math.Min(higherValueLowerBin * 99 / 100, bucket.Price * 5 / 4 + 1_000_000); // pull target up for non craftable clean
                 if (bucket.References.Count < WorkingSize && bucket.References.All(r => r.Day >= GetDay() - 1)) // no full context window (~80 sales) indicates new item that is probably dorpping in price
                     targetPrice = Math.Min(targetPrice, bucket.Price); // limit at median (which may also still drop)
             }
@@ -3859,7 +3859,7 @@ ORDER BY l.`AuctionId`  DESC;
             else if (price < 100_000_000)
                 fromPrice = price * 14 / 12;
             if (bucket.Volume > 10 && bucket.DeduplicatedReferenceCount > 32)
-                fromPrice = fromPrice * 12 / 10; // stable unbiased price, allow higher snipes
+                fromPrice = fromPrice * (reducedCraftValue == 0 ? 11 : 12) / 10; // stable unbiased price, allow higher snipes
             return Math.Max((long)reducedCraftValue, fromPrice);
         }
 

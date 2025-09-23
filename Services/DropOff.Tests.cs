@@ -832,7 +832,7 @@ public class DropOffTests
         sniperService.FinishedUpdate();
         sniperService.TestNewAuction(auction);
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
-        flip.TargetPrice.Should().Be(305_000_000L * 99 / 100);
+        flip.TargetPrice.Should().Be(294750000L);
 
     }
 
@@ -918,6 +918,29 @@ public class DropOffTests
         flip.TargetPrice.Should().BeGreaterThan(173_000_000L, "should be not much limited by the starting bid");
     }
 
+    /// <summary>
+    /// Relates to <see cref="SniperServiceTests.DoNotLimitSnipeAtCraftIfNotCraftable"/>
+    /// </summary>
+    /// <returns></returns>
+    [Test]
+    public void SniperLimitNotTooModerate()
+    {
+        AddLookupAndUpdateMeidans("ICE_SPRAY_WAND.json", "ICE_SPRAY_WAND", new DateTime(2025, 9, 22));
+        var auction = new SaveAuction()
+        {
+            Tag = "ICE_SPRAY_WAND",
+            StartingBid = 22_000_000,
+            UId = 4,
+            FlatenedNBT = new Dictionary<string, string>() {  },
+            AuctioneerId = "12aaa",
+            Tier = Tier.RARE,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
+        flip.TargetPrice.Should().BeInRange(20_000_000L, 24_500_000, "should be not much limited by the starting bid");
+    }
 
     /// <summary>
     /// Price drop protection should adjust to volume and not miss good flips
