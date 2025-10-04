@@ -24,7 +24,7 @@ public sealed record ModelMetrics(double Rmse, double RSquared);
 
 public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderService, IDisposable
 {
-    private const int MinSamplesForTraining = 120;
+    private readonly int minSamplesForTraining;
 
     private readonly ILogger<SelfLearningFlipFinderService> logger;
     private readonly MLContext mlContext;
@@ -39,11 +39,12 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     private readonly Dictionary<string, ModelMetrics?> lastMetricsByItem = new(StringComparer.OrdinalIgnoreCase);
     private bool disposed;
 
-    public SelfLearningFlipFinderService(ILogger<SelfLearningFlipFinderService> logger, IPersitanceManager persitance)
+    public SelfLearningFlipFinderService(ILogger<SelfLearningFlipFinderService> logger, IPersitanceManager persitance, int minSamplesForTraining = 120)
     {
         this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
         this.persitance = persitance ?? throw new ArgumentNullException(nameof(persitance));
         mlContext = new MLContext(seed: Environment.TickCount);
+        this.minSamplesForTraining = minSamplesForTraining;
 
         // no eager restore; models are loaded on demand per item when training or estimating
     }
@@ -93,7 +94,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 Label = SafeToFloat(flip.SoldFor)
             });
 
-            if (list.Count >= MinSamplesForTraining && fIndex.Count > 0)
+            if (list.Count >= minSamplesForTraining && fIndex.Count > 0)
             {
                 RefitModel(tag);
             }
@@ -142,7 +143,29 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 models.TryGetValue(tag, out tagModel);
             }
 
-            if (tagModel is null || !predictionEngines.TryGetValue(tag, out var tagEngine) || fIndex.Count == 0 || list.Count < MinSamplesForTraining)
+            // if still no model but we have enough in-memory samples, train on-demand
+            if ((tagModel is null) && trainingDataByItem.TryGetValue(tag, out var inMemList) && inMemList.Count >= minSamplesForTraining && fIndex.Count > 0)
+            {
+                // upgrade to write lock to train safely
+                gate.ExitReadLock();
+                gate.EnterWriteLock();
+                try
+                {
+                    RefitModel(tag);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "On-demand RefitModel failed for {Tag}", tag);
+                }
+                finally
+                {
+                    gate.ExitWriteLock();
+                }
+                gate.EnterReadLock();
+                models.TryGetValue(tag, out tagModel);
+            }
+
+            if (tagModel is null || !predictionEngines.TryGetValue(tag, out var tagEngine) || fIndex.Count == 0 || list.Count < minSamplesForTraining)
             {
                 return Task.FromResult(new SelfLearningFlipEstimate(baseline, baseline, false, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
             }
@@ -180,6 +203,27 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         finally
         {
             gate.ExitReadLock();
+        }
+    }
+
+    // test helper: force (re)build the model for a given tag from in-memory samples
+    public Task<bool> EnsureTrainedModelAsync(string tag)
+    {
+        if (disposed)
+            throw new ObjectDisposedException(nameof(SelfLearningFlipFinderService));
+
+        gate.EnterWriteLock();
+        try
+        {
+            RefitModel(tag);
+            var hasModel = models.TryGetValue(tag, out var m) && m is not null;
+            var hasEngine = predictionEngines.TryGetValue(tag, out var e) && e is not null;
+            try { Console.WriteLine($"EnsureTrainedModelAsync diagnostics for '{tag}': hasModel={hasModel}, hasEngine={hasEngine}"); } catch { }
+            return Task.FromResult(hasModel && hasEngine);
+        }
+        finally
+        {
+            gate.ExitWriteLock();
         }
     }
 
@@ -236,14 +280,26 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
 
     private void RefitModel(string tag)
     {
-        if (!featureIndexByItem.TryGetValue(tag, out var fIndex) || !trainingDataByItem.TryGetValue(tag, out var list))
+        var hasFIndex = featureIndexByItem.TryGetValue(tag, out var fIndex);
+        var hasList = trainingDataByItem.TryGetValue(tag, out var list);
+        try
+        {
+            var listCount = hasList ? list!.Count : -1;
+            var featureCountDiag = hasFIndex ? fIndex!.Count : -1;
+            var keysDiag = hasFIndex ? string.Join(",", fIndex!.Keys) : "";
+            Console.WriteLine($"RefitModel start for '{tag}': hasFIndex={hasFIndex}, hasList={hasList}, listCount={listCount}, featureCount={featureCountDiag}, keys=[{keysDiag}], minSamplesForTraining={minSamplesForTraining}");
+        }
+        catch { }
+
+        if (!hasFIndex || !hasList)
         {
             // nothing to do
+            try { Console.WriteLine($"RefitModel early exit for '{tag}': missing fIndex or list"); } catch { }
             return;
         }
 
-        var featureCount = fIndex.Count;
-        if (featureCount == 0 || list.Count < MinSamplesForTraining)
+        var featureCount = fIndex!.Count;
+    if (featureCount == 0 || list!.Count < minSamplesForTraining)
         {
             models[tag] = null;
             lock (predictionSync)
@@ -271,26 +327,58 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 FeatureFraction = 0.8
             }));
 
-        var tagModel = pipeline.Fit(dataView);
-        lock (predictionSync)
+        ITransformer? tagModel = null;
+        double rmse = double.NaN, r2 = double.NaN;
+        try
         {
-            predictionEngines.TryGetValue(tag, out var existing);
-            existing?.Dispose();
-            predictionEngines[tag] = mlContext.Model.CreatePredictionEngine<FlipData, FlipPrediction>(tagModel);
+            try { Console.WriteLine($"RefitModel: calling pipeline.Fit for '{tag}'"); } catch { }
+            tagModel = pipeline.Fit(dataView);
+            try { Console.WriteLine($"RefitModel: pipeline.Fit returned for '{tag}'"); } catch { }
+            lock (predictionSync)
+            {
+                predictionEngines.TryGetValue(tag, out var existing);
+                existing?.Dispose();
+                try { Console.WriteLine($"RefitModel: creating prediction engine for '{tag}'"); } catch { }
+                // use the same schema definition we used to create the IDataView so the Features vector has a fixed size
+                predictionEngines[tag] = mlContext.Model.CreatePredictionEngine<FlipData, FlipPrediction>(tagModel, ignoreMissingColumns: false, schema, null);
+                try { Console.WriteLine($"RefitModel: prediction engine created for '{tag}'"); } catch { }
+            }
+
+            models[tag] = tagModel;
+
+                try { Console.WriteLine($"RefitModel: model created for '{tag}' (tagModel is {(tagModel is null ? "null" : "non-null")})"); } catch { }
+
+            var metrics = mlContext.Regression.Evaluate(tagModel!.Transform(dataView), labelColumnName: nameof(FlipData.Label));
+            rmse = metrics?.RootMeanSquaredError ?? double.NaN;
+            r2 = metrics?.RSquared ?? double.NaN;
+            // store lightweight, serializable metrics
+            lastMetricsByItem[tag] = new ModelMetrics(rmse, r2);
+            logger.LogInformation("Self-learning flip finder retrained for {Tag} with {SampleCount} samples, RMSE {Rmse:F2}, R2 {R2:F3}", tag, list.Count, rmse, r2);
         }
-
-        models[tag] = tagModel;
-
-    var metrics = mlContext.Regression.Evaluate(tagModel.Transform(dataView), labelColumnName: nameof(FlipData.Label));
-    var rmse = metrics?.RootMeanSquaredError ?? double.NaN;
-    var r2 = metrics?.RSquared ?? double.NaN;
-    // store lightweight, serializable metrics
-    lastMetricsByItem[tag] = new ModelMetrics(rmse, r2);
-        logger.LogInformation("Self-learning flip finder retrained for {Tag} with {SampleCount} samples, RMSE {Rmse:F2}, R2 {R2:F3}", tag, list.Count, rmse, r2);
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Training failed for {Tag}", tag);
+                try
+                {
+                    Console.WriteLine($"Training failed for {tag}: {ex}");
+                }
+                catch { }
+            // ensure we clear any partial state
+            models[tag] = null;
+            lock (predictionSync)
+            {
+                predictionEngines.TryGetValue(tag, out var eng);
+                eng?.Dispose();
+                predictionEngines[tag] = null;
+            }
+            lastMetricsByItem[tag] = null;
+            return;
+        }
 
         // persist model and metadata asynchronously per-tag
         try
         {
+            try { Console.WriteLine($"Persisting model for '{tag}': rmse={rmse}, r2={r2}, tagModel is {(tagModel is null ? "null" : "non-null")}"); } catch { }
             using var ms = new System.IO.MemoryStream();
             mlContext.Model.Save(tagModel, dataView.Schema, ms);
             ms.Position = 0;
@@ -346,7 +434,9 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 models[tag] = tagModel;
                 lock (predictionSync)
                 {
-                    predictionEngines[tag] = mlContext.Model.CreatePredictionEngine<FlipData, FlipPrediction>(tagModel);
+                    var inputSchema = SchemaDefinition.Create(typeof(FlipData));
+                    inputSchema[nameof(FlipData.Features)].ColumnType = new VectorDataViewType(NumberDataViewType.Single, inputSchema[nameof(FlipData.Features)] is not null ? ((VectorDataViewType)inputSchema[nameof(FlipData.Features)].ColumnType).Size : schema.GetColumnOrNull(nameof(FlipData.Features))?.Type is VectorDataViewType v ? v.Size : -1);
+                    predictionEngines[tag] = mlContext.Model.CreatePredictionEngine<FlipData, FlipPrediction>(tagModel, ignoreMissingColumns: false, inputSchema, null);
                 }
             }
         }

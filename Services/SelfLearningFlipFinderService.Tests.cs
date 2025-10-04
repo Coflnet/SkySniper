@@ -39,7 +39,7 @@ public class SelfLearningFlipFinderServiceTests
     [Test]
     public async Task EstimateWithoutTraining_UsesBaselineFromCleanCost()
     {
-    using var service = new SelfLearningFlipFinderService(NullLogger<SelfLearningFlipFinderService>.Instance, new TestPersistence());
+    using var service = new SelfLearningFlipFinderService(NullLogger<SelfLearningFlipFinderService>.Instance, new TestPersistence(), minSamplesForTraining: 6);
         var flip = new ComplicatedFlip
         {
             AuctionId = Guid.NewGuid(),
@@ -63,7 +63,7 @@ public class SelfLearningFlipFinderServiceTests
     [Test]
     public async Task TrainingSamplesEnablePredictionsAboveBaseline()
     {
-    using var service = new SelfLearningFlipFinderService(NullLogger<SelfLearningFlipFinderService>.Instance, new TestPersistence());
+    using var service = new SelfLearningFlipFinderService(NullLogger<SelfLearningFlipFinderService>.Instance, new TestPersistence(), minSamplesForTraining: 12);
 
         for (var i = 0; i < 12; i++)
         {
@@ -89,6 +89,16 @@ public class SelfLearningFlipFinderServiceTests
 
             await service.TrainAsync(sample);
         }
+
+    // sanity-check: snapshot should show training samples present
+    var snap = service.GetSnapshot();
+    Console.WriteLine($"Snapshot: samples={snap.SampleCount}, features={snap.FeatureNames.Count}");
+    snap.SampleCount.Should().BeGreaterOrEqualTo(12);
+
+    // ensure model is trained from in-memory samples (tests run faster with explicit rebuild)
+    var trained = await service.EnsureTrainedModelAsync("TERMINATOR");
+    Console.WriteLine($"EnsureTrainedModelAsync returned: {trained}");
+    trained.Should().BeTrue();
 
         var estimateAttributes = new Dictionary<string, long>
         {
