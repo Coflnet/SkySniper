@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.FlipTracker.Client.Api;
+using ComplicatedFlip = Coflnet.Sky.FlipTracker.Client.Model.ComplicatedFlip;
 using Microsoft.Extensions.Logging;
 
 namespace Coflnet.Sky.Sniper.Services;
@@ -16,14 +17,16 @@ public class AIFormattingService
     private readonly IMayorService mayorService = null!;
     private readonly ITrackerApi trackerApi = null!;
     private readonly ICraftCostService craftCostService;
+    private readonly ISelfLearningFlipFinderService flipFinder;
 
-    public AIFormattingService(SniperService sniper, ILogger<AIFormattingService> logger, IMayorService mayorService, ITrackerApi trackerApi, ICraftCostService craftCostService)
+    public AIFormattingService(SniperService sniper, ILogger<AIFormattingService> logger, IMayorService mayorService, ITrackerApi trackerApi, ICraftCostService craftCostService, ISelfLearningFlipFinderService flipFinder)
     {
         this.sniper = sniper;
         this.logger = logger;
         this.mayorService = mayorService;
         this.trackerApi = trackerApi;
         this.craftCostService = craftCostService;
+        this.flipFinder = flipFinder;
     }
     // only some mayors have an effect on relevant item prices
     private static readonly HashSet<string> RelevantMayors = new() { "scorpius", "derpy", "jerry", "diana", "aatrox", "marina" };
@@ -99,14 +102,55 @@ public class AIFormattingService
         if (craftCostService.TryGetCost(auction.Tag, out var cost))
             attributeList["cleancost"] = (long)cost;
         logger.LogInformation("Adding sample for {tag} with {mayor} mayor", auction.Tag, mayor);
-        await trackerApi.SaveComplicatedFlipAsync(new()
+
+        var complicatedFlip = new ComplicatedFlip
         {
             AuctionId = Guid.Parse(auction.Uuid),
             ItemTag = auction.Tag,
             EndedAt = auction.End,
             SoldFor = auction.HighestBidAmount,
             AttributeValues = attributeList
-        });
+        };
+
+        SelfLearningFlipEstimate? estimate = null;
+        try
+        {
+            var estimationInput = new ComplicatedFlip
+            {
+                AuctionId = complicatedFlip.AuctionId,
+                ItemTag = complicatedFlip.ItemTag,
+                EndedAt = complicatedFlip.EndedAt,
+                SoldFor = 0,
+                AttributeValues = new Dictionary<string, long>(attributeList)
+            };
+            estimate = await flipFinder.EstimateAsync(estimationInput);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to estimate flip value for {tag}", auction.Tag);
+        }
+
+        await trackerApi.SaveComplicatedFlipAsync(complicatedFlip);
+
+        if (estimate is not null)
+        {
+            logger.LogInformation(
+                "Flip estimator prediction for {tag}: {estimateValue:F0} baseline {baseline:F0} (ready: {ready}, samples: {sampleCount})",
+                auction.Tag,
+                estimate.EstimatedValue,
+                estimate.BaselineValue,
+                estimate.ModelReady,
+                estimate.SampleCount);
+        }
+
+        try
+        {
+            await flipFinder.TrainAsync(complicatedFlip);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to train flip estimator for {tag}", auction.Tag);
+        }
     }
 }
 #nullable disable

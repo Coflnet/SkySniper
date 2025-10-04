@@ -12,6 +12,8 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using MessagePack;
 using Amazon.S3.Model;
+using Coflnet.Sky.FlipTracker.Client.Api;
+using ComplicatedFlip = Coflnet.Sky.FlipTracker.Client.Model.ComplicatedFlip;
 
 namespace Coflnet.Sky.Sniper.Controllers
 {
@@ -24,6 +26,8 @@ namespace Coflnet.Sky.Sniper.Controllers
         private readonly ITokenService tokenService;
         private readonly ICraftCostService craftCostService;
         private readonly IPersitanceManager persitanceManager;
+        private readonly ITrackerApi trackerApi;
+        private readonly ISelfLearningFlipFinderService flipFinder;
 
         public SniperController(
             ILogger<SniperController> logger,
@@ -31,13 +35,17 @@ namespace Coflnet.Sky.Sniper.Controllers
             ITokenService tokenService,
             ICraftCostService craftCostService,
             IAttributeFlipService attributeFlipService, // hook into events
-            IPersitanceManager persitanceManager)
+            IPersitanceManager persitanceManager,
+            ITrackerApi trackerApi,
+            ISelfLearningFlipFinderService flipFinder)
         {
             _logger = logger;
             this.service = service;
             this.tokenService = tokenService;
             this.craftCostService = craftCostService;
             this.persitanceManager = persitanceManager;
+            this.trackerApi = trackerApi;
+            this.flipFinder = flipFinder;
         }
 
 
@@ -297,6 +305,40 @@ namespace Coflnet.Sky.Sniper.Controllers
                     await Task.Delay(3000);
                 }
             }
+        }
+
+        /// <summary>
+        /// Load complicated flips tracked in the tracker service for a given item tag and retrain the local flip finder with them.
+        /// </summary>
+        /// <param name="tag">Item tag</param>
+        [Route("retrain/{tag}")]
+        [HttpPost]
+        public async Task<int> RetrainFromTracker(string tag)
+        {
+            var total = 0;
+            try
+            {
+                var flips = await trackerApi.GetComplicatedFlipsAsync(tag);
+                foreach (var f in flips)
+                {
+                    try
+                    {
+                        await flipFinder.TrainAsync(f);
+                        total++;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to train on flip {AuctionId}", f.AuctionId);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load complicated flips from tracker for {Tag}", tag);
+                throw;
+            }
+
+            return total;
         }
 
         [Route("search/{tag}/{itemId}")]

@@ -3248,6 +3248,26 @@ namespace Coflnet.Sky.Sniper
 
     public class MockPersistenceManager : IPersitanceManager
     {
+        private readonly Dictionary<string, byte[]> blobs = new();
+
+        public Task SaveBlob(string key, System.IO.Stream data)
+        {
+            using var ms = new System.IO.MemoryStream();
+            data.Position = 0;
+            data.CopyTo(ms);
+            blobs[key] = ms.ToArray();
+            return Task.CompletedTask;
+        }
+
+        public Task<System.IO.Stream> LoadBlob(string key)
+        {
+            if (blobs.TryGetValue(key, out var bytes))
+            {
+                return Task.FromResult<System.IO.Stream>(new System.IO.MemoryStream(bytes));
+            }
+            throw new System.IO.FileNotFoundException($"Blob {key} not found");
+        }
+
         public Task<ConcurrentDictionary<string, AttributeLookup>> GetWeigths()
         {
             return Task.FromResult(new ConcurrentDictionary<string, AttributeLookup>());

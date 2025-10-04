@@ -13,6 +13,8 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
+#nullable enable
+
 namespace Coflnet.Sky.Sniper.Services
 {
     public class S3PersistanceManager : IPersitanceManager
@@ -213,6 +215,35 @@ namespace Coflnet.Sky.Sniper.Services
         {
             using var result = await GetStreamForObject("group-craft");
             return await MessagePackSerializer.DeserializeAsync<Dictionary<string,double>>(result, GroupOptions());
+        }
+
+        public async Task SaveBlob(string key, Stream data)
+        {
+            try
+            {
+                data.Position = 0;
+                var putResponse = await s3Client.PutObjectAsync(new PutObjectRequest()
+                {
+                    BucketName = "sky-sniper",
+                    Key = key,
+                    DisablePayloadSigning = true,
+                    InputStream = data
+                });
+                logger.LogInformation("Saved blob {Key} status {Status}", key, putResponse.HttpStatusCode);
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e, "Failed to save blob {Key}", key);
+            }
+        }
+
+        public async Task<Stream> LoadBlob(string key)
+        {
+            var response = await s3Client.GetObjectAsync("sky-sniper", key);
+            var ms = new MemoryStream();
+            await response.ResponseStream.CopyToAsync(ms);
+            ms.Position = 0;
+            return ms;
         }
 
         public async Task<List<KeyValuePair<string, PriceLookup>>> LoadGroup(int key)
