@@ -52,14 +52,26 @@ public class AuctionController : ControllerBase
             var flip = SaveAuctionExtensions.ToComplicatedFlip((object)auction);
             var estimate = await flipFinder.EstimateAsync(flip);
 
-            // return both the self-learning estimate and the baseline for visibility
+            // obtain the value breakdown used by the baseline estimator for visibility
+            KeyWithValueBreakdown breakdown = null;
+            try
+            {
+                breakdown = service.ValueKeyForTest(auction);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to compute value breakdown for auction {AuctionUuid}", auctionUuid);
+            }
+
+            // return both the self-learning estimate and the baseline for visibility, including breakdown
             return Ok(new
             {
                 Estimated = estimate.EstimatedValue,
                 Baseline = estimate.BaselineValue,
                 ModelReady = estimate.ModelReady,
                 SampleCount = estimate.SampleCount,
-                Metrics = estimate.Metrics
+                Metrics = estimate.Metrics,
+                Breakdown = breakdown?.ValueBreakdown
             });
         }
         catch (System.Exception ex)
