@@ -18,12 +18,14 @@ public interface ISelfLearningFlipFinderService
     Task TrainAsync(ComplicatedFlip flip, CancellationToken cancellationToken = default);
     Task<SelfLearningFlipEstimate> EstimateAsync(ComplicatedFlip flip, CancellationToken cancellationToken = default);
     SelfLearningFlipModelSnapshot GetSnapshot();
+    IReadOnlyDictionary<string, SelfLearningFlipFinderService.ModelStats> GetModelStats();
 }
 
 public sealed record ModelMetrics(double Rmse, double RSquared);
 
 public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderService, IDisposable
 {
+    public sealed record ModelStats(string Tag, IReadOnlyCollection<string> FeatureNames, int SampleCount, bool ModelLoaded, ModelMetrics? Metrics);
     private readonly int minSamplesForTraining;
 
     private readonly ILogger<SelfLearningFlipFinderService> logger;
@@ -47,6 +49,29 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         this.minSamplesForTraining = minSamplesForTraining;
 
         // no eager restore; models are loaded on demand per item when training or estimating
+    }
+
+    public IReadOnlyDictionary<string, ModelStats> GetModelStats()
+    {
+        gate.EnterReadLock();
+        try
+        {
+            var result = new Dictionary<string, ModelStats>(StringComparer.OrdinalIgnoreCase);
+            foreach (var tag in trainingDataByItem.Keys.Union(featureIndexByItem.Keys).Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                trainingDataByItem.TryGetValue(tag, out var list);
+                featureIndexByItem.TryGetValue(tag, out var fIndex);
+                models.TryGetValue(tag, out var model);
+                lastMetricsByItem.TryGetValue(tag, out var metrics);
+                var stat = new ModelStats(tag, fIndex?.Keys.ToArray() ?? Array.Empty<string>(), list?.Count ?? 0, model is not null, metrics);
+                result[tag] = stat;
+            }
+            return result;
+        }
+        finally
+        {
+            gate.ExitReadLock();
+        }
     }
 
     public Task TrainAsync(ComplicatedFlip flip, CancellationToken cancellationToken = default)
@@ -218,7 +243,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             RefitModel(tag);
             var hasModel = models.TryGetValue(tag, out var m) && m is not null;
             var hasEngine = predictionEngines.TryGetValue(tag, out var e) && e is not null;
-            try { Console.WriteLine($"EnsureTrainedModelAsync diagnostics for '{tag}': hasModel={hasModel}, hasEngine={hasEngine}"); } catch { }
+            // diagnostics removed
             return Task.FromResult(hasModel && hasEngine);
         }
         finally
@@ -282,14 +307,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     {
         var hasFIndex = featureIndexByItem.TryGetValue(tag, out var fIndex);
         var hasList = trainingDataByItem.TryGetValue(tag, out var list);
-        try
-        {
-            var listCount = hasList ? list!.Count : -1;
-            var featureCountDiag = hasFIndex ? fIndex!.Count : -1;
-            var keysDiag = hasFIndex ? string.Join(",", fIndex!.Keys) : "";
-            Console.WriteLine($"RefitModel start for '{tag}': hasFIndex={hasFIndex}, hasList={hasList}, listCount={listCount}, featureCount={featureCountDiag}, keys=[{keysDiag}], minSamplesForTraining={minSamplesForTraining}");
-        }
-        catch { }
+        // debug diagnostics removed
 
         if (!hasFIndex || !hasList)
         {
@@ -331,22 +349,18 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         double rmse = double.NaN, r2 = double.NaN;
         try
         {
-            try { Console.WriteLine($"RefitModel: calling pipeline.Fit for '{tag}'"); } catch { }
             tagModel = pipeline.Fit(dataView);
-            try { Console.WriteLine($"RefitModel: pipeline.Fit returned for '{tag}'"); } catch { }
             lock (predictionSync)
             {
                 predictionEngines.TryGetValue(tag, out var existing);
                 existing?.Dispose();
-                try { Console.WriteLine($"RefitModel: creating prediction engine for '{tag}'"); } catch { }
                 // use the same schema definition we used to create the IDataView so the Features vector has a fixed size
                 predictionEngines[tag] = mlContext.Model.CreatePredictionEngine<FlipData, FlipPrediction>(tagModel, ignoreMissingColumns: false, schema, null);
-                try { Console.WriteLine($"RefitModel: prediction engine created for '{tag}'"); } catch { }
             }
 
             models[tag] = tagModel;
 
-                try { Console.WriteLine($"RefitModel: model created for '{tag}' (tagModel is {(tagModel is null ? "null" : "non-null")})"); } catch { }
+                // model created
 
             var metrics = mlContext.Regression.Evaluate(tagModel!.Transform(dataView), labelColumnName: nameof(FlipData.Label));
             rmse = metrics?.RootMeanSquaredError ?? double.NaN;
@@ -358,11 +372,6 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Training failed for {Tag}", tag);
-                try
-                {
-                    Console.WriteLine($"Training failed for {tag}: {ex}");
-                }
-                catch { }
             // ensure we clear any partial state
             models[tag] = null;
             lock (predictionSync)
@@ -378,7 +387,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         // persist model and metadata asynchronously per-tag
         try
         {
-            try { Console.WriteLine($"Persisting model for '{tag}': rmse={rmse}, r2={r2}, tagModel is {(tagModel is null ? "null" : "non-null")}"); } catch { }
+            // persisting model
             using var ms = new System.IO.MemoryStream();
             mlContext.Model.Save(tagModel, dataView.Schema, ms);
             ms.Position = 0;

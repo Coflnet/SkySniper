@@ -48,6 +48,29 @@ namespace Coflnet.Sky.Sniper.Controllers
             this.flipFinder = flipFinder;
         }
 
+        [HttpGet]
+        [Route("selflearning/stats")]
+        public ActionResult<object> GetSelfLearningStats()
+        {
+            try
+            {
+                var stats = flipFinder.GetModelStats();
+                return Ok(stats.Values.Select(s => new
+                {
+                    s.Tag,
+                    FeatureNames = s.FeatureNames,
+                    s.SampleCount,
+                    s.ModelLoaded,
+                    Metrics = s.Metrics
+                }));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get self-learning stats");
+                return StatusCode(500);
+            }
+        }
+
 
         [HttpGet]
         [Route("/ready")]
