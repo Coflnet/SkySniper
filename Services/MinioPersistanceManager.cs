@@ -69,6 +69,8 @@ namespace Coflnet.Sky.Sniper.Services
                     }
                     catch (Exception e)
                     {
+                        if(e.Message.Contains("The specified bucket does not exist"))
+                            break; // no data yet
                         await Task.Delay(200);
                         logger.LogError(e, "Could not load group {groupId}, first item", groupId);
                         attempts++;

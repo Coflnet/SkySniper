@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Coflnet.Sky.FlipTracker.Client.Model;
+using MessagePack;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML;
 using Microsoft.ML.Data;
@@ -317,7 +318,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         }
 
         var featureCount = fIndex!.Count;
-    if (featureCount == 0 || list!.Count < minSamplesForTraining)
+        if (featureCount == 0 || list!.Count < minSamplesForTraining)
         {
             models[tag] = null;
             lock (predictionSync)
@@ -360,7 +361,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
 
             models[tag] = tagModel;
 
-                // model created
+            // model created
 
             var metrics = mlContext.Regression.Evaluate(tagModel!.Transform(dataView), labelColumnName: nameof(FlipData.Label));
             rmse = metrics?.RootMeanSquaredError ?? double.NaN;
@@ -400,10 +401,32 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 Rmse = double.IsNaN(rmse) ? null : rmse,
                 RSquared = double.IsNaN(r2) ? null : r2
             };
-            var metaStream = new System.IO.MemoryStream();
-            MessagePack.MessagePackSerializer.Serialize(metaStream, meta);
-            metaStream.Position = 0;
-            _ = persitance.SaveBlob($"selflearning/meta/{tag}", metaStream);
+
+            // Persist all metas in a single blob to reduce IO operations
+            try
+            {
+                // load existing combined meta blob
+                var combinedMeta = new Dictionary<string, PersistMeta>(StringComparer.OrdinalIgnoreCase);
+                try
+                {
+                    var existing = persitance.LoadBlob("selflearning/meta/all").Result;
+                    if (existing is not null)
+                    {
+                        combinedMeta = MessagePack.MessagePackSerializer.Deserialize<Dictionary<string, PersistMeta>>(existing);
+                    }
+                }
+                catch { /* ignore, we'll overwrite */ }
+
+                combinedMeta[tag] = meta;
+                var outStream = new System.IO.MemoryStream();
+                MessagePack.MessagePackSerializer.Serialize(outStream, combinedMeta);
+                outStream.Position = 0;
+                _ = persitance.SaveBlob("selflearning/meta/all", outStream);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to persist combined self-learning meta for {Tag}", tag);
+            }
             // metrics already populated from evaluation above
         }
         catch (Exception ex)
@@ -416,25 +439,33 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     {
         try
         {
-            var metaStream = await persitance.LoadBlob($"selflearning/meta/{tag}");
-            if (metaStream is not null)
+            try
             {
-                var meta = MessagePack.MessagePackSerializer.Deserialize<PersistMeta>(metaStream);
-                // restore feature index
-                var fIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-                for (int i = 0; i < meta.FeatureNames.Length; i++)
-                    fIndex[meta.FeatureNames[i]] = i;
-                featureIndexByItem[tag] = fIndex;
-                // set sample count placeholder
-                trainingDataByItem.TryGetValue(tag, out var list);
-                if (meta.Rmse.HasValue || meta.RSquared.HasValue)
+                var combinedStream = await persitance.LoadBlob("selflearning/meta/all");
+                if (combinedStream is not null)
                 {
-                    lastMetricsByItem[tag] = new ModelMetrics(meta.Rmse ?? double.NaN, meta.RSquared ?? double.NaN);
+                    var combined = MessagePack.MessagePackSerializer.Deserialize<Dictionary<string, PersistMeta>>(combinedStream);
+                    if (combined != null && combined.TryGetValue(tag, out var meta))
+                    {
+                        var fIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                        for (int i = 0; i < meta.FeatureNames.Length; i++)
+                            fIndex[meta.FeatureNames[i]] = i;
+                        featureIndexByItem[tag] = fIndex;
+                        trainingDataByItem.TryGetValue(tag, out var list);
+                        if (meta.Rmse.HasValue || meta.RSquared.HasValue)
+                        {
+                            lastMetricsByItem[tag] = new ModelMetrics(meta.Rmse ?? double.NaN, meta.RSquared ?? double.NaN);
+                        }
+                        else
+                        {
+                            lastMetricsByItem[tag] = new ModelMetrics(double.NaN, double.NaN);
+                        }
+                    }
                 }
-                else
-                {
-                    lastMetricsByItem[tag] = new ModelMetrics(double.NaN, double.NaN);
-                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogDebug(ex, "No persisted combined model/meta available");
             }
             var modelStream = await persitance.LoadBlob($"selflearning/model/{tag}");
             if (modelStream is not null)
@@ -515,12 +546,16 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         gate.Dispose();
     }
 
-    [System.Serializable]
-    private sealed class PersistMeta
+    [MessagePackObject]
+    public sealed class PersistMeta
     {
+        [Key(0)]
         public string[] FeatureNames { get; set; } = Array.Empty<string>();
+        [Key(1)]
         public int SampleCount { get; set; }
+        [Key(2)]
         public double? Rmse { get; set; }
+        [Key(3)]
         public double? RSquared { get; set; }
     }
 
