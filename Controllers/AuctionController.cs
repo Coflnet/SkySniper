@@ -3,7 +3,11 @@ using Coflnet.Sky.Sniper.Models;
 using Coflnet.Sky.Sniper.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Threading.Tasks;
 using Coflnet.Sky.Core;
+using ComplicatedFlip = Coflnet.Sky.FlipTracker.Client.Model.ComplicatedFlip;
+using Coflnet.Sky.FlipTracker.Client.Model;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 
@@ -15,12 +19,14 @@ public class AuctionController : ControllerBase
     private readonly ILogger<AuctionController> _logger;
     private readonly SniperService service;
     private readonly HypixelContext db;
+    private readonly ISelfLearningFlipFinderService flipFinder;
 
-    public AuctionController(ILogger<AuctionController> logger, SniperService service, HypixelContext db)
+    public AuctionController(ILogger<AuctionController> logger, SniperService service, HypixelContext db, ISelfLearningFlipFinderService flipFinder)
     {
         _logger = logger;
         this.service = service;
         this.db = db;
+        this.flipFinder = flipFinder;
     }
 
     [Route("auction/{auctionUuid}/key")]
@@ -30,6 +36,37 @@ public class AuctionController : ControllerBase
         var uid = AuctionService.Instance.GetId(auctionUuid);
         var auction = db.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments).FirstOrDefault(a => a.UId == uid);
         return service.KeyFromSaveAuction(auction);
+    }
+
+    [Route("auction/{auctionUuid}/estimate")]
+    [HttpGet]
+    public async Task<ActionResult<object>> GetEstimate(string auctionUuid)
+    {
+        var uid = AuctionService.Instance.GetId(auctionUuid);
+        var auction = db.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments).FirstOrDefault(a => a.UId == uid);
+        if (auction == null)
+            return NotFound();
+        try
+        {
+            // Convert to ComplicatedFlip using the shared helper (lightweight mode)
+            var flip = SaveAuctionExtensions.ToComplicatedFlip((object)auction);
+            var estimate = await flipFinder.EstimateAsync(flip);
+
+            // return both the self-learning estimate and the baseline for visibility
+            return Ok(new
+            {
+                Estimated = estimate.EstimatedValue,
+                Baseline = estimate.BaselineValue,
+                ModelReady = estimate.ModelReady,
+                SampleCount = estimate.SampleCount,
+                Metrics = estimate.Metrics
+            });
+        }
+        catch (System.Exception ex)
+        {
+            _logger.LogError(ex, "Failed to estimate price for auction {AuctionUuid}", auctionUuid);
+            return StatusCode(500);
+        }
     }
 
     [Route("relevantItems")]

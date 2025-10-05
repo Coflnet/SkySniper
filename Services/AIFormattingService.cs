@@ -90,17 +90,10 @@ public class AIFormattingService
     {
         if (!RelevantItems.Contains(auction.Tag))
             return;
-        var withBreakdown = sniper.ValueKeyForTest(auction);
-        var fullFlag = 10_000_000_000;
-        var attributeList = withBreakdown.ValueBreakdown.Select(x =>
-            (x.Enchant.Type != default ? $"{x.Enchant.Type}:{x.Enchant.Lvl}" : x.Modifier.Key != default ? $"{x.Modifier.Key}:{x.Modifier.Value}" : x.Reforge.ToString(),
-                x.IsEstimate ? fullFlag : x.Value))
-            .ToDictionary(x => x.Item1, x => x.Item2);
+        // include full breakdown, mayor and cleancost when creating training sample
+        var fullFlip = SaveAuctionExtensions.ToComplicatedFlip(auction, includeBreakdown: true, sniper: sniper, mayorService: mayorService, craftCostService: craftCostService);
+        var attributeList = fullFlip.AttributeValues;
         var mayor = mayorService.GetMayor(auction.End);
-        if (RelevantMayors.Contains(mayor))
-            attributeList["m:" + mayor] = fullFlag;
-        if (craftCostService.TryGetCost(auction.Tag, out var cost))
-            attributeList["cleancost"] = (long)cost;
         logger.LogInformation("Adding sample for {tag} with {mayor} mayor", auction.Tag, mayor);
 
         var complicatedFlip = new ComplicatedFlip
@@ -109,7 +102,7 @@ public class AIFormattingService
             ItemTag = auction.Tag,
             EndedAt = auction.End,
             SoldFor = auction.HighestBidAmount,
-            AttributeValues = attributeList
+            AttributeValues = new Dictionary<string, long>(attributeList)
         };
 
         SelfLearningFlipEstimate? estimate = null;
