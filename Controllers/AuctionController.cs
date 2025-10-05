@@ -10,6 +10,7 @@ using ComplicatedFlip = Coflnet.Sky.FlipTracker.Client.Model.ComplicatedFlip;
 using Coflnet.Sky.FlipTracker.Client.Model;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace Coflnet.Sky.Sniper.Controllers;
 [ApiController]
@@ -20,13 +21,17 @@ public class AuctionController : ControllerBase
     private readonly SniperService service;
     private readonly HypixelContext db;
     private readonly ISelfLearningFlipFinderService flipFinder;
+    private readonly IMayorService mayorService;
+    private readonly ICraftCostService craftCostService;
 
-    public AuctionController(ILogger<AuctionController> logger, SniperService service, HypixelContext db, ISelfLearningFlipFinderService flipFinder)
+    public AuctionController(ILogger<AuctionController> logger, SniperService service, HypixelContext db, ISelfLearningFlipFinderService flipFinder, IMayorService mayorService, ICraftCostService craftCostService)
     {
         _logger = logger;
         this.service = service;
         this.db = db;
         this.flipFinder = flipFinder;
+        this.mayorService = mayorService;
+        this.craftCostService = craftCostService;
     }
 
     [Route("auction/{auctionUuid}/key")]
@@ -48,8 +53,9 @@ public class AuctionController : ControllerBase
             return NotFound();
         try
         {
-            // Convert to ComplicatedFlip using the shared helper (lightweight mode)
-            var flip = SaveAuctionExtensions.ToComplicatedFlip((object)auction);
+            // Convert to ComplicatedFlip using the shared helper (include full breakdown)
+            var flip = SaveAuctionExtensions.ToComplicatedFlip(auction, includeBreakdown: true, sniper: service, mayorService: mayorService, craftCostService: craftCostService);
+            _logger.LogInformation(JsonConvert.SerializeObject(flip));
             var estimate = await flipFinder.EstimateAsync(flip);
 
             // obtain the value breakdown used by the baseline estimator for visibility

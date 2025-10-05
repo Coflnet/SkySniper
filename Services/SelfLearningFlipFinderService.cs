@@ -8,12 +8,17 @@ using MessagePack;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML;
 using Microsoft.ML.Data;
-using Microsoft.ML.Trainers.FastTree;
+using Microsoft.ML.Trainers;
 
 namespace Coflnet.Sky.Sniper.Services;
 
 #nullable enable
 
+/// <summary>
+/// Service for self-learning auction price prediction using ML.NET FastTree regression.
+/// Trains per-item models to estimate auction values based on attributes (enchantments, upgrades, etc.)
+/// Uses FastTree (gradient boosted decision trees) which handles large attribute values well.
+/// </summary>
 public interface ISelfLearningFlipFinderService
 {
     Task TrainAsync(ComplicatedFlip flip, CancellationToken cancellationToken = default);
@@ -24,13 +29,20 @@ public interface ISelfLearningFlipFinderService
     Task PersistModelAsync(string? tag = null);
 }
 
+/// <summary>
+/// Model evaluation metrics for regression tasks.
+/// </summary>
 public sealed record ModelMetrics(double Rmse, double RSquared);
 
+/// <summary>
+/// Self-learning auction price predictor using ML.NET FastTree regression.
+/// FastTree uses gradient boosted decision trees which handle large feature values and non-linear relationships well.
+/// </summary>
 public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderService, IDisposable
 {
     public sealed record ModelStats(string Tag, IReadOnlyCollection<string> FeatureNames, int SampleCount, bool ModelLoaded, ModelMetrics? Metrics);
+    
     private readonly int minSamplesForTraining;
-
     private readonly ILogger<SelfLearningFlipFinderService> logger;
     private readonly MLContext mlContext;
     private readonly IPersitanceManager persitance;
@@ -38,13 +50,10 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     private readonly Dictionary<string, List<FlipData>> trainingDataByItem = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Dictionary<string, int>> featureIndexByItem = new(StringComparer.OrdinalIgnoreCase);
     private readonly object predictionSync = new();
-
     private readonly Dictionary<string, ITransformer?> models = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, PredictionEngine<FlipData, FlipPrediction>?> predictionEngines = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, ModelMetrics?> lastMetricsByItem = new(StringComparer.OrdinalIgnoreCase);
-    // track when a tag was last persisted to avoid frequent writes
     private readonly Dictionary<string, DateTime> lastPersistedByTag = new(StringComparer.OrdinalIgnoreCase);
-    // track which tags we've attempted to load already to avoid repeated loads
     private readonly HashSet<string> loadedTags = new(StringComparer.OrdinalIgnoreCase);
     private bool disposed;
 
@@ -58,28 +67,31 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         // no eager restore; models are loaded on demand per item when training or estimating
     }
 
+    /// <summary>
+    /// Forces persistence of trained models to storage.
+    /// </summary>
+    /// <param name="tag">Item tag to persist, or null to persist all models</param>
     public Task PersistModelAsync(string? tag = null)
     {
         if (disposed)
             throw new ObjectDisposedException(nameof(SelfLearningFlipFinderService));
 
-        // persist a single tag or all known tags
         gate.EnterWriteLock();
         try
         {
-            var tags = tag is null
+            var tagsToProcess = tag is null
                 ? trainingDataByItem.Keys.Union(featureIndexByItem.Keys).Distinct(StringComparer.OrdinalIgnoreCase).ToArray()
                 : new[] { tag };
 
-            foreach (var t in tags)
+            foreach (var itemTag in tagsToProcess)
             {
                 try
                 {
-                    RefitModel(t, forcePersist: true);
+                    RefitModel(itemTag, forcePersist: true);
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex, "PersistModelAsync failed for {Tag}", t);
+                    logger.LogWarning(ex, "Failed to persist model for {Tag}", itemTag);
                 }
             }
         }
@@ -90,6 +102,12 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Trains models with a batch of flips. More efficient than individual TrainAsync calls.
+    /// Groups flips by item tag and trains/refits models for each tag.
+    /// </summary>
+    /// <param name="flips">Completed auction flips with attributes and sale prices</param>
+    /// <param name="cancellationToken">Cancellation token</param>
     public Task TrainBatchAsync(IEnumerable<ComplicatedFlip> flips, CancellationToken cancellationToken = default)
     {
         if (flips is null)
@@ -97,16 +115,35 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         if (disposed)
             throw new ObjectDisposedException(nameof(SelfLearningFlipFinderService));
 
-        // group flips by tag first to minimize lock time
+        var flipsByTag = GroupFlipsByTag(flips);
+        if (flipsByTag.Count == 0)
+            return Task.CompletedTask;
+
+        gate.EnterWriteLock();
+        try
+        {
+            AddTrainingSamples(flipsByTag);
+            RefitModelsForTags(flipsByTag.Keys);
+        }
+        finally
+        {
+            gate.ExitWriteLock();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Groups flips by item tag, filtering out invalid entries.
+    /// </summary>
+    private Dictionary<string, List<ComplicatedFlip>> GroupFlipsByTag(IEnumerable<ComplicatedFlip> flips)
+    {
         var flipsByTag = new Dictionary<string, List<ComplicatedFlip>>(StringComparer.OrdinalIgnoreCase);
         foreach (var flip in flips)
         {
-            if (flip is null)
+            if (flip is null || flip.AttributeValues is null || flip.AttributeValues.Count == 0 || flip.SoldFor <= 0)
                 continue;
-            if (flip.AttributeValues is null || flip.AttributeValues.Count == 0)
-                continue;
-            if (flip.SoldFor <= 0)
-                continue;
+
             var tag = flip.ItemTag ?? "_global";
             if (!flipsByTag.TryGetValue(tag, out var list))
             {
@@ -115,58 +152,56 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             }
             list.Add(flip);
         }
+        return flipsByTag;
+    }
 
-        if (flipsByTag.Count == 0)
-            return Task.CompletedTask;
-
-        gate.EnterWriteLock();
-        try
+    /// <summary>
+    /// Adds training samples for multiple tags.
+    /// </summary>
+    private void AddTrainingSamples(Dictionary<string, List<ComplicatedFlip>> flipsByTag)
+    {
+        foreach (var (tag, flips) in flipsByTag)
         {
-            foreach (var kv in flipsByTag)
+            if (!trainingDataByItem.TryGetValue(tag, out var sampleList))
             {
-                var tag = kv.Key;
-                if (!trainingDataByItem.TryGetValue(tag, out var sampleList))
-                {
-                    sampleList = new List<FlipData>();
-                    trainingDataByItem[tag] = sampleList;
-                }
-                if (!featureIndexByItem.TryGetValue(tag, out var fIndex))
-                {
-                    fIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-                    featureIndexByItem[tag] = fIndex;
-                }
-
-                foreach (var flip in kv.Value)
-                {
-                    var attrs = new Dictionary<string, long>(flip.AttributeValues);
-                    var featureVector = CreateFeatureVector(attrs, fIndex, expandFeatureSpace: true, sampleList);
-                    sampleList.Add(new FlipData
-                    {
-                        Features = featureVector,
-                        Label = SafeToFloat(flip.SoldFor)
-                    });
-                }
+                sampleList = new List<FlipData>();
+                trainingDataByItem[tag] = sampleList;
+            }
+            if (!featureIndexByItem.TryGetValue(tag, out var featureIndex))
+            {
+                featureIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                featureIndexByItem[tag] = featureIndex;
             }
 
-            // After adding all samples, refit and persist once per tag
-            foreach (var tag in flipsByTag.Keys)
+            foreach (var flip in flips)
             {
-                try
+                var attributes = new Dictionary<string, long>(flip.AttributeValues);
+                var featureVector = CreateFeatureVector(attributes, featureIndex, expandFeatureSpace: true, sampleList);
+                sampleList.Add(new FlipData
                 {
-                    RefitModel(tag, forcePersist: true);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Batch RefitModel failed for {Tag}", tag);
-                }
+                    Features = featureVector,
+                    Label = SafeToFloat(flip.SoldFor)
+                });
             }
         }
-        finally
-        {
-            gate.ExitWriteLock();
-        }
+    }
 
-        return Task.CompletedTask;
+    /// <summary>
+    /// Refits models for the specified tags.
+    /// </summary>
+    private void RefitModelsForTags(IEnumerable<string> tags)
+    {
+        foreach (var tag in tags)
+        {
+            try
+            {
+                RefitModel(tag, forcePersist: true);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to refit model for {Tag} during batch training", tag);
+            }
+        }
     }
 
     public IReadOnlyDictionary<string, ModelStats> GetModelStats()
@@ -178,10 +213,10 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             foreach (var tag in trainingDataByItem.Keys.Union(featureIndexByItem.Keys).Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 trainingDataByItem.TryGetValue(tag, out var list);
-                featureIndexByItem.TryGetValue(tag, out var fIndex);
+                featureIndexByItem.TryGetValue(tag, out var featureIndex);
                 models.TryGetValue(tag, out var model);
                 lastMetricsByItem.TryGetValue(tag, out var metrics);
-                var stat = new ModelStats(tag, fIndex?.Keys.ToArray() ?? Array.Empty<string>(), list?.Count ?? 0, model is not null, metrics);
+                var stat = new ModelStats(tag, featureIndex?.Keys.ToArray() ?? Array.Empty<string>(), list?.Count ?? 0, model is not null, metrics);
                 result[tag] = stat;
             }
             return result;
@@ -192,6 +227,9 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         }
     }
 
+    /// <summary>
+    /// Trains a single flip. For bulk training, use TrainBatchAsync instead.
+    /// </summary>
     public Task TrainAsync(ComplicatedFlip flip, CancellationToken cancellationToken = default)
     {
         if (flip is null)
@@ -266,6 +304,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             var tag = flip.ItemTag ?? "_global";
             if (!trainingDataByItem.TryGetValue(tag, out var list) || !featureIndexByItem.TryGetValue(tag, out var fIndex))
             {
+                logger.LogInformation("No training data for {Tag}; returning baseline estimate {Baseline}", tag, baseline);
                 return Task.FromResult(new SelfLearningFlipEstimate(baseline, baseline, false, 0, null));
             }
 
@@ -319,6 +358,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             lock (predictionSync)
             {
                 prediction = tagEngine!.Predict(new FlipData { Features = features });
+                logger.LogInformation("Prediction for {Tag}: {Score} (baseline {Baseline})", tag, prediction.Score, baseline);
             }
             var score = double.IsNaN(prediction.Score) || prediction.Score <= 0 ? baseline : prediction.Score;
 
@@ -425,12 +465,10 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     {
         var hasFIndex = featureIndexByItem.TryGetValue(tag, out var fIndex);
         var hasList = trainingDataByItem.TryGetValue(tag, out var list);
-        // debug diagnostics removed
 
         if (!hasFIndex || !hasList)
         {
-            // nothing to do
-            try { Console.WriteLine($"RefitModel early exit for '{tag}': missing fIndex or list"); } catch { }
+            // No feature index or training data available yet
             return;
         }
 
@@ -452,16 +490,22 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
 
         var dataView = mlContext.Data.LoadFromEnumerable(list, schema);
 
-        var pipeline = mlContext.Transforms.NormalizeMinMax(nameof(FlipData.Features))
-            .Append(mlContext.Regression.Trainers.FastForest(new FastForestRegressionTrainer.Options
-            {
-                FeatureColumnName = nameof(FlipData.Features),
-                LabelColumnName = nameof(FlipData.Label),
-                NumberOfLeaves = Math.Clamp(featureCount * 2, 8, 256),
-                NumberOfTrees = 200,
-                MinimumExampleCountPerLeaf = 4,
-                FeatureFraction = 0.8
-            }));
+        // Use linear regression (SDCA) instead of FastForest since attributes have additive/linear effects
+        // FastTree is a gradient boosted decision tree trainer that handles large feature values well
+        // and can learn non-linear relationships between attributes and price
+        // Configuration: balanced between accuracy and overfitting prevention
+        // Adjust parameters based on sample size for better small-sample performance
+        var minLeafSize = list.Count < 100 ? 1 : Math.Max(5, list.Count / 100);
+        var numTrees = list.Count < 100 ? 50 : 100;
+        
+        var pipeline = mlContext.Regression.Trainers.FastTree(
+            featureColumnName: nameof(FlipData.Features),
+            labelColumnName: nameof(FlipData.Label),
+            numberOfLeaves: 20,            // Moderate tree complexity
+            minimumExampleCountPerLeaf: minLeafSize, // Adaptive: allow smaller leaves for small datasets
+            numberOfTrees: numTrees,       // Adaptive: fewer trees for small datasets
+            learningRate: 0.2              // Moderate learning rate
+        );
 
         ITransformer? tagModel = null;
         double rmse = double.NaN, r2 = double.NaN;
@@ -478,93 +522,127 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
 
             models[tag] = tagModel;
 
-            // model created
-
             var metrics = mlContext.Regression.Evaluate(tagModel!.Transform(dataView), labelColumnName: nameof(FlipData.Label));
             rmse = metrics?.RootMeanSquaredError ?? double.NaN;
             r2 = metrics?.RSquared ?? double.NaN;
-            // store lightweight, serializable metrics
             lastMetricsByItem[tag] = new ModelMetrics(rmse, r2);
-            logger.LogInformation("Self-learning flip finder retrained for {Tag} with {SampleCount} samples, RMSE {Rmse:F2}, R2 {R2:F3}", tag, list.Count, rmse, r2);
+            
+            logger.LogInformation("Trained FastTree model for {Tag}: {SampleCount} samples, {FeatureCount} features, RMSE={Rmse:F2}, R²={R2:F3}", 
+                tag, list.Count, featureCount, rmse, r2);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Training failed for {Tag}", tag);
-            // ensure we clear any partial state
-            models[tag] = null;
-            lock (predictionSync)
-            {
-                predictionEngines.TryGetValue(tag, out var eng);
-                eng?.Dispose();
-                predictionEngines[tag] = null;
-            }
-            lastMetricsByItem[tag] = null;
+            logger.LogWarning(ex, "Failed to train model for {Tag}", tag);
+            ClearModelState(tag);
             return;
         }
 
-        // persist model and metadata asynchronously per-tag
+        PersistModelAndMetadata(tag, tagModel, dataView, fIndex!, list!, rmse, r2, forcePersist);
+    }
+
+    /// <summary>
+    /// Clears all state for a specific tag's model.
+    /// </summary>
+    private void ClearModelState(string tag)
+    {
+        models[tag] = null;
+        lock (predictionSync)
+        {
+            predictionEngines.TryGetValue(tag, out var engine);
+            engine?.Dispose();
+            predictionEngines[tag] = null;
+        }
+        lastMetricsByItem[tag] = null;
+    }
+
+    /// <summary>
+    /// Persists the trained model and metadata to storage.
+    /// </summary>
+    private void PersistModelAndMetadata(string tag, ITransformer model, IDataView dataView, 
+        Dictionary<string, int> featureIndex, List<FlipData> trainingData, 
+        double rmse, double rSquared, bool forcePersist)
+    {
         try
         {
-            // persisting model
             using var ms = new System.IO.MemoryStream();
-            mlContext.Model.Save(tagModel, dataView.Schema, ms);
+            mlContext.Model.Save(model, dataView.Schema, ms);
             ms.Position = 0;
-            // always save model stream to a MemoryStream copy for persistence if we will persist now
-            var shouldPersist = forcePersist || !lastPersistedByTag.TryGetValue(tag, out var last) || (DateTime.UtcNow - last) > TimeSpan.FromDays(1);
+            
+            var shouldPersist = forcePersist || 
+                !lastPersistedByTag.TryGetValue(tag, out var lastPersist) || 
+                (DateTime.UtcNow - lastPersist) > TimeSpan.FromDays(1);
+            
             if (shouldPersist)
             {
-                // Save model
                 _ = persitance.SaveBlob($"selflearning/model/{tag}", ms);
                 lastPersistedByTag[tag] = DateTime.UtcNow;
             }
 
             var meta = new PersistMeta
             {
-                FeatureNames = fIndex.OrderBy(kv => kv.Value).Select(kv => kv.Key).ToArray(),
-                SampleCount = list.Count,
+                FeatureNames = featureIndex.OrderBy(kv => kv.Value).Select(kv => kv.Key).ToArray(),
+                SampleCount = trainingData.Count,
                 Rmse = double.IsNaN(rmse) ? null : rmse,
-                RSquared = double.IsNaN(r2) ? null : r2
+                RSquared = double.IsNaN(rSquared) ? null : rSquared
             };
 
             // Persist all metas in a single blob to reduce IO operations
             try
             {
-                // load existing combined meta blob
-                var combinedMeta = new Dictionary<string, PersistMeta>(StringComparer.OrdinalIgnoreCase);
-                try
-                {
-                    var existing = persitance.LoadBlob("selflearning/meta/all").Result;
-                    if (existing is not null)
-                    {
-                        combinedMeta = MessagePack.MessagePackSerializer.Deserialize<Dictionary<string, PersistMeta>>(existing);
-                    }
-                }
-                catch { /* ignore, we'll overwrite */ }
-
+                var combinedMeta = LoadCombinedMetadata();
                 combinedMeta[tag] = meta;
+                
                 if (shouldPersist)
                 {
-                    var outStream = new System.IO.MemoryStream();
-                    MessagePack.MessagePackSerializer.Serialize(outStream, combinedMeta);
-                    outStream.Position = 0;
-                    _ = persitance.SaveBlob("selflearning/meta/all", outStream);
+                    SaveCombinedMetadata(combinedMeta);
                 }
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Failed to persist combined self-learning meta for {Tag}", tag);
+                logger.LogWarning(ex, "Failed to persist combined metadata for {Tag}", tag);
             }
-            // metrics already populated from evaluation above
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to persist self-learning model for {Tag}", tag);
+            logger.LogWarning(ex, "Failed to persist model for {Tag}", tag);
         }
+    }
+
+    /// <summary>
+    /// Loads all persisted metadata from storage.
+    /// </summary>
+    private Dictionary<string, PersistMeta> LoadCombinedMetadata()
+    {
+        try
+        {
+            var existing = persitance.LoadBlob("selflearning/meta/all").Result;
+            if (existing is not null)
+            {
+                return MessagePack.MessagePackSerializer.Deserialize<Dictionary<string, PersistMeta>>(existing);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "Could not load combined metadata, starting fresh");
+        }
+        
+        return new Dictionary<string, PersistMeta>(StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Saves all metadata to storage.
+    /// </summary>
+    private void SaveCombinedMetadata(Dictionary<string, PersistMeta> metadata)
+    {
+        using var outStream = new System.IO.MemoryStream();
+        MessagePack.MessagePackSerializer.Serialize(outStream, metadata);
+        outStream.Position = 0;
+        _ = persitance.SaveBlob("selflearning/meta/all", outStream);
     }
 
     private async Task LoadPersistedModelIfExists(string tag)
     {
-        // ensure we only try to load once per tag during service lifetime
+        // Ensure we only try to load once per tag during service lifetime
         if (!loadedTags.Add(tag))
             return;
 
