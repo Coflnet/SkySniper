@@ -71,6 +71,22 @@ namespace Coflnet.Sky.Sniper.Controllers
             }
         }
 
+        [HttpPost]
+        [Route("selflearning/persist/{tag?}")]
+        public async Task<ActionResult> PersistSelfLearningModel(string tag = null)
+        {
+            try
+            {
+                await flipFinder.PersistModelAsync(string.IsNullOrEmpty(tag) ? null : tag);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to persist self-learning model for {Tag}", tag ?? "(all)");
+                return StatusCode(500);
+            }
+        }
+
 
         [HttpGet]
         [Route("/ready")]
@@ -338,30 +354,17 @@ namespace Coflnet.Sky.Sniper.Controllers
         [HttpPost]
         public async Task<int> RetrainFromTracker(string tag)
         {
-            var total = 0;
             try
             {
                 var flips = await trackerApi.GetComplicatedFlipsAsync(tag);
-                foreach (var f in flips)
-                {
-                    try
-                    {
-                        await flipFinder.TrainAsync(f);
-                        total++;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to train on flip {AuctionId}", f.AuctionId);
-                    }
-                }
+                await flipFinder.TrainBatchAsync(flips);
+                return flips?.Count() ?? 0;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to load complicated flips from tracker for {Tag}", tag);
                 throw;
             }
-
-            return total;
         }
 
         [Route("search/{tag}/{itemId}")]
