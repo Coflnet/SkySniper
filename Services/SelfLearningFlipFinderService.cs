@@ -55,6 +55,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     private readonly Dictionary<string, ModelMetrics?> lastMetricsByItem = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, DateTime> lastPersistedByTag = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> loadedTags = new(StringComparer.OrdinalIgnoreCase);
+    // Track last time a model refit was performed per tag to avoid excessive retraining
+    private readonly Dictionary<string, DateTime> lastRefitByTag = new(StringComparer.OrdinalIgnoreCase);
     private bool disposed;
 
     public SelfLearningFlipFinderService(ILogger<SelfLearningFlipFinderService> logger, IPersitanceManager persitance, int minSamplesForTraining = 120)
@@ -191,11 +193,18 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     /// </summary>
     private void RefitModelsForTags(IEnumerable<string> tags)
     {
+        var now = DateTime.UtcNow;
         foreach (var tag in tags)
         {
             try
             {
+                if (lastRefitByTag.TryGetValue(tag, out var last) && (now - last) < TimeSpan.FromMinutes(5))
+                {
+                    logger.LogDebug("Skipping refit for {Tag} (last refit {Elapsed} ago)", tag, now - last);
+                    continue;
+                }
                 RefitModel(tag, forcePersist: true);
+                lastRefitByTag[tag] = DateTime.UtcNow;
             }
             catch (Exception ex)
             {
@@ -463,6 +472,13 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
 
     private void RefitModel(string tag, bool forcePersist = false)
     {
+        var now = DateTime.UtcNow;
+        if (!forcePersist && lastRefitByTag.TryGetValue(tag, out var last) && (now - last) < TimeSpan.FromMinutes(5))
+        {
+            logger.LogDebug("Skipping on-demand refit for {Tag} (last refit {Elapsed} ago)", tag, now - last);
+            return;
+        }
+
         var hasFIndex = featureIndexByItem.TryGetValue(tag, out var fIndex);
         var hasList = trainingDataByItem.TryGetValue(tag, out var list);
 
@@ -485,6 +501,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             lastMetricsByItem[tag] = null;
             return;
         }
+        // mark that we're about to refit this tag to avoid concurrent/rapid re-fits
+        lastRefitByTag[tag] = DateTime.UtcNow;
         var schema = SchemaDefinition.Create(typeof(FlipData));
         schema[nameof(FlipData.Features)].ColumnType = new VectorDataViewType(NumberDataViewType.Single, featureCount);
 
@@ -529,6 +547,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             
             logger.LogInformation("Trained FastTree model for {Tag}: {SampleCount} samples, {FeatureCount} features, RMSE={Rmse:F2}, R²={R2:F3}", 
                 tag, list.Count, featureCount, rmse, r2);
+            // mark last refit timestamp
+            lastRefitByTag[tag] = DateTime.UtcNow;
         }
         catch (Exception ex)
         {
