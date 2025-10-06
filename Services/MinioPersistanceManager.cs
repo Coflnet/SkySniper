@@ -223,13 +223,24 @@ namespace Coflnet.Sky.Sniper.Services
         {
             try
             {
-                data.Position = 0;
+                // Copy the provided stream into a local memory stream so we don't depend on the
+                // caller's stream lifetime (the caller may dispose the stream after calling SaveBlob).
+                try
+                {
+                    data.Position = 0;
+                }
+                catch { /* ignore if stream is not seekable */ }
+
+                using var buffer = new MemoryStream();
+                await data.CopyToAsync(buffer);
+                buffer.Position = 0;
+
                 var putResponse = await s3Client.PutObjectAsync(new PutObjectRequest()
                 {
                     BucketName = "sky-sniper",
                     Key = key,
                     DisablePayloadSigning = true,
-                    InputStream = data
+                    InputStream = buffer
                 });
                 logger.LogInformation("Saved blob {Key} status {Status}", key, putResponse.HttpStatusCode);
             }
