@@ -73,7 +73,16 @@ namespace Coflnet.Sky.Sniper
             services.AddSingleton<ActiveUpdater>();
             services.AddSingleton<ISelfLearningFlipFinderService, SelfLearningFlipFinderService>();
             services.AddSingleton<AIFormattingService>();
-            services.AddSingleton<PartialCalcService>();
+            // PartialCalcService is now an adapter delegating to SelfLearningFlipFinderService
+            services.AddSingleton<PartialCalcService>(sp => new PartialCalcService(
+                sp.GetRequiredService<SniperService>(),
+                sp.GetRequiredService<ICraftCostService>(),
+                sp.GetRequiredService<IMayorService>(),
+                sp.GetRequiredService<IPersitanceManager>(),
+                sp.GetRequiredService<ILogger<PartialCalcService>>(),
+                sp.GetRequiredService<HypixelItemService>(),
+                sp.GetRequiredService<AIFormattingService>(),
+                sp.GetRequiredService<ISelfLearningFlipFinderService>()));
             services.AddSingleton<Kafka.KafkaCreator>();
             services.AddSingleton<HypixelItemService>();
             services.AddSingleton<IAttributeFlipService, AttributeFlipService>();

@@ -61,7 +61,8 @@ public static class SaveAuctionExtensions
             AuctionId = id,
             ItemTag = auction.Tag,
             EndedAt = auction.End,
-            SoldFor = 0,
+            // include actual sold price so trainers receive labels
+            SoldFor = auction.HighestBidAmount,
             AttributeValues = attrs
         };
     }

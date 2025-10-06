@@ -80,6 +80,7 @@ namespace Coflnet.Sky.Sniper
             var factory = LoggerFactory.Create(builder => builder.AddConsole());
             service = new SniperService(new(null, null), null, factory.CreateLogger<SniperService>(), craftCost);
 
+            IdCounter = 100; // magic number
             found = new List<LowPricedAuction>();
             service.FoundSnipe += found.Add;
         }
