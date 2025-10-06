@@ -57,6 +57,55 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     private readonly HashSet<string> loadedTags = new(StringComparer.OrdinalIgnoreCase);
     // Track last time a model refit was performed per tag to avoid excessive retraining
     private readonly Dictionary<string, DateTime> lastRefitByTag = new(StringComparer.OrdinalIgnoreCase);
+    // Only keep/train models for these complicated / relevant items (mirror of AIFormattingService.RelevantItems)
+    private static readonly HashSet<string> RelevantItems = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "HYPERION",
+        "PET_GOLDEN_DRAGON",
+        "PET_ENDER_DRAGON",
+        "TERMINATOR",
+        "GIANTS_SWORD",
+        "DIVAN_DRILL",
+        "TITANIUM_DRILL_4",
+        "DARK_CLAYMORE",
+        "PET_SCATHA",
+        "HELLFIRE_ROD",
+        "ATOMSPLIT_KATANA",
+        "WARDEN_HELMET",
+        "POWER_WITHER_CHESTPLATE",
+        "STARRED_MIDAS_SWORD",
+        "POWER_WITHER_LEGGINGS",
+        "SHADOW_FURY",
+        "JUJU_SHORTBOW",
+        "MIDAS_STAFF",
+        "PET_ENDERMAN",
+        "PET_BLACK_CAT",
+        "STARRED_MIDAS_STAFF",
+        "SPEED_WITHER_BOOTS",
+        "ENDER_ARTIFACT",
+        "WISE_WITHER_CHESTPLATE",
+        "AXE_OF_THE_SHREDDED",
+        "DIVAN_HELMET",
+        "STARRED_DAEDALUS_AXE",
+        "ENDER_RELIC",
+        "WITHER_GOGGLES",
+        "WISE_WITHER_LEGGINGS",
+        "POWER_WITHER_BOOTS",
+        "DIVAN_CHESTPLATE",
+        "FERMENTO_CHESTPLATE",
+        "CRIMSON_CHESTPLATE",
+        "MELON_DICER_3",
+        "CRIMSON_LEGGINGS",
+        "DIVAN_BOOTS",
+        "PET_FLYING_FISH",
+        "DIVAN_LEGGINGS",
+        "FERMENTO_HELMET",
+        "FERMENTO_LEGGINGS",
+        "PET_GRIFFIN",
+        "LIVID_DAGGER",
+        "CRIMSON_BOOTS"
+    };
+
     private bool disposed;
 
     public SelfLearningFlipFinderService(ILogger<SelfLearningFlipFinderService> logger, IPersitanceManager persitance, int minSamplesForTraining = 120)
@@ -121,11 +170,16 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         if (flipsByTag.Count == 0)
             return Task.CompletedTask;
 
+        // Only keep/train for relevant items
+        var relevant = flipsByTag.Where(kv => RelevantItems.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+        if (relevant.Count == 0)
+            return Task.CompletedTask;
+
         gate.EnterWriteLock();
         try
         {
-            AddTrainingSamples(flipsByTag);
-            RefitModelsForTags(flipsByTag.Keys);
+            AddTrainingSamples(relevant);
+            RefitModelsForTags(relevant.Keys);
         }
         finally
         {
@@ -147,6 +201,11 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 continue;
 
             var tag = flip.ItemTag ?? "_global";
+            if (!RelevantItems.Contains(tag))
+            {
+                logger.LogDebug("Skipping training for non-relevant tag {Tag}", tag);
+                continue;
+            }
             if (!flipsByTag.TryGetValue(tag, out var list))
             {
                 list = new List<ComplicatedFlip>();
