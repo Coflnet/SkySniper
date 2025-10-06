@@ -531,6 +531,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
 
     private void RefitModel(string tag, bool forcePersist = false)
     {
+        if (!RelevantItems.Contains(tag))
+            return; // irrelevant
         var now = DateTime.UtcNow;
         if (!forcePersist && lastRefitByTag.TryGetValue(tag, out var last) && (now - last) < TimeSpan.FromMinutes(5))
         {
