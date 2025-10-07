@@ -69,7 +69,7 @@ public class PartialCalcService
         {
             var flip = SaveAuctionExtensions.ToComplicatedFlip(auction, includeBreakdown: true, sniper: sniper, mayorService: mayorService, craftCostService: craftCostService);
             var estimate = flipFinder.EstimateAsync(flip).GetAwaiter().GetResult();
-            result.Price = (long)estimate.EstimatedValue;
+            result.Price = (long)(estimate?.EstimatedValue ?? 0);
             if (includeBreakDown)
             {
                 try

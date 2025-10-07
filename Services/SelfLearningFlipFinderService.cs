@@ -23,7 +23,7 @@ public interface ISelfLearningFlipFinderService
 {
     Task TrainAsync(ComplicatedFlip flip, CancellationToken cancellationToken = default);
     Task TrainBatchAsync(IEnumerable<ComplicatedFlip> flips, CancellationToken cancellationToken = default);
-    Task<SelfLearningFlipEstimate> EstimateAsync(ComplicatedFlip flip, CancellationToken cancellationToken = default);
+    Task<SelfLearningFlipEstimate?> EstimateAsync(ComplicatedFlip flip, CancellationToken cancellationToken = default);
     SelfLearningFlipModelSnapshot GetSnapshot();
     IReadOnlyDictionary<string, SelfLearningFlipFinderService.ModelStats> GetModelStats();
     Task PersistModelAsync(string? tag = null);
@@ -356,7 +356,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         return Task.CompletedTask;
     }
 
-    public Task<SelfLearningFlipEstimate> EstimateAsync(ComplicatedFlip flip, CancellationToken cancellationToken = default)
+    public Task<SelfLearningFlipEstimate?> EstimateAsync(ComplicatedFlip flip, CancellationToken cancellationToken = default)
     {
         if (flip is null)
             throw new ArgumentNullException(nameof(flip));
@@ -372,8 +372,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             var tag = flip.ItemTag ?? "_global";
             if (!trainingDataByItem.TryGetValue(tag, out var list) || !featureIndexByItem.TryGetValue(tag, out var fIndex))
             {
-                logger.LogInformation("No training data for {Tag}; returning baseline estimate {Baseline}", tag, baseline);
-                return Task.FromResult(new SelfLearningFlipEstimate(baseline, baseline, false, 0, null));
+                return Task.FromResult<SelfLearningFlipEstimate?>(null);
             }
 
             // try to lazy-load persisted model/meta if available
@@ -417,7 +416,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
 
             if (tagModel is null || !predictionEngines.TryGetValue(tag, out var tagEngine) || fIndex.Count == 0 || list.Count < minSamplesForTraining)
             {
-                return Task.FromResult(new SelfLearningFlipEstimate(baseline, baseline, false, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
+                return Task.FromResult<SelfLearningFlipEstimate?>(new SelfLearningFlipEstimate(baseline, baseline, false, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
             }
 
             var attrs = new Dictionary<string, long>(flip.AttributeValues ?? new Dictionary<string, long>());
@@ -430,7 +429,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             }
             var score = double.IsNaN(prediction.Score) || prediction.Score <= 0 ? baseline : prediction.Score;
 
-            return Task.FromResult(new SelfLearningFlipEstimate(score, baseline, true, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
+            return Task.FromResult<SelfLearningFlipEstimate?>(new SelfLearningFlipEstimate(score, baseline, true, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
         }
         finally
         {
