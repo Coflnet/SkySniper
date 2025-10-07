@@ -38,7 +38,7 @@ public class SelfLearningFlipFinderServiceTests
         }
     }
     [Test]
-    public async Task EstimateWithoutTraining_UsesBaselineFromCleanCost()
+    public async Task EstimateWithoutTraining_IsNull()
     {
     using var service = new SelfLearningFlipFinderService(NullLogger<SelfLearningFlipFinderService>.Instance, new TestPersistence(), minSamplesForTraining: 6);
         var flip = new ComplicatedFlip
@@ -56,9 +56,7 @@ public class SelfLearningFlipFinderServiceTests
 
         var result = await service.EstimateAsync(flip);
 
-        result.ModelReady.Should().BeFalse();
-        result.EstimatedValue.Should().BeApproximately(1_500_000_000d, 1);
-        result.BaselineValue.Should().BeApproximately(1_500_000_000d, 1);
+        result.Should().BeNull();
     }
 
     [Test]
