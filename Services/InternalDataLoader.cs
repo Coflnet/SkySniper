@@ -53,7 +53,9 @@ namespace Coflnet.Sky.Sniper.Services
             Kafka.KafkaCreator kafkaCreator,
             PartialCalcService partialCalcService,
             IMayorService mayorService,
-            ItemDetails itemDetails)
+            ItemDetails itemDetails,
+            ISelfLearningFlipFinderService flipFinder,
+            ICraftCostService craftCostService)
         {
             this.sniper = sniper;
             this.config = config;
@@ -66,6 +68,8 @@ namespace Coflnet.Sky.Sniper.Services
             this.partialCalcService = partialCalcService;
             this.mayorService = mayorService;
             this.itemDetails = itemDetails;
+            this.flipFinder = flipFinder;
+            this.craftCostService = craftCostService;
         }
 
 
