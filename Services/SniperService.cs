@@ -78,7 +78,7 @@ namespace Coflnet.Sky.Sniper.Services
             "color", // armour
             "model", // abicase
             // potion "level", // not engough impact
-            "item_tier", // mostly found on armor, unsure what it does
+            "item_tier", // mostly found on armor, dungeon floor it dropped on
             "talisman_enrichment", // talismans can be enriched with additional stats
             "divan_powder_coating",
             "ability_scroll", // applied to hyperions worth ~250m https://discord.com/channels/267680588666896385/1031668335731019886/1031668607479975976
@@ -150,6 +150,7 @@ namespace Coflnet.Sky.Sniper.Services
             { "expertise_kills", m => new (m.Modifier, 3_000_000 * (int)Math.Pow(2, int.Parse(m.Modifier.Value))) {IsEstimate=true}},
             { "mined_crops", m => new (m.Modifier, 13_000_000 * (int)Math.Pow(2, int.Parse(m.Modifier.Value))) {IsEstimate=true}},
             { "blocksBroken", m => new (m.Modifier, 1_000_000 * (int)Math.Pow(2, int.Parse(m.Modifier.Value))) {IsEstimate=true}},
+            { "item_tier", m=> new (m.Modifier, 1_200_000 * int.Parse(m.Modifier.Value)){IsEstimate=true}},
             { "color", m => new (m.Modifier, 50_000_000) {IsEstimate=true}}, // if its default its removed
             { "pgems", m => new (m.Modifier, 100_000_000){IsEstimate=true}},
             { "is_shiny", m => new (m.Modifier, 88_000_000) {IsEstimate=true}},
