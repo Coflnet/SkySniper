@@ -189,13 +189,14 @@ namespace Coflnet.Sky.Sniper.Services
                 return;
             var cflip = SaveAuctionExtensions.ToComplicatedFlip(a, includeBreakdown: true, sniper: sniper, mayorService: mayorService, craftCostService: craftCostService);
             var estimate = flipFinder.EstimateAsync(cflip).GetAwaiter().GetResult();
-            if (estimate.EstimatedValue > a.StartingBid * 1.1 && estimate.EstimatedValue - a.StartingBid > 3_000_000)
+            var value = Math.Min(estimate.EstimatedValue, cflip.AttributeValues.Sum(a => a.Value == 10_000_000_000 ? 1_000_000 : a.Value));
+            if (value > a.StartingBid * 1.1 && estimate.EstimatedValue - a.StartingBid > 3_000_000)
             {
-                logger.LogInformation("found potential ai flip for {tag} {uuid} {content}", a.Tag, a.Uuid, JsonConvert.SerializeObject(cflip));
+                logger.LogInformation("found potential ai flip for {content} {metadata}", JsonConvert.SerializeObject(estimate), JsonConvert.SerializeObject(cflip));
                 var flip = new LowPricedAuction()
                 {
                     Auction = a,
-                    AdditionalProps = new() { { "samples", estimate.SampleCount.ToString()} },
+                    AdditionalProps = new() { { "samples", estimate.SampleCount.ToString() } },
                     Finder = LowPricedAuction.FinderType.AI,
                     TargetPrice = (long)(estimate.EstimatedValue * 0.9)
                 };
