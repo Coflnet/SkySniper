@@ -766,7 +766,28 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 lock (predictionSync)
                 {
                     var inputSchema = SchemaDefinition.Create(typeof(FlipData));
-                    inputSchema[nameof(FlipData.Features)].ColumnType = new VectorDataViewType(NumberDataViewType.Single, inputSchema[nameof(FlipData.Features)] is not null ? ((VectorDataViewType)inputSchema[nameof(FlipData.Features)].ColumnType).Size : schema.GetColumnOrNull(nameof(FlipData.Features))?.Type is VectorDataViewType v ? v.Size : -1);
+
+                    // Try to read the feature vector size from the loaded model schema. If unavailable,
+                    // fall back to the stored feature index size for this tag (if present) or 0.
+                    int vectorSize = -1;
+                    var col = schema.GetColumnOrNull(nameof(FlipData.Features));
+                    if (col.HasValue && col.Value.Type is VectorDataViewType v)
+                    {
+                        vectorSize = v.Size;
+                    }
+
+                    if (vectorSize <= 0)
+                    {
+                        // fallback to feature index count if we have it
+                        if (!featureIndexByItem.TryGetValue(tag, out var fIndex))
+                        {
+                            fIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                            featureIndexByItem[tag] = fIndex;
+                        }
+                        vectorSize = fIndex.Count;
+                    }
+
+                    inputSchema[nameof(FlipData.Features)].ColumnType = new VectorDataViewType(NumberDataViewType.Single, Math.Max(0, vectorSize));
                     predictionEngines[tag] = mlContext.Model.CreatePredictionEngine<FlipData, FlipPrediction>(tagModel, ignoreMissingColumns: false, inputSchema, null);
                 }
             }
