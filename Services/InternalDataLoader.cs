@@ -13,6 +13,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using Coflnet.Kafka;
+using Newtonsoft.Json;
 
 namespace Coflnet.Sky.Sniper.Services
 {
@@ -28,6 +29,8 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly PartialCalcService partialCalcService;
         private readonly IMayorService mayorService;
         public event Action<LowPricedAuction> FoundPartialFlip;
+        public readonly ISelfLearningFlipFinderService flipFinder;
+        public readonly ICraftCostService craftCostService;
         private readonly ItemDetails itemDetails;
 
         private readonly ILogger<InternalDataLoader> logger;
@@ -178,15 +181,19 @@ namespace Coflnet.Sky.Sniper.Services
 
         private void CheckForPartial(SaveAuction a)
         {
-            var breakdown = partialCalcService.GetPrice(a, true);
-            if (breakdown.Price > a.StartingBid * 1.5 && breakdown.Price - a.StartingBid > 3_000_000)
+            if (!flipFinder.IsRelevantItem(a.Tag))
+                return;
+            var cflip = SaveAuctionExtensions.ToComplicatedFlip(a, includeBreakdown: true, sniper: sniper, mayorService: mayorService, craftCostService: craftCostService);
+            var estimate = flipFinder.EstimateAsync(cflip).GetAwaiter().GetResult();
+            if (estimate.EstimatedValue > a.StartingBid * 1.3 && estimate.EstimatedValue - a.StartingBid > 3_000_000)
             {
+                logger.LogInformation("found potential ai flip for {tag} {uuid} {content}", a.Tag, a.Uuid, JsonConvert.SerializeObject(cflip));
                 var flip = new LowPricedAuction()
                 {
                     Auction = a,
-                    AdditionalProps = new() { { "breakdown", string.Join('\n', breakdown.BreakDown) } },
+                    AdditionalProps = new() { { "samples", estimate.SampleCount.ToString()} },
                     Finder = LowPricedAuction.FinderType.AI,
-                    TargetPrice = (long)(breakdown.Price * 0.8)
+                    TargetPrice = (long)(estimate.EstimatedValue * 0.9)
                 };
                 Produceflip(flip, FlipProducer);
                 FoundPartialFlip?.Invoke(flip);

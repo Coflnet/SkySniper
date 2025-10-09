@@ -27,6 +27,7 @@ public interface ISelfLearningFlipFinderService
     SelfLearningFlipModelSnapshot GetSnapshot();
     IReadOnlyDictionary<string, SelfLearningFlipFinderService.ModelStats> GetModelStats();
     Task PersistModelAsync(string? tag = null);
+    bool IsRelevantItem(string tag);
 }
 
 /// <summary>
@@ -855,6 +856,15 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             predictionEngines.Clear();
         }
         gate.Dispose();
+    }
+
+    public bool IsRelevantItem(string tag)
+    {
+        if (disposed)
+            throw new ObjectDisposedException(nameof(SelfLearningFlipFinderService));
+        if (string.IsNullOrWhiteSpace(tag))
+            return false;
+        return RelevantItems.Contains(tag);
     }
 
     [MessagePackObject]
