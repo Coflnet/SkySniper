@@ -58,6 +58,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     private readonly HashSet<string> loadedTags = new(StringComparer.OrdinalIgnoreCase);
     // Track last time a model refit was performed per tag to avoid excessive retraining
     private readonly Dictionary<string, DateTime> lastRefitByTag = new(StringComparer.OrdinalIgnoreCase);
+    // Track the expected feature vector size for each model's prediction engine
+    private readonly Dictionary<string, int> modelVectorSizeByTag = new(StringComparer.OrdinalIgnoreCase);
     // Only keep/train models for these complicated / relevant items (mirror of AIFormattingService.RelevantItems)
     private static readonly HashSet<string> RelevantItems = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -421,7 +423,19 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             }
 
             var attrs = new Dictionary<string, long>(flip.AttributeValues ?? new Dictionary<string, long>());
-            var features = CreateFeatureVector(attrs, fIndex, expandFeatureSpace: false, list);
+            
+            // Use the exact vector size the model expects (from when it was trained/loaded)
+            // This prevents errors when new features appear that weren't in the training data
+            var expectedVectorSize = modelVectorSizeByTag.GetValueOrDefault(tag, fIndex.Count);
+            var features = CreateFeatureVectorForPrediction(attrs, fIndex, expectedVectorSize);
+            
+            if (features.Length != expectedVectorSize)
+            {
+                logger.LogWarning("Feature vector size mismatch for {Tag}: created {ActualSize}, expected {ExpectedSize}", 
+                    tag, features.Length, expectedVectorSize);
+                return Task.FromResult<SelfLearningFlipEstimate?>(new SelfLearningFlipEstimate(baseline, baseline, false, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
+            }
+            
             FlipPrediction prediction;
             lock (predictionSync)
             {
@@ -507,6 +521,38 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         return vector;
     }
 
+    /// <summary>
+    /// Creates a feature vector for prediction with the exact size the model expects.
+    /// This prevents errors when new features appear that weren't in the training data.
+    /// Unknown features are simply ignored (set to 0).
+    /// </summary>
+    private float[] CreateFeatureVectorForPrediction(IDictionary<string, long> attributes, Dictionary<string, int> featureIndex, int expectedVectorSize)
+    {
+        var vector = new float[expectedVectorSize];
+        
+        if (attributes.Count == 0)
+        {
+            return vector;
+        }
+
+        foreach (var (key, value) in attributes)
+        {
+            if (!featureIndex.TryGetValue(key, out var index))
+            {
+                // Feature not in model - ignore it (stays 0)
+                continue;
+            }
+
+            // Only set the value if the index is within the expected vector size
+            if (index < expectedVectorSize)
+            {
+                vector[index] = SafeToFloat(value);
+            }
+        }
+
+        return vector;
+    }
+
     private void EnsureFeatureExists(string key, Dictionary<string, int> featureIndex, List<FlipData> trainingList)
     {
         if (featureIndex.ContainsKey(key))
@@ -560,6 +606,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 predictionEngines[tag] = null;
             }
             lastMetricsByItem[tag] = null;
+            modelVectorSizeByTag.Remove(tag);
             return;
         }
         // mark that we're about to refit this tag to avoid concurrent/rapid re-fits
@@ -600,6 +647,11 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             }
 
             models[tag] = tagModel;
+            
+            // Store the expected vector size for this model
+            modelVectorSizeByTag[tag] = featureCount;
+            
+            logger.LogDebug("Stored model vector size for {Tag}: {VectorSize} features", tag, featureCount);
 
             var metrics = mlContext.Regression.Evaluate(tagModel!.Transform(dataView), labelColumnName: nameof(FlipData.Label));
             rmse = metrics?.RootMeanSquaredError ?? double.NaN;
@@ -634,6 +686,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             predictionEngines[tag] = null;
         }
         lastMetricsByItem[tag] = null;
+        modelVectorSizeByTag.Remove(tag);
     }
 
     /// <summary>
@@ -789,6 +842,11 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
 
                     inputSchema[nameof(FlipData.Features)].ColumnType = new VectorDataViewType(NumberDataViewType.Single, Math.Max(0, vectorSize));
                     predictionEngines[tag] = mlContext.Model.CreatePredictionEngine<FlipData, FlipPrediction>(tagModel, ignoreMissingColumns: false, inputSchema, null);
+                    
+                    // Store the expected vector size for this loaded model
+                    modelVectorSizeByTag[tag] = vectorSize;
+                    
+                    logger.LogInformation("Loaded persisted model for {Tag} with {VectorSize} features", tag, vectorSize);
                 }
             }
             else
