@@ -41,6 +41,8 @@ public static class SaveAuctionExtensions
                 long val = x.IsEstimate ? fullFlag : x.Value;
                 attrs[key] = val;
             }
+            if(auction.Tag.StartsWith("PET_"))
+                attrs["tier:" + auction.Tier] = fullFlag;
 
             var mayor = mayorService?.GetMayor(auction.End);
             if (mayor != null && RelevantMayors.Contains(mayor))
