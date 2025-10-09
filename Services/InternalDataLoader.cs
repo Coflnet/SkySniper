@@ -185,7 +185,7 @@ namespace Coflnet.Sky.Sniper.Services
                 return;
             var cflip = SaveAuctionExtensions.ToComplicatedFlip(a, includeBreakdown: true, sniper: sniper, mayorService: mayorService, craftCostService: craftCostService);
             var estimate = flipFinder.EstimateAsync(cflip).GetAwaiter().GetResult();
-            if (estimate.EstimatedValue > a.StartingBid * 1.3 && estimate.EstimatedValue - a.StartingBid > 3_000_000)
+            if (estimate.EstimatedValue > a.StartingBid * 1.1 && estimate.EstimatedValue - a.StartingBid > 3_000_000)
             {
                 logger.LogInformation("found potential ai flip for {tag} {uuid} {content}", a.Tag, a.Uuid, JsonConvert.SerializeObject(cflip));
                 var flip = new LowPricedAuction()
