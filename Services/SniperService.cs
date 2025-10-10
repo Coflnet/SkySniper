@@ -150,13 +150,13 @@ namespace Coflnet.Sky.Sniper.Services
             { "expertise_kills", m => new (m.Modifier, 3_000_000 * (int)Math.Pow(2, int.Parse(m.Modifier.Value))) {IsEstimate=true}},
             { "mined_crops", m => new (m.Modifier, 13_000_000 * (int)Math.Pow(2, int.Parse(m.Modifier.Value))) {IsEstimate=true}},
             { "blocksBroken", m => new (m.Modifier, 1_000_000 * (int)Math.Pow(2, int.Parse(m.Modifier.Value))) {IsEstimate=true}},
-            { "item_tier", m=> new (m.Modifier, 1_200_000 * int.Parse(m.Modifier.Value)){IsEstimate=true}},
+            { "item_tier", m=> new (m.Modifier, 2_300_000 * int.Parse(m.Modifier.Value)){IsEstimate=true}},
             { "color", m => new (m.Modifier, 50_000_000) {IsEstimate=true}}, // if its default its removed
             { "pgems", m => new (m.Modifier, 100_000_000){IsEstimate=true}},
             { "is_shiny", m => new (m.Modifier, 88_000_000) {IsEstimate=true}},
             { "party_hat_color", m => new (m.Modifier, 20_000_000) {IsEstimate=true}},
             { "thunder_charge", m => new (m.Modifier, 50_000_000 * int.Parse(m.Modifier.Value) + 10_000_000){IsEstimate=true} },
-            { "baseStatBoost", m => new (m.Modifier, (int)((float.Parse(m.Modifier.Value) - 45) * 500_000)) {IsEstimate=true}},
+            { "baseStatBoost", m => new (m.Modifier, (int)((float.Parse(m.Modifier.Value) - 40) * 800_000)) {IsEstimate=true}},
             { "logs_cut", m=>  new(m.Modifier, m.Modifier.Value == "200k" ? 8_000_000 : 2_000_000){IsEstimate=true}},
             { "hotpc", m => new ("hotpc", m.Modifier.Value, m.Modifier.Value switch {
                 "1" => 5_000_000,
