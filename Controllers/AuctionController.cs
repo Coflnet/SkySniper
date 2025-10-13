@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 
 namespace Coflnet.Sky.Sniper.Controllers;
+
 [ApiController]
 [Route("/api/[controller]")]
 public class AuctionController : ControllerBase
@@ -51,6 +52,18 @@ public class AuctionController : ControllerBase
         var auction = db.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments).FirstOrDefault(a => a.UId == uid);
         if (auction == null)
             return NotFound();
+        return await GetEstimateFromInternal(auction);
+    }
+
+    [Route("auction/{auctionUuid}/estimate")]
+    [HttpPost]
+    public async Task<ActionResult<object>> GetEstimateFromAuction(ApiSaveAuction auction)
+    {
+        return await GetEstimateFromInternal(auction);
+    }
+
+    private async Task<ActionResult<object>> GetEstimateFromInternal(Core.SaveAuction auction)
+    {
         try
         {
             // Convert to ComplicatedFlip using the shared helper (include full breakdown)
@@ -66,7 +79,7 @@ public class AuctionController : ControllerBase
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Failed to compute value breakdown for auction {AuctionUuid}", auctionUuid);
+                _logger.LogDebug(ex, "Failed to compute value breakdown for auction {AuctionUuid}", auction.Uuid);
             }
 
             // return both the self-learning estimate and the baseline for visibility, including breakdown
@@ -82,7 +95,7 @@ public class AuctionController : ControllerBase
         }
         catch (System.Exception ex)
         {
-            _logger.LogError(ex, "Failed to estimate price for auction {AuctionUuid}", auctionUuid);
+            _logger.LogError(ex, "Failed to estimate price for auction {AuctionUuid}", auction.Uuid);
             return StatusCode(500);
         }
     }
