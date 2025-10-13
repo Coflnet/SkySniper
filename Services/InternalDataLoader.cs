@@ -196,7 +196,7 @@ namespace Coflnet.Sky.Sniper.Services
                 var flip = new LowPricedAuction()
                 {
                     Auction = a,
-                    AdditionalProps = new() { { "samples", estimate.SampleCount.ToString() } },
+                    AdditionalProps = new() { { "samples", JsonConvert.SerializeObject(estimate)}, {"cflip", JsonConvert.SerializeObject(cflip)} },
                     Finder = LowPricedAuction.FinderType.AI,
                     TargetPrice = (long)(estimate.EstimatedValue * 0.9)
                 };
