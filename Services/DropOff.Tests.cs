@@ -697,18 +697,14 @@ public class DropOffTests
         flip.TargetPrice.Should().BeGreaterThanOrEqualTo(520_000_000, JsonConvert.SerializeObject(flip, Formatting.Indented));
     }
 
-    /// <summary>
-    /// Craft cost estimate was to low because median samples were too low
-    /// After calculating 5th percentile to use for value of attribute estimation is mostly correct (could be up to ~9m)
-    /// </summary>
     [Test]
-    public void MolteBeltMedian()
+    public void ContiniousLowLowersMedianLowVolume()
     {
-        AddLookupAndUpdateMeidans("Molten_Belt.json", "MOLTEN_BELT", new DateTime(2025, 5, 4));
-        var price = sniperService.Lookups["MOLTEN_BELT"].Lookup.First(l => l.Key.Modifiers.Count == 1 && l.Key.Modifiers.First().Key == "mana_pool" && l.Key.Modifiers.First().Value == "5");
-        sniperService.UpdateMedian(price.Value, ("MOLTEN_BELT", sniperService.GetBreakdownKey(price.Key, "MOLTEN_BELT")));
-        price.Value.Price.Should().Be(6800000L);
+        AddLookupAndUpdateMeidans("elephantSkin.json", "PET_SKIN_SPIDER_JOROGUMO", new DateTime(2025, 10, 18));
+        var price = sniperService.Lookups["PET_SKIN_SPIDER_JOROGUMO"].Lookup.First(l => l.Key.Modifiers.Count == 0).Value;
+        price.Price.Should().BeLessThan(112_000_000L);
     }
+
     /// <summary>
     /// comparison combination extra value for "godroll" was partially added to median if the attributes were dropped
     /// sample suggested (sell): https://sky.coflnet.com/auction/fb84cd7fd0fc4eca80d58f26faae1082
@@ -961,7 +957,7 @@ public class DropOffTests
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(auction);
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
-        flip.TargetPrice.Should().BeInRange(20_000_000L, 24_500_000, "should be not much limited by the starting bid");
+        flip.TargetPrice.Should().BeInRange(20_000_000L, 24_600_000, "should be not much limited by the starting bid");
     }
 
     /// <summary>

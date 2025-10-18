@@ -1259,7 +1259,8 @@ ORDER BY l.`AuctionId`  DESC;
 
                 var recent = bucket.References.AsEnumerable().Reverse().Take(Math.Max(bucket.Volume < 0.5 ? 6 : 12, (int)bucket.Volume)).ToList();
                 var percentileRecent = GetMedian(recent, cleanPriceLookup, 3f);
-                if (bucket.Volume >= 4 && bucket.Lbin.AuctionId != default && bucket.Lbin.Day < GetDay() + 3)
+                bool lbinListedForShort = bucket.Lbins.Where(l=>l.Price < medianPrice * 1.1).Select(l => l.Day - GetDay()).Take(4).DefaultIfEmpty(3).Average() < 4;
+                if (bucket.Volume >= 4 && bucket.Lbin.AuctionId != default && lbinListedForShort && percentileRecent > medianPrice)
                 { // volume high enought to risk higher percentile
                     var cappedPrice = preLimitedPrice == medianPrice ? preLimitedPrice * 12 / 10 : limitedPrice;
                     medianPrice = Math.Min(Math.Max(bucket.RiskyEstimate, medianPrice), Math.Min(cappedPrice, percentileRecent));
