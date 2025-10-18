@@ -106,7 +106,7 @@ public class DropOffTests
             sniperService.UpdateMedian(item.Value, ("PET_BLACK_CAT", sniperService.GetBreakdownKey(item.Key, "PET_BLACK_CAT")));
         }
         var price = sniperService.Lookups["PET_BLACK_CAT"].Lookup.First().Value.Price;
-        price.Should().Be(117000008L, "Low resell rate should pull down the price");
+        price.Should().Be(117000007L, "Low resell rate should pull down the price");
     }
     /// <summary>
     /// Flip from https://sky.coflnet.com/auction/3513bd5932a2413183059fe636867d92
@@ -673,6 +673,28 @@ public class DropOffTests
         sniperService.TestNewAuction(auction);
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.CraftCost);
         flip.TargetPrice.Should().BeInRange(100_734999L, 380_000_000, "based on 20e2c27983a0460094e92819fb41fd06"); // it sold for 390m https://sky.coflnet.com/auction/8acb03a605b34fb8936eececffd8f63c
+    }
+
+    [Test]
+    public void PlasmaFluxPowerOrbWithSkinNotLowerThanClean()
+    {
+        AddLookupAndUpdateMeidans("powerOrb.json", "POWER_ORB", new DateTime(2025, 10, 18));
+        SetBazaarPrice("PIRATE_BOMB_FLUX", 30_000_000);
+        var auction = new SaveAuction()
+        {
+            Tag = "POWER_ORB",
+            StartingBid = 5_000_000,
+            UId = 4,
+            FlatenedNBT = new() { { "skin", "PIRATE_BOMB_FLUX" } },
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        sniperService.Lookups["POWER_ORB"].Lookup.First(l => l.Key.Modifiers.FirstOrDefault().Value == "PIRATE_BOMB_FLUX").Value.Price.Should().BeGreaterThan(500_000_000);
+        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        flip.TargetPrice.Should().BeGreaterThanOrEqualTo(520_000_000, JsonConvert.SerializeObject(flip, Formatting.Indented));
     }
 
     /// <summary>

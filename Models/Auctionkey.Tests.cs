@@ -200,18 +200,19 @@ public class AuctionkeyTests
         Assert.That(1, Is.EqualTo(key.Key.Enchants.Count));
     }
 
-    [Test]
-    public void Lvl103isNotbucket0()
+    [TestCase(27245497.6f, "0.6")]
+    [TestCase(25358790f, "0.6")]
+    public void Lvl103isNotbucket0(float exp, string bucket)
     {
         var dragon = new SaveAuction()
         {
             Enchantments = [],
-            FlatenedNBT = new() { { "exp", 27245497.685185183.ToString() }, { "candyUsed", "0" } },
+            FlatenedNBT = new() { { "exp", exp.ToString() }, { "candyUsed", "0" } },
             Tag = "PET_GOLDEN_DRAGON"
         };
         var key = service.KeyFromSaveAuction(dragon);
         Assert.That(key.Modifiers.First(m => m.Key == "candyUsed").Value, Is.EqualTo("0"));
-        Assert.That(key.Modifiers.First(m => m.Key == "exp").Value, Is.EqualTo("0.6"));
+        Assert.That(key.Modifiers.First(m => m.Key == "exp").Value, Is.EqualTo(bucket));
     }
     [Test]
     public void LogsCutGroupAt200k()

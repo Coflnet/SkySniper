@@ -1140,7 +1140,8 @@ ORDER BY l.`AuctionId`  DESC;
             var shortTermPrice = GetMedian(shortTermList, cleanPriceLookup);
             if (IsDropping(bucket, shortTermPrice, out var rate))
             {
-                shortTermPrice = (long)(shortTermPrice * rate);
+                shortTermPrice = (long)Math.Max((shortTermPrice * Math.Max(rate, 0.82)),
+                    lookup?.CleanPricePerTier?.GetValueOrDefault(keyCombo.key.Key.Tier) * 0.99 ?? 0);
             }
             bucket.OldestRef = shortTermList.Take(4).Min(s => s.Day);
             if (shortTermList.Count >= 3 && bucket.OldestRef - shortTermList.First().Day <= -5
