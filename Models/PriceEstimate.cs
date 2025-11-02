@@ -12,5 +12,6 @@ namespace Coflnet.Sky.Sniper.Models
         public byte Volatility { get; set; }
         public int AvgSellTime { get; set; }
         public ReferencePrice LastSale { get; set; }
+        public double SelfLearningEstimatedValue { get; set; } = 0;
     }
 }

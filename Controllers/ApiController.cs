@@ -225,23 +225,48 @@ namespace Coflnet.Sky.Sniper.Controllers
         /// <returns></returns>
         [Route("price")]
         [HttpPost]
-        public IEnumerable<PriceEstimate> GetPrices(IEnumerable<ApiSaveAuction> auctions)
+        public async Task<IEnumerable<PriceEstimate>> GetPrices([FromBody] IEnumerable<ApiSaveAuction> auctions, [FromQuery] bool includeSelfLearning = false)
         {
             if (auctions == null)
                 return new List<PriceEstimate>();
-            return auctions.Select(a =>
+
+            var list = new List<PriceEstimate>();
+            foreach (var a in auctions)
             {
                 try
                 {
-                    Console.WriteLine("a: " + JsonConvert.SerializeObject(a));
-                    return service.GetPrice(a);
+                    _logger.LogDebug("a: {Auction}", JsonConvert.SerializeObject(a));
+                    var estimate = service.GetPrice(a);
+
+                    if (includeSelfLearning && flipFinder != null)
+                    {
+                        try
+                        {
+                            // convert to ComplicatedFlip using the same detailed breakdown as other callers
+                            var cflip = SaveAuctionExtensions.ToComplicatedFlip(a, includeBreakdown: true, sniper: service);
+                            var sle = await flipFinder.EstimateAsync(cflip);
+                            if (sle != null)
+                            {
+                                estimate.SelfLearningEstimatedValue = sle.EstimatedValue;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "Self-learning estimate failed for auction {AuctionId}", a?.Uuid);
+                            // leave self-learning fields at default (0 / false)
+                        }
+                    }
+
+                    list.Add(estimate);
                 }
                 catch (Exception e)
                 {
                     _logger.LogError(e, "getting price for auction");
+                    list.Add(new PriceEstimate());
                 }
-                return new PriceEstimate();
-            });
+            }
+
+            return list;
         }
 
         /// <summary>
@@ -251,22 +276,41 @@ namespace Coflnet.Sky.Sniper.Controllers
         /// <returns></returns>
         [Route("prices")]
         [HttpPost]
-        public IEnumerable<PriceEstimate> GetPrices([FromBody] string data)
+        public async Task<IEnumerable<PriceEstimate>> GetPrices([FromBody] string data, [FromQuery] bool includeSelfLearning = false)
         {
             var options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4Block);
             var auctions = MessagePackSerializer.Deserialize<IEnumerable<ApiSaveAuction>>(Convert.FromBase64String(data), options);
-            return auctions.Select(a =>
+            var list = new List<PriceEstimate>();
+            foreach (var a in auctions)
             {
                 try
                 {
-                    return service.GetPrice(a);
+                    var estimate = service.GetPrice(a);
+                    if (includeSelfLearning && flipFinder != null)
+                    {
+                        try
+                        {
+                            var cflip = SaveAuctionExtensions.ToComplicatedFlip(a, includeBreakdown: true, sniper: service);
+                            var sle = await flipFinder.EstimateAsync(cflip);
+                            if (sle != null)
+                            {
+                                estimate.SelfLearningEstimatedValue = sle.EstimatedValue;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "Self-learning estimate failed for auction {AuctionId}", a?.Uuid);
+                        }
+                    }
+                    list.Add(estimate);
                 }
                 catch (Exception e)
                 {
                     _logger.LogError(e, "getting price for auction");
+                    list.Add(new PriceEstimate());
                 }
-                return new PriceEstimate();
-            });
+            }
+            return list;
         }
 
         [Route("similar/{tag}/{auctionId}")]
