@@ -373,7 +373,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         {
             var baseline = ComputeBaseline(flip);
             var tag = flip.ItemTag ?? "_global";
-            if (!trainingDataByItem.TryGetValue(tag, out var list) || !featureIndexByItem.TryGetValue(tag, out var fIndex))
+            if (!RelevantItems.Contains(tag) || !trainingDataByItem.TryGetValue(tag, out var list) || !featureIndexByItem.TryGetValue(tag, out var fIndex))
             {
                 return Task.FromResult<SelfLearningFlipEstimate?>(null);
             }
