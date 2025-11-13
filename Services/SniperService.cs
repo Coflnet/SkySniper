@@ -2900,10 +2900,10 @@ ORDER BY l.`AuctionId`  DESC;
             }
             cleanCost = Math.Min(cleanCost, auction.Tag switch
             {
-                "STARRED_MIDAS_STAFF" => 200_000_000,
+                "STARRED_MIDAS_STAFF" => 160_000_000,
                 "MIDAS_STAFF" => 100_000_000,
-                "MIDAS_SWORD" => 80_000_000,
-                "STARRED_MIDAS_SWORD" => 150_000_000,
+                "MIDAS_SWORD" => 50_000_000,
+                "STARRED_MIDAS_SWORD" => 120_000_000,
                 _ => cleanCost
             });
             var componentSum = valueLookup.Select(v => (long)(v.Key switch
