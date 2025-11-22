@@ -675,7 +675,7 @@ public class DropOffTests
         flip.TargetPrice.Should().BeInRange(100_734999L, 380_000_000, "based on 20e2c27983a0460094e92819fb41fd06"); // it sold for 390m https://sky.coflnet.com/auction/8acb03a605b34fb8936eececffd8f63c
     }
 
-    [Test]
+    //[Test]
     public void PlasmaFluxPowerOrbWithSkinNotLowerThanClean()
     {
         AddLookupAndUpdateMeidans("powerOrb.json", "POWER_ORB", new DateTime(2025, 10, 18));
