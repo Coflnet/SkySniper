@@ -3682,6 +3682,7 @@ ORDER BY l.`AuctionId`  DESC;
 
             var props = CreateReference(bucket.Lbin.AuctionId, key, extraValue, bucket);
             props["mVal"] = bucket.Price.ToString();
+            higherValueLowerBin = Math.Min(higherValueLowerBin, bucket.Price * 2);
             props["hvlbin"] = higherValueLowerBin.ToString();
 
             if (bucket.Price == 0 || bucket.Volume < 10)
