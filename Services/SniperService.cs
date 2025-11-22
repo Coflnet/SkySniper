@@ -139,6 +139,8 @@ namespace Coflnet.Sky.Sniper.Services
             "logs_cut",
             "chimera_found", // Diana's Bookshelf
             "is_shiny", // cosmetic effect on wither armor ~5% drop chance on Master Mode 7
+            // test lower value modifiers (~200k)
+            "tuned_transmission",
         };
 
         private Dictionary<string, Func<ModifierMetadata, RankElem>> Converters = new()
@@ -831,7 +833,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         void AssignMedian(PriceEstimate result, AuctionKey key, ReferenceAuctions bucket, long gemVal)
         {
-            result.Median = bucket.Price + gemVal + (Math.Max((key as AuctionKeyWithValue)?.ValueSubstract - gemVal * 20 / 19 ?? 0, 0) / 3 );
+            result.Median = bucket.Price + gemVal + (Math.Max((key as AuctionKeyWithValue)?.ValueSubstract - gemVal * 20 / 19 ?? 0, 0) / 3);
             result.Volume = bucket.Volume;
             result.MedianKey = key.ToString();
             result.Volatility = bucket.Volatility;
@@ -1259,7 +1261,7 @@ ORDER BY l.`AuctionId`  DESC;
 
                 var recent = bucket.References.AsEnumerable().Reverse().Take(Math.Max(bucket.Volume < 0.5 ? 6 : 12, (int)bucket.Volume)).ToList();
                 var percentileRecent = GetMedian(recent, cleanPriceLookup, 3f);
-                bool lbinListedForShort = bucket.Lbins.Where(l=>l.Price < medianPrice * 1.1).Select(l => l.Day - GetDay()).Take(4).DefaultIfEmpty(3).Average() < 4;
+                bool lbinListedForShort = bucket.Lbins.Where(l => l.Price < medianPrice * 1.1).Select(l => l.Day - GetDay()).Take(4).DefaultIfEmpty(3).Average() < 4;
                 if (bucket.Volume >= 4 && bucket.Lbin.AuctionId != default && lbinListedForShort && percentileRecent > medianPrice)
                 { // volume high enought to risk higher percentile
                     var cappedPrice = preLimitedPrice == medianPrice ? preLimitedPrice * 12 / 10 : limitedPrice;
@@ -2503,6 +2505,11 @@ ORDER BY l.`AuctionId`  DESC;
                 return Ignore; // upgrade level is always higher (newer)
             if (s.Key == "dungeon_item_level")
                 return new KeyValuePair<string, string>("upgrade_level", s.Value);
+            if (s.Key == "tuned_transmission")
+                if (s.Value == "4")
+                    return new KeyValuePair<string, string>(s.Key, "4");
+                else
+                    return Ignore;
             if (ShardAttributes.TryGetValue(s.Key, out var minLvl))
             {
                 if (int.Parse(s.Value) >= minLvl)
