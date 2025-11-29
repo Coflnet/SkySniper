@@ -882,6 +882,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (NBT.IsPet(itemTag) && !item.Modifiers.Any(m => m.Key == "exp"))
                     loadedVal.Lookup.TryRemove(item, out _); // bugged
             }
+            UpdateFraggedAndRune(itemTag);
             if (IsRune(itemTag))
             {
                 foreach (var item in loadedVal.Lookup.Keys.ToList())
@@ -944,7 +945,6 @@ ORDER BY l.`AuctionId`  DESC;
                     dev.Logger.Instance.Error(e, $"Could not deduplicate");
                 }
             }
-            UpdateFragged(itemTag);
 
             void CombineBuckets(KeyValuePair<AuctionKey, ReferenceAuctions> item, ReferenceAuctions existingBucket)
             {
@@ -991,7 +991,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
-        private static void UpdateFragged(string itemTag)
+        private static void UpdateFraggedAndRune(string itemTag)
         {
             if (itemTag.StartsWith("STARRED_") &&
             // midas and daedalus needs golden fragments which are expensive
@@ -1018,7 +1018,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         public short AddSoldItem(SaveAuction auction, bool preventMedianUpdate = false)
         {
-            UpdateFragged(auction.Tag);
+            UpdateFraggedAndRune(auction.Tag);
             (ReferenceAuctions bucket, var key) = GetBucketForAuction(auction);
             var extraValue = GetExtraValue(auction, key);
             var time = AddAuctionToBucket(auction, preventMedianUpdate, bucket, key.ValueSubstract, extraValue);

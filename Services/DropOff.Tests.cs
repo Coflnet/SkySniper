@@ -705,6 +705,26 @@ public class DropOffTests
         price.Price.Should().BeLessThan(112_000_000L);
     }
 
+    [Test]
+    public void GrandLeafingRuneNotOvervalued()
+    {
+        AddLookupAndUpdateMeidans("LEAFING_RUNE.json", "UNIQUE_RUNE_GRAND_LEAFING", new DateTime(2025, 11, 29));
+        var auction = new SaveAuction()
+        {
+            Tag = "UNIQUE_RUNE_GRAND_LEAFING",
+            StartingBid = 27_500_000,
+            UId = 4,
+            Count = 1,
+            Tier = Tier.LEGENDARY,
+            FlatenedNBT = new() { { "RUNE_GRAND_LEAFING", "3" } }
+        };
+
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        flip.TargetPrice.Should().BeLessThan(32_000_000L, JsonConvert.SerializeObject(found, Formatting.Indented));
+    }
+
     /// <summary>
     /// comparison combination extra value for "godroll" was partially added to median if the attributes were dropped
     /// sample suggested (sell): https://sky.coflnet.com/auction/fb84cd7fd0fc4eca80d58f26faae1082
@@ -949,7 +969,7 @@ public class DropOffTests
             Tag = "ICE_SPRAY_WAND",
             StartingBid = 22_000_000,
             UId = 4,
-            FlatenedNBT = new Dictionary<string, string>() {  },
+            FlatenedNBT = new Dictionary<string, string>() { },
             AuctioneerId = "12aaa",
             Tier = Tier.RARE,
             Count = 1
@@ -1208,7 +1228,7 @@ public class DropOffTests
             Tag = "THEORETICAL_HOE_WHEAT_3",
             StartingBid = 20_000_000,
             UId = 4,
-            Enchantments = [new(Enchantment.EnchantmentType.cultivating,10), new(Enchantment.EnchantmentType.dedication, 3)],
+            Enchantments = [new(Enchantment.EnchantmentType.cultivating, 10), new(Enchantment.EnchantmentType.dedication, 3)],
             FlatenedNBT = new Dictionary<string, string>()
             {
                 { "farmed_cultivating", "158763761" },
@@ -1243,7 +1263,7 @@ public class DropOffTests
             Tag = "FERMENTO_BOOTS",
             StartingBid = 45_000_000,
             UId = 4,
-            FlatenedNBT = new (),
+            FlatenedNBT = new(),
             Reforge = ItemReferences.Reforge.mossy,
             Enchantments = [new Enchantment() { Type = Enchantment.EnchantmentType.pesterminator, Level = 5 }],
             AuctioneerId = "12aaa",
@@ -1264,12 +1284,12 @@ public class DropOffTests
             Tag = "PINA_COOLADA_BARN_SKIN",
             StartingBid = 28_000_000,
             UId = 4,
-            FlatenedNBT = new (),
+            FlatenedNBT = new(),
             AuctioneerId = "12aaa",
             Tier = Tier.LEGENDARY,
             Count = 1
         };
-        sniperService.Lookups["PINA_COOLADA_BARN_SKIN"].Lookup.First(l => l.Key.Count == 1 ).Value.Price
+        sniperService.Lookups["PINA_COOLADA_BARN_SKIN"].Lookup.First(l => l.Key.Count == 1).Value.Price
             .Should().Be(34_000_000);
         var found = TestAuctionLoaded(auction, LowPricedAuction.FinderType.SNIPER);
         found.TargetPrice.Should().BeLessThan(35_000_000, "not high, will drop");
