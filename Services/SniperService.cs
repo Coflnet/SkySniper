@@ -2833,6 +2833,8 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 else
                     return;
+                if (IsRune(itemGroupTag.tag))
+                    return; // no special handling for runes
             }
             if (!triggerEvents || fastMode)
                 return; // no need to check for closest, just storing
