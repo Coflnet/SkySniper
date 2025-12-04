@@ -20,6 +20,7 @@ public class MayorServiceTests
     [Test]
     public void DianaRelatedItemsContainsAllExpectedItems()
     {
+        // Core Mythos items
         MayorService.DianaRelatedItems.Should().Contain("MYTHOS_LEGGINGS");
         MayorService.DianaRelatedItems.Should().Contain("MYTHOS_NECKLACE");
         MayorService.DianaRelatedItems.Should().Contain("MYTHOS_FRAGMENT");
@@ -29,8 +30,20 @@ public class MayorServiceTests
         MayorService.DianaRelatedItems.Should().Contain("MYTHOS_BELT");
         MayorService.DianaRelatedItems.Should().Contain("DIANAS_BOOKSHELF");
         MayorService.DianaRelatedItems.Should().Contain("DAEDALUS_STICK");
+        // Challenger items
         MayorService.DianaRelatedItems.Should().Contain("CHALLENGER_NECKLACE");
-        MayorService.DianaRelatedItems.Should().HaveCount(10);
+        MayorService.DianaRelatedItems.Should().Contain("CHALLENGER_LEGGINGS");
+        MayorService.DianaRelatedItems.Should().Contain("CHALLENGER_CHESTPLATE");
+        MayorService.DianaRelatedItems.Should().Contain("CHALLENGER_BOOTS");
+        MayorService.DianaRelatedItems.Should().Contain("CHALLENGER_BRACELET");
+        MayorService.DianaRelatedItems.Should().Contain("CHALLENGER_BELT");
+        MayorService.DianaRelatedItems.Should().Contain("CHALLENGER_HELMET");
+        MayorService.DianaRelatedItems.Should().Contain("CHALLENGER_CLOAK");
+        // Additional items
+        MayorService.DianaRelatedItems.Should().Contain("ANCESTRAL_SPADE");
+        MayorService.DianaRelatedItems.Should().Contain("ARCHAIC_SPADE");
+        MayorService.DianaRelatedItems.Should().Contain("CROWN_OF_AVARICE");
+        MayorService.DianaRelatedItems.Should().HaveCount(20);
     }
 
     [Test]

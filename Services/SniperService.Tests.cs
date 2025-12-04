@@ -3224,6 +3224,16 @@ namespace Coflnet.Sky.Sniper
         [TestCase("DIANAS_BOOKSHELF")]
         [TestCase("DAEDALUS_STICK")]
         [TestCase("CHALLENGER_NECKLACE")]
+        [TestCase("CHALLENGER_LEGGINGS")]
+        [TestCase("CHALLENGER_CHESTPLATE")]
+        [TestCase("CHALLENGER_BOOTS")]
+        [TestCase("CHALLENGER_BRACELET")]
+        [TestCase("CHALLENGER_BELT")]
+        [TestCase("CHALLENGER_HELMET")]
+        [TestCase("CHALLENGER_CLOAK")]
+        [TestCase("ANCESTRAL_SPADE")]
+        [TestCase("ARCHAIC_SPADE")]
+        [TestCase("CROWN_OF_AVARICE")]
         public void DianaItemsAdjustedDownWhenDianaTermEnding(string itemTag)
         {
             // Setup - create a mock mayor service where Diana adjustment is active

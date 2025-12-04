@@ -3942,6 +3942,15 @@ ORDER BY l.`AuctionId`  DESC;
             found?.AddTag("uuid", auction.Uuid);
             found.Log($"Found flip {auction.Uuid} {targetPrice} {type} {bucket.Volume}");
 
+            // Apply Diana adjustment to Diana-related items when Diana's term is ending or just ended
+            if (mayorService != null 
+                && MayorService.DianaRelatedItems.Contains(auction.Tag) 
+                && mayorService.IsDianaItemsAdjustmentActive(DateTime.UtcNow))
+            {
+                targetPrice = (long)(targetPrice * 0.9);
+                props["diana-adj"] = "true";
+            }
+
             FoundSnipe?.Invoke(new LowPricedAuction()
             {
                 Auction = auction,
