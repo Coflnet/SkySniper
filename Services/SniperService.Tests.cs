@@ -3209,6 +3209,159 @@ namespace Coflnet.Sky.Sniper
             Assert.That(estimate.TargetPrice, Is.EqualTo(expectedEstimate), JsonConvert.SerializeObject(estimate.AdditionalProps));
         }
 
+        /// <summary>
+        /// When Diana was the last mayor or is about to end (8 hours before mayor election year is over 
+        /// and 48 hours after), Diana-related item values should be reduced by 10% from median.
+        /// </summary>
+        [Test]
+        [TestCase("MYTHOS_LEGGINGS")]
+        [TestCase("MYTHOS_NECKLACE")]
+        [TestCase("MYTHOS_FRAGMENT")]
+        [TestCase("MYTHOS_CHESTPLATE")]
+        [TestCase("MYTHOS_BRACELET")]
+        [TestCase("MYTHOS_BOOTS")]
+        [TestCase("MYTHOS_BELT")]
+        [TestCase("DIANAS_BOOKSHELF")]
+        [TestCase("DAEDALUS_STICK")]
+        [TestCase("CHALLENGER_NECKLACE")]
+        public void DianaItemsAdjustedDownWhenDianaTermEnding(string itemTag)
+        {
+            // Setup - create a mock mayor service where Diana adjustment is active
+            var mayorService = new MayorService(null, null, NullLogger<MayorService>.Instance);
+            var testTime = DateTime.UtcNow;
+            var year = MayorService.ElectionYear(testTime);
+            
+            // Set Diana as previous mayor to trigger adjustment (assuming we're within 48h window)
+            mayorService.SetMayorForYear(year, "Aatrox");
+            mayorService.SetMayorForYear(year - 1, "Diana");
+            
+            // Set the mayor service on sniper service
+            service.SetMayorService(mayorService);
+            
+            // Create auction with Diana-related item
+            var auction = new SaveAuction()
+            {
+                Tag = itemTag,
+                FlatenedNBT = new Dictionary<string, string>(),
+                HighestBidAmount = 10_000_000,
+                AuctioneerId = "test123",
+                UId = random.NextInt64(),
+                Count = 1
+            };
+            
+            // Add volume to establish median
+            AddVolume(auction);
+            
+            // Get price with Diana adjustment
+            var priceWithAdjustment = service.GetPrice(new SaveAuction()
+            {
+                Tag = itemTag,
+                FlatenedNBT = new Dictionary<string, string>(),
+                Count = 1
+            });
+            
+            // Now test without Diana adjustment
+            mayorService.SetMayorForYear(year - 1, "Aatrox"); // Diana no longer previous mayor
+            service.SetMayorService(mayorService);
+            
+            var priceWithoutAdjustment = service.GetPrice(new SaveAuction()
+            {
+                Tag = itemTag,
+                FlatenedNBT = new Dictionary<string, string>(),
+                Count = 1
+            });
+            
+            // The price with Diana adjustment should be 90% of the price without adjustment
+            if (mayorService.IsDianaItemsAdjustmentActive(testTime))
+            {
+                priceWithAdjustment.Median.Should().Be((long)(priceWithoutAdjustment.Median * 0.9),
+                    $"Diana-related item {itemTag} should be adjusted down by 10%");
+                priceWithAdjustment.MedianKey.Should().Contain("diana-adj",
+                    "MedianKey should indicate Diana adjustment was applied");
+            }
+        }
+
+        /// <summary>
+        /// Verifies Diana adjustment is NOT applied when Diana was not the mayor
+        /// </summary>
+        [Test]
+        public void DianaItemsNotAdjustedWhenDianaNotMayor()
+        {
+            var mayorService = new MayorService(null, null, NullLogger<MayorService>.Instance);
+            var testTime = DateTime.UtcNow;
+            var year = MayorService.ElectionYear(testTime);
+            
+            // Neither current nor previous mayor is Diana
+            mayorService.SetMayorForYear(year, "Aatrox");
+            mayorService.SetMayorForYear(year - 1, "Marina");
+            
+            service.SetMayorService(mayorService);
+            
+            var auction = new SaveAuction()
+            {
+                Tag = "MYTHOS_LEGGINGS",
+                FlatenedNBT = new Dictionary<string, string>(),
+                HighestBidAmount = 10_000_000,
+                AuctioneerId = "test123",
+                UId = random.NextInt64(),
+                Count = 1
+            };
+            
+            AddVolume(auction);
+            
+            var price = service.GetPrice(new SaveAuction()
+            {
+                Tag = "MYTHOS_LEGGINGS",
+                FlatenedNBT = new Dictionary<string, string>(),
+                Count = 1
+            });
+            
+            // Should NOT have Diana adjustment
+            price.MedianKey.Should().NotContain("diana-adj",
+                "Diana adjustment should not be applied when Diana was not the mayor");
+        }
+
+        /// <summary>
+        /// Verifies non-Diana items are not affected by Diana adjustment
+        /// </summary>
+        [Test]
+        public void NonDianaItemsNotAffectedByDianaAdjustment()
+        {
+            var mayorService = new MayorService(null, null, NullLogger<MayorService>.Instance);
+            var testTime = DateTime.UtcNow;
+            var year = MayorService.ElectionYear(testTime);
+            
+            // Set Diana as previous mayor (would trigger adjustment for Diana items)
+            mayorService.SetMayorForYear(year, "Aatrox");
+            mayorService.SetMayorForYear(year - 1, "Diana");
+            
+            service.SetMayorService(mayorService);
+            
+            // Use a non-Diana item
+            var auction = new SaveAuction()
+            {
+                Tag = "HYPERION",
+                FlatenedNBT = new Dictionary<string, string>(),
+                HighestBidAmount = 100_000_000,
+                AuctioneerId = "test123",
+                UId = random.NextInt64(),
+                Count = 1
+            };
+            
+            AddVolume(auction);
+            
+            var price = service.GetPrice(new SaveAuction()
+            {
+                Tag = "HYPERION",
+                FlatenedNBT = new Dictionary<string, string>(),
+                Count = 1
+            });
+            
+            // Non-Diana items should NOT have Diana adjustment
+            price.MedianKey.Should().NotContain("diana-adj",
+                "Non-Diana items should not be affected by Diana adjustment");
+        }
+
         private static ProductInfo CreateGemPrice(string gemName)
         {
             return new()

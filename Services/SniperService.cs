@@ -54,6 +54,7 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly Counter sellClosestSearch = Metrics.CreateCounter("sky_sniper_sell_closest_search", "Number of searches for closest sell");
         private readonly Counter closestMedianBruteCounter = Metrics.CreateCounter("sky_sniper_closest_median_brute", "Number of brute force searches for closest median");
         private readonly Counter closestLbinBruteCounter = Metrics.CreateCounter("sky_sniper_closest_lbin_brute", "Number of brute force searches for closest median");
+        private IMayorService mayorService;
 
         public event Action<LowPricedAuction> FoundSnipe;
         public event Action<PotentialCraftFlip> CappedKey;
@@ -508,6 +509,14 @@ ORDER BY l.`AuctionId`  DESC;
             Converters["bass_weight"] = m => new(m.Modifier, 5_000_000 * int.Parse(m.Modifier.Value.Split(',')[0]));
         }
 
+        /// <summary>
+        /// Sets the mayor service for Diana-related item adjustments.
+        /// </summary>
+        public void SetMayorService(IMayorService service)
+        {
+            this.mayorService = service;
+        }
+
         public void SummaryUpdate()
         {
             OnSummaryUpdate?.Invoke();
@@ -595,6 +604,14 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 result.Median += tagGroup.Item2;
                 result.MedianKey += $"&comb";
+            }
+            // Adjust Diana-related items down by 10% when Diana's term is ending or just ended
+            if (mayorService != null 
+                && MayorService.DianaRelatedItems.Contains(auction.Tag) 
+                && mayorService.IsDianaItemsAdjustmentActive(DateTime.UtcNow))
+            {
+                result.Median = (long)(result.Median * 0.9);
+                result.MedianKey += "&diana-adj";
             }
             return result;
         }
