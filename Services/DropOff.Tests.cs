@@ -736,7 +736,6 @@ public class DropOffTests
     [Test]
     public void PortalCostCap()
     {
-        AddLookupAndUpdateMeidans("PORTAL.json", "MURKWATER_LOCH_PORTAL", new DateTime(2025, 10, 02));
         var auction = new SaveAuction()
         {
             Tag = "MURKWATER_LOCH_PORTAL",
@@ -747,6 +746,8 @@ public class DropOffTests
             FlatenedNBT = [],
             Enchantments = []
         };
+        SimulateAlreadyLoadedLbin(auction);
+        AddLookupAndUpdateMeidans("PORTAL.json", "MURKWATER_LOCH_PORTAL", new DateTime(2025, 10, 02));
         var maxPrice = 10_000_000L;
         craftCostService.Costs["MURKWATER_LOCH_PORTAL"] = maxPrice;
         // refresh medians to apply craft cost cap
@@ -755,7 +756,7 @@ public class DropOffTests
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(auction);
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
-        flip.TargetPrice.Should().BeLessThan(maxPrice *116/100, "flips are only allowed go sligthly above craft cost (simulated craft cost in this case)");
+        flip.TargetPrice.Should().BeLessThan(maxPrice * 116 / 100, "flips are only allowed go sligthly above craft cost (simulated craft cost in this case)");
 
         var ccService = new CraftCostService(null!, null!);
         ccService.ItemCategories["MURKWATER_LOCH_PORTAL"] = Category.MISC;
@@ -765,6 +766,15 @@ public class DropOffTests
         ccService.AddCostForSpecialItems();
         ccService.Costs["MURKWATER_LOCH_PORTAL"].Should().Be(8000000L, "portal cost should be capped");
         ccService.Costs["DYE_PORTAL"].Should().Be(23000000L, "dye portal should not be capped");
+
+        void SimulateAlreadyLoadedLbin(SaveAuction auction)
+        {
+            // this forces the sniper to combine buckets
+            var lbinSet = auction.Dupplicate();
+            lbinSet.StartingBid = 20_500_000;
+            sniperService.TestNewAuction(lbinSet);
+            sniperService.FinishedUpdate();
+        }
     }
 
     /// <summary>
