@@ -1,0 +1,253 @@
+{
+  "lookup": {
+    " Any  COMMON 10": {
+      "price": 0,
+      "references": [],
+      "oldestRef": 0,
+      "lbins": [],
+      "hitsSinceCalculating": 0,
+      "stonksHits": 0,
+      "volatility": 0,
+      "riskyEstimate": 0,
+      "timeToSell": 0,
+      "volume": 0
+    },
+    " None  UNKNOWN 0": {
+      "price": 0,
+      "references": [],
+      "oldestRef": 0,
+      "lbins": [],
+      "hitsSinceCalculating": 0,
+      "stonksHits": 0,
+      "volatility": 0,
+      "riskyEstimate": 0,
+      "timeToSell": 0,
+      "volume": 0
+    },
+    " Any  COMMON 1": {
+      "price": 4500000,
+      "references": [
+        {
+          "auctionId": -5312715345410510000,
+          "price": 5000000,
+          "day": 1382,
+          "seller": -23208,
+          "buyer": 21004,
+          "sellTime": 54
+        },
+        {
+          "auctionId": 8391027894877543000,
+          "price": 7500000,
+          "day": 1384,
+          "seller": 27083,
+          "buyer": 30505,
+          "sellTime": 1922
+        },
+        {
+          "auctionId": -3151253377899198000,
+          "price": 9999999,
+          "day": 1445,
+          "seller": -22346,
+          "buyer": 6007,
+          "sellTime": 2361
+        },
+        {
+          "auctionId": 1927634972698053400,
+          "price": 500000000,
+          "day": 1468,
+          "seller": -25965,
+          "buyer": 2103,
+          "sellTime": 0
+        },
+        {
+          "auctionId": 7934823051592773000,
+          "price": 500000000,
+          "day": 1468,
+          "seller": 11425,
+          "buyer": 26625,
+          "sellTime": 0
+        },
+        {
+          "auctionId": 1932380840955241000,
+          "price": 500000000,
+          "day": 1468,
+          "seller": -8370,
+          "buyer": -1478,
+          "sellTime": 0
+        },
+        {
+          "auctionId": -3289971531893664000,
+          "price": 500000000,
+          "day": 1468,
+          "seller": 2103,
+          "buyer": -25965,
+          "sellTime": 0
+        },
+        {
+          "auctionId": 6615701841279866000,
+          "price": 500000000,
+          "day": 1468,
+          "seller": 11425,
+          "buyer": -1478,
+          "sellTime": 0
+        },
+        {
+          "auctionId": -38003876003509770,
+          "price": 250000000,
+          "day": 1468,
+          "seller": 11425,
+          "buyer": -7521,
+          "sellTime": 0
+        },
+        {
+          "auctionId": -7428382037348810000,
+          "price": 250000000,
+          "day": 1468,
+          "seller": -1478,
+          "buyer": -20254,
+          "sellTime": 1
+        },
+        {
+          "auctionId": 5767455110659828000,
+          "price": 250000000,
+          "day": 1468,
+          "seller": -1478,
+          "buyer": 19800,
+          "sellTime": 1
+        },
+        {
+          "auctionId": 3325566294760328700,
+          "price": 250000000,
+          "day": 1468,
+          "seller": 11425,
+          "buyer": -20254,
+          "sellTime": 0
+        },
+        {
+          "auctionId": 1778047554016956200,
+          "price": 250000000,
+          "day": 1468,
+          "seller": -1478,
+          "buyer": -20254,
+          "sellTime": 1
+        },
+        {
+          "auctionId": -925918144002016000,
+          "price": 250000000,
+          "day": 1468,
+          "seller": 11425,
+          "buyer": -20254,
+          "sellTime": 0
+        },
+        {
+          "auctionId": 4662424403795084000,
+          "price": 250000000,
+          "day": 1468,
+          "seller": -1478,
+          "buyer": 19800,
+          "sellTime": 1
+        },
+        {
+          "auctionId": 176410508527758370,
+          "price": 185000000,
+          "day": 1468,
+          "seller": 11425,
+          "buyer": 19800,
+          "sellTime": 1
+        },
+        {
+          "auctionId": 3678787681595323000,
+          "price": 185000000,
+          "day": 1468,
+          "seller": -1478,
+          "buyer": -20254,
+          "sellTime": 0
+        },
+        {
+          "auctionId": 7128226160864150000,
+          "price": 185000000,
+          "day": 1468,
+          "seller": 11425,
+          "buyer": -32032,
+          "sellTime": 1
+        },
+        {
+          "auctionId": 1219914853545581300,
+          "price": 185000000,
+          "day": 1468,
+          "seller": -1478,
+          "buyer": -20254,
+          "sellTime": 1
+        },
+        {
+          "auctionId": 7208998685143687000,
+          "price": 185000000,
+          "day": 1468,
+          "seller": -1478,
+          "buyer": -32032,
+          "sellTime": 1
+        },
+        {
+          "auctionId": -1824949224039505200,
+          "price": 135000000,
+          "day": 1468,
+          "seller": -1478,
+          "buyer": -22664,
+          "sellTime": 1
+        },
+        {
+          "auctionId": -4561652793181418500,
+          "price": 135000000,
+          "day": 1468,
+          "seller": 11425,
+          "buyer": -22664,
+          "sellTime": 0
+        }
+      ],
+      "oldestRef": 1524,
+      "lbins": [
+        {
+          "auctionId": 1780390090839446000,
+          "price": 50000000,
+          "day": 1539,
+          "seller": -9391,
+          "buyer": 0,
+          "sellTime": 475
+        },
+        {
+          "auctionId": -5356463090983171000,
+          "price": 98000000,
+          "day": 1542,
+          "seller": 20293,
+          "buyer": 0,
+          "sellTime": -18915
+        }
+      ],
+      "hitsSinceCalculating": 0,
+      "stonksHits": 0,
+      "volatility": 36,
+      "riskyEstimate": 4500000,
+      "timeToSell": 3005,
+      "volume": 0.36708862
+    }
+  },
+  "category": "MISC",
+  "volume": 0.96666664,
+  "cleanPricePerDay": {
+    "1468": 20000000,
+    "1469": 20000000,
+    "1470": 9000000,
+    "1472": 19400000
+  },
+  "cleanKey": {
+    "enchants": [],
+    "reforge": "Any",
+    "modifiers": [],
+    "tier": "COMMON",
+    "count": 1
+  },
+  "cleanPricePerTier": {
+    "COMMON": 1000000
+  },
+  "hasMultipleRarities": false
+}

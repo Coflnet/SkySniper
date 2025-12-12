@@ -29,6 +29,13 @@ namespace Coflnet.Sky.Sniper
         {
             public Dictionary<string, double> Costs { get; } = new();
 
+            public Dictionary<string, Category> ItemCategories => throw new NotImplementedException();
+
+            public void AddCostForSpecialItems()
+            {
+                throw new NotImplementedException();
+            }
+
             public bool TryGetCost(string itemId, out double cost)
             {
                 return Costs.TryGetValue(itemId, out cost);

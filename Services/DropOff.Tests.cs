@@ -23,6 +23,14 @@ public class DropOffTests
     private class MockCraftCostService : ICraftCostService
     {
         public Dictionary<string, double> Costs { get; } = new();
+
+        public Dictionary<string, Category> ItemCategories { get; set; } = new();
+
+        public void AddCostForSpecialItems()
+        {
+            
+        }
+
         public bool TryGetCost(string itemId, out double cost)
         {
             return Costs.TryGetValue(itemId, out cost);
@@ -723,6 +731,36 @@ public class DropOffTests
         sniperService.TestNewAuction(auction);
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
         flip.TargetPrice.Should().BeLessThan(32_000_000L, JsonConvert.SerializeObject(found, Formatting.Indented));
+    }
+
+     [Test]
+    public void PortalCostCap()
+    {
+        AddLookupAndUpdateMeidans("PORTAL.json", "MURKWATER_LOCH_PORTAL", new DateTime(2025, 10, 02));
+        var auction = new SaveAuction()
+        {
+            Tag = "MURKWATER_LOCH_PORTAL",
+            StartingBid = 5_500_000,
+            UId = 4,
+            Count = 1,
+            Tier = Tier.COMMON,
+            FlatenedNBT = []
+        };
+        craftCostService.Costs["MURKWATER_LOCH_PORTAL"] = 10_000_000;
+
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        flip.TargetPrice.Should().Be((long)craftCostService.Costs["MURKWATER_LOCH_PORTAL"] - 1, JsonConvert.SerializeObject(found, Formatting.Indented));
+        
+        var ccService = new CraftCostService(null!, null!);
+        ccService.ItemCategories["MURKWATER_LOCH_PORTAL"] = Category.MISC;
+        ccService.ItemCategories["DYE_PORTAL"] = Category.dyes;
+        ccService.Costs["PORTALIZER"] = 3_000_000;
+        ccService.Costs["DYE_PORTAL"] = 23_000_000;
+        ccService.AddCostForSpecialItems();
+        ccService.Costs["MURKWATER_LOCH_PORTAL"].Should().Be(8000000L, "portal cost should be capped");
+        ccService.Costs["DYE_PORTAL"].Should().Be(23000000L, "dye portal should not be capped");
     }
 
     /// <summary>

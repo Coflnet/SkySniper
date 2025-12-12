@@ -606,8 +606,8 @@ ORDER BY l.`AuctionId`  DESC;
                 result.MedianKey += $"&comb";
             }
             // Adjust Diana-related items down by 10% when Diana's term is ending or just ended
-            if (mayorService != null 
-                && MayorService.DianaRelatedItems.Contains(auction.Tag) 
+            if (mayorService != null
+                && MayorService.DianaRelatedItems.Contains(auction.Tag)
                 && mayorService.IsDianaItemsAdjustmentActive(DateTime.UtcNow))
             {
                 result.Median = (long)(result.Median * 0.9);
@@ -900,6 +900,8 @@ ORDER BY l.`AuctionId`  DESC;
                     loadedVal.Lookup.TryRemove(item, out _); // bugged
             }
             UpdateFraggedAndRune(itemTag);
+            if (craftCostService != null)
+                craftCostService.ItemCategories[itemTag] = loadedVal.Category;
             if (IsRune(itemTag))
             {
                 foreach (var item in loadedVal.Lookup.Keys.ToList())
@@ -3943,8 +3945,8 @@ ORDER BY l.`AuctionId`  DESC;
             found.Log($"Found flip {auction.Uuid} {targetPrice} {type} {bucket.Volume}");
 
             // Apply Diana adjustment to Diana-related items when Diana's term is ending or just ended
-            if (mayorService != null 
-                && MayorService.DianaRelatedItems.Contains(auction.Tag) 
+            if (mayorService != null
+                && MayorService.DianaRelatedItems.Contains(auction.Tag)
                 && mayorService.IsDianaItemsAdjustmentActive(DateTime.UtcNow))
             {
                 targetPrice = (long)(targetPrice * 0.9);
