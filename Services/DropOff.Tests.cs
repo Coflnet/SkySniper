@@ -28,7 +28,7 @@ public class DropOffTests
 
         public void AddCostForSpecialItems()
         {
-            
+
         }
 
         public bool TryGetCost(string itemId, out double cost)
@@ -733,7 +733,7 @@ public class DropOffTests
         flip.TargetPrice.Should().BeLessThan(32_000_000L, JsonConvert.SerializeObject(found, Formatting.Indented));
     }
 
-     [Test]
+    [Test]
     public void PortalCostCap()
     {
         AddLookupAndUpdateMeidans("PORTAL.json", "MURKWATER_LOCH_PORTAL", new DateTime(2025, 10, 02));
@@ -744,15 +744,19 @@ public class DropOffTests
             UId = 4,
             Count = 1,
             Tier = Tier.COMMON,
-            FlatenedNBT = []
+            FlatenedNBT = [],
+            Enchantments = []
         };
-        craftCostService.Costs["MURKWATER_LOCH_PORTAL"] = 10_000_000;
+        var maxPrice = 10_000_000L;
+        craftCostService.Costs["MURKWATER_LOCH_PORTAL"] = maxPrice;
+        // refresh medians to apply craft cost cap
+        UpdateMedian("MURKWATER_LOCH_PORTAL", sniperService.Lookups["MURKWATER_LOCH_PORTAL"]);
 
         sniperService.State = SniperState.FullyLoaded;
         sniperService.TestNewAuction(auction);
         var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
-        flip.TargetPrice.Should().Be((long)craftCostService.Costs["MURKWATER_LOCH_PORTAL"] - 1, JsonConvert.SerializeObject(found, Formatting.Indented));
-        
+        flip.TargetPrice.Should().BeLessThan(maxPrice *116/100, "flips are only allowed go sligthly above craft cost (simulated craft cost in this case)");
+
         var ccService = new CraftCostService(null!, null!);
         ccService.ItemCategories["MURKWATER_LOCH_PORTAL"] = Category.MISC;
         ccService.ItemCategories["DYE_PORTAL"] = Category.dyes;

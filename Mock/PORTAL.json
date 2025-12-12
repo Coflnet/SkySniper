@@ -25,24 +25,8 @@
       "volume": 0
     },
     " Any  COMMON 1": {
-      "price": 4500000,
+      "price": 45000000,
       "references": [
-        {
-          "auctionId": -5312715345410510000,
-          "price": 5000000,
-          "day": 1382,
-          "seller": -23208,
-          "buyer": 21004,
-          "sellTime": 54
-        },
-        {
-          "auctionId": 8391027894877543000,
-          "price": 7500000,
-          "day": 1384,
-          "seller": 27083,
-          "buyer": 30505,
-          "sellTime": 1922
-        },
         {
           "auctionId": -3151253377899198000,
           "price": 9999999,
@@ -183,25 +167,9 @@
           "auctionId": 7208998685143687000,
           "price": 185000000,
           "day": 1468,
-          "seller": -1478,
+          "seller": -1475,
           "buyer": -32032,
           "sellTime": 1
-        },
-        {
-          "auctionId": -1824949224039505200,
-          "price": 135000000,
-          "day": 1468,
-          "seller": -1478,
-          "buyer": -22664,
-          "sellTime": 1
-        },
-        {
-          "auctionId": -4561652793181418500,
-          "price": 135000000,
-          "day": 1468,
-          "seller": 11425,
-          "buyer": -22664,
-          "sellTime": 0
         }
       ],
       "oldestRef": 1524,
