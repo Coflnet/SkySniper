@@ -142,6 +142,7 @@ namespace Coflnet.Sky.Sniper.Services
             "is_shiny", // cosmetic effect on wither armor ~5% drop chance on Master Mode 7
             // test lower value modifiers (~200k)
             "tuned_transmission",
+            "seconds_held",
         };
 
         private Dictionary<string, Func<ModifierMetadata, RankElem>> Converters = new()
@@ -2529,6 +2530,10 @@ ORDER BY l.`AuctionId`  DESC;
                     return new KeyValuePair<string, string>(s.Key, "4");
                 else
                     return Ignore;
+            if(s.Key == "seconds_held")
+            {
+                return NormalizeNumberTo(s, 180000, 6); // 50 hours per level max 6 levels
+            }
             if (ShardAttributes.TryGetValue(s.Key, out var minLvl))
             {
                 if (int.Parse(s.Value) >= minLvl)
