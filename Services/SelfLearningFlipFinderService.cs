@@ -42,7 +42,7 @@ public sealed record ModelMetrics(double Rmse, double RSquared);
 public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderService, IDisposable
 {
     public sealed record ModelStats(string Tag, IReadOnlyCollection<string> FeatureNames, int SampleCount, bool ModelLoaded, ModelMetrics? Metrics);
-    
+
     private readonly int minSamplesForTraining;
     private readonly ILogger<SelfLearningFlipFinderService> logger;
     private readonly MLContext mlContext;
@@ -106,7 +106,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         "FERMENTO_LEGGINGS",
         "PET_GRIFFIN",
         "LIVID_DAGGER",
-        "CRIMSON_BOOTS"
+        "CRIMSON_BOOTS",
+        "SKELETON_MASTER_CHESTPLATE"
     };
 
     private bool disposed;
@@ -423,19 +424,19 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             }
 
             var attrs = new Dictionary<string, long>(flip.AttributeValues ?? new Dictionary<string, long>());
-            
+
             // Use the exact vector size the model expects (from when it was trained/loaded)
             // This prevents errors when new features appear that weren't in the training data
             var expectedVectorSize = modelVectorSizeByTag.GetValueOrDefault(tag, fIndex.Count);
             var features = CreateFeatureVectorForPrediction(attrs, fIndex, expectedVectorSize);
-            
+
             if (features.Length != expectedVectorSize)
             {
-                logger.LogWarning("Feature vector size mismatch for {Tag}: created {ActualSize}, expected {ExpectedSize}", 
+                logger.LogWarning("Feature vector size mismatch for {Tag}: created {ActualSize}, expected {ExpectedSize}",
                     tag, features.Length, expectedVectorSize);
                 return Task.FromResult<SelfLearningFlipEstimate?>(new SelfLearningFlipEstimate(baseline, baseline, false, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
             }
-            
+
             FlipPrediction prediction;
             lock (predictionSync)
             {
@@ -529,7 +530,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     private float[] CreateFeatureVectorForPrediction(IDictionary<string, long> attributes, Dictionary<string, int> featureIndex, int expectedVectorSize)
     {
         var vector = new float[expectedVectorSize];
-        
+
         if (attributes.Count == 0)
         {
             return vector;
@@ -623,7 +624,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         // Adjust parameters based on sample size for better small-sample performance
         var minLeafSize = list.Count < 100 ? 1 : Math.Max(5, list.Count / 100);
         var numTrees = list.Count < 100 ? 50 : 100;
-        
+
         var pipeline = mlContext.Regression.Trainers.FastTree(
             featureColumnName: nameof(FlipData.Features),
             labelColumnName: nameof(FlipData.Label),
@@ -647,18 +648,18 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             }
 
             models[tag] = tagModel;
-            
+
             // Store the expected vector size for this model
             modelVectorSizeByTag[tag] = featureCount;
-            
+
             logger.LogDebug("Stored model vector size for {Tag}: {VectorSize} features", tag, featureCount);
 
             var metrics = mlContext.Regression.Evaluate(tagModel!.Transform(dataView), labelColumnName: nameof(FlipData.Label));
             rmse = metrics?.RootMeanSquaredError ?? double.NaN;
             r2 = metrics?.RSquared ?? double.NaN;
             lastMetricsByItem[tag] = new ModelMetrics(rmse, r2);
-            
-            logger.LogInformation("Trained FastTree model for {Tag}: {SampleCount} samples, {FeatureCount} features, RMSE={Rmse:F2}, R²={R2:F3}", 
+
+            logger.LogInformation("Trained FastTree model for {Tag}: {SampleCount} samples, {FeatureCount} features, RMSE={Rmse:F2}, R²={R2:F3}",
                 tag, list.Count, featureCount, rmse, r2);
             // mark last refit timestamp
             lastRefitByTag[tag] = DateTime.UtcNow;
@@ -692,8 +693,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     /// <summary>
     /// Persists the trained model and metadata to storage.
     /// </summary>
-    private void PersistModelAndMetadata(string tag, ITransformer model, IDataView dataView, 
-        Dictionary<string, int> featureIndex, List<FlipData> trainingData, 
+    private void PersistModelAndMetadata(string tag, ITransformer model, IDataView dataView,
+        Dictionary<string, int> featureIndex, List<FlipData> trainingData,
         double rmse, double rSquared, bool forcePersist)
     {
         try
@@ -701,11 +702,11 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             using var ms = new System.IO.MemoryStream();
             mlContext.Model.Save(model, dataView.Schema, ms);
             ms.Position = 0;
-            
-            var shouldPersist = forcePersist || 
-                !lastPersistedByTag.TryGetValue(tag, out var lastPersist) || 
+
+            var shouldPersist = forcePersist ||
+                !lastPersistedByTag.TryGetValue(tag, out var lastPersist) ||
                 (DateTime.UtcNow - lastPersist) > TimeSpan.FromDays(1);
-            
+
             if (shouldPersist)
             {
                 _ = persitance.SaveBlob($"selflearning/model/{tag}", ms);
@@ -725,7 +726,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             {
                 var combinedMeta = LoadCombinedMetadata();
                 combinedMeta[tag] = meta;
-                
+
                 if (shouldPersist)
                 {
                     SaveCombinedMetadata(combinedMeta);
@@ -759,7 +760,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         {
             logger.LogDebug(ex, "Could not load combined metadata, starting fresh");
         }
-        
+
         return new Dictionary<string, PersistMeta>(StringComparer.OrdinalIgnoreCase);
     }
 
@@ -842,10 +843,10 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
 
                     inputSchema[nameof(FlipData.Features)].ColumnType = new VectorDataViewType(NumberDataViewType.Single, Math.Max(0, vectorSize));
                     predictionEngines[tag] = mlContext.Model.CreatePredictionEngine<FlipData, FlipPrediction>(tagModel, ignoreMissingColumns: false, inputSchema, null);
-                    
+
                     // Store the expected vector size for this loaded model
                     modelVectorSizeByTag[tag] = vectorSize;
-                    
+
                     logger.LogInformation("Loaded persisted model for {Tag} with {VectorSize} features", tag, vectorSize);
                 }
             }
