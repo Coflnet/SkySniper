@@ -2398,7 +2398,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static bool HighExp(string tag)
         {
-            return tag == "PET_GOLDEN_DRAGON" || tag == "PET_JADE_DRAGON";
+            return tag == "PET_GOLDEN_DRAGON" || tag == "PET_JADE_DRAGON" || tag == "PET_ROSE_DRAGON";
         }
 
         private class ModifierMetadata

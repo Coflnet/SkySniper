@@ -66,6 +66,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         "HYPERION",
         "PET_GOLDEN_DRAGON",
         "PET_ENDER_DRAGON",
+        "PET_ROSE_DRAGON",
         "TERMINATOR",
         "GIANTS_SWORD",
         "DIVAN_DRILL",
