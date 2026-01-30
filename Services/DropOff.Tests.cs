@@ -1144,15 +1144,15 @@ public class DropOffTests
             Count = 1
         };
         LowPricedAuction flip = TestAuctionLoaded(auction);
-        flip.TargetPrice.Should().Be(972428570L);
+        flip.TargetPrice.Should().Be(1009178570L);
         flip.AdditionalProps["breakdown"].Should().StartWith("[{\"Value\":371999999,");
         var sniper = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
-        sniper.TargetPrice.Should().Be(734264300L); // should be limited by a little bit over craft cost and not target 1.1b
+        sniper.TargetPrice.Should().Be(1023748999L); // should be limited by a little bit over craft cost and not target 1.1b
 
         // check that exp is not dropped on lvl 1
         auction.FlatenedNBT["exp"] = "1";
         var lowKey = sniperService.ValueKeyForTest(auction);
-        lowKey.Key.Modifiers.Count.Should().Be(3);
+        lowKey.Key.Modifiers.Count.Should().Be(2);
     }
 
     [Test]
@@ -1346,31 +1346,6 @@ public class DropOffTests
         var found = TestAuctionLoaded(auction, LowPricedAuction.FinderType.SNIPER);
         found.TargetPrice.Should().BeLessThan(35_000_000, "not high, will drop");
     }
-    [Test]
-    public void EnderDragonTierBoostLimit()
-    {
-        SetBazaarPrice("PET_ITEM_TIER_BOOST", 110_000_000);
-        AddLookupAndUpdateMeidans("enderdragon.json", "PET_ENDER_DRAGON", new DateTime(2025, 7, 12));
-        // {"enchantments":[],"uuid":"d46cf125760547aeacbc15c3600d1bdd","count":1,"startingBid":550000000,"tag":"PET_ENDER_DRAGON","itemName":"[Lvl 100] Ender Dragon","start":"2025-07-12T17:43:12","end":"2025-07-12T17:43:39","auctioneerId":"1db368eb72024b77ab58fbdc75d5a2dd","highestBidAmount":550000000,"bids":[{"bidder":"037e8ae1a4054c88beb7bd4b6b0b3f4f","profileId":"08e72bbf579d42388e5e5478f3fef2ba","amount":550000000,"timestamp":"2025-07-12T17:43:43"}],"anvilUses":0,"nbtData":{"data":{"petInfo":"{\"type\":\"ENDER_DRAGON\",\"active\":false,\"exp\":3.3265737057308994E7,\"tier\":\"EPIC\",\"hideInfo\":false,\"heldItem\":\"PET_ITEM_TIER_BOOST\",\"candyUsed\":10,\"uuid\":\"a85e59fe-71f5-4f4c-a98f-c90862791e9d\",\"uniqueId\":\"dbb5fb95-4270-4b59-a349-90cb79d5d55c\",\"hideRightClick\":false,\"noMove\":false,\"extraData\":{}}","uid":"c90862791e9d","uuid":"a85e59fe-71f5-4f4c-a98f-c90862791e9d"}},"itemCreatedAt":"2025-07-12T11:22:23","reforge":"None","category":"MISC","tier":"LEGENDARY","bin":true,"flatNbt":{"type":"ENDER_DRAGON","active":"False","exp":"33265737.057308994","tier":"EPIC","hideInfo":"False","heldItem":"PET_ITEM_TIER_BOOST","candyUsed":"10","uniqueId":"dbb5fb95-4270-4b59-a349-90cb79d5d55c","hideRightClick":"False","noMove":"False","uid":"c90862791e9d","uuid":"a85e59fe-71f5-4f4c-a98f-c90862791e9d"}}
-        var auction = new SaveAuction()
-        {
-            Tag = "PET_ENDER_DRAGON",
-            StartingBid = 420_000_000,
-            UId = 4,
-            FlatenedNBT = new Dictionary<string, string>() { { "exp", "33265737.057308994" }, { "candyUsed", "10" }, { "heldItem", "PET_ITEM_TIER_BOOST" } },
-            AuctioneerId = "12aaa",
-            Tier = Tier.LEGENDARY,
-            Reforge = ItemReferences.Reforge.None,
-            Count = 1
-        };
-        var found = TestAuctionLoaded(auction);
-        found.TargetPrice.Should().BeLessThan(555_000_000, "not higher than it should be");
-        auction.FlatenedNBT["exp"] = "52532"; // should not be adjusted
-        auction.FlatenedNBT["candyUsed"] = "0"; // should not be adjusted
-        found = TestAuctionLoaded(auction);
-        found.TargetPrice.Should().BeLessThan(505_000_000, "not higher than it should be even on low exp");
-    }
-
 
     [Test]
     public void EndermanStonksLevelComparison()

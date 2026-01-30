@@ -362,11 +362,15 @@ public class AuctionkeyTests
         var auction = new SaveAuction()
         {
             Tag = "PET_SCATHA",
+            Tier = Tier.LEGENDARY,
             FlatenedNBT = new() { { "heldItem", "PET_ITEM_TIER_BOOST" },
                                 {"candyUsed", "0"} },
         };
-        var modifierList = service.KeyFromSaveAuction(auction, level).Modifiers;
-        Assert.That(modifierList.Any(x => x.Value == SniperService.TierBoostShorthand));
+        var key = service.KeyFromSaveAuction(auction, level);
+        var modifierList = key.Modifiers;
+        // Tier boost is now removed from key, and tier is reduced instead
+        Assert.That(modifierList.Any(x => x.Value == SniperService.TierBoostShorthand), Is.False, "Tier boost should not be in modifiers");
+        Assert.That(key.Tier, Is.EqualTo(Tier.EPIC), "Tier should be reduced from LEGENDARY to EPIC when tier boost is present");
         Assert.That(modifierList.Any(x => x.Value == "0" && x.Key == "candyUsed"));
     }
 
@@ -382,7 +386,6 @@ public class AuctionkeyTests
                                 {"candyUsed", amount.ToString()} },
         };
         var modifierList = service.KeyFromSaveAuction(auction).Modifiers;
-        Assert.That(modifierList.Any(x => x.Value == SniperService.TierBoostShorthand));
         Assert.That(modifierList.Any(x => x.Value == target.ToString() && x.Key == "candyUsed"));
     }
 
