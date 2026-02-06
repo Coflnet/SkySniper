@@ -2932,13 +2932,13 @@ ORDER BY l.`AuctionId`  DESC;
             }
             cleanCost = Math.Min(cleanCost, auction.Tag switch
             {
-                "STARRED_MIDAS_STAFF" => 160_000_000,
-                "MIDAS_STAFF" => 100_000_000,
-                "MIDAS_SWORD" => 50_000_000,
-                "STARRED_MIDAS_SWORD" => 120_000_000,
+                "STARRED_MIDAS_STAFF" => 60_000_000,
+                "MIDAS_STAFF" => 10_000_000,
+                "MIDAS_SWORD" => 5_000_000,
+                "STARRED_MIDAS_SWORD" => 20_000_000,
                 _ => cleanCost
             });
-            var componentSum = valueLookup.Select(v => (long)(v.Key switch
+            var componentSum = valueLookup.Sum(v => (long)(v.Key switch
             {
                 "skin" => auction.Tag.StartsWith("PET") ? 0.5 : 0.4,
                 "ultimate_fatal_tempo" => 0.65,
@@ -2948,7 +2948,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var s when IsRune(s) => 0.55,
                 var s when Constants.AttributeKeys.Contains(s) => 0.01,
                 _ => 0.85
-            } * v.Value)).Sum();
+            } * v.Value));
             if (cleanCost == componentGuess)
             {
                 componentSum = 0; // unique runes shouldn't be counted twice
