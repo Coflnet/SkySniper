@@ -2529,7 +2529,7 @@ ORDER BY l.`AuctionId`  DESC;
                     return new KeyValuePair<string, string>(s.Key, "4");
                 else
                     return Ignore;
-            if(s.Key == "seconds_held")
+            if (s.Key == "seconds_held")
             {
                 return NormalizeNumberTo(s, 180000, 6); // 50 hours per level max 6 levels
             }
@@ -3049,12 +3049,14 @@ ORDER BY l.`AuctionId`  DESC;
                 return;
             }
             var lbinBucket = relevant.Select(r => r.e.Value.Lbin).Where(r => r.Price != default).DefaultIfEmpty().MinBy(r => r.Price);
+            var newestRef = combined.OrderByDescending(c => c.Day).Skip(1).FirstOrDefault().Day; // short term median
+            var age = GetDay() - newestRef;
             var virtualBucket = new ReferenceAuctions()
             {
                 Lbins = [lbinBucket],
                 References = new(combined),
-                Price = combined.Count < 4 ? 0 : GetCappedMedian(auction, longKey, combined) * 98 / 100,
-                OldestRef = (short)(GetDay() - 2),
+                Price = (combined.Count < 4 ? 0 : GetCappedMedian(auction, longKey, combined) * 98 / 100) * (age > 10 ? (10 - age / 9) : 10) / 10, // older items may have dropped in value
+                OldestRef = (short)(newestRef - 2),
                 Volatility = 123// mark as risky
             };
             // mark with extra value -3
@@ -3353,7 +3355,7 @@ ORDER BY l.`AuctionId`  DESC;
                     var itemTag = value.ToUpper();
                     long itemPrice = 0;
                     long removalCost = 0;
-                    
+
                     // Check if this is a pet item (heldItem)
                     if (item == "heldItem")
                     {
@@ -3384,7 +3386,7 @@ ORDER BY l.`AuctionId`  DESC;
                         const int RemovalCost = 50_000;
                         itemPrice = (prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price)) * 97 / 100 - RemovalCost;
                     }
-                    
+
                     extraValue += Math.Max(0, itemPrice);
                 }
             }
@@ -3410,7 +3412,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (auction.FlatenedNBT.TryGetValue(item, out var value))
                 {
                     var itemTag = value.ToUpper();
-                    
+
                     // Check if this is a pet item (heldItem)
                     if (item == "heldItem")
                     {
