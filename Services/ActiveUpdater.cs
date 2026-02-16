@@ -40,6 +40,7 @@ namespace Coflnet.Sky.Sniper.Services
                     completeLookup[item.Key] = item.Value;
                 }
             }
+            var removeBefore = DateTime.UtcNow.AddMinutes(-0.5);
             await Task.Yield();
 
             foreach (var item in sniper.Lookups)
@@ -50,10 +51,18 @@ namespace Coflnet.Sky.Sniper.Services
                         lookup.Value.Lbins = new();
                     foreach (var binAuction in lookup.Value.Lbins.ToList())
                     {
+                        var listedAt = SniperService.StartTime.AddDays(binAuction.Day).AddMinutes(binAuction.SellTime);
                         if (!completeLookup.ContainsKey(binAuction.AuctionId))
                         {
-                            int removed = lookup.Value.Lbins.RemoveAll(l => l.AuctionId == binAuction.AuctionId);
-                            Console.WriteLine("Removed inactive " + AuctionService.Instance.GetUuid(binAuction.AuctionId) + " " + removed);
+                            if (listedAt <= removeBefore)
+                            {
+                                int removed = lookup.Value.Lbins.RemoveAll(l => l.AuctionId == binAuction.AuctionId);
+                                Console.WriteLine("Removed inactive " + AuctionService.Instance.GetUuid(binAuction.AuctionId) + " " + removed);
+                            }
+                            else 
+                            {
+                                Console.WriteLine("Keeping potentially active " + AuctionService.Instance.GetUuid(binAuction.AuctionId) + " listed at " + listedAt);
+                            }
                         }
                     }
                     lookup.Value.Lbins.Sort(Models.ReferencePrice.Compare);
