@@ -145,6 +145,7 @@ public class AttributeFlipService : IAttributeFlipService
             StartingKey = cheapestLbin.Key,
             EndingKey = (AuctionKey)key,
             Target = medianPrice,
+            ProfitAfterTax = medianPrice * 97 / 100 - cheapestLbin.Value.Lbin.Price - modifierSum,
             EstimatedCraftingCost = modifierSum,
             Tag = flip.tag,
             Volume = matchingBaucket.Volume
@@ -274,6 +275,7 @@ public class AttributeFlip
     public string Tag { get; set; }
     public string AuctionToBuy { get; set; }
     public long AuctionPrice { get; set; }
+    public long ProfitAfterTax { get; set; }
     public List<Ingredient> Ingredients { get; set; }
     public AuctionKey StartingKey { get; set; }
     public AuctionKey EndingKey { get; set; }
