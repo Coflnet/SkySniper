@@ -15,7 +15,7 @@
 
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.S3" Version="3.7.510.5" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.510.11" />
     <PackageReference Include="Coflnet.Sky.FlipTracker.Client" Version="0.16.3" />
     <PackageReference Include="Coflnet.Sky.Mayor.Client" Version="0.4.1" />
     <PackageReference Include="JWT" Version="10.1.1" />
