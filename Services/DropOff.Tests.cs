@@ -897,6 +897,31 @@ public class DropOffTests
     }
 
     [Test]
+    public async Task MidasNerfNotOvervalued()
+    {
+        await sniperService.Init();
+        SetBazaarPrice("MIDAS_JEWEL", 10_000);// valuable because of apply cost
+        AddLookupAndUpdateMeidans("midas_sword_nerf.json", "MIDAS_SWORD", new DateTime(2026, 3, 4));
+        var item = new SaveAuction()
+        {
+            Tag = "MIDAS_SWORD",
+            StartingBid = 17_000_000,
+            UId = 4,
+            FlatenedNBT = new() { { "hpc", "10" }, { "dungeon_item", "1" }, { "upgrade_level", "5" }, { "uid", "fbcb017e33e7" }, { "winning_bid", "8620000" }, { "uuid", "e5c47a16-42e7-485a-9b41-fbcb017e33e7" } },
+            Enchantments = [new Enchantment() { Type = Enchantment.EnchantmentType.fire_aspect, Level = 3 },
+                new Enchantment() { Type = Enchantment.EnchantmentType.cubism, Level = 5 } ],
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1
+        };
+        sniperService.State = SniperState.Ready;
+        sniperService.TestNewAuction(item);
+
+        //  clean item value was higher causing an overvaluation
+        (found.FirstOrDefault()?.TargetPrice ?? 0).Should().BeLessThan(30_000_000L, JsonConvert.SerializeObject(found, Formatting.Indented));
+    }
+
+    [Test]
     public void AllowHigherEstimateOnCleanHighVolumeLbin()
     {
         var converted = LoadLookupMock("DRILL_ENGINE.json");

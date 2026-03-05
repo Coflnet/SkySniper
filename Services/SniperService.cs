@@ -1156,6 +1156,10 @@ ORDER BY l.`AuctionId`  DESC;
                     bucket.Price = 0;
                 return; // can't have enough volume
             }
+            if(bucket.References.Any(r=>r.AuctionId == -3582016608333802000))
+            {
+                Console.WriteLine("Found reference");
+            }
             List<ReferencePrice> deduplicated = ApplyAntiMarketManipulation(bucket);
             DropUnderlistings(deduplicated);
 
@@ -1256,7 +1260,8 @@ ORDER BY l.`AuctionId`  DESC;
                         var lowest = lookup.Lookup.Where(l => l.Value.Price > 0).OrderBy(l => l.Value.Price).Take(5).ToList();
                     }
                     // check clean item value is higher
-                    if (limitedPrice < tierval / 1.2 && !keyCombo.key.Key.Modifiers.Any(m => m.Key == "virtual" || Constants.AttributeKeys.Contains(m.Key)))
+                    if (limitedPrice < tierval / 1.2 && !keyCombo.key.Key.Modifiers.Any(m => m.Key == "virtual" || Constants.AttributeKeys.Contains(m.Key))
+                        && !IsMidas(keyCombo.tag))
                         limitedPrice = Math.Max(limitedPrice, tierval);
                 }
                 limitedPrice = CapAtCraftCost(keyCombo.tag, limitedPrice, keyCombo.key, bucket.Price);
@@ -3929,6 +3934,8 @@ ORDER BY l.`AuctionId`  DESC;
 
         private bool IsHigherValue(string tag, AuctionKey baseKey, AuctionKey toCheck)
         {
+         //   if (IsMidas(tag) && !baseKey.Modifiers.Any(m => m.Key == "winning_bid" || m.Key == "full_bid") && toCheck.Modifiers.Any(m => m.Key == "winning_bid" || m.Key == "full_bid"))
+         //       return false;
             return baseKey.Tier <= toCheck.Tier
                     && (toCheck.Tier != Tier.LEGENDARY || tag != "PET_SPIRIT")
                     && baseKey.Count <= toCheck.Count

@@ -1634,7 +1634,7 @@ namespace Coflnet.Sky.Sniper
             AddVolume(highestValAuction);
             var estimate = service.GetPrice(highestValAuction);
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
-            Assert.That(estimate.Median, Is.EqualTo(230_000_000), JsonConvert.SerializeObject(estimate));
+            Assert.That(estimate.Median, Is.EqualTo(150_000_000), JsonConvert.SerializeObject(estimate));
         }
 
         /// <summary>
