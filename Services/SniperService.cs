@@ -19,19 +19,7 @@ namespace Coflnet.Sky.Sniper.Services
         public const string PetItemKey = "petItem";
         public const string TierBoostShorthand = "TIER_BOOST";
         private const int SizeToKeep = 80;
-        /// <summary>
-        /// Cost to remove a pet item based on its rarity
-        /// </summary>
-        public static readonly Dictionary<Tier, long> PetItemRemovalCostByRarity = new()
-        {
-            { Tier.COMMON, 25_000 },
-            { Tier.UNCOMMON, 50_000 },
-            { Tier.RARE, 100_000 },
-            { Tier.EPIC, 250_000 },
-            { Tier.LEGENDARY, 500_000 },
-            { Tier.MYTHIC, 1_000_000 },
-            { Tier.DIVINE, 2_500_000 }
-        };
+
         public static int WorkingSize { get; set; } = 60;
         public const int PetExpMaxlevel = 4_225_538 * 6;
         private const int GoldenDragonMaxExp = 30_036_483 * 7;
@@ -3367,7 +3355,7 @@ ORDER BY l.`AuctionId`  DESC;
                         // For pet items: use bazaar price minus removal cost based on rarity
                         if (BazaarPrices.TryGetValue(itemTag, out var bazaarPrice))
                         {
-                            removalCost = GetPetItemRemovalCost(itemTag);
+                            removalCost = itemService.GetPetItemRemovalCost(itemTag);
                             itemPrice = (long)bazaarPrice - removalCost;
                         }
                         else
@@ -3377,7 +3365,7 @@ ORDER BY l.`AuctionId`  DESC;
                             {
                                 var prices = itemLookup.Lookup.GetValueOrDefault(itemLookup.CleanKey ?? itemLookup.Lookup.FirstOrDefault(k => k.Value.Price > 0).Key);
                                 var price = prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price);
-                                removalCost = GetPetItemRemovalCost(itemTag);
+                                removalCost = itemService.GetPetItemRemovalCost(itemTag);
                                 itemPrice = price - removalCost;
                             }
                         }
@@ -3471,33 +3459,6 @@ ORDER BY l.`AuctionId`  DESC;
             }
 
             return gemValue;
-        }
-
-        /// <summary>
-        /// Gets the removal cost for a pet item based on its rarity loaded from the item service
-        /// </summary>
-        /// <param name="petItemTag">The tag of the pet item (e.g., BROWN_BANDANA, PET_ITEM_QUICK_CLAW)</param>
-        /// <returns>The removal cost in coins</returns>
-        public long GetPetItemRemovalCost(string petItemTag)
-        {
-            var items = itemService?.GetItemsAsync().Result;
-            if (items == null)
-                return PetItemRemovalCostByRarity[Tier.UNCOMMON]; // default fallback
-
-            // Try with the tag as-is first, then try adding PET_ITEM_ prefix
-            if (!items.TryGetValue(petItemTag, out var item))
-            {
-                if (!items.TryGetValue("PET_ITEM_" + petItemTag, out item))
-                    return PetItemRemovalCostByRarity[Tier.UNCOMMON]; // default fallback
-            }
-
-            if (item?.Tier == null)
-                return PetItemRemovalCostByRarity[Tier.UNCOMMON]; // default fallback
-
-            if (Enum.TryParse<Tier>(item.Tier, true, out var tier) && PetItemRemovalCostByRarity.TryGetValue(tier, out var cost))
-                return cost;
-
-            return PetItemRemovalCostByRarity[Tier.UNCOMMON]; // default fallback
         }
 
         private bool FindFlip(SaveAuction auction,
