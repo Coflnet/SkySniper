@@ -1148,8 +1148,9 @@ public class DropOffTests
     /// Golden dragon should have craft cost based on level (exp) and rarity
     /// </summary>
     [Test]
-    public void PetCleanExpBased()
+    public async Task PetCleanExpBased()
     {
+        await sniperService.Init();
         SetBazaarPrice("MINOS_RELIC", 44_000_000);
         var converted = LoadLookupMock("dragon.json");
         SniperService.StartTime = new DateTime(2021, 9, 25) + (DateTime.UtcNow - new DateTime(2025, 3, 21));

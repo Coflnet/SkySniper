@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Coflnet.Sky.Core;
+using Coflnet.Sky.Core.Services;
 using Coflnet.Sky.Sniper.Models;
 using Coflnet.Sky.Sniper.Services;
 using dev;
@@ -25,6 +26,7 @@ namespace Coflnet.Sky.Sniper
         SaveAuction highestValAuction;
         SniperService service;
         List<LowPricedAuction> found = new();
+        HypixelItemService itemService;
         public class CraftCostMock : ICraftCostService
         {
             public Dictionary<string, double> Costs { get; } = new();
@@ -85,7 +87,8 @@ namespace Coflnet.Sky.Sniper
             craftCost = new CraftCostMock();
             // console logger
             var factory = LoggerFactory.Create(builder => builder.AddConsole());
-            service = new SniperService(new(null, null), null, factory.CreateLogger<SniperService>(), craftCost);
+            itemService = new(null, null);
+            service = new SniperService(itemService, null, factory.CreateLogger<SniperService>(), craftCost);
 
             IdCounter = 100; // magic number
             found = new List<LowPricedAuction>();
@@ -1918,8 +1921,9 @@ namespace Coflnet.Sky.Sniper
         /// Calculated value: 6M + (4M - 100k) = 9.9M
         /// </summary>
         [TestCase("PET_ITEM_BUBBLEGUM")]
-        public void PetItemValuationIncludesRemovalCostByRarity(string itemId)
+        public async Task PetItemValuationIncludesRemovalCostByRarity(string itemId)
         {
+            await itemService.GetItemsAsync(); // load rarity
             highestValAuction.FlatenedNBT = new();
             var withPetItem = Dupplicate(highestValAuction);
             withPetItem.HighestBidAmount = 10_000_000;
