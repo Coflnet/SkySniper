@@ -55,7 +55,7 @@ public class CraftCostService : BackgroundService, ICraftCostService
             }
             foreach (var craft in all)
             {
-                Costs[craft.ItemId] = craft.CraftCost;
+                Costs[craft.ItemId] = Math.Min(craft.CraftCost, craft.SellPrice * 2); // cap at 2x clean sell price to avoid unavailability messing with valuations.
                 if (craft.Type == "carpentry")
                     Costs[craft.ItemId] = Math.Min(craft.CraftCost, 10_000);
                 if (craft.ItemId.EndsWith("DESK"))
