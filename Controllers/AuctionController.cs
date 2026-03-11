@@ -104,7 +104,8 @@ public class AuctionController : ControllerBase
     [HttpGet]
     public List<string> GetRelevantItems()
     {
-        return service.Lookups.Where(l => l.Value.Lookup.Any(i => i.Value.Price > 12_000_000) && l.Value.Lookup.Count(i=>i.Key.Count == 1 && i.Value.Price > 5_000_000) > 3 && l.Value.Volume > 10)
+        var oldestRef = SniperService.GetDay() - 60;
+        return service.Lookups.Where(l => l.Value.Lookup.Any(i => i.Value.Price > 12_000_000) && l.Value.Lookup.Count(i=>i.Key.Count == 1 && i.Value.Price > 5_000_000 && i.Value.OldestRef > oldestRef) > 3 && l.Value.Volume > 10)
             .OrderByDescending(l => l.Value.Lookup.Sum(i => i.Value.Price * i.Value.Volume))
             .Select(l => l.Key).ToList();
     }
