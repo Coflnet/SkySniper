@@ -8,7 +8,7 @@ using Coflnet.Sky.Core;
 using Coflnet.Sky.Core.Services;
 using Coflnet.Sky.Sniper.Models;
 using dev;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;
 using NUnit.Framework;

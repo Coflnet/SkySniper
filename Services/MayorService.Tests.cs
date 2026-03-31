@@ -1,7 +1,7 @@
 using System;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Sniper.Services;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
 

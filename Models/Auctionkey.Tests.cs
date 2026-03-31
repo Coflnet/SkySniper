@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Core.Services;
 using Coflnet.Sky.Sniper.Services;
-using FluentAssertions;
+using AwesomeAssertions;
 using MessagePack;
 using Microsoft.Extensions.Logging.Abstractions;
 using Newtonsoft.Json;

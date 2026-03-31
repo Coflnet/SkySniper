@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 using Coflnet.Sky.Core;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 

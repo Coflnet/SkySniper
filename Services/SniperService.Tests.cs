@@ -9,7 +9,7 @@ using Coflnet.Sky.Core.Services;
 using Coflnet.Sky.Sniper.Models;
 using Coflnet.Sky.Sniper.Services;
 using dev;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Coflnet.Sky.FlipTracker.Client.Model;
-using FluentAssertions;
+using AwesomeAssertions;
 using Coflnet.Sky.Sniper.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
@@ -92,7 +92,7 @@ public class SelfLearningFlipFinderServiceTests
     // sanity-check: snapshot should show training samples present
     var snap = service.GetSnapshot();
     Console.WriteLine($"Snapshot: samples={snap.SampleCount}, features={snap.FeatureNames.Count}");
-    snap.SampleCount.Should().BeGreaterOrEqualTo(12);
+    snap.SampleCount.Should().BeGreaterThanOrEqualTo(12);
 
     // ensure model is trained from in-memory samples (tests run faster with explicit rebuild)
     var trained = await service.EnsureTrainedModelAsync("TERMINATOR");
@@ -119,7 +119,7 @@ public class SelfLearningFlipFinderServiceTests
         var result = await service.EstimateAsync(estimateFlip);
 
         result.ModelReady.Should().BeTrue();
-        result.SampleCount.Should().BeGreaterOrEqualTo(12);
+        result.SampleCount.Should().BeGreaterThanOrEqualTo(12);
         result.BaselineValue.Should().BeApproximately(estimateAttributes["cleancost"], 1);
 
         // With L2=0.1 regularization, the model is more conservative than L2=0.01
