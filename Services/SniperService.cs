@@ -551,11 +551,13 @@ ORDER BY l.`AuctionId`  DESC;
 
             // add back removed value (gem,drills and rod parts)
             var gemVal = GetExtraValue(auction, itemKey);
+            // use full removable value for LBIN to match what was subtracted during storage
+            var fullRemovableVal = GetFullRemovableValue(auction, itemKey);
             if (l.TryGetValue(itemKey, out ReferenceAuctions bucket))
             {
                 if (result.Lbin.AuctionId == default && bucket.Lbin.AuctionId != default)
                 {
-                    var lbinGemValue = gemVal;
+                    var lbinGemValue = fullRemovableVal;
                     if (itemKey.Modifiers.Any(m => m.Key == "pgems" && m.Value == "5"))
                     {// gems are already accounted for
                         lbinGemValue = 0;
@@ -565,7 +567,11 @@ ORDER BY l.`AuctionId`  DESC;
                         Price = bucket.Lbin.Price + lbinGemValue
                     };
                     result.LbinKey = itemKey.ToString();
-                    result.SLbin = bucket.Lbins.Skip(1).FirstOrDefault();
+                    var slbin = bucket.Lbins.Skip(1).FirstOrDefault();
+                    if (slbin.AuctionId != default)
+                        result.SLbin = new(slbin) { Price = slbin.Price + lbinGemValue };
+                    else
+                        result.SLbin = slbin;
                 }
                 if (result.Median == default && bucket.Price != default)
                 {
@@ -599,9 +605,9 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
             ReferencePrice lbinCap = GetLbinCap(tagGroup.tag, l, itemKey);
-            if (lbinCap.Price != 0 && result.Lbin.Price > lbinCap.Price)
+            if (lbinCap.Price != 0 && result.Lbin.Price > lbinCap.Price + fullRemovableVal)
             {
-                result.Lbin = lbinCap;
+                result.Lbin = new(lbinCap) { Price = lbinCap.Price + fullRemovableVal };
                 result.LbinKey += $"+HV";
             }
             // correct for combined items
