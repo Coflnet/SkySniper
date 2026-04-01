@@ -60,6 +60,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     private readonly Dictionary<string, DateTime> lastRefitByTag = new(StringComparer.OrdinalIgnoreCase);
     // Track the expected feature vector size for each model's prediction engine
     private readonly Dictionary<string, int> modelVectorSizeByTag = new(StringComparer.OrdinalIgnoreCase);
+    // Track the maximum sold price observed in training data per tag to cap unrealistic predictions
+    private readonly Dictionary<string, float> maxTrainingLabelByTag = new(StringComparer.OrdinalIgnoreCase);
     // Only keep/train models for these complicated / relevant items (mirror of AIFormattingService.RelevantItems)
     private static readonly HashSet<string> RelevantItems = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -671,6 +673,17 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             }
             var score = double.IsNaN(prediction.Score) || prediction.Score <= 0 ? baseline : prediction.Score;
 
+            // Cap prediction to 1.5x the maximum sold price seen in training data.
+            // Prevents items like SKELETON_MASTER_CHESTPLATE from being valued at billions
+            // when no training sample supports such a price (attributes defaulting to high estimates).
+            if (maxTrainingLabelByTag.TryGetValue(tag, out var maxLabel) && maxLabel > 0 && score > maxLabel * 1.5f)
+            {
+                logger.LogWarning("AI prediction for {Tag} capped from {OriginalScore:F0} to {CappedScore:F0} (max training label: {MaxLabel:F0}, attrs: {Attrs})",
+                    tag, score, maxLabel * 1.5f, maxLabel,
+                    string.Join(", ", (flip.AttributeValues ?? new Dictionary<string, long>()).Select(kv => $"{kv.Key}={kv.Value}")));
+                score = maxLabel * 1.5f;
+            }
+
             return Task.FromResult<SelfLearningFlipEstimate?>(new SelfLearningFlipEstimate(score, baseline, true, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
         }
         finally
@@ -838,6 +851,12 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         }
         // mark that we're about to refit this tag to avoid concurrent/rapid re-fits
         lastRefitByTag[tag] = DateTime.UtcNow;
+
+        // Track the maximum sold price (label) in training data to cap unrealistic predictions
+        var maxLabel = list.Max(s => s.Label);
+        if (maxLabel > 0)
+            maxTrainingLabelByTag[tag] = maxLabel;
+
         var schema = SchemaDefinition.Create(typeof(FlipData));
         schema[nameof(FlipData.Features)].ColumnType = new VectorDataViewType(NumberDataViewType.Single, featureCount);
 

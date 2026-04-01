@@ -189,8 +189,21 @@ namespace Coflnet.Sky.Sniper.Services
                 return;
             var cflip = SaveAuctionExtensions.ToComplicatedFlip(a, includeBreakdown: true, sniper: sniper, mayorService: mayorService, craftCostService: craftCostService);
             var estimate = flipFinder.EstimateAsync(cflip).GetAwaiter().GetResult();
-            var value = Math.Min(estimate.EstimatedValue, cflip.AttributeValues.Sum(a => a.Value == 10_000_000_000 ? 1_000_000 : a.Value));
-            if (value > a.StartingBid * 1.1 && estimate.EstimatedValue - a.StartingBid > 3_000_000)
+            if (estimate == null)
+                return;
+            var attrSum = cflip.AttributeValues.Sum(a => a.Value);
+            var value = Math.Min(estimate.EstimatedValue, attrSum);
+
+            // Log suspicious cases where the AI estimate greatly exceeds the attribute sum cap
+            // These are likely items with attributes that default to high estimate values
+            if (estimate.EstimatedValue > attrSum * 3 && estimate.EstimatedValue > 50_000_000)
+            {
+                logger.LogWarning("AI overvaluation detected for {Tag} ({Uuid}): estimate={Estimate:F0}, attrSumCap={AttrSum}, bid={Bid}, attrs=[{Attrs}]",
+                    a.Tag, a.Uuid, estimate.EstimatedValue, attrSum, a.StartingBid,
+                    string.Join(", ", cflip.AttributeValues.Select(kv => $"{kv.Key}={kv.Value}")));
+            }
+
+            if (value > a.StartingBid * 1.1 && value - a.StartingBid > 3_000_000)
             {
                 logger.LogInformation("found potential ai flip for {content} {metadata}", JsonConvert.SerializeObject(estimate), JsonConvert.SerializeObject(cflip));
                 var flip = new LowPricedAuction()
@@ -198,7 +211,7 @@ namespace Coflnet.Sky.Sniper.Services
                     Auction = a,
                     AdditionalProps = new() { { "samples", JsonConvert.SerializeObject(estimate)}, {"cflip", JsonConvert.SerializeObject(cflip)} },
                     Finder = LowPricedAuction.FinderType.AI,
-                    TargetPrice = (long)(estimate.EstimatedValue * 0.9)
+                    TargetPrice = (long)(value * 0.9)
                 };
                 Produceflip(flip, FlipProducer);
                 FoundPartialFlip?.Invoke(flip);

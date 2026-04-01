@@ -26,7 +26,9 @@ public static class SaveAuctionExtensions
             if (sniper == null) throw new ArgumentNullException(nameof(sniper), "sniper is required when includeBreakdown is true");
 
             var withBreakdown = sniper.ValueKeyForTest(auction);
-            const long fullFlag = 10_000_000_000L;
+            // Use 1 as a presence indicator for categorical features (pet tier, mayor)
+            // that don't have a meaningful numeric value.
+            const long presenceFlag = 1L;
 
             foreach (var x in withBreakdown.ValueBreakdown)
             {
@@ -38,15 +40,17 @@ public static class SaveAuctionExtensions
                 else
                     key = x.Reforge.ToString();
 
-                long val = x.IsEstimate ? fullFlag : x.Value;
-                attrs[key] = val;
+                // Use the actual estimated value instead of a sentinel flag.
+                // Previously all estimates were set to 10B which caused the ML model
+                // to overvalue items whose attributes were always estimated (no lookup data).
+                attrs[key] = x.Value;
             }
             if(auction.Tag.StartsWith("PET_"))
-                attrs["tier:" + auction.Tier] = fullFlag;
+                attrs["tier:" + auction.Tier] = presenceFlag;
 
             var mayor = mayorService?.GetMayor(auction.End);
             if (mayor != null && RelevantMayors.Contains(mayor))
-                attrs["m:" + mayor] = fullFlag;
+                attrs["m:" + mayor] = presenceFlag;
 
             if (craftCostService != null && craftCostService.TryGetCost(auction.Tag, out var cost))
                 attrs["cleancost"] = (long)cost;
