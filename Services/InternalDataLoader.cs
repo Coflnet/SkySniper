@@ -191,7 +191,12 @@ namespace Coflnet.Sky.Sniper.Services
             var estimate = flipFinder.EstimateAsync(cflip).GetAwaiter().GetResult();
             if (estimate == null)
                 return;
-            var attrSum = cflip.AttributeValues.Sum(a => a.Value);
+            // Exclude candyUsed from the attribute sum cap — its weight is a pricing signal
+            // for the ML model, not an actual coin value. Including it inflates the cap
+            // and causes cheap pets to be reported as flips.
+            var attrSum = cflip.AttributeValues
+                .Where(a => !a.Key.StartsWith("candyUsed:", StringComparison.OrdinalIgnoreCase))
+                .Sum(a => a.Value);
             var value = Math.Min(estimate.EstimatedValue, attrSum);
 
             // Log suspicious cases where the AI estimate greatly exceeds the attribute sum cap

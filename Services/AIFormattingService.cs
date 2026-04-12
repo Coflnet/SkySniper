@@ -30,51 +30,7 @@ public class AIFormattingService
     }
     // only some mayors have an effect on relevant item prices
     private static readonly HashSet<string> RelevantMayors = new() { "scorpius", "derpy", "jerry", "diana", "aatrox", "marina" };
-    private static readonly HashSet<string> RelevantItems = [
-        "HYPERION",
-        "PET_GOLDEN_DRAGON",
-        "PET_ENDER_DRAGON",
-        "TERMINATOR",
-        "GIANTS_SWORD",
-        "DIVAN_DRILL",
-        "TITANIUM_DRILL_4",
-        "DARK_CLAYMORE",
-        "PET_SCATHA",
-        "HELLFIRE_ROD",
-        "ATOMSPLIT_KATANA",
-        "WARDEN_HELMET",
-        "POWER_WITHER_CHESTPLATE",
-        "STARRED_MIDAS_SWORD",
-        "POWER_WITHER_LEGGINGS",
-        "SHADOW_FURY",
-        "JUJU_SHORTBOW",
-        "MIDAS_STAFF",
-        "PET_ENDERMAN",
-        "PET_BLACK_CAT",
-        "STARRED_MIDAS_STAFF",
-        "SPEED_WITHER_BOOTS",
-        "ENDER_ARTIFACT",
-        "WISE_WITHER_CHESTPLATE",
-        "AXE_OF_THE_SHREDDED",
-        "DIVAN_HELMET",
-        "STARRED_DAEDALUS_AXE",
-        "ENDER_RELIC",
-        "WITHER_GOGGLES",
-        "WISE_WITHER_LEGGINGS",
-        "POWER_WITHER_BOOTS",
-        "DIVAN_CHESTPLATE",
-        "FERMENTO_CHESTPLATE",
-        "CRIMSON_CHESTPLATE",
-        "MELON_DICER_3",
-        "CRIMSON_LEGGINGS",
-        "DIVAN_BOOTS",
-        "PET_FLYING_FISH",
-        "DIVAN_LEGGINGS",
-        "FERMENTO_HELMET",
-        "FERMENTO_LEGGINGS",
-        "PET_GRIFFIN",
-        "LIVID_DAGGER",
-        "CRIMSON_BOOTS"];
+
     public async Task AddSample(SaveAuction auction)
     {
         try
@@ -88,7 +44,9 @@ public class AIFormattingService
     }
     private async Task InternalAddSample(SaveAuction auction)
     {
-        if (!RelevantItems.Contains(auction.Tag))
+        // Track complicated flips for all items the self-learning service considers relevant,
+        // not just the smaller curated list in this class.
+        if (!flipFinder.IsRelevantItem(auction.Tag))
             return;
         // include full breakdown, mayor and cleancost when creating training sample
         var fullFlip = SaveAuctionExtensions.ToComplicatedFlip(auction, includeBreakdown: true, sniper: sniper, mayorService: mayorService, craftCostService: craftCostService);

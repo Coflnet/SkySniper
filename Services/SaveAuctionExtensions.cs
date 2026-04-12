@@ -43,7 +43,19 @@ public static class SaveAuctionExtensions
                 // Use the actual estimated value instead of a sentinel flag.
                 // Previously all estimates were set to 10B which caused the ML model
                 // to overvalue items whose attributes were always estimated (no lookup data).
-                attrs[key] = x.Value;
+                // For candyUsed: the value from GetCandyPrice is a weight (min 10M) intended
+                // as a pricing signal, not an actual coin value. Exclude it from the ML
+                // feature set to prevent inflating attribute sums and predictions.
+                if (x.Modifier.Key == "candyUsed")
+                {
+                    // Use a small presence flag instead of the large weight so the ML model
+                    // can still learn from the candy state without the inflated value.
+                    attrs[key] = 1L;
+                }
+                else
+                {
+                    attrs[key] = x.Value;
+                }
             }
             if(auction.Tag.StartsWith("PET_"))
                 attrs["tier:" + auction.Tier] = presenceFlag;

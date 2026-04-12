@@ -250,4 +250,106 @@ public class SelfLearningFlipFinderServiceTests
         (100.0 * errorsOver10Percent / errors.Count).Should().BeLessThan(15.0,
             "most predictions should be within 10% of actual price");
     }
+
+    [Test]
+    public async Task PetRock_WithCandyUsedFlag_NotOvervalued()
+    {
+        // PET_ROCK is a cheap pet (~150K-300K). The old system assigned candyUsed:0 = 10M
+        // as a weight, which inflated the attribute sum and caused the ML model to predict
+        // millions. After the fix, candyUsed is a presence flag (1) and should not inflate values.
+        using var service = new SelfLearningFlipFinderService(
+            NullLogger<SelfLearningFlipFinderService>.Instance,
+            new TestPersistence(),
+            minSamplesForTraining: 12);
+
+        // Train with realistic PET_ROCK samples at actual market prices (150K-350K)
+        var rng = new Random(42);
+        for (var i = 0; i < 20; i++)
+        {
+            var soldFor = 150_000 + rng.Next(200_000); // 150K-350K
+            var sample = new ComplicatedFlip
+            {
+                AuctionId = Guid.NewGuid(),
+                ItemTag = "PET_ROCK",
+                EndedAt = DateTime.UtcNow.AddHours(-i),
+                SoldFor = soldFor,
+                AttributeValues = new Dictionary<string, long>
+                {
+                    // candyUsed:0 should now be a presence flag (1), not 10M
+                    ["candyUsed:0"] = 1,
+                    ["exp:0"] = rng.Next(0, 500_000),
+                    ["tier:UNCOMMON"] = 1
+                }
+            };
+            await service.TrainAsync(sample);
+        }
+
+        var trained = await service.EnsureTrainedModelAsync("PET_ROCK");
+        trained.Should().BeTrue();
+
+        // Estimate a PET_ROCK with the same attribute pattern
+        var estimateFlip = new ComplicatedFlip
+        {
+            AuctionId = Guid.NewGuid(),
+            ItemTag = "PET_ROCK",
+            EndedAt = DateTime.UtcNow,
+            SoldFor = 0,
+            AttributeValues = new Dictionary<string, long>
+            {
+                ["candyUsed:0"] = 1,
+                ["exp:0"] = 0,
+                ["tier:UNCOMMON"] = 1
+            }
+        };
+
+        var result = await service.EstimateAsync(estimateFlip);
+
+        result.Should().NotBeNull();
+        result!.ModelReady.Should().BeTrue();
+        // The prediction must not wildly overvalue the pet. A PET_ROCK is worth ~300K max.
+        // The old system predicted ~12.8M due to the inflated candyUsed attribute.
+        result.EstimatedValue.Should().BeLessThan(1_000_000,
+            "PET_ROCK should not be valued above 1M; it sells for 150K-350K");
+    }
+
+    [Test]
+    public async Task TrainAsync_SkipsNonRelevantItems()
+    {
+        // Verify that TrainAsync does not accumulate training data for items
+        // not in the RelevantItems set (e.g. a made-up tag).
+        using var service = new SelfLearningFlipFinderService(
+            NullLogger<SelfLearningFlipFinderService>.Instance,
+            new TestPersistence(),
+            minSamplesForTraining: 6);
+
+        for (var i = 0; i < 20; i++)
+        {
+            var sample = new ComplicatedFlip
+            {
+                AuctionId = Guid.NewGuid(),
+                ItemTag = "FAKE_NONEXISTENT_ITEM",
+                EndedAt = DateTime.UtcNow,
+                SoldFor = 100_000,
+                AttributeValues = new Dictionary<string, long>
+                {
+                    ["some_attr"] = 42
+                }
+            };
+            await service.TrainAsync(sample);
+        }
+
+        var stats = service.GetModelStats();
+        stats.Should().NotContainKey("FAKE_NONEXISTENT_ITEM",
+            "non-relevant items should not have training data");
+
+        var estimate = await service.EstimateAsync(new ComplicatedFlip
+        {
+            AuctionId = Guid.NewGuid(),
+            ItemTag = "FAKE_NONEXISTENT_ITEM",
+            EndedAt = DateTime.UtcNow,
+            SoldFor = 0,
+            AttributeValues = new Dictionary<string, long> { ["some_attr"] = 42 }
+        });
+        estimate.Should().BeNull("non-relevant items should return null estimate");
+    }
 }

@@ -551,10 +551,17 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             return Task.CompletedTask;
         }
 
+        var tagCheck = flip.ItemTag ?? "_global";
+        if (!RelevantItems.Contains(tagCheck))
+        {
+            logger.LogDebug("Skipping training for non-relevant tag {Tag}", tagCheck);
+            return Task.CompletedTask;
+        }
+
         gate.EnterWriteLock();
         try
         {
-            var tag = flip.ItemTag ?? "_global";
+            var tag = tagCheck;
             // create per-item structures if missing
             if (!trainingDataByItem.TryGetValue(tag, out var list))
             {
