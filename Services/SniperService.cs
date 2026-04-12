@@ -3894,7 +3894,15 @@ ORDER BY l.`AuctionId`  DESC;
                 capped = CapAtCraftCost(groupTag.tag, higherValueLowerBin, breakdown, 0);
             else
             {
-                targetPrice = Math.Min(higherValueLowerBin * 99 / 100, bucket.Price * 5 / 4 + 1_000_000); // pull target up for non craftable clean
+                var nonCraftCap = Math.Min(higherValueLowerBin * 99 / 100, bucket.Price * 5 / 4 + 1_000_000);
+                // High-supply, fast-turnover items are unlikely to rise toward the much higher LBIN wall.
+                // Keep the stricter MaxMedianPriceForSnipe cap for those, but retain uplift for normal non-craftable clean items with slow sells.
+                var highSupplyFastTurnover = bucket.Volume >= 25
+                    && bucket.TimeToSell > 0
+                    && bucket.TimeToSell <= 60
+                    && bucket.Volatility <= 10
+                    && bucket.Price < 15_000_000;
+                targetPrice = highSupplyFastTurnover ? Math.Min(targetPrice, nonCraftCap) : nonCraftCap;
                 if (bucket.References.Count < WorkingSize && bucket.References.All(r => r.Day >= GetDay() - 1)) // no full context window (~80 sales) indicates new item that is probably dorpping in price
                     targetPrice = Math.Min(targetPrice, bucket.Price); // limit at median (which may also still drop)
             }

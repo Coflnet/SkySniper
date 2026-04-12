@@ -1691,6 +1691,37 @@ public class DropOffTests
         Assert.That(24222066 - 3, Is.EqualTo(found.First().TargetPrice));
     }
 
+    /// <summary>
+    /// THUNDER_IN_A_BOTTLE has stable ~2M median and high volume but the non-craftable clean
+    /// item branch in CapHighValue was raising the SNIPER target to 3.5M via bucket.Price * 5/4 + 1M.
+    /// The sniper estimate should stay close to the median for high-volume stable items.
+    /// </summary>
+    [Test]
+    public void ThunderInABottleHighVolumeNotOvervalued()
+    {
+        AddLookupAndUpdateMeidans("THUNDER_IN_A_BOTTLE.json", "THUNDER_IN_A_BOTTLE", new DateTime(2026, 4, 12));
+        var testAuction = new SaveAuction()
+        {
+            Tag = "THUNDER_IN_A_BOTTLE",
+            FlatenedNBT = new() { { "uid", "0dffbdc25d25" } },
+            StartingBid = 2_200_000,
+            HighestBidAmount = 0,
+            UId = 4,
+            AuctioneerId = "12aaa",
+            Tier = Tier.EPIC,
+            Count = 1
+        };
+        found.Clear();
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(testAuction);
+        var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
+        // Median is ~2M, volume is 31/day, volatility is low and time-to-sell is 19 minutes.
+        // In this high-supply regime the target should stay at the stricter MaxMedianPriceForSnipe cap
+        // instead of receiving the older non-craftable clean-item uplift to 3.5m.
+        flip.TargetPrice.Should().Be(2_599_000L,
+            "high-supply fast-turnover items should not get the generic non-craftable uplift");
+    }
+
 
     private void SetBazaarPrice(string tag, int value, int buyValue = 0)
     {
