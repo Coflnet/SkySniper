@@ -1462,6 +1462,39 @@ public class DropOffTests
         targetBucket.Value.Price.Should().BeLessThanOrEqualTo(7_000_000L, "Median should reflect actual recent sales, not inflated cleanPricePerTier");
     }
 
+    /// <summary>
+    /// Pearlescent Dye was estimated at 61m median despite recent sales being well below that (~46m).
+    /// The clean price dropped from ~61m to ~46m over the last 15 days but the median didn't follow.
+    /// Context: auction 6e7f711cd4af46229987b83c08869e2b bought at 44.1m with 61m target
+    /// </summary>
+    [Test]
+    public void PearlescentDyeNotOvervalued()
+    {
+        AddLookupAndUpdateMeidans("DYE_PEARLESCENT.json", "DYE_PEARLESCENT", new DateTime(2026, 4, 12));
+        var bucket = sniperService.Lookups["DYE_PEARLESCENT"].Lookup.First(l => l.Key.Tier == Tier.LEGENDARY);
+        var auction = new SaveAuction()
+        {
+            Tag = "DYE_PEARLESCENT",
+            StartingBid = 44_100_000,
+            UId = 4,
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1,
+            FlatenedNBT = new Dictionary<string, string>(),
+            Enchantments = []
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var medianFlip = found.FirstOrDefault(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        if (medianFlip != null)
+        {
+            medianFlip.TargetPrice.Should().BeLessThan(46_500_000L,
+                "Pearlescent Dye median should reflect recent price drop, not stale high prices " + JsonConvert.SerializeObject(found, Formatting.Indented));
+        }
+        bucket.Value.Price.Should().BeLessThan(46_500_000L,
+            "Bucket price should reflect the recent price drop to ~46m");
+    }
+
     private static PriceLookup LoadLookupMock(string mockFileName)
     {
         var text = File.ReadAllText($"Mock/{mockFileName}");
