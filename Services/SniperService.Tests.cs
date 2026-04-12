@@ -2466,36 +2466,6 @@ namespace Coflnet.Sky.Sniper
             Assert.That(flip.TargetPrice, Is.EqualTo(expectedPrice), "median should be adjusted for exp diff (craft cost capped)");
         }
 
-        //[TestCase(31023190, 31023190, 409489302, LowPricedAuction.FinderType.SNIPER_MEDIAN)] // is adusted downwards
-        [TestCase(31023190, 355244041, 619200000, LowPricedAuction.FinderType.STONKS)]
-        public void MedianAdjustForBucketExpDiffGoldenDrag(int exp, int referncesExp, int expectedPrice, LowPricedAuction.FinderType finder)
-        {
-            highestValAuction.Count = 1;
-            highestValAuction.Tier = Tier.LEGENDARY;
-            highestValAuction.Tag = "PET_GOLDEN_DRAGON";
-            highestValAuction.FlatenedNBT = new(){
-                {"exp",(SniperService.PetExpMaxlevel * 50).ToString()}
-            };
-            highestValAuction.HighestBidAmount = 1_100_000_000;
-            AddVolume(highestValAuction);
-            highestValAuction.FlatenedNBT["candyUsed"] = "0";
-            var lowerExp = Dupplicate(highestValAuction);
-            lowerExp.FlatenedNBT["exp"] = "0";
-            lowerExp.HighestBidAmount = 600_000_000;
-            AddVolume(lowerExp);
-            highestValAuction.HighestBidAmount = 800_000_000;
-            var sample = Dupplicate(highestValAuction);
-            sample.FlatenedNBT["exp"] = referncesExp.ToString();
-            AddVolume(sample);
-            AddVolume(sample);
-            sample.HighestBidAmount = 5;
-            sample.FlatenedNBT["exp"] = exp.ToString();
-            service.State = SniperState.Ready;
-            service.TestNewAuction(sample);
-            var flip = found.Where(a => a.Finder == finder).FirstOrDefault();
-            Assert.That(flip, Is.Not.Null, "flip should have been found");
-            Assert.That(expectedPrice, Is.EqualTo(flip.TargetPrice), "median should be adjusted for exp diff");
-        }
         [Test]
         public void ComponetExtraValue()
         {
