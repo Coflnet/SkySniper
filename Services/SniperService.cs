@@ -1402,8 +1402,17 @@ ORDER BY l.`AuctionId`  DESC;
                     UpdateCleanKey(lookup);
                 }
                 isCleanitem = keyCombo.key?.Key == lookup.CleanKey;
-                if (lookup.CleanKey == default || isCleanitem)
-                    cleanPriceLookup = new(); // no change to clean price itself
+                if (lookup.CleanKey == default)
+                    cleanPriceLookup = new();
+                else if (isCleanitem)
+                {
+                    // For single-variant items with sufficient price history, apply cleanPricePerDay
+                    // adjustment to account for declining market trends. SelectAdjustedPrice only
+                    // adjusts downward (when clean > today), so stable/rising markets are unaffected.
+                    var meaningfulBuckets = lookup.Lookup.Count(l => l.Value.References.Count >= 4);
+                    if (meaningfulBuckets > 1 || cleanPriceLookup.Count < 5)
+                        cleanPriceLookup = new();
+                }
             }
 
             static long HighReferenceCount(Dictionary<short, long> cleanPriceLookup, List<ReferencePrice> monthSpan)

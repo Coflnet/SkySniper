@@ -1413,6 +1413,102 @@ public class DropOffTests
         flip.TargetPrice.Should().BeLessThan(3307238L, "exp value adjusted"); // by default was 5m+
     }
 
+    /// <summary>
+    /// Baby Yeti pet [exp, 1],[candyUsed, 0] LEGENDARY was overvalued at ~13.5M median
+    /// when actual recent sales were in the 4-8M range. Listed at 7.55M, lowest BIN dropped to 6.3M.
+    /// The flip should not be profitable.
+    /// </summary>
+    [Test]
+    public void BabyYetiLowExpNotOvervalued()
+    {
+        AddLookupAndUpdateMeidans("BabyYeti.json", "PET_BABY_YETI", new DateTime(2026, 4, 13));
+        Console.WriteLine($"GetDay: {SniperService.GetDay()}");
+        Console.WriteLine($"StartTime: {SniperService.StartTime}");
+        // Show all LEGENDARY buckets with exp modifier
+        foreach (var bucket in sniperService.Lookups["PET_BABY_YETI"].Lookup.Where(l => l.Key.Tier == Tier.LEGENDARY))
+        {
+            var expMod = bucket.Key.Modifiers.FirstOrDefault(m => m.Key == "exp");
+            Console.WriteLine($"  Key: {bucket.Key} exp={expMod.Value} refs={bucket.Value.References.Count} price={bucket.Value.Price}");
+        }
+        // Remove the last reference (the sale resulting from this overvalued flip)
+        var targetBucket = sniperService.Lookups["PET_BABY_YETI"].Lookup
+            .First(l => l.Key.Modifiers.Count == 2
+                && l.Key.Modifiers.Any(m => m.Key == "exp" && m.Value == "1")
+                && l.Key.Modifiers.Any(m => m.Key == "candyUsed" && m.Value == "0")
+                && l.Key.Tier == Tier.LEGENDARY && l.Key.Count == 1);
+        Console.WriteLine($"Before removal: refs={targetBucket.Value.References.Count}, price={targetBucket.Value.Price}");
+        var refsWithoutLast = targetBucket.Value.References.ToList();
+        refsWithoutLast.RemoveAt(refsWithoutLast.Count - 1);
+        targetBucket.Value.References = new System.Collections.Concurrent.ConcurrentQueue<ReferencePrice>(refsWithoutLast);
+        Console.WriteLine($"After removal: refs={targetBucket.Value.References.Count}, price={targetBucket.Value.Price}");
+        // Recalculate median after removing the flip sale
+        sniperService.UpdateMedian(targetBucket.Value, ("PET_BABY_YETI", sniperService.GetBreakdownKey(targetBucket.Key, "PET_BABY_YETI")));
+
+        var auction = new SaveAuction()
+        {
+            Tag = "PET_BABY_YETI",
+            StartingBid = 7_550_000,
+            UId = 4,
+            FlatenedNBT = new Dictionary<string, string>() { { "exp", "1" }, { "candyUsed", "0" } },
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var medianFlip = found.FirstOrDefault(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        Console.WriteLine($"Bucket price: {targetBucket.Value.Price}");
+        Console.WriteLine($"Bucket riskyEstimate: {targetBucket.Value.RiskyEstimate}");
+        Console.WriteLine($"Bucket volume: {targetBucket.Value.Volume}");
+        Console.WriteLine($"Bucket volatility: {targetBucket.Value.Volatility}");
+        Console.WriteLine($"Bucket refs count: {targetBucket.Value.References.Count}");
+        Console.WriteLine($"Flips found: {found.Count}");
+        foreach (var f in found)
+        {
+            Console.WriteLine($"  {f.Finder}: target={f.TargetPrice} props={string.Join(",", f.AdditionalProps?.Select(p => $"{p.Key}={p.Value}") ?? Array.Empty<string>())}");
+        }
+        // The median should not be inflated - item is not profitable at 7.55M
+        if (medianFlip != null)
+        {
+            medianFlip.TargetPrice.Should().BeLessThan(7_550_000L, "Baby Yeti [exp,1] LEGENDARY should not be overvalued");
+        }
+        // Also verify the bucket price directly
+        targetBucket.Value.Price.Should().BeLessThan(7_000_000L, "Median should reflect actual recent sales in the 4-7M range");
+    }
+
+    /// <summary>
+    /// Pearlescent Dye was estimated at 61m median despite recent sales being well below that (~46m).
+    /// The clean price dropped from ~61m to ~46m over the last 15 days but the median didn't follow.
+    /// Context: auction 6e7f711cd4af46229987b83c08869e2b bought at 44.1m with 61m target
+    /// </summary>
+    [Test]
+    public void PearlescentDyeNotOvervalued()
+    {
+        AddLookupAndUpdateMeidans("DYE_PEARLESCENT.json", "DYE_PEARLESCENT", new DateTime(2026, 4, 12));
+        var bucket = sniperService.Lookups["DYE_PEARLESCENT"].Lookup.First(l => l.Key.Tier == Tier.LEGENDARY);
+        var auction = new SaveAuction()
+        {
+            Tag = "DYE_PEARLESCENT",
+            StartingBid = 44_100_000,
+            UId = 4,
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1,
+            FlatenedNBT = new Dictionary<string, string>(),
+            Enchantments = []
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var medianFlip = found.FirstOrDefault(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        if (medianFlip != null)
+        {
+            medianFlip.TargetPrice.Should().BeLessThan(46_500_000L,
+                "Pearlescent Dye median should reflect recent price drop, not stale high prices " + JsonConvert.SerializeObject(found, Formatting.Indented));
+        }
+        bucket.Value.Price.Should().BeLessThan(46_500_000L,
+            "Bucket price should reflect the recent price drop to ~46m");
+    }
+
     private static PriceLookup LoadLookupMock(string mockFileName)
     {
         var text = File.ReadAllText($"Mock/{mockFileName}");
