@@ -1236,6 +1236,11 @@ ORDER BY l.`AuctionId`  DESC;
                 }
 
                 // check higher value keys for lower price 
+                // refresh clean price before tierval check to prevent stale inflation
+                lookup.CleanPricePerTier ??= new();
+                var cleanPrice = GetCleanItemPrice(keyCombo.tag, keyCombo.key, lookup, true);
+                if (cleanPrice > 0)
+                    lookup.CleanPricePerTier[keyCombo.key.Key.Tier] = cleanPrice;
                 if (keyCombo.key.Key.Modifiers.Any(m => m.Key == "pgems"))
                 {
                     var lookupKey = new AuctionKey(keyCombo.key)
@@ -1312,10 +1317,6 @@ ORDER BY l.`AuctionId`  DESC;
                 lookup.HasMultipleRarities = lookup.Lookup
                         .Where(l => l.Key.Tier != Tier.UNKNOWN)
                         .GroupBy(l => l.Key.Tier).Count() > 2;
-                var cleanPrice = GetCleanItemPrice(keyCombo.tag, keyCombo.key, lookup, true);
-                lookup.CleanPricePerTier ??= new();
-                if (cleanPrice > 0)
-                    lookup.CleanPricePerTier[keyCombo.key.Key.Tier] = cleanPrice;
 
                 var keyWithNoEnchants = new AuctionKey(keyCombo.Item2)
                 {

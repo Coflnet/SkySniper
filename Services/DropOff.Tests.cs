@@ -1413,6 +1413,55 @@ public class DropOffTests
         flip.TargetPrice.Should().BeLessThan(3307238L, "exp value adjusted"); // by default was 5m+
     }
 
+    /// <summary>
+    /// Baby Yeti pet [exp, 1],[candyUsed, 0] LEGENDARY was overvalued at ~13.5M median
+    /// when actual recent sales were in the 4-8M range. Listed at 7.55M, lowest BIN dropped to 6.3M.
+    /// The flip should not be profitable.
+    /// </summary>
+    [Test]
+    public void BabyYetiLowExpNotOvervalued()
+    {
+        AddLookupAndUpdateMeidans("BabyYeti.json", "PET_BABY_YETI", new DateTime(2026, 4, 13));
+        // Remove the last reference (the sale resulting from this overvalued flip)
+        var targetBucket = sniperService.Lookups["PET_BABY_YETI"].Lookup
+            .First(l => l.Key.Modifiers.Count == 2
+                && l.Key.Modifiers.Any(m => m.Key == "exp" && m.Value == "1")
+                && l.Key.Modifiers.Any(m => m.Key == "candyUsed" && m.Value == "0")
+                && l.Key.Tier == Tier.LEGENDARY && l.Key.Count == 1);
+        var refsWithoutLast = targetBucket.Value.References.ToList();
+        refsWithoutLast.RemoveAt(refsWithoutLast.Count - 1);
+        targetBucket.Value.References = new System.Collections.Concurrent.ConcurrentQueue<ReferencePrice>(refsWithoutLast);
+
+        // Simulate production state: cleanPricePerTier[LEGENDARY] was stale/inflated
+        // before the fix, tierval check used this stale value; now GetCleanItemPrice
+        // is called before tierval check so the fresh value is always used
+        sniperService.Lookups["PET_BABY_YETI"].CleanPricePerTier[Tier.LEGENDARY] = 13_500_000;
+
+        // Recalculate median — the fresh cleanPricePerTier should prevent tierval inflation
+        sniperService.UpdateMedian(targetBucket.Value, ("PET_BABY_YETI", sniperService.GetBreakdownKey(targetBucket.Key, "PET_BABY_YETI")));
+
+        var auction = new SaveAuction()
+        {
+            Tag = "PET_BABY_YETI",
+            StartingBid = 7_550_000,
+            UId = 4,
+            FlatenedNBT = new Dictionary<string, string>() { { "exp", "1" }, { "candyUsed", "0" } },
+            AuctioneerId = "12aaa",
+            Tier = Tier.LEGENDARY,
+            Count = 1
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        sniperService.TestNewAuction(auction);
+        var medianFlip = found.FirstOrDefault(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+        // The median should not be inflated — item is not profitable at 7.55M
+        if (medianFlip != null)
+        {
+            medianFlip.TargetPrice.Should().BeLessThan(7_550_000L, "Baby Yeti [exp,1] LEGENDARY should not be overvalued");
+        }
+        // Bucket price must reflect actual recent sales, not inflated tierval (was 13.5M in production)
+        targetBucket.Value.Price.Should().BeLessThanOrEqualTo(7_000_000L, "Median should reflect actual recent sales, not inflated cleanPricePerTier");
+    }
+
     private static PriceLookup LoadLookupMock(string mockFileName)
     {
         var text = File.ReadAllText($"Mock/{mockFileName}");
