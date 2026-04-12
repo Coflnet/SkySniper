@@ -16,7 +16,7 @@
 
   <ItemGroup>
     <PackageReference Include="AwesomeAssertions" Version="9.4.0" />
-    <PackageReference Include="AWSSDK.S3" Version="4.0.19.4" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.21.1" />
     <PackageReference Include="Coflnet.Sky.FlipTracker.Client" Version="0.16.3" />
     <PackageReference Include="Coflnet.Sky.Mayor.Client" Version="0.4.1" />
     <PackageReference Include="JWT" Version="11.0.0" />
@@ -31,6 +31,6 @@
   </ItemGroup>
   <ItemGroup Condition="'$(Configuration)' != 'Release'">
     <PackageReference Include="NUnit3TestAdapter" Version="6.2.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.4.0" />
   </ItemGroup>
 </Project>
