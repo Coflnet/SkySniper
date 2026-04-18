@@ -22,6 +22,7 @@ public class SelfLearningFlipFinderServiceTests
         public Task SaveWeigths(System.Collections.Concurrent.ConcurrentDictionary<string, AttributeLookup> lookups) => Task.CompletedTask;
         public Task<List<KeyValuePair<string, PriceLookup>>> LoadGroup(int groupId) => Task.FromResult(new List<KeyValuePair<string, PriceLookup>>());
         public Task<Dictionary<string,double>> LoadCraftCost() => Task.FromResult(new Dictionary<string,double>());
+        public Task FlushDueGroups(System.Collections.Concurrent.ConcurrentDictionary<string, PriceLookup> lookups, TimeSpan maxAge, System.Threading.CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SaveBlob(string key, System.IO.Stream data)
         {
             using var ms = new System.IO.MemoryStream();

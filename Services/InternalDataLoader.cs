@@ -35,6 +35,7 @@ namespace Coflnet.Sky.Sniper.Services
 
         private readonly ILogger<InternalDataLoader> logger;
         private IProducer<string, LowPricedAuction> FlipProducer;
+        private readonly SemaphoreSlim persistenceLock = new(1, 1);
 
         readonly Prometheus.Counter foundFlipCount = Prometheus.Metrics
                     .CreateCounter("sky_sniper_found_flips", "Number of flips found");
@@ -89,6 +90,7 @@ namespace Coflnet.Sky.Sniper.Services
             Task soldAuctions = LoadLookupsAndProcessSells(stoppingToken);
             Task newAuctions = ConsumeNewAuctions(stoppingToken);
             var sellLoad = LoadSellHistory(stoppingToken);
+            var dueGroupFlush = FlushDueGroups(stoppingToken);
 
             stoppingToken.Register(() =>
             {
@@ -105,7 +107,8 @@ namespace Coflnet.Sky.Sniper.Services
                              StartProducer(stoppingToken),
                              bazaarConsume,
                              loadActive,
-                             sellLoad));
+                             sellLoad,
+                             dueGroupFlush));
             if (!stoppingToken.IsCancellationRequested)
                 throw new Exception("at least one task stopped " + result.Status + " " + result.Exception);
         }
@@ -298,7 +301,7 @@ namespace Coflnet.Sky.Sniper.Services
             }
 
             var batchSize = 10_000;
-            var totalSize = RetrainService.IsManager ? 30_000_000 : 5_000_000;
+            var totalSize = RetrainService.IsManager ? 20_000_000 : 5_000_000;
             var allStart = maxId - totalSize;
             var differential = 10;
             logger.LogInformation("loading sell history " + allStart + " " + maxId + " " + batchSize);
@@ -600,8 +603,7 @@ namespace Coflnet.Sky.Sniper.Services
             logger.LogInformation("processing sells stopped");
         }
 
-        private static bool saving = false;
-        private static int saveCount = 1;
+        private int saveCount = 1;
         private Task SaveIfReached(SaveAuction a)
         {
             if (a.UId % 1000 != 0)
@@ -610,24 +612,62 @@ namespace Coflnet.Sky.Sniper.Services
             if (!RetrainService.IsManager)
                 return Task.CompletedTask; // only manager saves
             saveCount++;
-            if (!saving && saveCount % 20 == 0)
-            {
-                saving = true;
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await persitance.SaveLookup(sniper.Lookups);
-                    }
-                    catch (Exception e)
-                    {
-                        logger.LogError(e, "could not save ");
-                    }
-                    await Task.Delay(TimeSpan.FromMinutes(2));
-                    saving = false;
-                }).ConfigureAwait(false);
-            }
+            if (saveCount % 20 == 0)
+                QueuePersistenceWork(() => persitance.SaveLookup(sniper.Lookups), "could not save ");
             return Task.CompletedTask;
+        }
+
+        private async Task FlushDueGroups(CancellationToken stoppingToken)
+        {
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                try
+                {
+                    if (sniper.Lookups.IsEmpty)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+                        continue;
+                    }
+
+                    var maxAge = RetrainService.IsManager ? TimeSpan.FromHours(1) : TimeSpan.FromHours(6);
+                    var failureMessage = RetrainService.IsManager
+                        ? "could not flush manager groups"
+                        : "could not flush worker fallback groups";
+                    QueuePersistenceWork(() => persitance.FlushDueGroups(sniper.Lookups, maxAge, stoppingToken), failureMessage);
+                    await Task.Delay(TimeSpan.FromMinutes(10) + TimeSpan.FromSeconds(Random.Shared.Next(0, 60)), stoppingToken);
+                }
+                catch (TaskCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    return;
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, "processing persisted group flush schedule");
+                    await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                }
+            }
+        }
+
+        private void QueuePersistenceWork(Func<Task> persistWork, string errorMessage)
+        {
+            _ = Task.Run(async () =>
+            {
+                if (!await persistenceLock.WaitAsync(0).ConfigureAwait(false))
+                    return;
+
+                try
+                {
+                    await persistWork().ConfigureAwait(false);
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, errorMessage);
+                }
+                finally
+                {
+                    persistenceLock.Release();
+                }
+            });
         }
     }
 }

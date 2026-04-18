@@ -3517,6 +3517,11 @@ namespace Coflnet.Sky.Sniper
             return Task.CompletedTask;
         }
 
+        public Task FlushDueGroups(ConcurrentDictionary<string, PriceLookup> lookups, TimeSpan maxAge, System.Threading.CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
         public Task SaveWeigths(ConcurrentDictionary<string, AttributeLookup> lookups)
         {
             return Task.CompletedTask;

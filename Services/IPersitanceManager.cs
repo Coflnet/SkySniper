@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Coflnet.Sky.Sniper.Models;
 
@@ -17,5 +19,6 @@ namespace Coflnet.Sky.Sniper.Services
         // Generic blob storage helpers for persisting models or other binary state
         Task SaveBlob(string key, Stream data);
         Task<Stream> LoadBlob(string key);
+        Task FlushDueGroups(ConcurrentDictionary<string, PriceLookup> lookups, TimeSpan maxAge, CancellationToken cancellationToken = default);
     }
 }
