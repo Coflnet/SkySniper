@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Coflnet.Sky.Sniper.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -17,6 +18,7 @@ public class RetrainService : BackgroundService
     private readonly IConnectionMultiplexer redis;
     private readonly ILogger<RetrainService> logger;
     private readonly IConfiguration configuration;
+    private readonly SniperService sniper;
     readonly string streamName = "retrain";
     readonly string groupName = "retrain";
     private readonly Dictionary<string, DateTime> lastRetrain = new();
@@ -25,12 +27,14 @@ public class RetrainService : BackgroundService
     public RetrainService(
         PartialCalcService partialCalcService,
         InternalDataLoader internalDataLoader,
+        SniperService sniper,
         IConnectionMultiplexer redis,
         ILogger<RetrainService> logger,
         IConfiguration configuration)
     {
         this.partialCalcService = partialCalcService;
         this.internalDataLoader = internalDataLoader;
+        this.sniper = sniper;
         this.redis = redis;
         this.logger = logger;
 
@@ -84,6 +88,12 @@ public class RetrainService : BackgroundService
             return;
         }
         IsManager = true;
+        if (sniper.State < SniperState.Ready)
+            logger.LogInformation("Waiting for sniper readiness before retraining; current state {State}", sniper.State);
+        while (!stoppingToken.IsCancellationRequested && sniper.State < SniperState.Ready)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+        }
         while (!stoppingToken.IsCancellationRequested)
         {
             try

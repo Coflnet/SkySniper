@@ -3466,9 +3466,8 @@ ORDER BY l.`AuctionId`  DESC;
                         else
                         {
                             // Fallback to lookup if not in bazaar
-                            if (Lookups.TryGetValue(itemTag, out var itemLookup))
+                            if (Lookups.TryGetValue(itemTag, out var itemLookup) && TryGetLookupReferencePrices(itemLookup, out var prices))
                             {
-                                var prices = itemLookup.Lookup.GetValueOrDefault(itemLookup.CleanKey ?? itemLookup.Lookup.FirstOrDefault(k => k.Value.Price > 0).Key);
                                 var price = prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price);
                                 removalCost = itemService.GetPetItemRemovalCost(itemTag);
                                 itemPrice = price - removalCost;
@@ -3480,7 +3479,8 @@ ORDER BY l.`AuctionId`  DESC;
                         // For drill/rod parts: use 97% of price minus 50k removal cost
                         if (!Lookups.TryGetValue(itemTag, out var itemLookup))
                             continue;
-                        var prices = itemLookup.Lookup.GetValueOrDefault(itemLookup.CleanKey ?? itemLookup.Lookup.FirstOrDefault(k => k.Value.Price > 0).Key);
+                        if (!TryGetLookupReferencePrices(itemLookup, out var prices))
+                            continue;
                         const int RemovalCost = 50_000;
                         itemPrice = (prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price)) * 97 / 100 - RemovalCost;
                     }
@@ -3519,9 +3519,8 @@ ORDER BY l.`AuctionId`  DESC;
                         {
                             totalValue += (long)bazaarPrice;
                         }
-                        else if (Lookups.TryGetValue(itemTag, out var itemLookup))
+                        else if (Lookups.TryGetValue(itemTag, out var itemLookup) && TryGetLookupReferencePrices(itemLookup, out var prices))
                         {
-                            var prices = itemLookup.Lookup.GetValueOrDefault(itemLookup.CleanKey ?? itemLookup.Lookup.FirstOrDefault(k => k.Value.Price > 0).Key);
                             var price = prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price);
                             totalValue += price;
                         }
@@ -3529,9 +3528,8 @@ ORDER BY l.`AuctionId`  DESC;
                     else
                     {
                         // For drill/rod parts: use full price
-                        if (Lookups.TryGetValue(itemTag, out var itemLookup))
+                        if (Lookups.TryGetValue(itemTag, out var itemLookup) && TryGetLookupReferencePrices(itemLookup, out var prices))
                         {
-                            var prices = itemLookup.Lookup.GetValueOrDefault(itemLookup.CleanKey ?? itemLookup.Lookup.FirstOrDefault(k => k.Value.Price > 0).Key);
                             var price = (prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price));
                             totalValue += price;
                         }
@@ -3543,6 +3541,23 @@ ORDER BY l.`AuctionId`  DESC;
             totalValue += gemValue;
 
             return totalValue;
+        }
+
+        private static bool TryGetLookupReferencePrices(PriceLookup itemLookup, out ReferenceAuctions prices)
+        {
+            prices = null;
+            if (itemLookup?.Lookup == null || itemLookup.Lookup.Count == 0)
+                return false;
+
+            if (itemLookup.CleanKey is not null && itemLookup.Lookup.TryGetValue(itemLookup.CleanKey, out prices) && prices is not null)
+                return true;
+
+            var fallback = itemLookup.Lookup.FirstOrDefault(entry => entry.Key is not null && entry.Value is not null && (entry.Value.Price > 0 || entry.Value.Lbin.Price > 0));
+            if (fallback.Key is null || fallback.Value is null)
+                return false;
+
+            prices = fallback.Value;
+            return true;
         }
 
         public long GetGemValue(SaveAuction auction, AuctionKey key)

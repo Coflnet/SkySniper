@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Coflnet.Sky.Core;
 using Coflnet.Sky.Core.Services;
@@ -393,6 +394,27 @@ namespace Coflnet.Sky.Sniper
                 FlatenedNBT = new() { { "AMBER_0", "PERFECT" } }
             });
             Assert.That(9_535_088, Is.EqualTo(actualPrice.Median));
+        }
+
+        [TestCase("GetExtraValue")]
+        [TestCase("GetFullRemovableValue")]
+        public void RemovableValueHelpersSkipLookupsWithoutUsableKey(string methodName)
+        {
+            service.Lookups["PET_ITEM_TEST"] = new PriceLookup();
+            var auction = new SaveAuction
+            {
+                FlatenedNBT = new Dictionary<string, string>
+                {
+                    { "heldItem", "PET_ITEM_TEST" }
+                }
+            };
+
+            var method = typeof(SniperService).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+            method.Should().NotBeNull();
+
+            var result = method!.Invoke(service, new object[] { auction, new AuctionKey() });
+
+            result.Should().Be(0L);
         }
 
         [Test]
