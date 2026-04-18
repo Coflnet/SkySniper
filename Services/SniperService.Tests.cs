@@ -990,6 +990,62 @@ namespace Coflnet.Sky.Sniper
         }
 
         [Test]
+        public void RefreshLookupRecalculatesMergedMedianInsteadOfKeepingLoadedPrice()
+        {
+            var itemTag = highestValAuction.Tag;
+            var key = service.KeyFromSaveAuction(Dupplicate(highestValAuction));
+            var today = SniperService.GetDay();
+            service.Lookups[itemTag] = new PriceLookup()
+            {
+                Lookup = new(new Dictionary<AuctionKey, ReferenceAuctions>()
+                {
+                    {
+                        key, new ReferenceAuctions()
+                        {
+                            References = new(new List<ReferencePrice>()
+                            {
+                                new() { AuctionId = 1, Price = 1_000, Day = (short)(today - 3) },
+                                new() { AuctionId = 2, Price = 1_000, Day = (short)(today - 2) },
+                                new() { AuctionId = 3, Price = 1_000, Day = (short)(today - 1) },
+                                new() { AuctionId = 4, Price = 1_000, Day = today },
+                            }),
+                            Price = 1_000,
+                        }
+                    }
+                })
+            };
+
+            service.AddLookupData(itemTag, new PriceLookup()
+            {
+                Lookup = new(new Dictionary<AuctionKey, ReferenceAuctions>()
+                {
+                    {
+                        key, new ReferenceAuctions()
+                        {
+                            References = new(new List<ReferencePrice>()
+                            {
+                                new() { AuctionId = 3, Price = 1_000, Day = (short)(today - 1) },
+                                new() { AuctionId = 4, Price = 1_000, Day = today },
+                                new() { AuctionId = 5, Price = 1_000, Day = today },
+                                new() { AuctionId = 6, Price = 1_000, Day = today },
+                            }),
+                            Price = 5_000,
+                        }
+                    }
+                })
+            });
+
+            service.Lookups[itemTag].Lookup[key].Price.Should().Be(5_000);
+
+            service.RefreshLookup(itemTag);
+
+            var merged = service.Lookups[itemTag].Lookup[key];
+            merged.References.Count.Should().Be(6);
+            merged.References.Select(r => r.AuctionId).Distinct().Count().Should().Be(6);
+            merged.Price.Should().NotBe(5_000);
+        }
+
+        [Test]
         public void TakesClosestCake()
         {
             AuctionKey key = CreateKey(252, 4);

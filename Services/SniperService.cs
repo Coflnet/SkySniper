@@ -11,6 +11,7 @@ using System.Net;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
+using System.Threading;
 
 namespace Coflnet.Sky.Sniper.Services
 {
@@ -56,18 +57,59 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly Counter closestMedianBruteCounter = Metrics.CreateCounter("sky_sniper_closest_median_brute", "Number of brute force searches for closest median");
         private readonly Counter closestLbinBruteCounter = Metrics.CreateCounter("sky_sniper_closest_lbin_brute", "Number of brute force searches for closest median");
         private IMayorService mayorService;
+        private int pauseFlipFindingCount;
 
         public event Action<LowPricedAuction> FoundSnipe;
         public event Action<PotentialCraftFlip> CappedKey;
         public event Action<(SaveAuction, AuctionKeyWithValue)> OnSold;
         public event Action OnSummaryUpdate;
         public readonly string ServerDnsName = Dns.GetHostName();
+
+        public bool IsFlipFindingPaused => Volatile.Read(ref pauseFlipFindingCount) > 0;
+
+        public IDisposable PauseFlipFinding()
+        {
+            Interlocked.Increment(ref pauseFlipFindingCount);
+            return new DisposeAction(() => Interlocked.Decrement(ref pauseFlipFindingCount));
+        }
+
+        public void RefreshLookup(string itemTag)
+        {
+            if (!Lookups.TryGetValue(itemTag, out var lookup) || lookup.Lookup == null || lookup.Lookup.Count == 0)
+                return;
+
+            UpdateCleanKey(lookup);
+            foreach (var item in lookup.Lookup.ToList())
+            {
+                if (item.Value.References.Count == 0 && (item.Value.Lbins == null || item.Value.Lbins.Count == 0))
+                    continue;
+                CapBucketSize(item.Value);
+                UpdateMedian(item.Value, (itemTag, GetBreakdownKey(item.Key, itemTag)));
+                GetLbinCap(itemTag, lookup.Lookup, item.Key);
+            }
+        }
+
         public void MockFoundFlip(LowPricedAuction auction)
         {
             FoundSnipe?.Invoke(auction);
         }
 
         public ConcurrentQueue<Dictionary<string, string>> AllocatedDicts = new();
+
+        private sealed class DisposeAction : IDisposable
+        {
+            private Action action;
+
+            public DisposeAction(Action action)
+            {
+                this.action = action;
+            }
+
+            public void Dispose()
+            {
+                Interlocked.Exchange(ref action, null)?.Invoke();
+            }
+        }
 
         internal readonly string[] CrimsonArmors = new string[] { "CRIMSON_", "TERROR_", "AURORA_", "FERVOR_" };
         private readonly HashSet<string> IncludeKeys = new HashSet<string>()
@@ -1149,10 +1191,6 @@ ORDER BY l.`AuctionId`  DESC;
                 if (keyCombo != default)
                     bucket.Price = 0;
                 return; // can't have enough volume
-            }
-            if(bucket.References.Any(r=>r.AuctionId == -3582016608333802000))
-            {
-                Console.WriteLine("Found reference");
             }
             List<ReferencePrice> deduplicated = ApplyAntiMarketManipulation(bucket);
             DropUnderlistings(deduplicated);
@@ -2853,6 +2891,12 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (i == 0)
                     UpdateLbin(auction, bucket, key);
+                if (triggerEvents && IsFlipFindingPaused)
+                {
+                    activity.Log("Flip finding paused during state rebuild");
+                    this.LogNonFlip(auction, bucket, key, 0, 1, 0, "Flip finding paused during state rebuild");
+                    return;
+                }
                 if (triggerEvents)
                 {
                     using var tryFind = !triggerEvents ? null : activitySource?.StartActivity("TryFind", ActivityKind.Internal);
@@ -3919,8 +3963,8 @@ ORDER BY l.`AuctionId`  DESC;
 
         private bool IsHigherValue(string tag, AuctionKey baseKey, AuctionKey toCheck)
         {
-         //   if (IsMidas(tag) && !baseKey.Modifiers.Any(m => m.Key == "winning_bid" || m.Key == "full_bid") && toCheck.Modifiers.Any(m => m.Key == "winning_bid" || m.Key == "full_bid"))
-         //       return false;
+            //   if (IsMidas(tag) && !baseKey.Modifiers.Any(m => m.Key == "winning_bid" || m.Key == "full_bid") && toCheck.Modifiers.Any(m => m.Key == "winning_bid" || m.Key == "full_bid"))
+            //       return false;
             return baseKey.Tier <= toCheck.Tier
                     && (toCheck.Tier != Tier.LEGENDARY || tag != "PET_SPIRIT")
                     && baseKey.Count <= toCheck.Count
