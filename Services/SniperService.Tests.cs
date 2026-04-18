@@ -1046,6 +1046,16 @@ namespace Coflnet.Sky.Sniper
         }
 
         [Test]
+        public void PauseFlipFindingForOnlyPausesSpecifiedTags()
+        {
+            using var pause = service.PauseFlipFindingFor(["A", "B"]);
+
+            service.IsFlipFindingPausedFor("A").Should().BeTrue();
+            service.IsFlipFindingPausedFor("B").Should().BeTrue();
+            service.IsFlipFindingPausedFor("C").Should().BeFalse();
+        }
+
+        [Test]
         public void TakesClosestCake()
         {
             AuctionKey key = CreateKey(252, 4);

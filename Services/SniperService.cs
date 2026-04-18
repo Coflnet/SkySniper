@@ -58,6 +58,7 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly Counter closestLbinBruteCounter = Metrics.CreateCounter("sky_sniper_closest_lbin_brute", "Number of brute force searches for closest median");
         private IMayorService mayorService;
         private int pauseFlipFindingCount;
+        private readonly ConcurrentDictionary<string, int> pausedFlipFindingTags = new(StringComparer.Ordinal);
 
         public event Action<LowPricedAuction> FoundSnipe;
         public event Action<PotentialCraftFlip> CappedKey;
@@ -71,6 +72,50 @@ namespace Coflnet.Sky.Sniper.Services
         {
             Interlocked.Increment(ref pauseFlipFindingCount);
             return new DisposeAction(() => Interlocked.Decrement(ref pauseFlipFindingCount));
+        }
+
+        public bool IsFlipFindingPausedFor(string itemTag)
+        {
+            if (IsFlipFindingPaused)
+                return true;
+            if (string.IsNullOrWhiteSpace(itemTag))
+                return false;
+            var groupTag = GetAuctionGroupTag(itemTag).tag;
+            return pausedFlipFindingTags.TryGetValue(groupTag, out var count) && count > 0;
+        }
+
+        public IDisposable PauseFlipFindingFor(IEnumerable<string> itemTags)
+        {
+            var normalizedTags = itemTags
+                .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                .Select(tag => GetAuctionGroupTag(tag).tag)
+                .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                .Distinct()
+                .ToArray();
+
+            foreach (var tag in normalizedTags)
+            {
+                pausedFlipFindingTags.AddOrUpdate(tag, 1, (_, count) => count + 1);
+            }
+
+            return new DisposeAction(() =>
+            {
+                foreach (var tag in normalizedTags)
+                {
+                    while (pausedFlipFindingTags.TryGetValue(tag, out var count))
+                    {
+                        if (count <= 1)
+                        {
+                            if (pausedFlipFindingTags.TryRemove(new KeyValuePair<string, int>(tag, count)))
+                                break;
+                        }
+                        else if (pausedFlipFindingTags.TryUpdate(tag, count - 1, count))
+                        {
+                            break;
+                        }
+                    }
+                }
+            });
         }
 
         public void RefreshLookup(string itemTag)
@@ -2891,7 +2936,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (i == 0)
                     UpdateLbin(auction, bucket, key);
-                if (triggerEvents && IsFlipFindingPaused)
+                if (triggerEvents && IsFlipFindingPausedFor(itemGroupTag.tag))
                 {
                     activity.Log("Flip finding paused during state rebuild");
                     this.LogNonFlip(auction, bucket, key, 0, 1, 0, "Flip finding paused during state rebuild");
