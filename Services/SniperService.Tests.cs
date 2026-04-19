@@ -1504,6 +1504,33 @@ namespace Coflnet.Sky.Sniper
             var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
             Assert.That(estimate, Is.Null, JsonConvert.SerializeObject(found, Formatting.Indented));
         }
+
+        [Test]
+        public async Task TierBoostReferencesSubtractFullTierBoostCostBeforeStoring()
+        {
+            await itemService.GetItemsAsync();
+            SetBazaarPrice("PET_ITEM_TIER_BOOST", 165_000_000);
+
+            var tierBoosted = Dupplicate(highestValAuction);
+            tierBoosted.Tag = "PET_ENDER_DRAGON";
+            tierBoosted.Tier = Tier.LEGENDARY;
+            tierBoosted.HighestBidAmount = 300_000_000;
+            tierBoosted.FlatenedNBT = new()
+            {
+                { "exp", "13000000" },
+                { "candyUsed", "0" },
+                { "heldItem", "PET_ITEM_TIER_BOOST" }
+            };
+
+            var expectedKey = service.KeyFromSaveAuction(tierBoosted);
+            Assert.That(expectedKey.Tier, Is.EqualTo(Tier.EPIC), "tier boost should store against the reduced rarity bucket");
+
+            service.AddSoldItem(tierBoosted, true);
+
+            var storedBucket = service.Lookups[tierBoosted.Tag].Lookup[expectedKey];
+            var storedReference = storedBucket.References.Single();
+            Assert.That(storedReference.Price, Is.EqualTo(135_000_000), JsonConvert.SerializeObject(storedReference));
+        }
         [TestCase(Tier.EPIC, 40000000)]
         [TestCase(Tier.LEGENDARY, 8000000)]
         public void DeductsForRarityDifference(Tier tier, long targetEstimate)

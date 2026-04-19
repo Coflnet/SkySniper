@@ -3460,8 +3460,16 @@ ORDER BY l.`AuctionId`  DESC;
                         // For pet items: use bazaar price minus removal cost based on rarity
                         if (BazaarPrices.TryGetValue(itemTag, out var bazaarPrice))
                         {
-                            removalCost = itemService.GetPetItemRemovalCost(itemTag);
-                            itemPrice = (long)bazaarPrice - removalCost;
+                            if (itemTag == "PET_ITEM_TIER_BOOST")
+                            {
+                                // Tier boost is a permanent rarity upgrade, not a removable pet item.
+                                itemPrice = (long)bazaarPrice;
+                            }
+                            else
+                            {
+                                removalCost = itemService.GetPetItemRemovalCost(itemTag);
+                                itemPrice = (long)bazaarPrice - removalCost;
+                            }
                         }
                         else
                         {
@@ -3469,8 +3477,15 @@ ORDER BY l.`AuctionId`  DESC;
                             if (Lookups.TryGetValue(itemTag, out var itemLookup) && TryGetLookupReferencePrices(itemLookup, out var prices))
                             {
                                 var price = prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price);
-                                removalCost = itemService.GetPetItemRemovalCost(itemTag);
-                                itemPrice = price - removalCost;
+                                if (itemTag == "PET_ITEM_TIER_BOOST")
+                                {
+                                    itemPrice = price;
+                                }
+                                else
+                                {
+                                    removalCost = itemService.GetPetItemRemovalCost(itemTag);
+                                    itemPrice = price - removalCost;
+                                }
                             }
                         }
                     }

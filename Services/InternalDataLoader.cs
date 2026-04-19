@@ -436,11 +436,7 @@ namespace Coflnet.Sky.Sniper.Services
             if (v == 1)
                 foreach (var item in sold)
                 {
-                    var bucket = sniper.GetBucketForAuction(item);
-                    var references = bucket.auctions;
-                    if (!ShouldAuctionBeIncluded(item, references.References))
-                        continue;
-                    sniper.AddAuctionToBucket(item, true, references, bucket.key.ValueSubstract);
+                    AddHistoricalSoldAuction(item);
                 }
             partialCalcService.SetLearningRate(v);
             Parallel.ForEach(sold, async item =>
@@ -457,6 +453,15 @@ namespace Coflnet.Sky.Sniper.Services
             });
             if (v > 0.01 && sold.Count > 1000)
                 await partialCalcService.CapAtCraftCost();
+        }
+
+        private void AddHistoricalSoldAuction(SaveAuction item)
+        {
+            var bucket = sniper.GetBucketForAuction(item);
+            if (!ShouldAuctionBeIncluded(item, bucket.auctions.References))
+                return;
+
+            sniper.AddSoldItem(item, true);
         }
 
         private void UpdateAllMedian()
@@ -493,11 +498,7 @@ namespace Coflnet.Sky.Sniper.Services
                 Console.WriteLine($"Loaded batch {batchStart} - {end}");
             foreach (var item in sold)
             {
-                var add = sniper.GetBucketForAuction(item);
-                var references = add.auctions;
-                if (!ShouldAuctionBeIncluded(item, references.References))
-                    continue;
-                sniper.AddAuctionToBucket(item, true, references, add.key.ValueSubstract);
+                AddHistoricalSoldAuction(item);
             }
             partialCalcService.SetLearningRate(0.01);
             foreach (var item in sold)
