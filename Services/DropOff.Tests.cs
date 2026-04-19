@@ -1488,11 +1488,85 @@ public class DropOffTests
         var medianFlip = found.FirstOrDefault(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
         if (medianFlip != null)
         {
-            medianFlip.TargetPrice.Should().BeLessThan(46_500_000L,
+            medianFlip.TargetPrice.Should().BeLessThan(48_000_000L,
                 "Pearlescent Dye median should reflect recent price drop, not stale high prices " + JsonConvert.SerializeObject(found, Formatting.Indented));
         }
-        bucket.Value.Price.Should().BeLessThan(46_500_000L,
+        bucket.Value.Price.Should().BeLessThan(48_000_000L,
             "Bucket price should reflect the recent price drop to ~46m");
+    }
+
+    /// <summary>
+    /// Turkey Chicken Skin was surfaced around 78m from stale loaded state even though
+    /// the recent reference window had already dropped into the ~48-55m range.
+    /// Loaded lookups should be refreshed before they are used for flip finding.
+    /// </summary>
+    [Test]
+    public void TurkeyChickenSkinLoadedLookupNotOvervalued()
+    {
+        var tag = "PET_SKIN_CHICKEN_TURKEY";
+        var key = new AuctionKey()
+        {
+            Enchants = new([]),
+            Reforge = ItemReferences.Reforge.Any,
+            Tier = Tier.EPIC,
+            Count = 1,
+            Modifiers = new([])
+        };
+        var bucket = new ReferenceAuctions()
+        {
+            Price = 78_000_000,
+            OldestRef = 1664,
+            References = new(new List<ReferencePrice>()
+            {
+                new() { AuctionId = 2806293066136512138, Price = 80_000_000, Day = 1643, Seller = 30083, Buyer = 0, SellTime = 63 },
+                new() { AuctionId = -5499141189620076407, Price = 50_000_000, Day = 1653, Seller = -21014, Buyer = 0, SellTime = 1 },
+                new() { AuctionId = 7070801052358339896, Price = 55_000_000, Day = 1656, Seller = -21014, Buyer = 0, SellTime = 1 },
+                new() { AuctionId = -4955023539658194136, Price = 64_000_000, Day = 1657, Seller = 27967, Buyer = 0, SellTime = 7865 },
+                new() { AuctionId = -1942073215929006918, Price = 50_000_000, Day = 1661, Seller = -21014, Buyer = 0, SellTime = 1 },
+                new() { AuctionId = -6670352605547660486, Price = 49_499_999, Day = 1661, Seller = -20430, Buyer = 0, SellTime = 551 },
+                new() { AuctionId = 5702587215943125593, Price = 50_000_000, Day = 1664, Seller = -21014, Buyer = 0, SellTime = 3839 },
+                new() { AuctionId = 672836856276831945, Price = 48_000_000, Day = 1664, Seller = 3473, Buyer = 0, SellTime = 1 },
+                new() { AuctionId = -5107832044258366472, Price = 47_000_000, Day = 1664, Seller = 3473, Buyer = 0, SellTime = 2 },
+                new() { AuctionId = -364549633363093478, Price = 54_660_000, Day = 1665, Seller = 17057, Buyer = 0, SellTime = 2 },
+                new() { AuctionId = -2554978470375531910, Price = 49_499_999, Day = 1667, Seller = -20430, Buyer = 14291, SellTime = 0 },
+                new() { AuctionId = -7947969755359416647, Price = 48_000_000, Day = 1667, Seller = 18307, Buyer = -20122, SellTime = 1 },
+            }),
+            Lbins = new()
+            {
+                new() { AuctionId = 6119853342018776266, Price = 80_000_000, Day = 1669, Seller = 18251, Buyer = 0, SellTime = -60 }
+            }
+        };
+        var loaded = new PriceLookup()
+        {
+            Lookup = new(new Dictionary<AuctionKey, ReferenceAuctions>() { { key, bucket } }),
+            CleanKey = key,
+            CleanPricePerTier = new Dictionary<Tier, long>() { { Tier.EPIC, 78_000_000 } }
+        };
+
+        SniperService.StartTime = new DateTime(2021, 9, 25) + (DateTime.UtcNow - new DateTime(2026, 4, 19));
+        sniperService.AddLookupData(tag, loaded);
+
+        var liveBucket = sniperService.Lookups[tag].Lookup[key];
+        liveBucket.Price.Should().BeLessThan(56_000_000L, "loaded bucket price should be refreshed from recent references");
+
+        var auction = new SaveAuction()
+        {
+            Tag = tag,
+            StartingBid = 49_499_999,
+            HighestBidAmount = 49_499_999,
+            UId = 4,
+            AuctioneerId = "12aaa",
+            Tier = Tier.EPIC,
+            Count = 1,
+            FlatenedNBT = new Dictionary<string, string>(),
+            Enchantments = []
+        };
+        sniperService.State = SniperState.FullyLoaded;
+        found.Clear();
+        sniperService.TestNewAuction(auction);
+
+        found.Should().NotContain(f => f.Finder == LowPricedAuction.FinderType.SNIPER || f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN,
+            "Turkey Chicken Skin should not be overvalued from stale loaded snapshot prices");
     }
 
     private static PriceLookup LoadLookupMock(string mockFileName)

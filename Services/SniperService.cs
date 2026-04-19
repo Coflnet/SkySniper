@@ -1063,6 +1063,10 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
 
+            // Persisted snapshots can carry stale bucket prices during fast market drops.
+            // Refresh from the underlying references before the loaded lookup is used.
+            RefreshLookup(itemTag);
+
             void CombineBuckets(KeyValuePair<AuctionKey, ReferenceAuctions> item, ReferenceAuctions existingBucket)
             {
                 var existingRef = existingBucket.References;
