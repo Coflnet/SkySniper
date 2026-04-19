@@ -1012,7 +1012,7 @@ namespace Coflnet.Sky.Sniper
         }
 
         [Test]
-        public void AddLookupDataRecalculatesMergedMedianInsteadOfKeepingLoadedPrice()
+        public void RefreshLookupRecalculatesMergedMedianInsteadOfKeepingLoadedPrice()
         {
             var itemTag = highestValAuction.Tag;
             var key = service.KeyFromSaveAuction(Dupplicate(highestValAuction));
@@ -1057,10 +1057,12 @@ namespace Coflnet.Sky.Sniper
                 })
             });
 
+            service.Lookups[itemTag].Lookup[key].Price.Should().Be(5_000);
+
             var merged = service.Lookups[itemTag].Lookup[key];
             merged.References.Count.Should().Be(6);
             merged.References.Select(r => r.AuctionId).Distinct().Count().Should().Be(6);
-            merged.Price.Should().NotBe(5_000);
+            merged.Price.Should().Be(5_000);
 
             service.RefreshLookup(itemTag);
 

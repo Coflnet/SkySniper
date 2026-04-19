@@ -1488,10 +1488,10 @@ public class DropOffTests
         var medianFlip = found.FirstOrDefault(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
         if (medianFlip != null)
         {
-            medianFlip.TargetPrice.Should().BeLessThan(48_000_000L,
+            medianFlip.TargetPrice.Should().BeLessThan(46_500_000L,
                 "Pearlescent Dye median should reflect recent price drop, not stale high prices " + JsonConvert.SerializeObject(found, Formatting.Indented));
         }
-        bucket.Value.Price.Should().BeLessThan(48_000_000L,
+        bucket.Value.Price.Should().BeLessThan(46_500_000L,
             "Bucket price should reflect the recent price drop to ~46m");
     }
 

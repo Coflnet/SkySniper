@@ -1063,9 +1063,10 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
 
-            // Persisted snapshots can carry stale bucket prices during fast market drops.
-            // Refresh from the underlying references before the loaded lookup is used.
-            RefreshLookup(itemTag);
+            // Persisted snapshots can carry stale prices during fast market drops.
+            // Refresh only obviously overvalued clean buckets so existing persisted medians
+            // keep their load-time behavior unless they are clearly stale.
+            RefreshClearlyStaleLoadedBuckets(itemTag, current);
 
             void CombineBuckets(KeyValuePair<AuctionKey, ReferenceAuctions> item, ReferenceAuctions existingBucket)
             {
@@ -1109,6 +1110,40 @@ ORDER BY l.`AuctionId`  DESC;
                         existingBucket.Lbins.Add(binAuction);
                 }
                 CapBucketSize(existingBucket);
+            }
+        }
+
+        private void RefreshClearlyStaleLoadedBuckets(string itemTag, PriceLookup lookup)
+        {
+            if (lookup?.Lookup == null)
+                return;
+
+            foreach (var item in lookup.Lookup.ToList())
+            {
+                var bucket = item.Value;
+                if (bucket == null || bucket.Price <= 0 || bucket.References.Count < 6)
+                    continue;
+                if (item.Key.Enchants.Count != 0 || item.Key.Modifiers.Count != 0)
+                    continue;
+
+                var deduplicated = ApplyAntiMarketManipulation(bucket);
+                DropUnderlistings(deduplicated);
+                var recent = deduplicated.Where(r => r.Day >= GetDay() - 30)
+                    .OrderByDescending(r => r.Day)
+                    .ToList();
+                if (recent.Count < 4)
+                    continue;
+
+                var recentMedian = GetMedian(GetShortTermBatch(recent, bucket.Volume), null);
+                if (recentMedian == 0)
+                    continue;
+
+                var isClearlyStale = bucket.Price > recentMedian * 5 / 4
+                    && bucket.Price - recentMedian > 10_000_000;
+                if (!isClearlyStale)
+                    continue;
+
+                UpdateMedian(bucket, (itemTag, GetBreakdownKey(item.Key, itemTag)));
             }
         }
 
