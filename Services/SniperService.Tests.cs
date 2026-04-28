@@ -1070,6 +1070,53 @@ namespace Coflnet.Sky.Sniper
         }
 
         [Test]
+        public void AddLookupDataRefreshesCleanBucketWhenSavedMedianIsMoreThanOnePointFiveMillionTooHigh()
+        {
+            var auction = Dupplicate(highestValAuction);
+            auction.Enchantments = [];
+            auction.FlatenedNBT = new();
+            var itemTag = auction.Tag;
+            var key = service.KeyFromSaveAuction(auction);
+            var loadedLookup = new PriceLookup()
+            {
+                Lookup = new(new Dictionary<AuctionKey, ReferenceAuctions>()
+                {
+                    {
+                        key, new ReferenceAuctions()
+                        {
+                            Price = 7_600_000,
+                            References = new(new List<ReferencePrice>()
+                            {
+                                Reference(6_000_000, 10, 1),
+                                Reference(6_000_000, 8, 2),
+                                Reference(6_000_000, 6, 3),
+                                Reference(6_000_000, 4, 4),
+                                Reference(6_000_000, 2, 5),
+                                Reference(6_000_000, 1, 6),
+                            })
+                        }
+                    }
+                })
+            };
+
+            service.AddLookupData(itemTag, loadedLookup);
+
+            service.Lookups[itemTag].Lookup[key].Price.Should().Be(6_000_000);
+
+            static ReferencePrice Reference(long price, int daysAgo, short seller)
+            {
+                return new ReferencePrice()
+                {
+                    AuctionId = seller,
+                    Price = price,
+                    Day = SniperService.GetDay(DateTime.UtcNow.AddDays(-daysAgo)),
+                    Seller = seller,
+                    Buyer = (short)(seller + 1)
+                };
+            }
+        }
+
+        [Test]
         public void PauseFlipFindingForOnlyPausesSpecifiedTags()
         {
             using var pause = service.PauseFlipFindingFor(["A", "B"]);
@@ -2005,6 +2052,148 @@ namespace Coflnet.Sky.Sniper
             Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
             Assert.That(7200000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
             Assert.That("zombie_kills:2 (2000000)", Is.EqualTo(estimate.AdditionalProps["missingModifiers"]));
+        }
+
+        [Test]
+        public void LoadedFinalDestinationHelmetWithTwentyFiveThousandKillsUsesRecentSales()
+        {
+            SniperService.CurrentDayCache = SniperService.GetDay(DateTime.UtcNow);
+            var auction = new SaveAuction()
+            {
+                Tag = "FINAL_DESTINATION_HELMET",
+                ItemName = "Necrotic Final Destination Helmet",
+                StartingBid = 22_000_000,
+                HighestBidAmount = 22_000_000,
+                UId = 50_000,
+                Uuid = "e03df730b70042178b857daa2f9c3e75",
+                AuctioneerId = "3a6c533956c84473b1f18a65d253e102",
+                Count = 1,
+                Reforge = ItemReferences.Reforge.Necrotic,
+                Category = Category.UNKNOWN,
+                Tier = Tier.LEGENDARY,
+                Enchantments = new List<Core.Enchantment>()
+                {
+                    new(Enchantment.EnchantmentType.ultimate_bank, 5)
+                },
+                FlatenedNBT = new()
+                {
+                    { "eman_kills", "25000" },
+                    { "uid", "e04e77a60dcb" },
+                    { "uuid", "e281f5f7-b5b5-43fb-83f9-e04e77a60dcb" }
+                },
+                ItemCreatedAt = DateTime.UtcNow.AddDays(-4),
+                Start = DateTime.UtcNow.AddDays(-2),
+                End = DateTime.UtcNow.AddDays(-1)
+            };
+
+            var key = service.KeyFromSaveAuction(auction);
+            key.Modifiers.Should().Contain(new KeyValuePair<string, string>("eman_kills", "2"));
+
+            var loadedLookup = new PriceLookup()
+            {
+                Category = Category.ARMOR,
+                Lookup = new ConcurrentDictionary<AuctionKey, ReferenceAuctions>()
+            };
+            loadedLookup.Lookup[key] = new ReferenceAuctions()
+            {
+                Price = 15_000_000,
+                References = new ConcurrentQueue<ReferencePrice>(new[]
+                {
+                    Reference(14_000_000, 48, 10),
+                    Reference(15_000_000, 45, 20),
+                    Reference(16_000_000, 42, 30),
+                    Reference(21_000_000, 5, 40),
+                    Reference(22_000_000, 4, 50),
+                    Reference(23_000_000, 3, 60),
+                    Reference(21_500_000, 2, 70),
+                    Reference(20_500_000, 1, 80)
+                })
+            };
+
+            service.AddLookupData(auction.Tag, loadedLookup);
+
+            var estimate = service.GetPrice(auction);
+            estimate.Median.Should().BeGreaterThan(20_000_000, JsonConvert.SerializeObject(estimate));
+
+            static ReferencePrice Reference(long price, int daysAgo, short seller)
+            {
+                return new ReferencePrice()
+                {
+                    AuctionId = seller,
+                    Price = price,
+                    Day = SniperService.GetDay(DateTime.UtcNow.AddDays(-daysAgo)),
+                    Seller = seller,
+                    Buyer = (short)(seller + 1)
+                };
+            }
+        }
+
+        [Test]
+        public void AddLookupDataRefreshesKillBucketWhenSavedMedianIsMoreThanOnePointFiveMillionTooLow()
+        {
+            SniperService.CurrentDayCache = SniperService.GetDay(DateTime.UtcNow);
+            var auction = new SaveAuction()
+            {
+                Tag = "FINAL_DESTINATION_HELMET",
+                ItemName = "Necrotic Final Destination Helmet",
+                StartingBid = 7_600_000,
+                HighestBidAmount = 7_600_000,
+                UId = 50_100,
+                Uuid = "438a76e8f7d640538a6f012d8312f33a",
+                AuctioneerId = "3a6c533956c84473b1f18a65d253e102",
+                Count = 1,
+                Reforge = ItemReferences.Reforge.Necrotic,
+                Category = Category.UNKNOWN,
+                Tier = Tier.LEGENDARY,
+                Enchantments = [],
+                FlatenedNBT = new()
+                {
+                    { "eman_kills", "25000" },
+                    { "uid", "e04e77a60dcc" },
+                    { "uuid", "f281f5f7-b5b5-43fb-83f9-e04e77a60dcc" }
+                },
+                ItemCreatedAt = DateTime.UtcNow.AddDays(-4),
+                Start = DateTime.UtcNow.AddDays(-2),
+                End = DateTime.UtcNow.AddDays(-1)
+            };
+
+            var key = service.KeyFromSaveAuction(auction);
+            key.Modifiers.Should().Contain(new KeyValuePair<string, string>("eman_kills", "2"));
+
+            var loadedLookup = new PriceLookup()
+            {
+                Category = Category.ARMOR,
+                Lookup = new ConcurrentDictionary<AuctionKey, ReferenceAuctions>()
+            };
+            loadedLookup.Lookup[key] = new ReferenceAuctions()
+            {
+                Price = 6_000_000,
+                References = new ConcurrentQueue<ReferencePrice>(new[]
+                {
+                    Reference(7_600_000, 10, 10),
+                    Reference(7_600_000, 8, 20),
+                    Reference(7_600_000, 6, 30),
+                    Reference(7_600_000, 4, 40),
+                    Reference(7_600_000, 2, 50),
+                    Reference(7_600_000, 1, 60)
+                })
+            };
+
+            service.AddLookupData(auction.Tag, loadedLookup);
+
+            service.Lookups[auction.Tag].Lookup[key].Price.Should().Be(7_600_000);
+
+            static ReferencePrice Reference(long price, int daysAgo, short seller)
+            {
+                return new ReferencePrice()
+                {
+                    AuctionId = seller,
+                    Price = price,
+                    Day = SniperService.GetDay(DateTime.UtcNow.AddDays(-daysAgo)),
+                    Seller = seller,
+                    Buyer = (short)(seller + 1)
+                };
+            }
         }
         /// <summary>
         /// Pet items should have their removal cost subtracted from valuation based on rarity.

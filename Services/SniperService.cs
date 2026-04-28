@@ -20,6 +20,9 @@ namespace Coflnet.Sky.Sniper.Services
         public const string PetItemKey = "petItem";
         public const string TierBoostShorthand = "TIER_BOOST";
         private const int SizeToKeep = 80;
+        private const long LoadedBucketRebuildMinimumDelta = 1_500_000;
+        private const int LoadedBucketRebuildRatioNumerator = 5;
+        private const int LoadedBucketRebuildRatioDenominator = 4;
 
         public static int WorkingSize { get; set; } = 60;
         public const int PetExpMaxlevel = 4_225_538 * 6;
@@ -1063,9 +1066,9 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
 
-            // Persisted snapshots can carry stale prices during fast market drops.
-            // Refresh only obviously overvalued clean buckets so existing persisted medians
-            // keep their load-time behavior unless they are clearly stale.
+            // Persisted lookup snapshots are mostly trusted on load.
+            // Only rebuild buckets that are clearly stale against recent references so startup
+            // does not behave like a full RefreshLookup for every persisted bucket.
             RefreshClearlyStaleLoadedBuckets(itemTag, current);
 
             void CombineBuckets(KeyValuePair<AuctionKey, ReferenceAuctions> item, ReferenceAuctions existingBucket)
@@ -1113,6 +1116,12 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
+        /// <summary>
+        /// Repairs persisted bucket medians only when recent deduplicated references show the
+        /// loaded value is clearly stale. Clean buckets repair stale-high medians; kill buckets
+        /// also repair stale-low medians because their progression premium is easy to understate
+        /// in serialized snapshots. The check stays selective to avoid full startup churn.
+        /// </summary>
         private void RefreshClearlyStaleLoadedBuckets(string itemTag, PriceLookup lookup)
         {
             if (lookup?.Lookup == null)
@@ -1123,7 +1132,10 @@ ORDER BY l.`AuctionId`  DESC;
                 var bucket = item.Value;
                 if (bucket == null || bucket.Price <= 0 || bucket.References.Count < 6)
                     continue;
-                if (item.Key.Enchants.Count != 0 || item.Key.Modifiers.Count != 0)
+
+                var isCleanKey = item.Key.Enchants.Count == 0 && item.Key.Modifiers.Count == 0;
+                var hasKillModifier = item.Key.Modifiers.Any(m => KillKeys.Contains(m.Key));
+                if (!isCleanKey && !hasKillModifier)
                     continue;
 
                 var deduplicated = ApplyAntiMarketManipulation(bucket);
@@ -1138,9 +1150,13 @@ ORDER BY l.`AuctionId`  DESC;
                 if (recentMedian == 0)
                     continue;
 
-                var isClearlyStale = bucket.Price > recentMedian * 5 / 4
-                    && bucket.Price - recentMedian > 10_000_000;
-                if (!isClearlyStale)
+                var isClearlyStaleHigh = isCleanKey
+                    && bucket.Price > recentMedian * LoadedBucketRebuildRatioNumerator / LoadedBucketRebuildRatioDenominator
+                    && bucket.Price - recentMedian > LoadedBucketRebuildMinimumDelta;
+                var isClearlyStaleLow = hasKillModifier
+                    && recentMedian > bucket.Price * LoadedBucketRebuildRatioNumerator / LoadedBucketRebuildRatioDenominator
+                    && recentMedian - bucket.Price > LoadedBucketRebuildMinimumDelta;
+                if (!isClearlyStaleHigh && !isClearlyStaleLow)
                     continue;
 
                 UpdateMedian(bucket, (itemTag, GetBreakdownKey(item.Key, itemTag)));
