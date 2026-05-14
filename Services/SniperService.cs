@@ -12,6 +12,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Threading;
+using System.Runtime.CompilerServices;
 
 namespace Coflnet.Sky.Sniper.Services
 {
@@ -23,6 +24,7 @@ namespace Coflnet.Sky.Sniper.Services
         private const long LoadedBucketRebuildMinimumDelta = 1_500_000;
         private const int LoadedBucketRebuildRatioNumerator = 5;
         private const int LoadedBucketRebuildRatioDenominator = 4;
+        private const int DrillPartRemovalCost = 50_000;
 
         public static int WorkingSize { get; set; } = 60;
         public const int PetExpMaxlevel = 4_225_538 * 6;
@@ -282,19 +284,33 @@ namespace Coflnet.Sky.Sniper.Services
         private static readonly HashSet<string> ImportantCakeYears = new()
         { "69", "420", "400"};
 
+        private readonly struct RemovableItemKey
+        {
+            public readonly string Key;
+            public readonly string AliasKey;
+            public readonly bool IsPetItem;
+
+            public RemovableItemKey(string key, bool isPetItem, string aliasKey = null)
+            {
+                Key = key;
+                IsPetItem = isPetItem;
+                AliasKey = aliasKey;
+            }
+        }
+
         /// <summary>
         /// Keys containing itemTags that should be added separately (cause its removable)
         /// </summary>
-        private readonly HashSet<string> ItemKeys = new()
-        {
-            "drill_part_engine",
-            "drill_part_fuel_tank",
-            "drill_part_upgrade_module",
-            "line.part",
-            "sinker.part",
-            "hook.part",
-            "heldItem",
-        };
+        private static readonly RemovableItemKey[] RemovableItems =
+        [
+            new("drill_part_engine", false, "engine.id"),
+            new("drill_part_fuel_tank", false, "fuel_tank.id"),
+            new("drill_part_upgrade_module", false, "upgrade_module.id"),
+            new("line.part", false),
+            new("sinker.part", false),
+            new("hook.part", false),
+            new("heldItem", true),
+        ];
 
         private static readonly HashSet<string> KillKeys = [
             "blaze_kills",
@@ -2132,26 +2148,28 @@ ORDER BY l.`AuctionId`  DESC;
                             ?.Where(e => MinEnchantMap.TryGetValue(e.Type, out byte value) && e.Level >= value)
                             .OrderBy(e => e.Type)
                             .Select(e => new Models.Enchant() { Lvl = e.Level, Type = e.Type }).ToList();
+            var flatNbt = auction.FlatenedNBT;
 
             if (!AllocatedDicts.TryDequeue(out var modifiers))
                 modifiers = new Dictionary<string, string>(5);
-            if (auction.FlatenedNBT != null)
-                foreach (var item in auction.FlatenedNBT)
+            if (flatNbt != null)
+                foreach (var item in flatNbt)
                 {
                     if (!IncludeKeys.Contains(item.Key) && item.Value != "PERFECT" && !IsRune(item.Key) && !IsSoul(item))
                     {
                         continue;
                     }
-                    var normalized = NormalizeData(item, auction.Tag, auction.FlatenedNBT);
+                    var normalized = NormalizeData(item, auction.Tag, flatNbt);
                     if (normalized.Key != Ignore.Key)
                         modifiers.Add(normalized.Key, normalized.Value);
                 }
             if (auction.ItemCreatedAt < UnlockedIntroduction
                 // safe guard for when the creation date is wrong 
-                && !auction.FlatenedNBT.ContainsKey("unlocked_slots"))
+                && flatNbt != null
+                && !flatNbt.ContainsKey("unlocked_slots"))
             {
                 var allUnlockable = itemService?.GetUnlockableSlots(auction.Tag).ToList();
-                if (auction.FlatenedNBT.TryGetValue("gemstone_slots", out var countString) && int.TryParse(countString, out var count))
+                if (flatNbt.TryGetValue("gemstone_slots", out var countString) && int.TryParse(countString, out var count))
                 {
                     allUnlockable = allUnlockable.Take(count).ToList();
                     modifiers.Remove("gemstone_slots");
@@ -2671,6 +2689,7 @@ ORDER BY l.`AuctionId`  DESC;
                 return Ignore; // upgrade level is always higher (newer)
             if (s.Key == "dungeon_item_level")
                 return new KeyValuePair<string, string>("upgrade_level", s.Value);
+
             if (s.Key == "tuned_transmission")
                 if (s.Value == "4")
                     return new KeyValuePair<string, string>(s.Key, "4");
@@ -3499,69 +3518,42 @@ ORDER BY l.`AuctionId`  DESC;
         private long GetExtraValue(SaveAuction auction, AuctionKey key)
         {
             long extraValue = 0;
-            foreach (var item in ItemKeys)
-            {
-                if (key.Modifiers.Any(m => m.Key == item))
-                    continue;
-                if (auction.FlatenedNBT.TryGetValue(item, out var value))
-                {
-                    var itemTag = value.ToUpper();
-                    long itemPrice = 0;
-                    long removalCost = 0;
+            var flatNbt = auction.FlatenedNBT;
 
-                    // Check if this is a pet item (heldItem)
-                    if (item == "heldItem")
+            foreach (var item in RemovableItems)
+            {
+                if (TryGetItemKeyValue(flatNbt, item, out var value))
+                {
+                    var itemTag = value.ToUpperInvariant();
+                    long itemPrice = 0;
+
+                    if (item.IsPetItem)
                     {
-                        // For pet items: use bazaar price minus removal cost based on rarity
+                        var isTierBoost = itemTag == "PET_ITEM_TIER_BOOST";
                         if (BazaarPrices.TryGetValue(itemTag, out var bazaarPrice))
                         {
-                            if (itemTag == "PET_ITEM_TIER_BOOST")
-                            {
-                                // Tier boost is a permanent rarity upgrade, not a removable pet item.
-                                itemPrice = (long)bazaarPrice;
-                            }
-                            else
-                            {
-                                removalCost = itemService.GetPetItemRemovalCost(itemTag);
-                                itemPrice = (long)bazaarPrice - removalCost;
-                            }
+                            itemPrice = (long)bazaarPrice;
+                            if (!isTierBoost)
+                                itemPrice -= itemService.GetPetItemRemovalCost(itemTag);
                         }
-                        else
+                        else if (TryGetReferencePrice(itemTag, out var price))
                         {
-                            // Fallback to lookup if not in bazaar
-                            if (Lookups.TryGetValue(itemTag, out var itemLookup) && TryGetLookupReferencePrices(itemLookup, out var prices))
-                            {
-                                var price = prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price);
-                                if (itemTag == "PET_ITEM_TIER_BOOST")
-                                {
-                                    itemPrice = price;
-                                }
-                                else
-                                {
-                                    removalCost = itemService.GetPetItemRemovalCost(itemTag);
-                                    itemPrice = price - removalCost;
-                                }
-                            }
+                            itemPrice = price;
+                            if (!isTierBoost)
+                                itemPrice -= itemService.GetPetItemRemovalCost(itemTag);
                         }
                     }
-                    else
+                    else if (TryGetReferencePrice(itemTag, out var price))
                     {
-                        // For drill/rod parts: use 97% of price minus 50k removal cost
-                        if (!Lookups.TryGetValue(itemTag, out var itemLookup))
-                            continue;
-                        if (!TryGetLookupReferencePrices(itemLookup, out var prices))
-                            continue;
-                        const int RemovalCost = 50_000;
-                        itemPrice = (prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price)) * 97 / 100 - RemovalCost;
+                        itemPrice = price * 97 / 100 - DrillPartRemovalCost;
                     }
 
-                    extraValue += Math.Max(0, itemPrice);
+                    if (itemPrice > 0)
+                        extraValue += itemPrice;
                 }
             }
-            long gemValue = GetGemValue(auction, key);
-            extraValue += gemValue;
 
-            return extraValue;
+            return extraValue + GetGemValue(auction, key);
         }
 
         /// <summary>
@@ -3572,80 +3564,123 @@ ORDER BY l.`AuctionId`  DESC;
         private long GetFullRemovableValue(SaveAuction auction, AuctionKey key)
         {
             long totalValue = 0;
-            foreach (var item in ItemKeys)
-            {
-                // TODO switch iterating source, usually there are fewer modifiers on items than removable items keys
-                if (key.Modifiers.Any(m => m.Key == item))
-                    continue;
-                if (auction.FlatenedNBT.TryGetValue(item, out var value))
-                {
-                    var itemTag = value.ToUpper();
+            var flatNbt = auction.FlatenedNBT;
 
-                    // Check if this is a pet item (heldItem)
-                    if (item == "heldItem")
+            foreach (var item in RemovableItems)
+            {
+                if (TryGetItemKeyValue(flatNbt, item, out var value))
+                {
+                    var itemTag = value.ToUpperInvariant();
+
+                    if (item.IsPetItem && BazaarPrices.TryGetValue(itemTag, out var bazaarPrice))
                     {
-                        // For pet items: use full bazaar price
-                        if (BazaarPrices.TryGetValue(itemTag, out var bazaarPrice))
-                        {
-                            totalValue += (long)bazaarPrice;
-                        }
-                        else if (Lookups.TryGetValue(itemTag, out var itemLookup) && TryGetLookupReferencePrices(itemLookup, out var prices))
-                        {
-                            var price = prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price);
-                            totalValue += price;
-                        }
+                        totalValue += (long)bazaarPrice;
+                        continue;
                     }
-                    else
-                    {
-                        // For drill/rod parts: use full price
-                        if (Lookups.TryGetValue(itemTag, out var itemLookup) && TryGetLookupReferencePrices(itemLookup, out var prices))
-                        {
-                            var price = (prices.Lbin.Price == 0 ? prices.Price : Math.Min(prices.Price, prices.Lbin.Price));
-                            totalValue += price;
-                        }
-                    }
+
+                    if (TryGetReferencePrice(itemTag, out var price))
+                        totalValue += price;
                 }
             }
-            // Also add gem value (gems are already handled correctly)
-            long gemValue = GetGemValue(auction, key);
-            totalValue += gemValue;
 
-            return totalValue;
+            return totalValue + GetGemValue(auction, key);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool TryGetItemKeyValue(Dictionary<string, string> flatNbt, in RemovableItemKey item, out string value)
+        {
+            value = null;
+            if (flatNbt == null)
+                return false;
+            if (flatNbt.TryGetValue(item.Key, out value))
+                return true;
+            return item.AliasKey != null && flatNbt.TryGetValue(item.AliasKey, out value);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool ContainsModifierKey(IReadOnlyList<KeyValuePair<string, string>> modifiers, string key)
+        {
+            if (modifiers == null)
+                return false;
+
+            for (var index = 0; index < modifiers.Count; index++)
+            {
+                if (modifiers[index].Key == key)
+                    return true;
+            }
+
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private bool TryGetReferencePrice(string itemTag, out long price)
+        {
+            price = 0;
+            if (!Lookups.TryGetValue(itemTag, out var itemLookup))
+                return false;
+
+            if (!TryGetLookupReferencePrices(itemLookup, out var prices))
+                return false;
+
+            price = GetReferencePrice(prices);
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static long GetReferencePrice(ReferenceAuctions prices)
+        {
+            var lbinPrice = prices.Lbin.Price;
+            return lbinPrice == 0 ? prices.Price : Math.Min(prices.Price, lbinPrice);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool TryGetLookupReferencePrices(PriceLookup itemLookup, out ReferenceAuctions prices)
         {
             prices = null;
             if (itemLookup?.Lookup == null || itemLookup.Lookup.Count == 0)
                 return false;
 
-            if (itemLookup.CleanKey is not null && itemLookup.Lookup.TryGetValue(itemLookup.CleanKey, out prices) && prices is not null)
+            var lookup = itemLookup.Lookup;
+            if (itemLookup.CleanKey is not null && lookup.TryGetValue(itemLookup.CleanKey, out prices) && prices is not null)
                 return true;
 
-            var fallback = itemLookup.Lookup.FirstOrDefault(entry => entry.Key is not null && entry.Value is not null && (entry.Value.Price > 0 || entry.Value.Lbin.Price > 0));
-            if (fallback.Key is null || fallback.Value is null)
-                return false;
+            foreach (var entry in lookup)
+            {
+                var candidate = entry.Value;
+                if (entry.Key is null || candidate is null)
+                    continue;
 
-            prices = fallback.Value;
-            return true;
+                if (candidate.Price > 0 || candidate.Lbin.Price > 0)
+                {
+                    prices = candidate;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public long GetGemValue(SaveAuction auction, AuctionKey key)
         {
             var gemValue = 0L;
-            foreach (var item in auction.FlatenedNBT)
+            var flatNbt = auction.FlatenedNBT;
+            if (flatNbt == null || flatNbt.Count == 0)
+                return 0;
+
+            var modifiers = key.Modifiers;
+            foreach (var item in flatNbt)
             {
                 if (item.Value != "PERFECT" && item.Value != "FLAWLESS")
-                {
                     continue;
-                }
-                var gemkey = mapper.GetItemKeyForGem(item, auction.FlatenedNBT);
-                if (item.Value == "PERFECT")
-                    if (BazaarPrices.TryGetValue(gemkey, out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
-                        gemValue += (long)gemLookup - 500_000;
-                if (item.Value == "FLAWLESS")
-                    if (BazaarPrices.TryGetValue(gemkey, out var gemLookup) && !key.Modifiers.Any(m => m.Key == item.Key))
-                        gemValue += (long)gemLookup - 100_000;
+
+                if (ContainsModifierKey(modifiers, item.Key))
+                    continue;
+
+                var gemkey = mapper.GetItemKeyForGem(item, flatNbt);
+                if (!BazaarPrices.TryGetValue(gemkey, out var gemLookup))
+                    continue;
+
+                gemValue += (long)gemLookup - (item.Value == "PERFECT" ? 500_000 : 100_000);
             }
 
             return gemValue;

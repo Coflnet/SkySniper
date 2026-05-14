@@ -1451,6 +1451,31 @@ namespace Coflnet.Sky.Sniper
             Assert.That(estimateWithPart.Median, Is.InRange(9_900_000, highestValAuction.HighestBidAmount), "with part should be base");
             Assert.That(estimate.MedianKey, Is.EqualTo(" Any  UNKNOWN 1"), "drill part not in key but added to price");
         }
+
+        [Test]
+        public void AdjustsMedianWithPrefixedDrillPartId()
+        {
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.HighestBidAmount = 10_000_000;
+            var part = Dupplicate(highestValAuction);
+            part.Tag = "COMPONENT";
+            part.HighestBidAmount = 1_000_000;
+            AddVolume(part);
+
+            var drill = Dupplicate(highestValAuction);
+            drill.Tag = "DRILL";
+            drill.FlatenedNBT["engine.id"] = "COMPONENT";
+            AddVolume(drill);
+            service.FinishedUpdate();
+
+            var withoutPart = Dupplicate(drill);
+            withoutPart.FlatenedNBT = new();
+            var estimate = service.GetPrice(withoutPart);
+            Assert.That(9_080_000, Is.EqualTo(estimate.Median), "10m base - 1m component incl removal cost");
+
+            var estimateWithPart = service.GetPrice(drill);
+            Assert.That(estimateWithPart.Median, Is.InRange(9_900_000, highestValAuction.HighestBidAmount), "with prefixed part should be base");
+        }
         [Test]
         public void AdjustMedianBasedOnCleanAvg()
         {
@@ -2801,6 +2826,33 @@ namespace Coflnet.Sky.Sniper
         }
 
         [Test]
+        public void ComponetExtraValueWithPrefixedPartIds()
+        {
+            var part = Dupplicate(highestValAuction);
+            part.HighestBidAmount = 17_000_000;
+            part.Tag = "COMPONENT";
+            AddVolume(part);
+
+            var drill = Dupplicate(highestValAuction);
+            drill.Tag = "DRILL";
+            drill.HighestBidAmount = 6_000_000;
+            var cleanDrill = Dupplicate(drill);
+            AddVolume(drill);
+            service.FinishedUpdate();
+
+            drill.FlatenedNBT["engine.id"] = "COMPONENT";
+            drill.FlatenedNBT["fuel_tank.id"] = "COMPONENT";
+            drill.FlatenedNBT["upgrade_module.id"] = "COMPONENT";
+            drill.HighestBidAmount = 15_000_000;
+
+            service.TestNewAuction(Dupplicate(drill));
+            service.FinishedUpdate();
+            service.PrintLogQueue();
+            var flip = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN);
+            flip.TargetPrice.Should().Be((part.HighestBidAmount * 97 / 100 - 50_000) * 3 + cleanDrill.HighestBidAmount, "3x component price minus 3% for effort to remove");
+        }
+
+        [Test]
         public void CapMedianAt3xLowerLevelRune()
         {
             highestValAuction.FlatenedNBT = new() { { "RUNE_MUSIC", "1" } };
@@ -3707,6 +3759,52 @@ namespace Coflnet.Sky.Sniper
                     Amount = 1000
                 };
             }
+        }
+
+        [Test]
+        public void AliasLookupOverheadBenchmark()
+        {
+            Assert.Ignore("Local benchmark only");
+            // Populate price data for COMPONENT so GetExtraValue actually does work
+            service.Lookups["COMPONENT"] = new PriceLookup();
+            var key = new AuctionKey();
+
+            var nonDrillNbt = new Dictionary<string, string> { { "skin", "bear" } };
+            var drillOldNbt = new Dictionary<string, string> { { "drill_part_engine", "COMPONENT" } };
+            var drillNewNbt = new Dictionary<string, string> { { "engine.id", "COMPONENT" } };
+
+            var method = typeof(SniperService).GetMethod("GetExtraValue", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var auction = Dupplicate(highestValAuction);
+
+            long sink = 0;
+            // warm-up
+            for (int i = 0; i < 10_000; i++)
+            {
+                auction.FlatenedNBT = nonDrillNbt;
+                sink += (long)method.Invoke(service, new object[] { auction, key });
+            }
+
+            const int N = 500_000;
+            auction.FlatenedNBT = nonDrillNbt;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            for (int i = 0; i < N; i++) method.Invoke(service, new object[] { auction, key });
+            var nonDrillMs = sw.Elapsed.TotalMilliseconds;
+
+            auction.FlatenedNBT = drillOldNbt;
+            sw.Restart();
+            for (int i = 0; i < N; i++) method.Invoke(service, new object[] { auction, key });
+            var drillOldMs = sw.Elapsed.TotalMilliseconds;
+
+            auction.FlatenedNBT = drillNewNbt;
+            sw.Restart();
+            for (int i = 0; i < N; i++) method.Invoke(service, new object[] { auction, key });
+            var drillNewMs = sw.Elapsed.TotalMilliseconds;
+
+            Console.WriteLine($"N={N:N0}  non-drill: {nonDrillMs:F1}ms ({nonDrillMs * 1e6 / N:F0}ns/call)  " +
+                              $"drill-old: {drillOldMs:F1}ms ({drillOldMs * 1e6 / N:F0}ns/call)  " +
+                              $"drill-new: {drillNewMs:F1}ms ({drillNewMs * 1e6 / N:F0}ns/call)" +
+                              $"  alias-overhead: {(nonDrillMs - drillOldMs) * 1e6 / N:F0}ns/call  sink={sink}");
+            Assert.Fail("See console output above");
         }
     }
 
