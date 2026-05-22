@@ -8,9 +8,9 @@ COPY SkySniper.csproj SkySniper.csproj
 RUN dotnet restore
 COPY . .
 RUN dotnet test
-RUN dotnet publish -c debug -o /app && rm /app/items.json
+RUN dotnet publish -c release -o /app && rm /app/items.json
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 
 COPY --from=build /app .
