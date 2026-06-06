@@ -88,7 +88,7 @@ namespace Coflnet.Sky.Sniper
             craftCost = new CraftCostMock();
             // console logger
             var factory = LoggerFactory.Create(builder => builder.AddConsole());
-            itemService = new(null, null);
+            itemService = new(null, NullLogger<HypixelItemService>.Instance);
             service = new SniperService(itemService, null, factory.CreateLogger<SniperService>(), craftCost);
 
             IdCounter = 100; // magic number
@@ -1398,6 +1398,52 @@ namespace Coflnet.Sky.Sniper
             a.StartingBid = 5;
             service.TestNewAuction(a);
             Assert.That(1000, Is.EqualTo(found.First().TargetPrice));
+        }
+
+        [Test]
+        public void ClosestCandidateIndex_SurvivesChurn_BitExact()
+        {
+            // WS-A soak: with the parity guard on, FindClosestTo cross-checks its contiguous-index arg-max against a
+            // fresh dict scan at the same instant and throws on any divergence. Drive build -> churn (a brand-new
+            // priced bucket appears, bumping the pricing epoch) -> rebuild, and prove the rebuilt index still contains
+            // every candidate (the new-bucket trap that the reverted dominance-set caching fell into).
+            SniperService.VerifyClosestIndex = true;
+            try
+            {
+                service.State = SniperState.FullyLoaded; // closest/risky finder only runs once Ready+
+                SetBazaarPrice("ENCHANTMENT_ULTIMATE_CHIMERA_1", 100_000_000);
+                SetBazaarPrice("ENCHANTMENT_SHARPNESS_6", 10_000_000);
+                SetBazaarPrice("ENCHANTMENT_GROWTH_6", 5_000_000);
+                var chimera = new Core.Enchantment(Enchantment.EnchantmentType.ultimate_chimera, 1);
+
+                var a = Dupplicate(highestValAuction);
+                a.Enchantments = new List<Core.Enchantment> { chimera };
+                for (int i = 0; i < 4; i++) service.AddSoldItem(Dupplicate(a));
+
+                // novel combo with no exact bucket -> routes through the closest search, building the candidate index
+                var q = Dupplicate(highestValAuction);
+                q.Enchantments = new List<Core.Enchantment> { chimera, new Core.Enchantment(Enchantment.EnchantmentType.sharpness, 6) };
+                q.StartingBid = 5;
+                service.TestNewAuction(q);
+
+                var lookup = service.Lookups.Values.FirstOrDefault(l => l.CandidateIndex != null);
+                Assert.That(lookup, Is.Not.Null, "closest search should have built a candidate index");
+                var countBefore = lookup.CandidateIndex.Count;
+
+                // churn: a brand-new priced bucket appears (epoch bump). The next closest search must rebuild and
+                // include it; if the rebuild dropped it, AssertClosestParity throws inside TestNewAuction below.
+                var b = Dupplicate(highestValAuction);
+                b.Enchantments = new List<Core.Enchantment> { chimera, new Core.Enchantment(Enchantment.EnchantmentType.growth, 6) };
+                for (int i = 0; i < 4; i++) service.AddSoldItem(Dupplicate(b));
+
+                var q2 = Dupplicate(q);
+                q2.StartingBid = 5;
+                service.TestNewAuction(q2);
+
+                Assert.That(lookup.CandidateIndex.Count, Is.GreaterThan(countBefore),
+                    "rebuilt index must include the newly-priced bucket");
+            }
+            finally { SniperService.VerifyClosestIndex = false; }
         }
 
         [Test]
@@ -3805,6 +3851,92 @@ namespace Coflnet.Sky.Sniper
                               $"drill-new: {drillNewMs:F1}ms ({drillNewMs * 1e6 / N:F0}ns/call)" +
                               $"  alias-overhead: {(nonDrillMs - drillOldMs) * 1e6 / N:F0}ns/call  sink={sink}");
             Assert.Fail("See console output above");
+        }
+
+        /// <summary>
+        /// R7 WS-TELEM bit-exactness gate. The per-auction telemetry string/JSON builds were tightened from
+        /// <c>activity != null</c> to <c>activity is { IsAllDataRequested: true }</c> so a non-recording
+        /// (propagation-only) listener pays ~0, while a recording listener emits the byte-identical event. With an
+        /// <see cref="ActivitySamplingResult.AllDataAndRecorded"/> listener attached, <c>IsAllDataRequested</c> is
+        /// true, so the gate opens exactly as the original <c>!= null</c> did and the captured "BaseKey value …"
+        /// event MUST equal the freshly-serialized breakdown (the same expression the production line builds).
+        /// </summary>
+        [Test]
+        public void TelemetryBaseKeyEventByteIdenticalWhenRecording()
+        {
+            using var source = new ActivitySource("ws-telem-test");
+            var captured = new List<Activity>();
+            using var listener = new ActivityListener
+            {
+                ShouldListenTo = s => s == source,
+                Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+                ActivityStopped = captured.Add
+            };
+            ActivitySource.AddActivityListener(listener);
+
+            var factory = LoggerFactory.Create(builder => builder.AddConsole());
+            var tracedService = new SniperService(itemService, source, factory.CreateLogger<SniperService>(), craftCost);
+            var tracedFound = new List<LowPricedAuction>();
+            tracedService.FoundSnipe += tracedFound.Add;
+
+            // Build a priced bucket then a below-market listing so TestNewAuctionInternal runs to completion and emits
+            // the terminal "BaseKey value {json}" event.
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.Enchantments = new List<Core.Enchantment>();
+            highestValAuction.Tag = "CRYPT_DREADLORD_SWORD";
+            highestValAuction.HighestBidAmount = 4_000_000;
+            highestValAuction.Enchantments.Add(new Core.Enchantment(Enchantment.EnchantmentType.scavenger, 5));
+            for (int i = 0; i < 4; i++)
+                tracedService.AddSoldItem(Dupplicate(highestValAuction));
+            foreach (var lookup in tracedService.Lookups)
+                foreach (var item in lookup.Value.Lookup)
+                    tracedService.UpdateMedian(item.Value, (lookup.Key, tracedService.GetBreakdownKey(item.Key, lookup.Key)));
+
+            var snipe = Dupplicate(highestValAuction);
+            snipe.StartingBid = 1_000;
+            snipe.HighestBidAmount = 1_000;
+            snipe.Bin = true;
+            snipe.End = DateTime.UtcNow + TimeSpan.FromDays(10);
+            tracedService.State = SniperState.FullyLoaded;
+
+            tracedService.TestNewAuction(snipe);
+
+            var tnaActivity = captured.LastOrDefault(a => a.OperationName == "TestNewAuction");
+            Assert.That(tnaActivity, Is.Not.Null, "TestNewAuction span must be created when a listener is attached");
+            var baseKeyEvent = tnaActivity.Events.FirstOrDefault(e =>
+                (e.Tags.FirstOrDefault(t => t.Key == "message").Value?.ToString() ?? "").StartsWith("BaseKey value "));
+            var emittedMessage = baseKeyEvent.Tags.FirstOrDefault(t => t.Key == "message").Value?.ToString();
+            Assert.That(emittedMessage, Is.Not.Null, "BaseKey value event must be emitted when recording");
+
+            // The exact string the (un-gated) production line would have built — proves byte-identity.
+            var expected = "BaseKey value " + JsonConvert.SerializeObject(tracedService.ValueKeyForTest(Dupplicate(snipe)).ValueBreakdown);
+            Assert.That(emittedMessage, Is.EqualTo(expected),
+                "Recording-path telemetry event must be byte-identical to the freshly-serialized breakdown");
+
+            // Non-recording (propagation-only) listener: IsAllDataRequested is false, so the gated string/JSON build
+            // must be skipped and no "BaseKey value …" event retained — the disabled-path-pays-nothing property.
+            using var source2 = new ActivitySource("ws-telem-test-noprop");
+            var captured2 = new List<Activity>();
+            using var listener2 = new ActivityListener
+            {
+                ShouldListenTo = s => s == source2,
+                Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.PropagationData,
+                ActivityStopped = captured2.Add
+            };
+            ActivitySource.AddActivityListener(listener2);
+            var nonRecService = new SniperService(itemService, source2, factory.CreateLogger<SniperService>(), craftCost);
+            nonRecService.FoundSnipe += _ => { };
+            for (int i = 0; i < 4; i++)
+                nonRecService.AddSoldItem(Dupplicate(highestValAuction));
+            foreach (var lookup in nonRecService.Lookups)
+                foreach (var item in lookup.Value.Lookup)
+                    nonRecService.UpdateMedian(item.Value, (lookup.Key, nonRecService.GetBreakdownKey(item.Key, lookup.Key)));
+            nonRecService.State = SniperState.FullyLoaded;
+            Assert.DoesNotThrow(() => nonRecService.TestNewAuction(Dupplicate(snipe)),
+                "Non-recording telemetry path must not throw");
+            Assert.That(captured2.SelectMany(a => a.Events).All(e =>
+                    !(e.Tags.FirstOrDefault(t => t.Key == "message").Value?.ToString() ?? "").StartsWith("BaseKey value ")),
+                Is.True, "Non-recording listener must retain no BaseKey value event (build skipped)");
         }
     }
 

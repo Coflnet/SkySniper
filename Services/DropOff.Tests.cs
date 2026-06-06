@@ -47,7 +47,7 @@ public class DropOffTests
         {
             loaded = File.ReadAllText("Mock/boots.json");
         }
-        sniperService = new SniperService(new(null, null), null, NullLogger<SniperService>.Instance, craftCostService);
+        sniperService = new SniperService(new HypixelItemService(null, NullLogger<HypixelItemService>.Instance), null, NullLogger<SniperService>.Instance, craftCostService);
         var parsed = JsonConvert.DeserializeObject<LookupLoad>(loaded);
         var xy =
                 parsed.Lookup.Where(l => l.Key.Contains("BLACK")).ToDictionary(l => ParseKey(l), l => l.Value);
