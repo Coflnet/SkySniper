@@ -1,5 +1,8 @@
 using Coflnet.Security.OpenBao;
+using Coflnet.Sky.Core;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 namespace Coflnet.Sky.Sniper
@@ -9,7 +12,9 @@ namespace Coflnet.Sky.Sniper
         public static void Main(string[] args)
         {
             System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
-            CreateHostBuilder(args).Build().Run();
+            var host = CreateHostBuilder(args).Build();
+            HypixelContext.SetConfiguration(host.Services.GetRequiredService<IConfiguration>());
+            host.Run();
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
