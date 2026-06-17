@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Coflnet.Sky.Crafts.Client.Api;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using System;
 using Coflnet.Sky.Core.Services;
@@ -14,7 +15,7 @@ public interface ICraftCostService
 {
     bool TryGetCost(string itemId, out double cost);
     Dictionary<string, double> Costs { get; }
-    Dictionary<string, Category> ItemCategories { get; }
+    ConcurrentDictionary<string, Category> ItemCategories { get; }
     void AddCostForSpecialItems();
 }
 public class CraftCostService : BackgroundService, ICraftCostService
@@ -22,7 +23,7 @@ public class CraftCostService : BackgroundService, ICraftCostService
     private readonly ICraftsApi craftsApi;
     private readonly ILogger<CraftCostService> logger;
     public Dictionary<string, double> Costs { get; private set; } = new Dictionary<string, double>();
-    public Dictionary<string, Category> ItemCategories { get; private set; } = new Dictionary<string, Category>();
+    public ConcurrentDictionary<string, Category> ItemCategories { get; private set; } = new ConcurrentDictionary<string, Category>();
 
 
     public CraftCostService(ICraftsApi craftsApi, ILogger<CraftCostService> logger)

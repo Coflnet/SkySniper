@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -24,7 +25,7 @@ public class DropOffTests
     {
         public Dictionary<string, double> Costs { get; } = new();
 
-        public Dictionary<string, Category> ItemCategories { get; set; } = new();
+        public ConcurrentDictionary<string, Category> ItemCategories { get; set; } = new();
 
         public void AddCostForSpecialItems()
         {
