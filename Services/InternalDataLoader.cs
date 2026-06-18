@@ -77,8 +77,16 @@ namespace Coflnet.Sky.Sniper.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            var bazaarConsume = ConsumeBazaar(stoppingToken);
+            Task soldAuctions = LoadLookupsAndProcessSells(stoppingToken);
+            Task newAuctions = ConsumeNewAuctions(stoppingToken);
+            var sellLoad = LoadSellHistory(stoppingToken);
+            var dueGroupFlush = FlushDueGroups(stoppingToken);
+
             var loadActive = Task.Run(async () =>
             {
+                // wait shortly to let lookups load first
+                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
                 while (!stoppingToken.IsCancellationRequested)
                 {
                     await LoadActiveAuctions(stoppingToken).ConfigureAwait(false);
@@ -86,11 +94,6 @@ namespace Coflnet.Sky.Sniper.Services
                     await partialCalcService.Load();
                 }
             });
-            var bazaarConsume = ConsumeBazaar(stoppingToken);
-            Task soldAuctions = LoadLookupsAndProcessSells(stoppingToken);
-            Task newAuctions = ConsumeNewAuctions(stoppingToken);
-            var sellLoad = LoadSellHistory(stoppingToken);
-            var dueGroupFlush = FlushDueGroups(stoppingToken);
 
             stoppingToken.Register(() =>
             {
