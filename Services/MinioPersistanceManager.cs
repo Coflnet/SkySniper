@@ -55,7 +55,7 @@ namespace Coflnet.Sky.Sniper.Services
 
         public async Task LoadLookups(SniperService service)
         {
-            logger.LogInformation("loading groups ");
+            logger.LogInformation("loading groups from " + s3Client.Config.ServiceURL);
             var attempts = 0;
             await Parallel.ForEachAsync(Enumerable.Range(0, 100), new ParallelOptions()
             {
