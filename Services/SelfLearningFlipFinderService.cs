@@ -62,6 +62,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     private readonly Dictionary<string, int> modelVectorSizeByTag = new(StringComparer.OrdinalIgnoreCase);
     // Track the maximum sold price observed in training data per tag to cap unrealistic predictions
     private readonly Dictionary<string, float> maxTrainingLabelByTag = new(StringComparer.OrdinalIgnoreCase);
+    // Serializes access to the combined metadata blob to prevent concurrent S3 writes
+    private readonly object metaSaveLock = new();
     // Only keep/train models for these complicated / relevant items (mirror of AIFormattingService.RelevantItems)
     private static readonly HashSet<string> RelevantItems = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -485,6 +487,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     private void RefitModelsForTags(IEnumerable<string> tags)
     {
         var now = DateTime.UtcNow;
+
         foreach (var tag in tags)
         {
             try
@@ -944,6 +947,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
 
     /// <summary>
     /// Persists the trained model and metadata to storage.
+    /// Combined metadata save is serialized with a dedicated lock to prevent
+    /// concurrent S3 writes to the same object.
     /// </summary>
     private void PersistModelAndMetadata(string tag, ITransformer model, IDataView dataView,
         Dictionary<string, int> featureIndex, List<FlipData> trainingData,
@@ -973,20 +978,19 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 RSquared = double.IsNaN(rSquared) ? null : rSquared
             };
 
-            // Persist all metas in a single blob to reduce IO operations
-            try
+            lock (metaSaveLock)
             {
-                var combinedMeta = LoadCombinedMetadata();
-                combinedMeta[tag] = meta;
-
-                if (shouldPersist)
+                try
                 {
-                    SaveCombinedMetadata(combinedMeta);
+                    var combinedMeta = LoadCombinedMetadata();
+                    combinedMeta[tag] = meta;
+                    if (shouldPersist)
+                        SaveCombinedMetadata(combinedMeta);
                 }
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to persist combined metadata for {Tag}", tag);
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to persist combined metadata for {Tag}", tag);
+                }
             }
         }
         catch (Exception ex)
@@ -1017,14 +1021,17 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     }
 
     /// <summary>
-    /// Saves all metadata to storage.
+    /// Saves all metadata to storage synchronously.
+    /// Callers should hold <see cref="metaSaveLock"/> to prevent concurrent
+    /// writes to the same S3 object (which would trigger
+    /// "Reduce your concurrent request rate" errors).
     /// </summary>
     private void SaveCombinedMetadata(Dictionary<string, PersistMeta> metadata)
     {
         using var outStream = new System.IO.MemoryStream();
         MessagePack.MessagePackSerializer.Serialize(outStream, metadata);
         outStream.Position = 0;
-        _ = persitance.SaveBlob("selflearning/meta/all", outStream);
+        persitance.SaveBlob("selflearning/meta/all", outStream).GetAwaiter().GetResult();
     }
 
     private async Task LoadPersistedModelIfExists(string tag)
