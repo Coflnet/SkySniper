@@ -72,7 +72,7 @@ namespace Coflnet.Sky.Sniper.Services
         private class CraftCostMock : ICraftCostService
         {
             public Dictionary<string, double> Costs { get; } = new();
-            public Dictionary<string, Category> ItemCategories { get; } = new();
+            public System.Collections.Concurrent.ConcurrentDictionary<string, Category> ItemCategories { get; } = new();
             public void AddCostForSpecialItems() { }
             public bool TryGetCost(string itemId, out double cost) => Costs.TryGetValue(itemId, out cost);
         }
@@ -82,7 +82,10 @@ namespace Coflnet.Sky.Sniper.Services
         {
             System.Threading.Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             SniperService.MIN_TARGET = 0;
-            SniperService.StartTime = new DateTime(2021, 9, 25);
+            // Anchor the epoch to the wall clock so GetDay() is ALWAYS 45, no matter when the test runs. With a fixed
+            // absolute StartTime the serialized Volume/TimeToSell drift as UtcNow advances (they divide by
+            // "days since oldest ref", which grows daily) and the goldens rot within weeks.
+            SniperService.StartTime = DateTime.UtcNow.Date.AddDays(-45);
             craftCost = new CraftCostMock();
             itemService = new HypixelItemService(null, NullLogger<HypixelItemService>.Instance);
             service = new SniperService(itemService, null, NullLogger<SniperService>.Instance, craftCost);
@@ -168,16 +171,16 @@ namespace Coflnet.Sky.Sniper.Services
         // ============================================================================================================
 
         private const string GOLD_PLAIN =
-            "Price=10500000;OldestRef=37;Volatility=2;DedupCount=9;RiskyEstimate=0;Volume=0.006;TimeToSell=483023;Lbin.Price=13500000;Refs=100:40:10000000|101:39:10250000|102:38:10500000|103:37:10750000|104:36:11000000|105:35:11250000|106:34:11500000|107:33:11750000|108:32:12000000|109:31:12250000";
+            "Price=10500000;OldestRef=37;Volatility=2;DedupCount=9;RiskyEstimate=0;Volume=1.6667;TimeToSell=1729;Lbin.Price=13500000;Refs=100:40:10000000|101:39:10250000|102:38:10500000|103:37:10750000|104:36:11000000|105:35:11250000|106:34:11500000|107:33:11750000|108:32:12000000|109:31:12250000";
 
         private const string GOLD_PET =
-            "Price=0;OldestRef=0;Volatility=0;DedupCount=0;RiskyEstimate=0;Volume=0.0054;TimeToSell=0;Lbin.Price=46000000;Refs=100:40:40000000|101:39:41000000|102:38:42000000|103:37:43000000|104:36:44000000|105:35:45000000|106:34:46000000|107:33:47000000|108:32:48000000";
+            "Price=42000000;OldestRef=37;Volatility=2;DedupCount=9;RiskyEstimate=0;Volume=1.5;TimeToSell=1921;Lbin.Price=46000000;Refs=100:40:40000000|101:39:41000000|102:38:42000000|103:37:43000000|104:36:44000000|105:35:45000000|106:34:46000000|107:33:47000000|108:32:48000000";
 
         private const string GOLD_DECLINING =
-            "Price=18000000;OldestRef=37;Volatility=10;DedupCount=12;RiskyEstimate=10500000;Volume=0.0072;TimeToSell=402519;Lbin.Price=0;Refs=100:40:30000000|101:39:28500000|102:38:27000000|103:37:25500000|104:36:24000000|105:35:22500000|106:34:21000000|107:33:19500000|108:32:18000000|109:31:16500000|110:30:15000000|111:29:13500000";
+            "Price=21000000;OldestRef=37;Volatility=10;DedupCount=12;RiskyEstimate=10500000;Volume=2;TimeToSell=1441;Lbin.Price=0;Refs=100:40:30000000|101:39:28500000|102:38:27000000|103:37:25500000|104:36:24000000|105:35:22500000|106:34:21000000|107:33:19500000|108:32:18000000|109:31:16500000|110:30:15000000|111:29:13500000";
 
         private const string GOLD_THIN =
-            "Price=0;OldestRef=0;Volatility=0;DedupCount=0;RiskyEstimate=0;Volume=0.0018;TimeToSell=0;Lbin.Price=0;Refs=100:40:5000000|101:39:5000000|102:38:5000000";
+            "Price=0;OldestRef=0;Volatility=0;DedupCount=0;RiskyEstimate=0;Volume=0.5;TimeToSell=0;Lbin.Price=0;Refs=100:40:5000000|101:39:5000000|102:38:5000000";
 
         // ============================================================================================================
         // Serialization + assertion: pin every observable repriced field a write-path rewrite could perturb.

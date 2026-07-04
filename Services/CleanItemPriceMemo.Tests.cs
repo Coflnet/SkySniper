@@ -41,7 +41,7 @@ namespace Coflnet.Sky.Sniper.Services
         private class CraftCostMock : ICraftCostService
         {
             public Dictionary<string, double> Costs { get; } = new();
-            public Dictionary<string, Category> ItemCategories { get; } = new();
+            public System.Collections.Concurrent.ConcurrentDictionary<string, Category> ItemCategories { get; } = new();
             public void AddCostForSpecialItems() { }
             public bool TryGetCost(string itemId, out double cost) => Costs.TryGetValue(itemId, out cost);
         }
