@@ -82,13 +82,17 @@ namespace Coflnet.Sky.Sniper.Services
         public readonly long BuiltEpoch;
         public readonly int BuiltLookupCount;
         public readonly DateTime BuiltAt;
+        /// <summary>The raw item tag the index's vecs were built for. One PriceLookup can serve several raw tags
+        /// (HYPERION group, STARRED_*), and ComparisonValue — hence every vec — is tag-dependent, so an index built
+        /// for one tag must not be served to another.</summary>
+        public readonly string BuiltTag;
 
         public ClosestCandidateIndex(in Chunked<ClosestScoreKernel.ScoreVec> vecs, in Chunked<AuctionKey> keys,
             in Chunked<ReferenceAuctions> buckets, in Chunked<short> oldestRef, in Chunked<long> cap, int count,
-            long builtEpoch, int builtLookupCount, DateTime builtAt)
+            long builtEpoch, int builtLookupCount, DateTime builtAt, string builtTag)
         {
             Vecs = vecs; Keys = keys; Buckets = buckets; OldestRef = oldestRef; Cap = cap; Count = count;
-            BuiltEpoch = builtEpoch; BuiltLookupCount = builtLookupCount; BuiltAt = builtAt;
+            BuiltEpoch = builtEpoch; BuiltLookupCount = builtLookupCount; BuiltAt = builtAt; BuiltTag = builtTag;
         }
 
         /// <summary>

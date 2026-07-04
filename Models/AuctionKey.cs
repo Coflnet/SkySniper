@@ -24,16 +24,26 @@ namespace Coflnet.Sky.Sniper.Models
     [MessagePackObject]
     public class AuctionKey
     {
+        // Explicit backing fields: every init accessor resets the memoized hash. The copy ctor copies _hash (so
+        // GetReduced(0)-style pure copies keep the memo), but the widespread `new AuctionKey(source) { Count = 1 }`
+        // pattern mutates hashed fields AFTER the ctor ran — without the reset those derived keys would carry the
+        // source's hash forever and silently miss every dictionary probe (stale-memo bug).
+        private ReadOnlyCollection<Enchant> _enchants = new(new List<Enchant>());
+        private ItemReferences.Reforge _reforge;
+        private ReadOnlyCollection<KeyValuePair<string, string>> _modifiers = new(new List<KeyValuePair<string, string>>());
+        private Tier _tier;
+        private byte _count;
+
         [Key(0)]
-        public ReadOnlyCollection<Enchant> Enchants { get; init; } = new(new List<Enchant>());
+        public ReadOnlyCollection<Enchant> Enchants { get => _enchants; init { _enchants = value; _hash = 0; } }
         [Key(1)]
-        public ItemReferences.Reforge Reforge { get; init; }
+        public ItemReferences.Reforge Reforge { get => _reforge; init { _reforge = value; _hash = 0; } }
         [Key(2)]
-        public ReadOnlyCollection<KeyValuePair<string, string>> Modifiers { get; init; } = new(new List<KeyValuePair<string, string>>());
+        public ReadOnlyCollection<KeyValuePair<string, string>> Modifiers { get => _modifiers; init { _modifiers = value; _hash = 0; } }
         [Key(3)]
-        public Tier Tier { get; init; }
+        public Tier Tier { get => _tier; init { _tier = value; _hash = 0; } }
         [Key(4)]
-        public byte Count { get; init; }
+        public byte Count { get => _count; init { _count = value; _hash = 0; } }
 
         public static ReadOnlyCollection<KeyValuePair<string, string>> EmptyModifiers = new(new List<KeyValuePair<string, string>>());
 

@@ -224,10 +224,19 @@ namespace Coflnet.Sky.Sniper.Services
             return drained;
         }
 
+        /// <summary>Raw tag → shard memo. GetAuctionGroupTag walks price lookups and allocates a substring per call —
+        /// pure waste on the enqueue path where only the shard number matters. It also FREEZES routing per raw tag:
+        /// CombinableStarred grows at runtime, and without the memo an auction of a tag admitted mid-batch could route
+        /// to a different shard than an earlier same-tag auction of the same batch (two workers concurrently mutating
+        /// one PriceLookup — the exact race the per-tag-serial invariant exists to prevent).</summary>
+        private readonly ConcurrentDictionary<string, int> shardByTag = new();
+
         /// <summary>The worker index that owns <paramref name="tag"/> (after group-tag resolution). Public so the
         /// harness can pre-bucket a workload and assert routing stability.</summary>
         public int ShardFor(string tag)
         {
+            if (shardByTag.TryGetValue(tag, out var cached))
+                return cached;
             var groupTag = service.GetAuctionGroupTag(tag).tag;
             // FNV-1a over the resolved group tag: stable across runs/processes, no dependence on string.GetHashCode's
             // per-process randomization, so the same tag deterministically maps to the same shard.
@@ -237,7 +246,9 @@ namespace Coflnet.Sky.Sniper.Services
                 hash ^= groupTag[i];
                 hash *= 16777619u;
             }
-            return (int)(hash % (uint)WorkerCount);
+            var shard = (int)(hash % (uint)WorkerCount);
+            shardByTag.TryAdd(tag, shard); // first resolution wins; races agree except across a CombinableStarred grow, where pinning IS the point
+            return shard;
         }
 
         /// <summary>Signals that no more auctions will be enqueued. After this, drain with

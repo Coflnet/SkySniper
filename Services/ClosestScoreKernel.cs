@@ -120,7 +120,11 @@ namespace Coflnet.Sky.Sniper.Services
         {
             public readonly ScoreVec Vec;
             public readonly DateTime At;
-            public ScoreVecCache(ScoreVec vec, DateTime at) { Vec = vec; At = at; }
+            /// <summary>The item tag the vec was built for. ComparisonValue is tag-dependent and one PriceLookup can
+            /// serve several raw tags (HYPERION group, STARRED_*), so a tag-blind bucket cache would serve one tag's
+            /// values to another tag's queries for the whole TTL.</summary>
+            public readonly string Tag;
+            public ScoreVecCache(ScoreVec vec, DateTime at, string tag) { Vec = vec; At = at; Tag = tag; }
         }
 
         private static int ImportanceFactor(string key)

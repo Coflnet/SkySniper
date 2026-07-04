@@ -35,8 +35,10 @@ namespace Coflnet.Sky.Sniper.Services
             if (ItemTag != other.ItemTag)
                 return false;
 
-            // Compare Modifier
-            if (!Modifier.Equals(other.Modifier))
+            // Compare Modifier field-wise: KeyValuePair<,> has no IEquatable, so .Equals(other.Modifier) binds to
+            // ValueType.Equals(object) — boxing + reflection-based field comparison on every dictionary probe whose
+            // hash matches, i.e. on every warm cache HIT. String == is the same ordinal comparison without either.
+            if (Modifier.Key != other.Modifier.Key || Modifier.Value != other.Modifier.Value)
                 return false;
 
             // Compare RelevantModifiers

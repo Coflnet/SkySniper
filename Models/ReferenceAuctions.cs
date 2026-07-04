@@ -96,7 +96,7 @@ namespace Coflnet.Sky.Sniper.Models
                 if (_volume != 0)
                     return _volume;
                 return (float)(References.TryPeek(out ReferencePrice price)
-                    ? (float)References.Count / (SniperService.GetDay() - price.Day + 1)
+                    ? (float)ReferenceCount / (SniperService.GetDay() - price.Day + 1)
                     : 0);
             }
             set => _volume = value;
@@ -110,12 +110,51 @@ namespace Coflnet.Sky.Sniper.Models
         // ReferencePrice[] (FIFO order via ConcurrentQueue.ToArray) only when stale and atomic-publishes it. Readers
         // iterate the array (zero-alloc, FIFO-identical to a fresh queue enumeration). Never persisted: private fields
         // are not MessagePack-serialized (no AllowPrivate), and [JsonIgnore] keeps them out of JSON too.
+        // Snapshot + its version are published as ONE immutable holder through a single reference store. Publishing
+        // them as two independent fields had a lost-update interleaving: rebuilder A (old version) could overwrite
+        // rebuilder B's newer array and then B's version stamp lands on top — a stale snapshot certified as current
+        // until the NEXT mutation (potentially hours for a quiet bucket).
+        private sealed class RefSnapshot
+        {
+            public readonly long Version;
+            public readonly ReferencePrice[] Items;
+            public RefSnapshot(long version, ReferencePrice[] items) { Version = version; Items = items; }
+        }
         [JsonIgnore]
-        private ReferencePrice[] _refSnapshot;
-        [JsonIgnore]
-        private long _refSnapshotVersion = -1; // != initial _refVersion(0) so the first ReferenceSnapshot() builds
+        private RefSnapshot _refSnapshot;
         [JsonIgnore]
         private long _refVersion;
+
+        // Version-keyed count cache, same pattern as the snapshot below. ConcurrentQueue.Count takes the queue's
+        // cross-segment lock and walks segments — the profiler shows it (plus its Monitor.Enter) as one of the top
+        // remaining hot-path costs, because the snipe path reads References.Count many times per auction while the
+        // queue mutates rarely. Keyed off _refVersion, so it is exact whenever all mutations go through the
+        // Enqueue/TryDequeue/Set methods (the same contract the snapshot already relies on), and it self-heals on
+        // first read after deserialization (version 0 != -1 sentinel forces a real Count).
+        [JsonIgnore]
+        private int _refCountCache;
+        [JsonIgnore]
+        private long _refCountVersion = -1;
+
+        /// <summary>Cached <c>References.Count</c> (see field comment). Use instead of References.Count on hot paths.</summary>
+        [IgnoreMember]
+        [JsonIgnore]
+        public int ReferenceCount
+        {
+            get
+            {
+                var currentVersion = Volatile.Read(ref _refVersion);
+                if (Volatile.Read(ref _refCountVersion) == currentVersion)
+                    return _refCountCache;
+                var queue = References;
+                if (queue == null)
+                    return 0; // defensive vs deserialized null; don't cache so a later SetReferences is seen
+                var count = queue.Count;
+                _refCountCache = count;
+                Volatile.Write(ref _refCountVersion, currentVersion);
+                return count;
+            }
+        }
 
         /// <summary>Enqueue a reference and invalidate the cached snapshot. The primary ingest path.</summary>
         public void EnqueueReference(ReferencePrice r)
@@ -148,18 +187,17 @@ namespace Coflnet.Sky.Sniper.Models
         public ReferencePrice[] ReferenceSnapshot()
         {
             var currentVersion = Volatile.Read(ref _refVersion);
-            if (Volatile.Read(ref _refSnapshotVersion) != currentVersion)
-            {
-                var rebuilt = References.ToArray(); // FIFO order, matches a fresh ConcurrentQueue enumeration
-                // Publish the ARRAY before stamping the version so a concurrent reader that observes the matching
-                // version is guaranteed to see the corresponding array (no tear): array write happens-before the
-                // version write, and the version write is what gates the fast path below.
-                Volatile.Write(ref _refSnapshot, rebuilt);
-                Volatile.Write(ref _refSnapshotVersion, currentVersion);
-                return rebuilt;
-            }
-            var snapshot = Volatile.Read(ref _refSnapshot); // read the published reference once (tear-safe)
-            return snapshot ?? Array.Empty<ReferencePrice>();
+            var snapshot = Volatile.Read(ref _refSnapshot); // one holder read: version+array can never desynchronize
+            if (snapshot != null && snapshot.Version == currentVersion)
+                return snapshot.Items;
+            var rebuilt = References.ToArray(); // FIFO order, matches a fresh ConcurrentQueue enumeration
+            var holder = new RefSnapshot(currentVersion, rebuilt);
+            // Only install if nobody published a NEWER snapshot meanwhile; losing the race is fine — we still
+            // return our own consistent rebuild for this call.
+            var seen = Volatile.Read(ref _refSnapshot);
+            if (seen == null || seen.Version <= currentVersion)
+                Interlocked.CompareExchange(ref _refSnapshot, holder, seen);
+            return rebuilt;
         }
     }
 

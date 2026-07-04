@@ -243,7 +243,7 @@ namespace Coflnet.Sky.Sniper.Services
             UpdateCleanKey(lookup);
             foreach (var item in lookup.Lookup.ToList())
             {
-                if (item.Value.References.Count == 0 && (item.Value.Lbins == null || item.Value.Lbins.Count == 0))
+                if (item.Value.ReferenceCount == 0 && (item.Value.Lbins == null || item.Value.Lbins.Count == 0))
                     continue;
                 CapBucketSize(item.Value);
                 UpdateMedian(item.Value, (itemTag, GetBreakdownKey(item.Key, itemTag)));
@@ -606,9 +606,20 @@ namespace Coflnet.Sky.Sniper.Services
                 if (!bucket.Lbins.Contains(item))
                 {
                     item.SellTime = (short)(auction.Start - auction.End.Date).TotalMinutes;
-                    bucket.Lbins.Add(item);
-                    bucket.Lbins.Sort(ReferencePrice.Compare);
-                    if (bucket.Lbins.First().AuctionId == item.AuctionId && (logger?.IsEnabled(LogLevel.Information) ?? false))
+                    // The list is already price-sorted, so a full Sort per insert (the profiler's single biggest
+                    // write-path cost) is wasted work: binary-search the slot and insert. Upper bound on ties keeps
+                    // the existing lowest lbin first (stable FIFO among equal prices; List.Sort gave ties no
+                    // guaranteed order at all).
+                    int idx = bucket.Lbins.BinarySearch(item, ReferencePrice.Compare);
+                    if (idx >= 0)
+                    {
+                        while (idx < bucket.Lbins.Count && bucket.Lbins[idx].Price == item.Price)
+                            idx++;
+                    }
+                    else
+                        idx = ~idx;
+                    bucket.Lbins.Insert(idx, item);
+                    if (bucket.Lbins[0].AuctionId == item.AuctionId && (logger?.IsEnabled(LogLevel.Information) ?? false))
                     {
                         logger.LogInformation($"New lowest lbin {auction.Uuid} {auction.StartingBid} from {bucket.Lbins.Skip(1).FirstOrDefault().Price}");
                     }
@@ -1363,10 +1374,10 @@ ORDER BY l.`AuctionId`  DESC;
         private ClosestScoreKernel.ScoreVec GetBucketScoreVec(string itemTag, AuctionKey key, ReferenceAuctions bucket, DateTime cutoff)
         {
             var box = bucket.ScoreVecCache; // single atomic read of the reference
-            if (box != null && box.At >= cutoff)
+            if (box != null && box.At >= cutoff && box.Tag == itemTag) // tag check: grouped tags share the lookup
                 return box.Vec;
             var vec = ClosestScoreKernel.Build(key, ComparisonValueForKey(itemTag, key), scoreInterner);
-            bucket.ScoreVecCache = new ClosestScoreKernel.ScoreVecCache(vec, DateTime.UtcNow); // atomic ref publish
+            bucket.ScoreVecCache = new ClosestScoreKernel.ScoreVecCache(vec, DateTime.UtcNow, itemTag); // atomic ref publish
             return vec;
         }
 
@@ -1438,7 +1449,7 @@ ORDER BY l.`AuctionId`  DESC;
             var now = DateTime.UtcNow;
             var cached = lookup.CandidateIndex; // single atomic read of the reference
             if (cached != null && cached.BuiltEpoch == epoch && cached.BuiltLookupCount == liveCount
-                && cached.BuiltAt > now.AddMinutes(-CandidateIndexMaxAgeMinutes))
+                && cached.BuiltAt > now.AddMinutes(-CandidateIndexMaxAgeMinutes) && cached.BuiltTag == itemTag)
                 return cached;
 
             // Reuse each bucket's cached vec when it is fresh (<= CandidateIndexMaxAgeMinutes old), rebuilding only the
@@ -1467,7 +1478,7 @@ ORDER BY l.`AuctionId`  DESC;
                 n++;
             }
             var index = new ClosestCandidateIndex(vecsB.Build(), keysB.Build(), bucketsB.Build(), oldestB.Build(),
-                capB.Build(), n, epoch, liveCount, now);
+                capB.Build(), n, epoch, liveCount, now, itemTag);
             lookup.CandidateIndex = index; // atomic publish
             return index;
         }
@@ -1508,7 +1519,8 @@ ORDER BY l.`AuctionId`  DESC;
                 store = Interlocked.CompareExchange(ref lookup.DominatorIndexStore, created, null) ?? created;
             }
             var index = store.GetOrBuild(l, scoreInterner, Interlocked.Read(ref pricingEpoch), now, ttlCutoff);
-            lookup.DominatorIndex = index; // keep the legacy field pointing at the latest view (back-compat / inspection)
+            if (!ReferenceEquals(lookup.DominatorIndex, index))
+                lookup.DominatorIndex = index; // legacy field (back-compat / inspection); write-on-change avoids dirtying a shared cache line per call
             return index;
         }
 
@@ -1729,7 +1741,7 @@ ORDER BY l.`AuctionId`  DESC;
                 var value = loadedVal.Lookup.GetValueOrDefault(item);
                 if (value == null)
                     continue;
-                if (value.References.Count == 0 && value.Lbins.Count == 0 || value.References.All(r => r.Day == 1047) // lost nbt data that day
+                if (value.ReferenceCount == 0 && value.Lbins.Count == 0 || value.References.All(r => r.Day == 1047) // lost nbt data that day
                     || value.References.All(r => r.Day < GetDay() - 21) && !item.IsClean())
                     loadedVal.Lookup.TryRemove(item, out _); // unimportant
                 if (NBT.IsPet(itemTag) && !item.Modifiers.Any(m => m.Key == "exp"))
@@ -1752,7 +1764,7 @@ ORDER BY l.`AuctionId`  DESC;
                 foreach (var item in loadedVal.Lookup)
                 {
                     item.Value.SetReferences(item.Value.References.Where(r => r.Price > 0).OrderBy(r => r.Day));
-                    if (item.Key.Count == 0 && item.Key.Tier == Tier.UNKNOWN && item.Value.References.Count == 0)
+                    if (item.Key.Count == 0 && item.Key.Tier == Tier.UNKNOWN && item.Value.ReferenceCount == 0)
                         continue;
                     loadedVal.Lookup[item.Key] = item.Value;
                 }
@@ -1768,7 +1780,7 @@ ORDER BY l.`AuctionId`  DESC;
                     if (!value.Lookup.TryGetValue(item.Key, out ReferenceAuctions existingBucket))
                     {
                         item.Value.SetReferences(item.Value.References.Where(r => r.Price > 0).OrderBy(r => r.Day));
-                        if (item.Key.Count == 0 && item.Key.Tier == Tier.UNKNOWN && item.Value.References.Count == 0)
+                        if (item.Key.Count == 0 && item.Key.Tier == Tier.UNKNOWN && item.Value.ReferenceCount == 0)
                             continue;
                         value.Lookup[item.Key] = item.Value;
                         continue;
@@ -1817,7 +1829,7 @@ ORDER BY l.`AuctionId`  DESC;
                         .OrderBy(r => r.Day));
 
                     var today = GetDay();
-                    if (existingBucket.References.Count > 7 && existingBucket.References.TryPeek(out var r) && r.Day < today - 30)
+                    if (existingBucket.ReferenceCount > 7 && existingBucket.References.TryPeek(out var r) && r.Day < today - 30)
                     {
                         var cleaned = ApplyAntiMarketManipulation(existingBucket);
                         var cleanedMedian = GetMedian(cleaned, null);
@@ -1832,7 +1844,7 @@ ORDER BY l.`AuctionId`  DESC;
                         {
                             increaseRate = 1;
                         }
-                        while (existingBucket.References.Count > 7 && existingBucket.References.TryPeek(out r) && r.Day < today - 30 * increaseRate)
+                        while (existingBucket.ReferenceCount > 7 && existingBucket.References.TryPeek(out r) && r.Day < today - 30 * increaseRate)
                         {
                             existingBucket.TryDequeueReference(out _);
                         }
@@ -1866,7 +1878,7 @@ ORDER BY l.`AuctionId`  DESC;
             foreach (var item in lookup.Lookup.ToList())
             {
                 var bucket = item.Value;
-                if (bucket == null || bucket.Price <= 0 || bucket.References.Count < 6)
+                if (bucket == null || bucket.Price <= 0 || bucket.ReferenceCount < 6)
                     continue;
 
                 var isCleanKey = item.Key.Enchants.Count == 0 && item.Key.Modifiers.Count == 0;
@@ -1905,23 +1917,23 @@ ORDER BY l.`AuctionId`  DESC;
             // midas and daedalus needs golden fragments which are expensive
             !MidasTags.Contains(itemTag) && !itemTag.StartsWith("STARRED_DAEDALUS_AXE"))
             {
-                CombinableStarred.Add(itemTag);
+                CombinableStarred.TryAdd(itemTag, 0);
             }
             if (itemTag.Contains("RUNE_"))
             {
-                RuneLookup.Add(itemTag);
-                RuneLookup.Add(itemTag.Replace("UNIQUE_", ""));
+                RuneLookup.TryAdd(itemTag, 0);
+                RuneLookup.TryAdd(itemTag.Replace("UNIQUE_", ""), 0);
             }
         }
 
         private static bool IsRune(string itemTag)
         {
-            return RuneLookup.Contains(itemTag);
+            return RuneLookup.ContainsKey(itemTag);
         }
 
         private static void CapBucketSize(ReferenceAuctions bucket)
         {
-            while (bucket.References.Count > SizeToKeep && bucket.TryDequeueReference(out _)) { }
+            while (bucket.ReferenceCount > SizeToKeep && bucket.TryDequeueReference(out _)) { }
         }
 
         public short AddSoldItem(SaveAuction auction, bool preventMedianUpdate = false)
@@ -2026,8 +2038,24 @@ ORDER BY l.`AuctionId`  DESC;
             // contiguous candidate indexes so a newly-priced/unpriced bucket is never missed (the reverted set-caching
             // trap). Service-wide and unconditional: UpdateMedian isn't on the snipe hot path, so spurious bumps only
             // cost an occasional index rebuild; correctness is the priority.
+            // Bump BOTH before and after: the pre-bump puts mutations since the last epoch into a fresh epoch; the
+            // post-bump (finally) invalidates anything a concurrent reader stamped with the fresh epoch while this
+            // update was mid-flight (candidate index built from pre-write prices, clean-price/parse memo stamped over
+            // pre-write references) — without it such a capture is served as "fresh" until the next unrelated bump.
             Interlocked.Increment(ref pricingEpoch);
-            var size = bucket.References.Count;
+            try
+            {
+                UpdateMedianCore(bucket, keyCombo);
+            }
+            finally
+            {
+                Interlocked.Increment(ref pricingEpoch);
+            }
+        }
+
+        private void UpdateMedianCore(ReferenceAuctions bucket, (string tag, KeyWithValueBreakdown key) keyCombo)
+        {
+            var size = bucket.ReferenceCount;
             if (size < 4)
             {
                 if (keyCombo != default)
@@ -2309,7 +2337,7 @@ ORDER BY l.`AuctionId`  DESC;
                     // For single-variant items with sufficient price history, apply cleanPricePerDay
                     // adjustment to account for declining market trends. SelectAdjustedPrice only
                     // adjusts downward (when clean > today), so stable/rising markets are unaffected.
-                    var meaningfulBuckets = lookup.Lookup.Count(l => l.Value.References.Count >= 4);
+                    var meaningfulBuckets = lookup.Lookup.Count(l => l.Value.ReferenceCount >= 4);
                     if (meaningfulBuckets > 1 || cleanPriceLookup.Count < 5)
                         cleanPriceLookup = new();
                 }
@@ -2974,20 +3002,20 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 return;
             }
-            itemLookup.Volume = (float)itemLookup.Lookup.Sum(l => l.Value.References.Count) / 60;
+            itemLookup.Volume = (float)itemLookup.Lookup.Sum(l => l.Value.ReferenceCount) / 60;
         }
 
         private static (byte, long) GetVolatility(PriceLookup lookup, ReferenceAuctions bucket, long shortTermPrice, long longTerm)
         {
             var oldMedian = GetMedian(bucket.References.AsEnumerable().Take(5).ToList(), lookup?.CleanPricePerDay);
             var secondNewestMedian = 0L;
-            if (bucket.References.Count > 8)
+            if (bucket.ReferenceCount > 8)
             {
                 var secondSample = bucket.References.AsEnumerable().Reverse().Skip(5).Take(5).ToList();
                 secondNewestMedian = GetMedian(secondSample, lookup?.CleanPricePerDay);
             }
             var thirdMedian = 0L;
-            if (bucket.References.Count > 11)
+            if (bucket.ReferenceCount > 11)
             {
                 var thirdSample = bucket.References.AsEnumerable().Reverse().Skip(9).Take(4).ToList();
                 thirdMedian = GetMedian(thirdSample, lookup?.CleanPricePerDay);
@@ -3973,6 +4001,10 @@ ORDER BY l.`AuctionId`  DESC;
             h = FnvLong(h, (long)auction.Reforge);
             h = FnvLong(h, auction.Count);
             h = FnvLong(h, auction.HighestBidAmount);
+            // SelectValuable branches on ItemCreatedAt < UnlockedIntroduction (synthesizes an unlocked_slots modifier
+            // for old items) — two auctions with identical hashed content straddling that date parse differently, so
+            // the boolean MUST be part of the memo identity or the memo can serve the wrong key.
+            h = FnvLong(h, auction.ItemCreatedAt < UnlockedIntroduction ? 1 : 0);
             if (enchants != null)
                 for (int i = 0; i < enchants.Count; i++)
                 {
@@ -4014,7 +4046,12 @@ ORDER BY l.`AuctionId`  DESC;
             if (s == null)
                 return (h ^ 0xFF) * FnvPrime;
             for (int i = 0; i < s.Length; i++)
-                h = (h ^ (byte)s[i]) * FnvPrime ^ ((byte)(s[i] >> 8)) * FnvPrime;
+            {
+                // fold both UTF-16 bytes through the FNV chain; the previous single-expression form parsed as
+                // ((h^lo)*P) ^ (hi*P), leaving the high byte un-chained (weak avalanche for non-ASCII values)
+                h = (h ^ (byte)s[i]) * FnvPrime;
+                h = (h ^ (byte)(s[i] >> 8)) * FnvPrime;
+            }
             return h;
         }
 
@@ -4067,6 +4104,7 @@ ORDER BY l.`AuctionId`  DESC;
             h = FnvLong(h, (long)auction.Reforge);
             h = FnvLong(h, auction.Count);
             h = FnvLong(h, auction.HighestBidAmount);
+            h = FnvLong(h, auction.ItemCreatedAt < UnlockedIntroduction ? 1 : 0); // parse branches on this (see ComputeContentHash)
             var ench = auction.Enchantments;
             if (ench != null)
                 for (int i = 0; i < ench.Count; i++)
@@ -5356,7 +5394,7 @@ ORDER BY l.`AuctionId`  DESC;
                         return 0;
                     if (Lookups.TryGetValue("ATTRIBUTE_SHARD", out var shardLookup) && shardLookup.Lookup.TryGetValue(key, out var shardBucket))
                     {
-                        if (shardBucket.References.Count > 5 && shardBucket.Price > 0 && shardBucket.Price < references.Price)
+                        if (shardBucket.ReferenceCount > 5 && shardBucket.Price > 0 && shardBucket.Price < references.Price)
                             references = shardBucket; // use shard price if it is cheaper as it can be used on all items
                     }
                     if (SharedAttributeGroup.TryGetValue(auction.Tag, out var sharedGroup))
@@ -5365,7 +5403,7 @@ ORDER BY l.`AuctionId`  DESC;
                         {
                             if (Lookups.TryGetValue(item, out var sharedLookup)
                                 && sharedLookup.Lookup.TryGetValue(key, out var sharedBucket)
-                                && sharedBucket.References.Count > 5 && sharedBucket.Price > 0 && sharedBucket.Price < references.Price)
+                                && sharedBucket.ReferenceCount > 5 && sharedBucket.Price > 0 && sharedBucket.Price < references.Price)
                             {
                                 references = sharedBucket; // use the shared group price if available
                             }
@@ -5447,7 +5485,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             var topKey = longKey.GetReduced(0);
             var targetVolume = 11;
-            if (lookup.Lookup.TryGetValue(topKey, out var topBucket) && topBucket.References.Count >= targetVolume)
+            if (lookup.Lookup.TryGetValue(topKey, out var topBucket) && topBucket.ReferenceCount >= targetVolume)
             {
                 return; // enough references in previous check
             }
@@ -5798,15 +5836,15 @@ ORDER BY l.`AuctionId`  DESC;
                 if (!(index.Reforge[i] == keyReforge || index.Reforge[i] == anyReforge))
                     continue;
                 var v = index.Buckets[i];
-                if (!(v.Price > 0) || v.References.Count <= 5) // LIVE
+                if (!(v.Price > 0) || v.ReferenceCount <= 5) // LIVE
                     continue;
+                if ((index.RequiredMask[i] & qProv) != index.RequiredMask[i])
+                    continue; // sound presence prefilter (candidate is the base side) — 2 loads, run BEFORE the O(refs) scan
                 bool recent = false;
                 foreach (var r in v.ReferenceSnapshot()) // LIVE
                     if (r.Day >= today - 2) { recent = true; break; }
                 if (!recent)
                     continue;
-                if ((index.RequiredMask[i] & qProv) != index.RequiredMask[i])
-                    continue; // sound presence prefilter (candidate is the base side)
                 if (!DominatorIndex.Dominates(in index.Doms[i], in query, petSpirit))
                     continue;
                 if (v.Price > bestContainingPrice)
@@ -5851,8 +5889,11 @@ ORDER BY l.`AuctionId`  DESC;
             "STARRED_MIDAS_STAFF",
             "STARRED_MIDAS_SWORD"
         };
-        private static readonly HashSet<string> CombinableStarred = new();
-        private static readonly HashSet<string> RuneLookup = new();
+        // ConcurrentDictionary keys (not HashSet): these are mutated at runtime by the sold-item consumer
+        // (UpdateFraggedAndRune) while ShardedAuctionDispatcher.ShardFor and every shard worker call
+        // GetAuctionGroupTag/IsRune concurrently — HashSet.Contains racing Add (resize) is undefined behavior.
+        private static readonly ConcurrentDictionary<string, byte> CombinableStarred = new();
+        private static readonly ConcurrentDictionary<string, byte> RuneLookup = new();
         /// <summary>
         /// Remaps item tags into one item if they are easily switchable
         /// </summary>
@@ -5862,7 +5903,7 @@ ORDER BY l.`AuctionId`  DESC;
         {
             if (HyperionGroup.Contains(itemGroupTag))
                 return ("HYPERION", GetPriceForItem("GIANT_FRAGMENT_LASER") * 8); // easily craftable from one into the other
-            if (CombinableStarred.Contains(itemGroupTag))
+            if (CombinableStarred.ContainsKey(itemGroupTag))
             {
                 // technically neds 8 for crafting but looses the value on craft so using 7
                 var isFrozen = WinterFragmentGroup.Contains(itemGroupTag);
@@ -6272,7 +6313,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (key.Count > 1)
                     adjustedMedianPrice = CheckHigherValueKeyForLowerPrice(bucket, key, l, medianPrice);
                 if (Activity.Current is { IsAllDataRequested: true })
-                    Activity.Current.Log($"Bucket has enough references {bucket.References.Count} and medianPrice > minMedPrice {medianPrice} > {minMedPrice} adjusted {adjustedMedianPrice} {extraValue} {expValue}");
+                    Activity.Current.Log($"Bucket has enough references {bucket.ReferenceCount} and medianPrice > minMedPrice {medianPrice} > {minMedPrice} adjusted {adjustedMedianPrice} {extraValue} {expValue}");
                 if (adjustedMedianPrice + extraValue < minMedPrice)
                 {
                     if (WouldLogNonFlip(volume, bucket))
@@ -6326,9 +6367,9 @@ ORDER BY l.`AuctionId`  DESC;
             else
             {
                 if (Activity.Current is { IsAllDataRequested: true })
-                    Activity.Current.Log($"Bucket has too few references {bucket.References.Count} or medianPrice > minMedPrice {medianPrice} > {minMedPrice}");
+                    Activity.Current.Log($"Bucket has too few references {bucket.ReferenceCount} or medianPrice > minMedPrice {medianPrice} > {minMedPrice}");
                 if (WouldLogNonFlip(volume, bucket))
-                    LogNonFlip(auction, bucket, key, extraValue, volume, medianPrice, $"Median {medianPrice} lower than min price {minMedPrice} {bucket.References.Count}");
+                    LogNonFlip(auction, bucket, key, extraValue, volume, medianPrice, $"Median {medianPrice} lower than min price {minMedPrice} {bucket.ReferenceCount}");
             }
             return foundSnipe;
 
@@ -6427,7 +6468,7 @@ ORDER BY l.`AuctionId`  DESC;
         private static bool BucketHasEnoughReferencesForPrice(ReferenceAuctions bucket, PriceLookup lookup)
         {
             // high value items need more volume to pop up
-            return bucket.Price < 280_000_000 || bucket.References.Count > 5 || bucket.Volume > lookup.Volume / 3;
+            return bucket.Price < 280_000_000 || bucket.ReferenceCount > 5 || bucket.Volume > lookup.Volume / 3;
         }
 
         public void UpdateBazaar(dev.BazaarPull bazaar)
@@ -6468,7 +6509,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
                 if (!BazaarPrices.ContainsKey(item.ProductId))
                     BazaarPrices[item.ProductId] = itemPrice;
-                if (bucket.References.Count >= 5 && NotEnoughTimePassed(bazaar, bucket))
+                if (bucket.ReferenceCount >= 5 && NotEnoughTimePassed(bazaar, bucket))
                     continue; // only sample prices every 10 minutes
                 bucket.EnqueueReference(new()
                 {
@@ -6607,7 +6648,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (lowestHigherBin.AuctionId == default)
                     lowestLbin = long.MaxValue;
                 var referencePrice = bucket.Price;
-                if (bucket.References.Count < 5)
+                if (bucket.ReferenceCount < 5)
                 {
                     // all key modifiers and enchants need to be in the reference bucket or higher
                     // R4 WS-SHARE higher-value scan: flat scan of the shared DominatorIndex (direction A: candidates that
@@ -6619,17 +6660,17 @@ ORDER BY l.`AuctionId`  DESC;
                     // 25th percentile of all references
                     referencePrice = PotentialSnipeQuarterPercentile(allReferencesCount, targetPrice / 2);
 
-                    if (bucket.Price == 0 && bucket.References.Count > 2 && higherValueKeyCount <= 2) // manip indicator
+                    if (bucket.Price == 0 && bucket.ReferenceCount > 2 && higherValueKeyCount <= 2) // manip indicator
                     {
                         percentile /= 5;
                     }
-                    else if (bucket.References.Count < 4 && allReferencesCount < 5)
+                    else if (bucket.ReferenceCount < 4 && allReferencesCount < 5)
                     {
                         percentile = Math.Min(percentile, referencePrice / 2);
                         if (allReferencesCount == 0)
                             percentile /= 2;
                     }
-                    else if (bucket.References.Count <= 3)
+                    else if (bucket.ReferenceCount <= 3)
                         percentile = percentile / 3; // not enough statistical evidence
                 }
                 percentile = Math.Min(percentile, referencePrice);
@@ -6901,7 +6942,7 @@ ORDER BY l.`AuctionId`  DESC;
                     && bucket.Volatility <= 10
                     && bucket.Price < 15_000_000;
                 targetPrice = highSupplyFastTurnover ? Math.Min(targetPrice, nonCraftCap) : nonCraftCap;
-                if (bucket.References.Count < WorkingSize && bucket.References.All(r => r.Day >= GetDay() - 1)) // no full context window (~80 sales) indicates new item that is probably dorpping in price
+                if (bucket.ReferenceCount < WorkingSize && bucket.References.All(r => r.Day >= GetDay() - 1)) // no full context window (~80 sales) indicates new item that is probably dorpping in price
                     targetPrice = Math.Min(targetPrice, bucket.Price); // limit at median (which may also still drop)
             }
             if (capped > 0)
@@ -7284,7 +7325,7 @@ ORDER BY l.`AuctionId`  DESC;
                 "UNIQUE_RUNE_SUPER_PUMPKIN"
             })
             {
-                RuneLookup.Add(item);
+                RuneLookup.TryAdd(item, 0);
             }
         }
     }

@@ -4,7 +4,7 @@ using MessagePack;
 namespace Coflnet.Sky.Sniper.Models
 {
     [MessagePackObject]
-    public struct ReferencePrice
+    public struct ReferencePrice : IEquatable<ReferencePrice>
     {
         [Key(0)]
         public long AuctionId { get; set; }
@@ -42,14 +42,20 @@ namespace Coflnet.Sky.Sniper.Models
             Buyer = price.Buyer;
         }
 
-        public override bool Equals(object obj)
+        /// <summary>Same semantics as the historical Equals(object): SellTime intentionally NOT compared.
+        /// IEquatable avoids the box + ValueType.Equals reflection path in List.Contains / comparer lookups.</summary>
+        public bool Equals(ReferencePrice price)
         {
-            return obj is ReferencePrice price &&
-                   AuctionId == price.AuctionId &&
+            return AuctionId == price.AuctionId &&
                    Price == price.Price &&
                    Day == price.Day &&
                    Seller == price.Seller
                    && Buyer == price.Buyer;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is ReferencePrice price && Equals(price);
         }
 
         public override int GetHashCode()
