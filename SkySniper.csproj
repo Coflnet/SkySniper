@@ -4,6 +4,9 @@
     <TargetFramework>net10.0</TargetFramework>
     <GenerateProgramFile>false</GenerateProgramFile>
     <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
+    <!-- Local default: skip the heavy fuzz/parity/bit-exact suite so bare `dotnet test` is fast.
+         CI overrides this via ci.runsettings on the dotnet test command line (see Dockerfile) to run everything. -->
+    <RunSettingsFilePath>$(MSBuildThisFileDirectory)test.runsettings</RunSettingsFilePath>
   </PropertyGroup>
   <PropertyGroup>
     <!-- benchmarks/ is a separate console project (SkySniper.Benchmarks) that references this one; keep its sources out of the web app's compile. -->

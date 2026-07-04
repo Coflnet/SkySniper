@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  LOCAL DEFAULT test settings. Wired via RunSettingsFilePath in SkySniper.csproj, so a bare
+  `dotnet test` picks this up automatically with no extra CLI args.
+
+  It skips the heavy bit-exactness / fuzz / parity verification suite (~21s of a ~32s run) so the
+  local edit/test loop is fast. Those tests exhaustively cross-check the fast snipe kernels against
+  a slow reference implementation over tens of thousands of randomized inputs; invaluable, but not
+  something you want on every save.
+
+  These tests STILL RUN IN FULL IN CI: the Dockerfile runs the ci.runsettings variant, and a CLI
+  settings file overrides this one, so container CI keeps 100% verification coverage.
+
+  Run them locally when you want them:
+    dotnet test  (settings file) ci.runsettings                          -> everything
+    dotnet test  (filter) "FullyQualifiedName~BitExact|FullyQualifiedName~Fuzz|FullyQualifiedName~Parity"
+
+  Verification tests are identified purely by NAME: every one contains "Fuzz", "Parity", or
+  "BitExact". Keep that convention for new parity/fuzz tests or they will not be excluded here.
+-->
+<RunSettings>
+  <RunConfiguration>
+    <TestCaseFilter>FullyQualifiedName!~Fuzz&amp;FullyQualifiedName!~Parity&amp;FullyQualifiedName!~BitExact</TestCaseFilter>
+  </RunConfiguration>
+</RunSettings>

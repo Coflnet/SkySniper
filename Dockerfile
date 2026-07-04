@@ -7,7 +7,9 @@ RUN git clone --depth=1 https://github.com/NotEnoughUpdates/NotEnoughUpdates-REP
 COPY SkySniper.csproj SkySniper.csproj
 RUN dotnet restore
 COPY . .
-RUN dotnet test
+# --settings ci.runsettings overrides the local-default RunSettingsFilePath (test.runsettings) wired in
+# the csproj, so CI runs the FULL suite including the fuzz/parity/bit-exact verification tests.
+RUN dotnet test --settings ci.runsettings
 RUN dotnet publish -c release -o /app && rm /app/items.json
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0

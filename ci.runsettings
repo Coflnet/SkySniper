@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  CI / full-suite settings: NO TestCaseFilter, so every test runs, including the fuzz / parity /
+  bit-exact verification suite that test.runsettings (the local default) skips.
+
+  The Dockerfile passes this file on the dotnet test command line; a CLI settings file overrides
+  the RunSettingsFilePath local default wired in SkySniper.csproj, so container CI keeps full
+  verification coverage while a bare local `dotnet test` stays fast.
+-->
+<RunSettings>
+  <RunConfiguration />
+</RunSettings>
