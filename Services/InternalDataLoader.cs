@@ -36,6 +36,10 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly ILogger<InternalDataLoader> logger;
         private IProducer<string, LowPricedAuction> FlipProducer;
         private readonly SemaphoreSlim persistenceLock = new(1, 1);
+        // R2-PAR: long-lived tag-shard dispatcher that processes each Kafka batch across N worker threads. Created once
+        // in ConsumeNewAuctions (not per batch) and disposed on shutdown. See ShardedAuctionDispatcher for the
+        // one-worker-per-resolved-group-tag invariant that makes the parallel snipe set bit-identical to single-threaded.
+        private ShardedAuctionDispatcher snipeDispatcher;
 
         readonly Prometheus.Counter foundFlipCount = Prometheus.Metrics
                     .CreateCounter("sky_sniper_found_flips", "Number of flips found");
@@ -152,40 +156,123 @@ namespace Coflnet.Sky.Sniper.Services
             foundFlipCount.Inc();
         }
 
+        /// <summary>
+        /// Resolves the number of shard workers for <see cref="snipeDispatcher"/>. Configurable via
+        /// <c>SNIPER:SHARDS</c>; otherwise defaults to the host's logical processor count (the dispatcher scales with
+        /// cores, capped only by hot-tag imbalance). Always at least 1.
+        /// </summary>
+        private int ResolveShardCount()
+        {
+            if (int.TryParse(config["SNIPER:SHARDS"], out var configured) && configured >= 1)
+                return configured;
+            return Math.Max(1, Environment.ProcessorCount);
+        }
+
         private async Task ConsumeNewAuctions(CancellationToken stoppingToken)
         {
             while (sniper.State < SniperState.Ready)
                 await Task.Delay(1000);
-            while (!stoppingToken.IsCancellationRequested)
-                try
-                {
-                    logger.LogInformation("consuming new ");
-                    await Kafka.KafkaConsumer.ConsumeBatch<SaveAuction>(ConsumerConfig, new string[] { config["TOPICS:NEW_AUCTION"] }, auctions =>
+
+            // R2-PAR: create the tag-shard dispatcher ONCE (not per batch) and reuse it for the lifetime of the
+            // consumer. Each Kafka batch is fanned out across the workers by resolved group tag; the same tag always
+            // lands on the same worker so its PriceLookup is never mutated concurrently (snipe set bit-identical to
+            // single-threaded — proven by the SNIPE_REPLAY_SHARDS parity harness).
+            var shardCount = ResolveShardCount();
+            snipeDispatcher = new ShardedAuctionDispatcher(sniper, shardCount);
+            logger.LogInformation("snipe dispatcher started with {shards} shard workers (cores: {cores})",
+                shardCount, Environment.ProcessorCount);
+            try
+            {
+                while (!stoppingToken.IsCancellationRequested)
+                    try
                     {
-                        foreach (var a in auctions)
+                        logger.LogInformation("consuming new ");
+                        await Kafka.KafkaConsumer.ConsumeBatch<SaveAuction>(ConsumerConfig, new string[] { config["TOPICS:NEW_AUCTION"] }, auctions =>
                         {
-                            auctionsReceived.Inc();
-                            if (!a.Bin)
-                                continue;
-                            if (a.Context != null)
-                                a.Context["frec"] = (DateTime.UtcNow - a.FindTime).ToString();
+                            // Phase 1: select the auctions this batch will actually process (bins only) and stamp
+                            // receive-latency context, preserving the original per-auction bookkeeping. We materialize
+                            // the kept list so we can (a) feed it to the dispatcher and (b) run CheckForPartial over it
+                            // afterwards on this (consumer) thread.
+                            var kept = new List<SaveAuction>();
+                            foreach (var a in auctions)
+                            {
+                                auctionsReceived.Inc();
+                                if (!a.Bin)
+                                    continue;
+                                if (a.Context != null)
+                                    a.Context["frec"] = (DateTime.UtcNow - a.FindTime).ToString();
+                                kept.Add(a);
+                            }
+
+                            // WS-D: measure the intra-batch parse duplication on the REAL kept Kafka batch (re-lists /
+                            // stack-splits put many same-content auctions in one batch). distinct-vs-total here is the
+                            // genuine production dup number the synthetic replay cannot represent. Pure telemetry behind
+                            // SNIPER_BATCH_DUP_COUNT; off in production by default (one HashSet build per batch).
+                            if (SniperService.BatchDupCount)
+                                SniperService.MeasureBatchDup(kept);
+
+                            // Phase 2: process the whole batch across the shard workers and BLOCK until every kept
+                            // auction has been fully processed (TestNewAuction returned). This callback must not return
+                            // before the batch fully drains: KafkaConsumer commits the offset immediately after the
+                            // callback completes (EnableAutoCommit=false, manual Commit per batch), so returning early
+                            // would commit an offset for auctions still in flight — breaking at-least-once. On
+                            // cancellation ProcessBatchAndWait throws OperationCanceledException, which propagates out of
+                            // the callback so the offset is NOT committed and Kafka re-delivers the batch (no loss).
                             try
                             {
-                                sniper.TestNewAuction(a);
-                                CheckForPartial(a);
+                                snipeDispatcher.ProcessBatchAndWait(kept, stoppingToken);
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                throw; // shutdown: do not commit this batch
                             }
                             catch (Exception e)
                             {
-                                logger.LogError(e, "testing new auction failed " + a.Uuid);
+                                // A worker faulted on some auction in the batch. Log and let the offset commit (the
+                                // single-threaded path also swallowed per-auction failures); the snipe set for the
+                                // other auctions is correct because each tag is serialized on its own worker.
+                                logger.LogError(e, "shard worker failed processing a new-auction batch");
                             }
-                        }
-                        return Task.CompletedTask;
-                    }, stoppingToken).ConfigureAwait(false);
-                }
-                catch (Exception e)
-                {
-                    logger.LogError(e, "consuming new auction");
-                }
+
+                            // Phase 3: CheckForPartial runs HERE — on the consumer thread, after the batch has fully
+                            // drained — NOT on the shard workers. Rationale (threading decision): CheckForPartial calls
+                            // the ML flip finder (flipFinder.EstimateAsync) and writes to the shared Kafka FlipProducer
+                            // via Produceflip; neither is contended-safe to run from N worker threads, and its blocking
+                            // .GetAwaiter().GetResult() would stall a shard worker (serializing that worker's whole tag
+                            // queue and killing throughput scaling). It is also OFF the snipe-finding path the dispatcher
+                            // parallelizes, so keeping it single-threaded here preserves both its original semantics and
+                            // the bit-exact snipe-set parity. It runs strictly after drain, so prices it reads from the
+                            // sniper reflect this batch's writes — identical ordering to the original foreach.
+                            foreach (var a in kept)
+                            {
+                                try
+                                {
+                                    CheckForPartial(a);
+                                }
+                                catch (Exception e)
+                                {
+                                    logger.LogError(e, "CheckForPartial failed " + a.Uuid);
+                                }
+                            }
+                            return Task.CompletedTask;
+                        }, stoppingToken).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break; // clean shutdown
+                    }
+                    catch (Exception e)
+                    {
+                        logger.LogError(e, "consuming new auction");
+                    }
+            }
+            finally
+            {
+                // Clean shutdown: drain any items already enqueued on the workers (Dispose joins the threads after
+                // CompleteAdding) so nothing in flight is dropped or double-processed, then release the threads/queues.
+                snipeDispatcher?.Dispose();
+                snipeDispatcher = null;
+            }
             logger.LogError("done with consuming");
         }
 

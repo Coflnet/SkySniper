@@ -373,7 +373,7 @@ namespace Coflnet.Sky.Sniper.Controllers
                     {
                         if (!newBucket.References.Contains(reference) && newBucket.References.Select(r => r.Day).DefaultIfEmpty((short)0).Min() < reference.Day)
                         {
-                            newBucket.References.Enqueue(reference);
+                            newBucket.EnqueueReference(reference);
                         }
                     }
                     _logger.LogInformation("migrated reference from {oldKey} to {newKey}", lookup.Key, key);
@@ -484,7 +484,7 @@ namespace Coflnet.Sky.Sniper.Controllers
             foreach (var lookup in service.Lookups[tag].Lookup)
             {
                 var countBefore = lookup.Value.References.Count;
-                lookup.Value.References = new(lookup.Value.References.Where(r => r.Day < startDay || r.Day > endDay));
+                lookup.Value.SetReferences(lookup.Value.References.Where(r => r.Day < startDay || r.Day > endDay).ToList());
                 removedSum += countBefore - lookup.Value.References.Count;
             }
             return removedSum;
