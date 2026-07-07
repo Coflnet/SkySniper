@@ -81,7 +81,7 @@ namespace Coflnet.Sky.Sniper.Services
         private (List<Enchant> enchants, List<KeyValuePair<string, string>> modifiers) SelectValuableReference(SaveAuction auction, bool fastMode = false)
         {
             var enchants = auction.Enchantments
-                            ?.Where(e => MinEnchantMap.TryGetValue(e.Type, out byte value) && e.Level >= value)
+                            ?.Where(e => MinEnchantMap.TryGetValue(e.Type, out byte value) && e.Level >= EffectiveMinEnchantLevel(auction.Tag, e.Type, value))
                             .OrderBy(e => e.Type)
                             .Select(e => new Models.Enchant() { Lvl = e.Level, Type = e.Type }).ToList();
             var flatNbt = auction.FlatenedNBT;

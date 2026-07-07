@@ -179,6 +179,56 @@ namespace Coflnet.Sky.Sniper
             Assert.That(ItemReferences.Reforge.Fabled, Is.EqualTo(key.Reforge));
         }
 
+        /// <summary>
+        /// Regression for the WISE_WITHER_BOOTS (ddb819df) overvaluation: on the Wise/Power Wither armor sets strong_mana
+        /// only differentiates a reference bucket at level 9+. Keeping strong_mana 7 as a differentiator split the boots
+        /// away from real comparables into an empty bucket, forcing a sum-of-parts craft-cost valuation above market and
+        /// minting a false flip. This is item-specific: on other items strong_mana keeps its normal (level-5) relevance.
+        /// </summary>
+        [Test]
+        public void StrongManaOnWitherArmorNeedsLevel9ForKey()
+        {
+            var witherBelow = service.KeyFromSaveAuction(new SaveAuction()
+            {
+                Tag = "WISE_WITHER_BOOTS",
+                Enchantments = new List<Core.Enchantment>(){
+                    new (Enchantment.EnchantmentType.ultimate_legion, 5),
+                    new (Enchantment.EnchantmentType.strong_mana, 7),
+                },
+                FlatenedNBT = new(),
+                Tier = Tier.MYTHIC,
+            });
+            Assert.That(witherBelow.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.ultimate_legion),
+                "ultimate_legion 5 stays a key differentiator");
+            Assert.That(!witherBelow.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.strong_mana),
+                "strong_mana 7 must not fragment Wither armor into its own bucket");
+
+            var witherAt = service.KeyFromSaveAuction(new SaveAuction()
+            {
+                Tag = "POWER_WITHER_CHESTPLATE",
+                Enchantments = new List<Core.Enchantment>(){
+                    new (Enchantment.EnchantmentType.strong_mana, 9),
+                },
+                FlatenedNBT = new(),
+                Tier = Tier.MYTHIC,
+            });
+            Assert.That(witherAt.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.strong_mana),
+                "strong_mana 9 is relevant on Wither armor and still differentiates");
+
+            // NOT a general rule: on any other item strong_mana keeps its normal (level-5) relevance.
+            var otherItem = service.KeyFromSaveAuction(new SaveAuction()
+            {
+                Tag = "HYPERION",
+                Enchantments = new List<Core.Enchantment>(){
+                    new (Enchantment.EnchantmentType.strong_mana, 7),
+                },
+                FlatenedNBT = new(),
+                Tier = Tier.MYTHIC,
+            });
+            Assert.That(otherItem.Enchants.Any(e => e.Type == Enchantment.EnchantmentType.strong_mana),
+                "strong_mana 7 must still differentiate on non-Wither items (item-specific rule only)");
+        }
+
         [Test]
         public void RemovePropsBelow5Percent()
         {

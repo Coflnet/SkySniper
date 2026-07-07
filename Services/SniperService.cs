@@ -305,6 +305,16 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         internal readonly string[] CrimsonArmors = new string[] { "CRIMSON_", "TERROR_", "AURORA_", "FERVOR_" };
+        // strong_mana on these Wise/Power Wither armor pieces is only relevant at level 9+; below that it must NOT
+        // fragment them into their own reference bucket. Keeping 5-8 as a distinct key split a plain piece away from its
+        // real comparables into an empty bucket, forcing a sum-of-parts craft-cost valuation above market and minting a
+        // false flip (WISE_WITHER_BOOTS ddb819df regression). This is item-specific, NOT a general strong_mana rule.
+        // https://discordapp.com/channels/267680588666896385/1523831440100560896/1524095481687310547
+        private static readonly HashSet<string> WitherStrongManaArmor = new()
+        {
+            "WISE_WITHER_HELMET", "WISE_WITHER_CHESTPLATE", "WISE_WITHER_LEGGINGS", "WISE_WITHER_BOOTS",
+            "POWER_WITHER_HELMET", "POWER_WITHER_CHESTPLATE", "POWER_WITHER_LEGGINGS", "POWER_WITHER_BOOTS",
+        };
         private readonly HashSet<string> IncludeKeys = new HashSet<string>()
         {
             "baseStatBoostPercentage", // has an effect on drops from dungeons, is filtered to only max level, skelotor master and ice sprays
@@ -4147,6 +4157,19 @@ ORDER BY l.`AuctionId`  DESC;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool IsNonContentKey(string key) => key != null && key.Contains("uid");
 
+        /// <summary>
+        /// The minimum level at which <paramref name="type"/> differentiates a reference bucket for <paramref name="tag"/>,
+        /// applying item-specific overrides on top of the global <see cref="MinEnchantMap"/> value (<paramref name="baseMin"/>).
+        /// Shared by <c>SelectValuable</c> and its parity twin <c>SelectValuableReference</c> so both stay bit-identical.
+        /// </summary>
+        private static byte EffectiveMinEnchantLevel(string tag, Core.Enchantment.EnchantmentType type, byte baseMin)
+        {
+            // strong_mana on the Wise/Power Wither armor sets is only relevant at 9+ (item-specific, see ddb819df).
+            if (type == Core.Enchantment.EnchantmentType.strong_mana && baseMin < 9 && WitherStrongManaArmor.Contains(tag))
+                return 9;
+            return baseMin;
+        }
+
         internal (List<Enchant> enchants, List<KeyValuePair<string, string>> modifiers) SelectValuable(SaveAuction auction, bool fastMode = false)
         {
             // De-LINQ of `Enchantments?.Where(...).OrderBy(e => e.Type).Select(new Enchant).ToList()`. Filter into the
@@ -4161,7 +4184,7 @@ ORDER BY l.`AuctionId`  DESC;
                 for (int i = 0; i < sourceEnchants.Count; i++)
                 {
                     var e = sourceEnchants[i];
-                    if (MinEnchantMap.TryGetValue(e.Type, out byte value) && e.Level >= value)
+                    if (MinEnchantMap.TryGetValue(e.Type, out byte value) && e.Level >= EffectiveMinEnchantLevel(auction.Tag, e.Type, value))
                         enchants.Add(new Models.Enchant() { Lvl = e.Level, Type = e.Type });
                 }
                 // stable insertion sort by Type (== Comparer<EnchantmentType>.Default, the OrderBy key comparer)
@@ -6654,6 +6677,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (lowestHigherBin.AuctionId == default)
                     lowestLbin = long.MaxValue;
                 var referencePrice = bucket.Price;
+                int hvSampleCount = 0; // debug: how many higher-value contributor ids the scan captured
                 if (bucket.ReferenceCount < 5)
                 {
                     // all key modifiers and enchants need to be in the reference bucket or higher
@@ -6662,7 +6686,7 @@ ORDER BY l.`AuctionId`  DESC;
                     // references for the 25th percentile (bit-exact). Lbin/refs read LIVE off each bucket.
                     var domIndex = GetOrBuildDominatorIndex(lookup);
                     var higherValueKeyCount = PotentialSnipeHigherValueScan(
-                        domIndex, groupTag.tag, key, bucket.Lbin.Price, out lowestLbin, out int allReferencesCount);
+                        domIndex, groupTag.tag, key, bucket.Lbin.Price, out lowestLbin, out int allReferencesCount, out hvSampleCount);
                     // 25th percentile of all references
                     referencePrice = PotentialSnipeQuarterPercentile(allReferencesCount, targetPrice / 2);
 
@@ -6715,11 +6739,27 @@ ORDER BY l.`AuctionId`  DESC;
                     if (Activity.Current is { IsAllDataRequested: true })
                         Activity.Current.Log($"Reduced to craft cost {reduced}");
                     props["craftCost"] = reduced.ToString();
+                    // the craft cost drove the target -> ship the per-part breakdown so the number is explainable
+                    // (there are no exact-match references to show here; see hvRef for the borrowed comparables).
+                    props["breakdown"] = JsonConvert.SerializeObject(breakdown.ValueBreakdown);
                 }
                 if (Activity.Current is { IsAllDataRequested: true })
                     Activity.Current.Log($"No references, checking all lbins {percentile} {lowestLbin} {referencePrice}");
                 props["referencePrice"] = referencePrice.ToString();
                 props["lowestLbin"] = lowestLbin.ToString();
+                // this branch has NO exact-match references (the own bucket is empty/thin), so `med` is absent and the
+                // price came from higher-value variants via the dominator scan. Surface a sample of those contributing
+                // auctions so `/cofl reference` can explain the number instead of showing nothing (ddb819df report).
+                if (hvSampleCount > 0)
+                {
+                    var hb = new System.Text.StringBuilder(160);
+                    for (int i = 0; i < hvSampleCount; i++)
+                    {
+                        if (i > 0) hb.Append(',');
+                        hb.Append(_potentialSnipeHvIdScratch[i]);
+                    }
+                    props["hvRef"] = hb.ToString();
+                }
             }
             else
             {
@@ -6741,6 +6781,11 @@ ORDER BY l.`AuctionId`  DESC;
         [ThreadStatic] private static (long price, short day, int idx)[] _potentialSnipeRefScratch;
         [ThreadStatic] private static long[] _potentialSnipePriceScratch;
         [ThreadStatic] private static long[] _potentialSnipeDividedScratch;
+        // Debug-only: one representative (newest) reference id per contributing higher-value bucket, so a no-exact-match
+        // snipe (priced off the higher-value scan) can still report WHICH auctions drove its price. Reused per-thread,
+        // filled during the scan, formatted into the "hvRef" prop only when a flip is actually emitted.
+        [ThreadStatic] private static long[] _potentialSnipeHvIdScratch;
+        private const int PotentialSnipeHvSampleMax = 12;
 
         private static T[] PotentialSnipeEnsure<T>(ref T[] buffer, int needed)
         {
@@ -6809,12 +6854,14 @@ ORDER BY l.`AuctionId`  DESC;
         /// </summary>
         private int PotentialSnipeHigherValueScan(
             DominatorIndex index, string tag, AuctionKey key, long bucketLbinPrice,
-            out long lowestLbin, out int dividedCount)
+            out long lowestLbin, out int dividedCount, out int hvSampleCount)
         {
             long lowest = long.MaxValue;
             int keyCount = 0;
             int divided = 0;
+            int hvSample = 0;
             var buffer = PotentialSnipeEnsure(ref _potentialSnipeDividedScratch, 0);
+            var idBuffer = PotentialSnipeEnsure(ref _potentialSnipeHvIdScratch, PotentialSnipeHvSampleMax);
             // Direction A: candidates that dominate the query `key` (Dominates(key, cand)), over the BROAD index (all
             // non-null buckets — incl Price==0/virtual, exactly the old `foreach (var x in l)`). keyCount/lowest are
             // order-independent; the divided buffer is sorted by PotentialSnipeQuarterPercentile so its order is moot.
@@ -6834,6 +6881,10 @@ ORDER BY l.`AuctionId`  DESC;
                     lowest = lbinPrice;
                 int countDivisor = index.Keys[i].Count == 0 ? 1 : index.Keys[i].Count;
                 var refs = bucket.ReferenceSnapshot(); // LIVE
+                // debug sample: one newest id per contributing bucket (refs are Day-ascending), capped — order-
+                // independent of the price stats above, so it never perturbs lowestLbin/divided.
+                if (hvSample < PotentialSnipeHvSampleMax && refs.Length > 0)
+                    idBuffer[hvSample++] = refs[refs.Length - 1].AuctionId;
                 for (int r = 0; r < refs.Length; r++)
                 {
                     if (divided >= buffer.Length)
@@ -6843,6 +6894,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             lowestLbin = lowest; // DefaultIfEmpty(long.MaxValue).Min(): long.MaxValue when nothing qualified
             dividedCount = divided;
+            hvSampleCount = hvSample;
             return keyCount;
         }
 
