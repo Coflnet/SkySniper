@@ -5536,7 +5536,13 @@ ORDER BY l.`AuctionId`  DESC;
             bool CmbTryBuild(AuctionKey candKey, ReferenceAuctions candBucket, out CmbRelevant built)
             {
                 built = default;
-                if (!(candKey.Reforge == topReforge || topReforgeAny))
+                // An "Any" query reforge means the item has no value-adding reforge. It must NOT borrow references
+                // from buckets that DO carry a valuable reforge (e.g. submerged): those items are worth materially
+                // more, so pooling them overvalues the plain item and mints false flips (edb094ad regression). Pool a
+                // candidate only when its reforge matches exactly, or - for an Any query - when the candidate likewise
+                // has no value-adding reforge.
+                if (!(candKey.Reforge == topReforge
+                        || (topReforgeAny && !Constants.RelevantReforges.Contains(candKey.Reforge))))
                     return false;
                 if (!CmbDominates(candBucket, candKey))
                     return false;

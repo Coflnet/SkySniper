@@ -77,7 +77,8 @@ namespace Coflnet.Sky.Sniper.Services
             var queryDomCmb = DominatorIndex.BuildDomKey(fullKey, scoreInterner);
             ulong qProvCmb = queryDomCmb.ProvidedMask;
             bool petSpiritCmb = auction.Tag == "PET_SPIRIT";
-            var relevant = similar.Where(e => (e.Key.Reforge == topKey.Reforge || topKey.Reforge == ItemReferences.Reforge.Any)
+            var relevant = similar.Where(e => (e.Key.Reforge == topKey.Reforge
+                            || (topKey.Reforge == ItemReferences.Reforge.Any && !Constants.RelevantReforges.Contains(e.Key.Reforge)))
                         && CmbDominates(e.Value, e.Key))
                 .Select(e => (e, value: Math.Max(e.Value.Volume, 0.5) * Math.Pow(ComparisonValueForKey(groupTag.tag, e.Key).Sum(s => s.Value), 1.8)))
                 .OrderByDescending(e => e.value)
