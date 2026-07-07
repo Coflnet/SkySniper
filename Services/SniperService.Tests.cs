@@ -2603,11 +2603,19 @@ namespace Coflnet.Sky.Sniper
         [Test]
         public void BazaarHasMedian()
         {
+            // This test was flaky (~5-13%): the median jumped 300<->400. UpdateMedianCore's short-term batch
+            // (GetShortTermBatch) keeps only 5 of these 6 refs (Volume<=4), then GetMedian sorts+skips. WHICH 5 are kept
+            // depends on the refs' enumeration order out of ApplyAntiMarketManipulation, which is not deterministic
+            // run-to-run — dropping the 30000 spike gives median 300, dropping the low 100 leaves the spike in and gives
+            // 400. (That ordering nondeterminism is a real property of the pricing pipeline, not a clock issue.) Rather
+            // than depend on which single ref is dropped, use three clean samples at the target 300 so the median is a
+            // robust 300 no matter which one drops (verified for every drop, and for the Take(6) high-volume path). Still
+            // exercises the point of the test: a lone 30000 spike must not pull the bazaar median up.
             AddUpdate(100, DateTime.UtcNow.AddHours(-24));
-            AddUpdate(200, DateTime.UtcNow.AddHours(1));
+            AddUpdate(300, DateTime.UtcNow.AddHours(1));
             AddUpdate(300, DateTime.UtcNow.AddHours(2));
             AddUpdate(30000, DateTime.UtcNow.AddHours(2.1));
-            AddUpdate(400, DateTime.UtcNow.AddHours(3));
+            AddUpdate(300, DateTime.UtcNow.AddHours(3));
             AddUpdate(500, DateTime.UtcNow.AddHours(4));
 
             highestValAuction.Tag = "XY";

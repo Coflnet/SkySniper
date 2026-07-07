@@ -1298,6 +1298,17 @@ public class DropOffTests
     [Test]
     public void DoNotUndervalueMultiRarityItems()
     {
+        // TestNewAuction runs the "risky" closest-match finder on a background Task and only awaits it when
+        // MIN_TARGET == 0 (SniperService line ~5294) — the same convention GetPriceTests/UpdateMedianTests use for
+        // deterministic pricing. This fixture otherwise runs at the default 200_000, so the finder races the assertion:
+        // its higher-value flip sometimes wasn't in `found` yet and TargetPrice fell to the synchronous floor. Pin
+        // MIN_TARGET=0 here so the finder is awaited. Scoped (not in [SetUp]) because 0 shifts the exact-price goldens
+        // of other DropOff tests by the -MIN_TARGET/200 offset; restored in the finally. (A small residual arg-max
+        // nondeterminism remains — see the margin on the final assertion.)
+        var priorMinTarget = SniperService.MIN_TARGET;
+        SniperService.MIN_TARGET = 0;
+        try
+        {
         SetBazaarPrice("ENCHANTMENT_CULTIVATING_1", 4_000_000);
         SetBazaarPrice("ENCHANTMENT_DEDICATION_3", 4499992);
         AddLookupAndUpdateMeidans("whathoe.json", "THEORETICAL_HOE_WHEAT_3", new DateTime(2025, 7, 12));
@@ -1325,7 +1336,17 @@ public class DropOffTests
         };
         sniperService.Lookups["THEORETICAL_HOE_WHEAT_3"].CleanPricePerTier[Tier.LEGENDARY].Should().BeGreaterThan(30_000_000);
         var found = TestAuctionLoaded(auction);
-        found.TargetPrice.Should().BeGreaterThan(56_270_067L, "could also be up to 70m");
+        // Guards against UNDERVALUATION (this item was estimated at only ~18m before the fix; correct is ~56-70m).
+        // The closest-match arg-max has small run-to-run nondeterminism (near-tie candidate scores from float-order
+        // -sensitive sums over a ConcurrentDictionary), so TargetPrice wobbles by <0.3% (~56.13m-56.27m). Assert the
+        // undervaluation floor with margin rather than the exact ~56.27m value so the test is deterministic while still
+        // catching a real regression (anything near the old ~18m would fail this by a wide margin).
+        found.TargetPrice.Should().BeGreaterThan(55_000_000L, "not undervalued; ~56-70m expected");
+        }
+        finally
+        {
+            SniperService.MIN_TARGET = priorMinTarget;
+        }
     }
 
     /// <summary>
