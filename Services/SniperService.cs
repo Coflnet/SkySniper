@@ -6444,6 +6444,8 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     var lvl1Price = lvl1Bucket.Price;
                     var lvl100Price = lvl100Bucket.Price;
+                    if (lvl100Price <= lvl1Price)
+                        return 0; // inverted or flat market samples cannot price exp
                     var accountedFor = double.Parse(key.Modifiers.Where(m => m.Key == "exp").Select(v => v.Value).FirstOrDefault("0"));
                     if (auction.Tier == Tier.EPIC)
                         accountedFor += 1;
