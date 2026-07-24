@@ -5898,12 +5898,15 @@ ORDER BY l.`AuctionId`  DESC;
         internal AuctionKeyWithValue GetFullKey(SaveAuction auction)
         {
             (var enchant, var modifiers) = SelectValuable(auction);
+            var tier = auction.Tier;
+            if (auction.FlatenedNBT?.TryGetValue("heldItem", out var heldItem) == true && heldItem == "PET_ITEM_TIER_BOOST")
+                tier = ReduceRarity(tier);
             var key = new AuctionKeyWithValue()
             {
                 Count = 1,
                 Enchants = new(enchant ?? new()),
                 Modifiers = new(modifiers ?? new()),
-                Tier = auction.Tier,
+                Tier = tier,
                 Reforge = auction.Reforge
             };
             return key;

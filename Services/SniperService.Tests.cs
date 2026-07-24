@@ -1676,6 +1676,39 @@ namespace Coflnet.Sky.Sniper
         }
 
         [Test]
+        public void CombinedReferencesSeparateTierBoostedEnderDragon()
+        {
+            var legendary = Dupplicate(highestValAuction);
+            legendary.Tag = "PET_ENDER_DRAGON";
+            legendary.Tier = Tier.LEGENDARY;
+            legendary.HighestBidAmount = 497_000_000;
+            legendary.FlatenedNBT = new() { { "exp", "26000000" } };
+            AddVolume(legendary, 6);
+
+            var lowerExpLegendary = Dupplicate(legendary);
+            lowerExpLegendary.FlatenedNBT["exp"] = "20000000";
+            AddVolume(lowerExpLegendary, 6);
+
+            var tierBoosted = Dupplicate(legendary);
+            tierBoosted.StartingBid = 370_000_000;
+            tierBoosted.HighestBidAmount = 0;
+            tierBoosted.FlatenedNBT = new()
+            {
+                { "exp", "25638345.914887376" },
+                { "candyUsed", "2" },
+                { "skin", "ENDER_DRAGON_SWAP_PLUSHIE" },
+                { "heldItem", "PET_ITEM_TIER_BOOST" }
+            };
+
+            TestNewAuction(tierBoosted);
+
+            var combined = found.FirstOrDefault(f => f.AdditionalProps?.ContainsKey("combined") == true);
+            Assert.That(combined, Is.Null,
+                "tier-boosted EPIC pets must not pool native LEGENDARY references: "
+                + JsonConvert.SerializeObject(combined, Formatting.Indented));
+        }
+
+        [Test]
         public async Task TierBoostReferencesSubtractFullTierBoostCostBeforeStoring()
         {
             await itemService.GetItemsAsync();
