@@ -305,7 +305,14 @@ public class AuctionkeyTests
         key = service.KeyFromSaveAuction(auction);
         Assert.That(1, Is.EqualTo(key.Modifiers.Count));
         Assert.That(key.Modifiers.Any(x => x.Key == "is_shiny" && x.Value == "1"));
+        auction.Tag = "POWER_WITHER_HELMET";
+        key = service.KeyFromSaveAuction(auction);
+        Assert.That(1, Is.EqualTo(key.Modifiers.Count));
+        Assert.That(key.Modifiers.Any(x => x.Key == "is_shiny" && x.Value == "1"));
         auction.Tag = "POWER_WITHER_LEGGINGS";
+        key = service.KeyFromSaveAuction(auction);
+        Assert.That(0, Is.EqualTo(key.Modifiers.Count));
+        auction.Tag = "POWER_DIAMOND_HELMET";
         key = service.KeyFromSaveAuction(auction);
         Assert.That(0, Is.EqualTo(key.Modifiers.Count));
     }

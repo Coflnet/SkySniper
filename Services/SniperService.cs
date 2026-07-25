@@ -403,7 +403,7 @@ namespace Coflnet.Sky.Sniper.Services
             { "item_tier", m=> new (m.Modifier, 2_300_000 * int.Parse(m.Modifier.Value)){IsEstimate=true}},
             { "color", m => new (m.Modifier, 50_000_000) {IsEstimate=true}}, // if its default its removed
             { "pgems", m => new (m.Modifier, 100_000_000){IsEstimate=true}},
-            { "is_shiny", m => new (m.Modifier, 88_000_000) {IsEstimate=true}},
+            { "is_shiny", m => new (m.Modifier, m.ItemTag == "WITHER_HELMET" ? 5_000_000 : 88_000_000) {IsEstimate=true}},
             { "party_hat_color", m => new (m.Modifier, 20_000_000) {IsEstimate=true}},
             { "thunder_charge", m => new (m.Modifier, 50_000_000 * int.Parse(m.Modifier.Value) + 10_000_000){IsEstimate=true} },
             { "baseStatBoost", m => new (m.Modifier, (int)((float.Parse(m.Modifier.Value) - 40) * 800_000)) {IsEstimate=true}},
@@ -4910,7 +4910,7 @@ ORDER BY l.`AuctionId`  DESC;
             // Special handling for tier boost - it should remain in the key since it changes pet tier
             if (s.Key == "heldItem" && s.Value == "PET_ITEM_TIER_BOOST")
                 return new KeyValuePair<string, string>(PetItemKey, TierBoostShorthand);
-            if (s.Key == "is_shiny" && !(tag.EndsWith("_CHESTPLATE") || tag == "HYPERION" || tag == "NECRON_HANDLE"))
+            if (s.Key == "is_shiny" && !(tag.EndsWith("_CHESTPLATE") || tag.EndsWith("WITHER_HELMET") || tag == "HYPERION" || tag == "NECRON_HANDLE"))
             {
                 return Ignore;
             }
