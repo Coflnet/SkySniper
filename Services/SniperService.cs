@@ -206,6 +206,7 @@ namespace Coflnet.Sky.Sniper.Services
             "mined_crops", // eg THEORETICAL_HOE_WARTS_3
             "blocksBroken", // promising (pick)axe
             "collected_coins", // crown of avarice
+            "honey_pot_uses",
             "ethermerge",
             "edition", // great spook stuff
             "hpc", // hot potato books
@@ -260,6 +261,7 @@ namespace Coflnet.Sky.Sniper.Services
                 "0.1" => 2_000_000,
                 _ => 800_000 // no fuming
             }) {IsEstimate=true}},
+            { "honey_pot_uses", m => new ("honey_pot_uses", m.Modifier.Value, 1_000_000) {IsEstimate=true}},
             { "chimera_found", m => new ("chimera_found", m.Modifier.Value, int.Parse(m.Modifier.Value) * 10_000_000) {IsEstimate=true}},
             { "new_years_cake", m => new (m.Modifier, int.Parse(m.Modifier.Value) switch
                 {
@@ -279,6 +281,7 @@ namespace Coflnet.Sky.Sniper.Services
             "edition",
             "new_years_cake",
             "candyUsed",
+            "honey_pot_uses",
         };
 
         private static readonly HashSet<string> ImportantCakeYears = new()
