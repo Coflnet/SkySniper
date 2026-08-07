@@ -749,6 +749,37 @@ namespace Coflnet.Sky.Sniper
         }
 
         [Test]
+        public void HoneyPotUsesSplitReferencesAndMoreUsesAreWorthLess()
+        {
+            var fewerUses = new SaveAuction
+            {
+                Tag = "BEHEMOTH_POT_OF_HONEYCOMB",
+                FlatenedNBT = new() { { "honey_pot_uses", "1" } },
+                HighestBidAmount = 10_000_000,
+                Tier = Tier.LEGENDARY,
+                Count = 1
+            };
+            var moreUses = Dupplicate(fewerUses);
+            moreUses.FlatenedNBT["honey_pot_uses"] = "9";
+            moreUses.HighestBidAmount = 6_000_000;
+
+            AddVolume(fewerUses);
+            AddVolume(moreUses);
+            AddVolume(fewerUses); // refresh after both use-count buckets exist
+
+            var bucketsByUses = service.Lookups[fewerUses.Tag].Lookup
+                .Where(b => b.Key.Modifiers.Any(m => m.Key == "honey_pot_uses"))
+                .ToDictionary(
+                    b => b.Key.Modifiers.Single(m => m.Key == "honey_pot_uses").Value,
+                    b => b.Value);
+
+            bucketsByUses.Should().HaveCount(2);
+            bucketsByUses["9"].Price.Should().Be(6_000_000);
+            bucketsByUses["1"].Price.Should().BeGreaterThan(bucketsByUses["9"].Price);
+            service.GetPrice(fewerUses).Median.Should().BeGreaterThan(service.GetPrice(moreUses).Median);
+        }
+
+        [Test]
         public void HigherValueCheckUsesMostRecent()
         {
             highestValAuction.FlatenedNBT = new() { { "skin", "WOLF" } };
