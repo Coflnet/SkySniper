@@ -1,0 +1,214 @@
+{
+  "description": "SniperService snipe-path optimization campaign (rounds 1-11): replay-measured speedups vs the round-1 pre-optimization baseline. Replace the per-round BenchmarkDotNet *-report-full.json dumps. All changes bit-exact (432 tests + 4 runtime parity guards + dominance/clean-price/AMM/key-extraction fuzzes + goldens).",
+  "clock_ghz_effective": 4.3,
+  "headline": {
+    "baseline_round": 1,
+    "current_round": 11,
+    "baseline_commit": "c48015a",
+    "current_commit": "e862b08",
+    "throughput_auctions_per_sec": {
+      "from": 236,
+      "to": 2269,
+      "x": 9.6
+    },
+    "p50_ms": {
+      "from": 2.77,
+      "to": 0.32,
+      "pct": -88.4
+    },
+    "p99_ms": {
+      "from": 38.2,
+      "to": 2.1,
+      "pct": -94.5
+    },
+    "mb_per_auction": {
+      "from": 1.61,
+      "to": 0.02,
+      "pct": -98.8
+    }
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "date": "2026-06-04",
+      "commit": "c48015a",
+      "auctions_per_sec": 236,
+      "p50_ms": 2.77,
+      "p99_ms": 38.2,
+      "mb_per_auction": 1.61,
+      "note": "Pre-optimization snipe-finding baseline",
+      "replay": {
+        "round": 1,
+        "commit": "c48015a",
+        "date": "2026-06-04",
+        "mode": null,
+        "auctions_per_sec": 236,
+        "p50_us": 2767,
+        "p99_us": 38229,
+        "p999_us": 85450,
+        "bytes_per_auction": 1692146,
+        "gen2": 44
+      }
+    },
+    {
+      "round": 2,
+      "date": "2026-06-04",
+      "commit": "c48015a",
+      "auctions_per_sec": 336,
+      "p50_ms": 2.07,
+      "p99_ms": 25.4,
+      "mb_per_auction": 1.57,
+      "note": "T1 single-pass FindClosestTo argmax; T8 gate per-auction JSON/Activity logs; T12/T13 remove hot-path RNG+Console/log; T14 hoist GetAuctionGroupTag in CheckCombi",
+      "replay": {
+        "round": 2,
+        "commit": "c48015a",
+        "date": "2026-06-04",
+        "mode": null,
+        "auctions_per_sec": 336,
+        "p50_us": 2068,
+        "p99_us": 25411,
+        "p999_us": 43427,
+        "bytes_per_auction": 1644701,
+        "gen2": 44
+      }
+    },
+    {
+      "round": 3,
+      "date": "2026-06-04",
+      "commit": "c48015a",
+      "auctions_per_sec": 452,
+      "p50_ms": 1.11,
+      "p99_ms": 25.6,
+      "mb_per_auction": 0.99,
+      "note": "T2 per-key ComparisonValue cache at candidate sites; T5 dedup-once modifier cache key + better ModifierLookupKey hash; T9 GetReduced without Reverse alloc; T10 ",
+      "replay": {
+        "round": 3,
+        "commit": "c48015a",
+        "date": "2026-06-04",
+        "mode": null,
+        "auctions_per_sec": 452,
+        "p50_us": 1107,
+        "p99_us": 25589,
+        "p999_us": 46623,
+        "bytes_per_auction": 1039417,
+        "gen2": 43
+      }
+    },
+    {
+      "round": 4,
+      "date": "2026-06-05",
+      "commit": "d6f6f67",
+      "auctions_per_sec": 4966,
+      "p50_ms": 0.162,
+      "p99_ms": 0.691,
+      "mb_per_auction": 0.037,
+      "note": "R4 dominance flattening: interned columnar DominatorIndex + ulong mask prefilter; 4 finders + CheckCombined off string IsHigherValue; read p50 \u221279%, warm p50 \u22122"
+    },
+    {
+      "round": 5,
+      "date": "2026-06-06",
+      "commit": "diagnosis",
+      "auctions_per_sec": null,
+      "p50_ms": null,
+      "p99_ms": null,
+      "mb_per_auction": null,
+      "note": "R5 DIAGNOSIS: built 6 isolating instruments (CpuProfile P6, IndexRebuild/QueryBuild P1/P5, Parse P3, GetCleanItemPrice P4, write-path mode + UpdateMedian golden"
+    },
+    {
+      "round": 6,
+      "date": "2026-06-06",
+      "commit": "24f91e8",
+      "auctions_per_sec": 3676,
+      "p50_ms": 0.212,
+      "p99_ms": 1.049,
+      "mb_per_auction": 0.035,
+      "note": "R5 Phase B: cleanprice partial-select (CleanItemPrice* CPU ~55%->~28%, cold p99 -64%); idx-grow append-amortized DominatorIndex (rebuild alloc 21.7%->~0%, warm "
+    },
+    {
+      "round": 7,
+      "date": "2026-06-06",
+      "commit": "6d8634e",
+      "auctions_per_sec": 3352,
+      "p50_ms": 0.226,
+      "p99_ms": 1.172,
+      "mb_per_auction": 0.028,
+      "note": "R6 final incremental sweep: CMB2 de-LINQ CheckCombined; MEMO2 clean-price memo (cold/rare p99 -21/-28%, warm neutral); LOH chunk CandidateIndex off LOH (rare ge"
+    },
+    {
+      "round": 8,
+      "date": "2026-06-06",
+      "commit": "r7 close",
+      "auctions_per_sec": 3414,
+      "p50_ms": 0.23,
+      "p99_ms": 1.166,
+      "mb_per_auction": 0.027,
+      "note": "R7 RADICAL round confirms the floor: de-inline proved parse <1% CPU, batch dup ~0% -> parse cache unjustifiable. Shipped C1 de-alloc (-1.3KB) + C2 fullKey-share"
+    },
+    {
+      "round": 9,
+      "date": "2026-06-06",
+      "commit": "c458d00",
+      "auctions_per_sec": 2268,
+      "p50_ms": 0.33,
+      "p99_ms": 1.9,
+      "mb_per_auction": 0.03,
+      "note": "R8 EXECUTED (tail-tightening): WS-CHURN A quickselect percentile / B Cmb clear-prefix(+blittable skip) / C in-place DropUnderlistings; WS-SHARD-OBS per-shard de",
+      "replay": {
+        "round": 9,
+        "commit": "c458d00",
+        "date": "2026-06-06",
+        "mode": "warm",
+        "auctions_per_sec": 2268,
+        "p50_us": 331,
+        "p99_us": 1945,
+        "p999_us": 5513,
+        "bytes_per_auction": 26826,
+        "gen2": 1
+      }
+    },
+    {
+      "round": 10,
+      "date": "2026-06-06",
+      "commit": "a828bd5",
+      "auctions_per_sec": 3514,
+      "p50_ms": 0.23,
+      "p99_ms": 1.0,
+      "mb_per_auction": 0.03,
+      "note": "R9 WS-HASHCACHE: memoize AuctionKey.GetHashCode (immutable key). Warm p50 -10-12%, tails 18ms->7ms, bit-exact 432/0 +4 guards. Disproves part of the parse floor",
+      "replay": {
+        "round": 10,
+        "commit": "a828bd5",
+        "date": "2026-06-06",
+        "mode": "warm",
+        "auctions_per_sec": 3514,
+        "p50_us": 227,
+        "p99_us": 955,
+        "p999_us": 3175,
+        "bytes_per_auction": 26739,
+        "gen2": 1
+      }
+    },
+    {
+      "round": 11,
+      "date": "2026-06-06",
+      "commit": "e862b08",
+      "auctions_per_sec": 2269,
+      "p50_ms": 0.32,
+      "p99_ms": 2.1,
+      "mb_per_auction": 0.02,
+      "note": "R10 WS-VALKEY (O(M^2)->O(M) modifier cache-key hash + pool relevant dict) + R11 WS-PARSE-SHARE (reuse basekey in TryFindClosestRisky: 1.84->1.00 parses/auction)",
+      "replay": {
+        "round": 11,
+        "commit": "e862b08",
+        "date": "2026-06-06",
+        "mode": "warm",
+        "auctions_per_sec": 2269,
+        "p50_us": 318,
+        "p99_us": 2076,
+        "p999_us": 6898,
+        "bytes_per_auction": 24305,
+        "gen2": 1
+      }
+    }
+  ]
+}

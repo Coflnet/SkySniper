@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
 using Coflnet.Sky.Core;
+using Coflnet.Sky.Core.Services;
 using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
 
 namespace Coflnet.Sky.Sniper.Services;
@@ -17,7 +19,7 @@ public class SaletimeTests
         SniperService.StartTime = new DateTime(2021, 9, 25);
         // console logger
         var factory = LoggerFactory.Create(builder => builder.AddConsole());
-        service = new SniperService(new(null, null), null, factory.CreateLogger<SniperService>(), null);
+        service = new SniperService(new HypixelItemService(null, NullLogger<HypixelItemService>.Instance), null, factory.CreateLogger<SniperService>(), null);
     }
     [Test]
     public void TwoMinutes()

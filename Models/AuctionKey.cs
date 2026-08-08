@@ -71,7 +71,8 @@ namespace Coflnet.Sky.Sniper.Models
                 sum--;
             var petDifference = Math.Abs(this.Tier - key.Tier);
             sum -= petDifference * 11;
-            if (petDifference > 0 && key.Modifiers.Any(m => m.Key == "exp"))
+            // De-LINQ'd Any(m => m.Key == "exp") to a loop (no Func/enumerator alloc per closest-search candidate).
+            if (petDifference > 0 && ModifiersContainKey(key.Modifiers, "exp"))
                 sum -= 555; // higher tier is very bad
             if (this.Count == key.Count)
                 sum += this.Count;
@@ -80,8 +81,9 @@ namespace Coflnet.Sky.Sniper.Models
                 //sum += this.Enchants.Count(e => key.Enchants.Any(k => k.Lvl == e.Lvl && k.Type == e.Type)) * 3;
                 sum -= EnchantSimilarity(this.Enchants, key);
                 sum -= EnchantSimilarity(key.Enchants, this);
-                sum -= EnchantSimilarity(this.Enchants.Where(e => Constants.VeryValuableEnchant.TryGetValue(e.Type, out var lvl) && e.Lvl >= lvl).ToList(), key) * 10;
-                sum -= EnchantSimilarity(key.Enchants.Where(e => Constants.VeryValuableEnchant.TryGetValue(e.Type, out var lvl) && e.Lvl >= lvl).ToList(), this) * 10;
+                // Filter the very-valuable enchant subset inline instead of .Where(...).ToList() (was 2 list allocs/call).
+                sum -= EnchantSimilarityVeryValuable(this.Enchants, key) * 10;
+                sum -= EnchantSimilarityVeryValuable(key.Enchants, this) * 10;
             }
             sum -= (this.Enchants?.Count ?? 0) + (key.Enchants?.Count ?? 0);
 
@@ -91,11 +93,12 @@ namespace Coflnet.Sky.Sniper.Models
                 sum -= (int)ModifierDifference(key, this.Modifiers);
                 sum -= (int)ModifierDifference(this, key.Modifiers);
 
-                sum -= (int)(ModifierDifference(this, key.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).ToList()) * 10);
-                sum -= (int)(ModifierDifference(key, this.Modifiers.Where(m => SniperService.VeryValuable.Contains(m.Key)).ToList()) * 10);
+                // Filter the very-valuable / increadable subsets inline instead of .Where(...).ToList() (was 4 list allocs/call).
+                sum -= (int)(ModifierDifferenceFiltered(this, key.Modifiers, SniperService.VeryValuable) * 10);
+                sum -= (int)(ModifierDifferenceFiltered(key, this.Modifiers, SniperService.VeryValuable) * 10);
 
-                sum -= (int)ModifierDifference(this, key.Modifiers.Where(m => SniperService.Increadable.Contains(m.Key)).ToList()) * 100;
-                sum -= (int)ModifierDifference(key, this.Modifiers.Where(m => SniperService.Increadable.Contains(m.Key)).ToList()) * 100;
+                sum -= (int)ModifierDifferenceFiltered(this, key.Modifiers, SniperService.Increadable) * 100;
+                sum -= (int)ModifierDifferenceFiltered(key, this.Modifiers, SniperService.Increadable) * 100;
             }
             else
                 sum -= this.Modifiers?.Count ?? 0 - key.Modifiers?.Count ?? 0;
@@ -109,15 +112,9 @@ namespace Coflnet.Sky.Sniper.Models
             matchValue = CompareValues(keyvalue, self, matchValue);
             matchValue = CompareValues(self, keyvalue, matchValue);
 
-            foreach (var item in keyvalue.Where(k => k.Value == 0))
-            {
-                if (Random.Shared.NextDouble() < 0.1)
-                    Console.WriteLine($"Key {item} has no value on {key}");
-            }
-
             var tierDiffere = Math.Abs(this.Tier - key.Tier);
             matchValue -= tierDiffere * 11_000_000;
-            if (tierDiffere > 0 && key.Modifiers.Any(m => m.Key == "exp"))
+            if (tierDiffere > 0 && ModifiersContainKey(key.Modifiers, "exp"))
                 matchValue -= 100_000_000; // higher tier is very bad
             var countDiff = Math.Abs(this.Count - key.Count);
             matchValue -= countDiff * 1_000_000;
@@ -126,20 +123,35 @@ namespace Coflnet.Sky.Sniper.Models
 
         private static long CompareValues(List<SniperService.RankElem> keyvalue, List<SniperService.RankElem> self, long matchValue)
         {
-            foreach (var item in keyvalue.Where(k => k.Enchant.Lvl != default))
+            // De-LINQ'd: the old Where/FirstOrDefault chains allocated a Func + enumerator per element AND per call (two
+            // calls per closest-search candidate, the single biggest read-path allocator under SimilarityByMarketPrice).
+            // Rewritten to indexed loops with explicit first-match-by-key lookups. Bit-exact: same iteration order, same
+            // first-match semantics (FirstOrDefault on a reference type -> null when absent), same arithmetic — gated by
+            // the ClosestScoreKernel parity tests (kernel == Similarity) and the AuctionKey similarity oracle.
+            for (int i = 0; i < keyvalue.Count; i++)
             {
-                var enchMatch = self.FirstOrDefault(k => k.Enchant.Type == item.Enchant.Type);
+                var item = keyvalue[i];
+                if (item.Enchant.Lvl == default)
+                    continue;
+                SniperService.RankElem enchMatch = null;
+                for (int j = 0; j < self.Count; j++)
+                    if (self[j].Enchant.Type == item.Enchant.Type) { enchMatch = self[j]; break; }
                 if (enchMatch?.Enchant.Lvl == default)
                 {
                     matchValue -= item.Value;
                     continue;
-                };
+                }
                 if (enchMatch.Enchant.Lvl == item.Enchant.Lvl)
                     matchValue += enchMatch.Value;
             }
-            foreach (var item in keyvalue.Where(k => k.Modifier.Key != default))
+            for (int i = 0; i < keyvalue.Count; i++)
             {
-                var modMatch = self.FirstOrDefault(k => k.Modifier.Key == item.Modifier.Key);
+                var item = keyvalue[i];
+                if (item.Modifier.Key == default)
+                    continue;
+                SniperService.RankElem modMatch = null;
+                for (int j = 0; j < self.Count; j++)
+                    if (self[j].Modifier.Key == item.Modifier.Key) { modMatch = self[j]; break; }
                 var m = item.Modifier;
                 if (modMatch == default)
                 {
@@ -160,10 +172,14 @@ namespace Coflnet.Sky.Sniper.Models
                 if(modMatch.Modifier.Value != m.Value && m.Key == SniperService.PetItemKey && m.Value == SniperService.TierBoostShorthand)
                     matchValue -= 108_000_000; // tier boost is very valuable
             }
-            var reforge = keyvalue.FirstOrDefault(k => k.Reforge != default);
+            SniperService.RankElem reforge = null;
+            for (int i = 0; i < keyvalue.Count; i++)
+                if (keyvalue[i].Reforge != default) { reforge = keyvalue[i]; break; }
             if (reforge != default && reforge.Reforge != default)
             {
-                var match = self.FirstOrDefault(k => k.Reforge == reforge.Reforge);
+                SniperService.RankElem match = null;
+                for (int j = 0; j < self.Count; j++)
+                    if (self[j].Reforge == reforge.Reforge) { match = self[j]; break; }
                 if (match?.Reforge == reforge.Reforge)
                     matchValue += match.Value;
                 else
@@ -171,6 +187,16 @@ namespace Coflnet.Sky.Sniper.Models
             }
 
             return matchValue;
+        }
+
+        private static bool ModifiersContainKey(IReadOnlyList<KeyValuePair<string, string>> modifiers, string wantedKey)
+        {
+            if (modifiers == null)
+                return false;
+            for (int i = 0; i < modifiers.Count; i++)
+                if (modifiers[i].Key == wantedKey)
+                    return true;
+            return false;
         }
 
         private static int ImportanceFactor(string key)
@@ -184,58 +210,138 @@ namespace Coflnet.Sky.Sniper.Models
 
         private int EnchantSimilarity(IEnumerable<Enchant> enchantsToCompare, AuctionKey key)
         {
-            return enchantsToCompare.Sum(ench =>
+            // De-LINQ'd: the old .Sum(ench => key.Enchants.FirstOrDefault(...)) allocated a Func + sum/lookup
+            // enumerator per call (this runs per closest-search candidate, a top read-path allocator). Same result —
+            // per-enchant score summed with the identical FirstOrDefault-by-Type match — so bit-exact (gated by the
+            // AuctionKey similarity oracle + ClosestScoreKernel parity).
+            int sum = 0;
+            foreach (var ench in enchantsToCompare)
+                sum += ScoreEnchant(ench, key);
+            return sum;
+        }
+
+        /// <summary>
+        /// R3-READ helper: same as the old per-enchant <c>EnchantSimilarity</c> lambda but lets the caller filter the
+        /// "very valuable" subset inline (skip enchants that are not very-valuable-at-or-above-their-threshold), so the
+        /// veryValuable variants avoid the <c>.Where(...).ToList()</c> the original allocated. Bit-exact with
+        /// <c>EnchantSimilarity(enchants.Where(veryValuablePredicate).ToList(), key)</c>.
+        /// </summary>
+        private int EnchantSimilarityVeryValuable(IReadOnlyList<Enchant> enchantsToCompare, AuctionKey key)
+        {
+            if (enchantsToCompare == null)
+                return 0;
+            int sum = 0;
+            for (int i = 0; i < enchantsToCompare.Count; i++)
             {
-                var match = key.Enchants.FirstOrDefault(k => k.Type == ench.Type);
-                if (match.Lvl == 0)
-                    return 6;
-                if (match.Lvl == ench.Lvl)
-                    return -2;
-                var multiplier = 1;
-                if (match.Lvl > ench.Lvl)
-                    multiplier = 2;
-                return Math.Abs(match.Lvl - ench.Lvl) * multiplier;
-            });
+                var ench = enchantsToCompare[i];
+                if (Constants.VeryValuableEnchant.TryGetValue(ench.Type, out var lvl) && ench.Lvl >= lvl)
+                    sum += ScoreEnchant(ench, key);
+            }
+            return sum;
+        }
+
+        private static int ScoreEnchant(Enchant ench, AuctionKey key)
+        {
+            // First enchant in key with the same Type (FirstOrDefault semantics: default Enchant has Lvl 0).
+            Enchant match = default;
+            var keyEnchants = key.Enchants;
+            if (keyEnchants != null)
+                for (int j = 0; j < keyEnchants.Count; j++)
+                    if (keyEnchants[j].Type == ench.Type) { match = keyEnchants[j]; break; }
+            if (match.Lvl == 0)
+                return 6;
+            if (match.Lvl == ench.Lvl)
+                return -2;
+            var multiplier = 1;
+            if (match.Lvl > ench.Lvl)
+                multiplier = 2;
+            return Math.Abs(match.Lvl - ench.Lvl) * multiplier;
         }
 
         private static float ModifierDifference(AuctionKey key, IEnumerable<KeyValuePair<string, string>> leftMods)
         {
-            return leftMods.Sum(m =>
-            {
-                var match = key.Modifiers.Where(k => k.Key == m.Key).FirstOrDefault();
-                if (match.Key == null)
-                    if (float.TryParse(m.Value, CultureInfo.InvariantCulture, out var parsed))
-                        return Math.Abs(parsed) * 8;
-                    else if (m.Value == SniperService.TierBoostShorthand)
-                        return 58; // tier boost is very valuable
-                    else
-                        return 5 + m.Value.Length;
-                if (float.TryParse(match.Value, CultureInfo.InvariantCulture, out var matchValue) && float.TryParse(m.Value, CultureInfo.InvariantCulture, out var value))
-                    return Math.Abs(matchValue - value);
-                if (match.Value == m.Value)
-                    if (m.Key == SniperService.PetItemKey && m.Value == SniperService.TierBoostShorthand)
-                        return -28; // tier boost is very valuable
-                    else
-                        return -2;
-                return 3 + Math.Abs(match.Value.Length - m.Value.Length);
-            });
+            // De-LINQ'd: the old .Sum(m => key.Modifiers.Where(...).FirstOrDefault()) allocated a Func + sum/Where
+            // enumerators per call (per closest-search candidate -> a top read-path allocator). Same per-modifier score
+            // summed with the identical first-match-by-Key lookup, so bit-exact (AuctionKey similarity oracle gate).
+            if (leftMods == null)
+                return 0;
+            float sum = 0;
+            foreach (var m in leftMods)
+                sum += ScoreModifier(key, m);
+            return sum;
         }
 
+        /// <summary>
+        /// R3-READ helper: <c>ModifierDifference(key, leftMods.Where(m => set.Contains(m.Key)).ToList())</c> without the
+        /// intermediate filtered list (the original allocated one per very-valuable / increadable variant, four per
+        /// Similarity call). Bit-exact: scores exactly the modifiers whose Key is in <paramref name="set"/>.
+        /// </summary>
+        private static float ModifierDifferenceFiltered(AuctionKey key, IReadOnlyList<KeyValuePair<string, string>> leftMods, HashSet<string> set)
+        {
+            if (leftMods == null)
+                return 0;
+            float sum = 0;
+            for (int i = 0; i < leftMods.Count; i++)
+            {
+                var m = leftMods[i];
+                if (set.Contains(m.Key))
+                    sum += ScoreModifier(key, m);
+            }
+            return sum;
+        }
+
+        private static float ScoreModifier(AuctionKey key, KeyValuePair<string, string> m)
+        {
+            // First modifier in key with the same Key (Where(...).FirstOrDefault() semantics: default KVP has null Key).
+            KeyValuePair<string, string> match = default;
+            var keyMods = key.Modifiers;
+            if (keyMods != null)
+                for (int j = 0; j < keyMods.Count; j++)
+                    if (keyMods[j].Key == m.Key) { match = keyMods[j]; break; }
+            if (match.Key == null)
+                if (float.TryParse(m.Value, CultureInfo.InvariantCulture, out var parsed))
+                    return Math.Abs(parsed) * 8;
+                else if (m.Value == SniperService.TierBoostShorthand)
+                    return 58; // tier boost is very valuable
+                else
+                    return 5 + m.Value.Length;
+            if (float.TryParse(match.Value, CultureInfo.InvariantCulture, out var matchValue) && float.TryParse(m.Value, CultureInfo.InvariantCulture, out var value))
+                return Math.Abs(matchValue - value);
+            if (match.Value == m.Value)
+                if (m.Key == SniperService.PetItemKey && m.Value == SniperService.TierBoostShorthand)
+                    return -28; // tier boost is very valuable
+                else
+                    return -2;
+            return 3 + Math.Abs(match.Value.Length - m.Value.Length);
+        }
+
+        // R8-spike: lazily-memoized hash. AuctionKey is immutable (all hash inputs are { get; init; } over
+        // ReadOnlyCollections; the only mutable member is AuctionKeyWithValue.ValueSubstract, which is NOT hashed), so
+        // the hash is a pure function computed once. The dispatch loop probes the lookup up to 4× per auction and every
+        // finder/index hashes keys, each previously recomputing this O(mods+enchants) sum. Single-field sentinel (0 =
+        // not computed; a real 0 is bumped to 1) makes the lazy init torn-read-free and race-benign: concurrent first
+        // calls all compute the identical value. Bit-exact: returns exactly what the original computed.
+        private int _hash;
         public override int GetHashCode()
         {
-            var enchRes = 0x02;
+            var h = _hash;
+            if (h != 0)
+                return h;
+            // Order-independent (Equals compares the enchant/modifier sets regardless of order): sum well-mixed
+            // per-element hashes instead of multiplying them. The old multiplicative mix collapsed toward poorly
+            // distributed values (a single zero element hash annihilated it), clustering keys and inflating the number
+            // of Equals comparisons on every dictionary lookup. Equal keys still produce equal hashes.
+            var enchRes = 0;
             if (Enchants != null)
                 foreach (var item in Enchants)
-                {
-                    enchRes = enchRes * item.GetHashCode();
-                }
-            var modRes = 0x20;
+                    enchRes += item.GetHashCode();
+            var modRes = 0;
             if (Modifiers != null)
                 foreach (var item in Modifiers)
-                {
-                    modRes = modRes * (item.Value == null ? 1 : item.Value.GetHashCode());
-                }
-            return HashCode.Combine(enchRes, Reforge, modRes, Tier, Count);
+                    modRes += HashCode.Combine(item.Key, item.Value);
+            h = HashCode.Combine(enchRes, Reforge, modRes, Tier, Count);
+            _hash = h == 0 ? 1 : h; // cache; 0 stays the "uncomputed" sentinel
+            return h;
         }
 
         public override string ToString()
@@ -245,18 +351,48 @@ namespace Coflnet.Sky.Sniper.Models
 
         public override bool Equals(object obj)
         {
-            return obj is AuctionKey key &&
-                   Reforge == key.Reforge &&
-                   Tier == key.Tier &&
-                   Count == key.Count&&
-                   (key.Enchants == null && this.Enchants == null || 
-                    (this.Enchants != null && key.Enchants != null && 
-                     this.Enchants.Count == key.Enchants.Count &&
-                     this.Enchants.All(e => key.Enchants.Any(ke => ke.Type == e.Type && ke.Lvl == e.Lvl)))) &&
-                   (key.Modifiers == null && this.Modifiers == null || 
-                    (this.Modifiers != null && key.Modifiers != null &&
-                     this.Modifiers.Count == key.Modifiers.Count &&
-                     this.Modifiers.All(m => key.Modifiers.Any(km => km.Key == m.Key && km.Value == m.Value)))) ;
+            // De-LINQ'd to explicit loops: the old All(e => Any(ke => ...)) over Enchants/Modifiers allocated Func +
+            // enumerator closures on EVERY dictionary probe (a top per-auction allocator). Same boolean result —
+            // scalars equal, and each collection both-null or both-non-null with equal count and every left element
+            // matched in the right (the original All/Any containment) — so it is bit-exact (gated by
+            // AuctionKeyPrimitives.Tests' 40k-fuzz golden output).
+            if (obj is not AuctionKey key)
+                return false;
+            if (Reforge != key.Reforge || Tier != key.Tier || Count != key.Count)
+                return false;
+            if (!(key.Enchants == null && this.Enchants == null))
+            {
+                if (this.Enchants == null || key.Enchants == null || this.Enchants.Count != key.Enchants.Count)
+                    return false;
+                for (int i = 0; i < this.Enchants.Count; i++)
+                {
+                    var e = this.Enchants[i];
+                    bool found = false;
+                    for (int j = 0; j < key.Enchants.Count; j++)
+                    {
+                        var ke = key.Enchants[j];
+                        if (ke.Type == e.Type && ke.Lvl == e.Lvl) { found = true; break; }
+                    }
+                    if (!found) return false;
+                }
+            }
+            if (!(key.Modifiers == null && this.Modifiers == null))
+            {
+                if (this.Modifiers == null || key.Modifiers == null || this.Modifiers.Count != key.Modifiers.Count)
+                    return false;
+                for (int i = 0; i < this.Modifiers.Count; i++)
+                {
+                    var m = this.Modifiers[i];
+                    bool found = false;
+                    for (int j = 0; j < key.Modifiers.Count; j++)
+                    {
+                        var km = key.Modifiers[j];
+                        if (km.Key == m.Key && km.Value == m.Value) { found = true; break; }
+                    }
+                    if (!found) return false;
+                }
+            }
+            return true;
         }
 
         public AuctionKey(List<Enchant> enchants, ItemReferences.Reforge reforge, List<KeyValuePair<string, string>> modifiers, Tier tier, byte count)
@@ -275,6 +411,7 @@ namespace Coflnet.Sky.Sniper.Models
             Modifiers = key.Modifiers;
             Tier = key.Tier;
             Count = key.Count;
+            _hash = key._hash; // R8-spike: same (shared) content -> same hash; copy the memo so GetReduced(0) doesn't recompute
         }
 
         public AuctionKey()

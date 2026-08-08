@@ -3,3 +3,10 @@ obj
 Client/*
 !Client/generate.sh
 NEU-REPO
+benchmarks/artifacts/
+.claude/
+
+# Regenerable BenchmarkDotNet full dumps (use benchmarks/speedups.json for the record)
+benchmarks/round*/*-report-full.json
+benchmarks/cpu-profile/
+benchmarks/**/*.nettrace

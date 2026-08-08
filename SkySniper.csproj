@@ -6,11 +6,17 @@
     <ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
   </PropertyGroup>
   <PropertyGroup>
-    <DefaultItemExcludes>$(DefaultItemExcludes);Client\**\*</DefaultItemExcludes>
+    <!-- benchmarks/ is a separate console project (SkySniper.Benchmarks) that references this one; keep its sources out of the web app's compile. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);Client\**\*;benchmarks\**\*</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="../dev/hypixel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Lets the benchmark project measure the internal hot-path method ComparisonValue directly. -->
+    <InternalsVisibleTo Include="SkySniper.Benchmarks" />
   </ItemGroup>
 
 
@@ -28,6 +34,8 @@
 
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
     <Compile Remove="**\*.Tests.cs" />
+    <!-- Shared test-support fuzz generator (used only by the *.Tests.cs harnesses); not part of the shipped service. -->
+    <Compile Remove="Services\AuctionKeyFuzz.cs" />
   </ItemGroup>
   <ItemGroup Condition="'$(Configuration)' != 'Release'">
     <PackageReference Include="NUnit3TestAdapter" Version="6.2.0" />

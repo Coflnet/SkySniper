@@ -22,7 +22,11 @@ public class AuctionkeyTests
     [SetUp]
     public void Setup()
     {
-        itemService = new HypixelItemService(null, null);
+        // Non-null logger: HypixelItemService.GetSlotCostSync has a `Random < 0.05` `_logger.LogWarning` for an
+        // unavailable slot that is *not* null-guarded, so a null logger throws an NRE which its own catch swallows —
+        // silently dropping the slot from `unavailable` ~5% of the time and flaking the gemstone tests. Prod always
+        // injects a logger; mirror that here. (Upstream fix: make that call `_logger?.LogWarning`.)
+        itemService = new HypixelItemService(null, NullLogger<HypixelItemService>.Instance);
         service = new SniperService(itemService, null, NullLogger<SniperService>.Instance, null);
     }
 
