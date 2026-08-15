@@ -491,9 +491,11 @@ public class DropOffTests
         medianSnipe.TargetPrice.Should().Be(97399150, JsonConvert.SerializeObject(found, Formatting.Indented));
     }
 
-    [TestCase(9, 50000000L)]
-    [TestCase(10, 63360000L)] // lbin based up to 99% at 10 volume
-    public void SniperEstimate(byte volumeOverride, long target)
+    [TestCase(2, 24, 40_832_633L, true)]
+    [TestCase(2, 25, 50_000_000L, false)]
+    [TestCase(9, 24, 50_000_000L, true)]
+    [TestCase(10, 24, 63_360_000L, false)] // lbin based up to 99% at 10 volume
+    public void SniperEstimate(byte volumeOverride, short referenceCount, long target, bool noHigherLbinLimited)
     {
         PriceLookup converted = LoadLookupMock("potato-talisman.json");
         SniperService.StartTime += TimeSpan.FromDays(10000);
@@ -510,10 +512,13 @@ public class DropOffTests
             Count = 1
         };
         sniperService.State = SniperState.FullyLoaded;
-        converted.Lookup.Where(l => l.Key.Modifiers.Count == 0).First().Value.Volume = volumeOverride;
+        var bucket = converted.Lookup.Where(l => l.Key.Modifiers.Count == 0).First().Value;
+        bucket.Volume = volumeOverride;
+        bucket.DeduplicatedReferenceCount = referenceCount;
         sniperService.TestNewAuction(testAuction);
         var sniper = found.First(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
         sniper.TargetPrice.Should().Be(target);
+        sniper.AdditionalProps.ContainsKey("noHigherLbin").Should().Be(noHigherLbinLimited);
     }
 
     [Test]

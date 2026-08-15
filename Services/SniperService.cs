@@ -6719,7 +6719,7 @@ ORDER BY l.`AuctionId`  DESC;
                     percentile /= 2;
                 }
                 percentile = Math.Min(percentile, lowestLbin);
-                if (lowestLbin > 10_000_000_000)
+                if (lowestLbin > 10_000_000_000 && bucket.DeduplicatedReferenceCount < 25)
                 {
                     Activity.Current.Log($"Reduced because no higher value lbin");
                     percentile = Math.Min(percentile, Math.Min(targetPrice * (60 + (int)(bucket.Volume * 5)) / 100, (long)(referencePrice * 1.2)));
