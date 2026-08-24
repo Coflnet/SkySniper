@@ -862,7 +862,7 @@ public class DropOffTests
         }
     }
     [Test]
-    public void MidasNoUndervauingForOldAverage()
+    public void MidasWinningBidSubtractsSyntheticUplift()
     {
         AddLookupAndUpdateMeidans("midas_sword.json", "MIDAS_SWORD", new DateTime(2025, 8, 1));
         var auction = new SaveAuction()
@@ -876,8 +876,56 @@ public class DropOffTests
             Count = 1
         };
         var median = TestAuctionLoaded(auction);
-        median.TargetPrice.Should().BeGreaterThan(200_000_000L, "midas sword should not be undervalued by old average");
+        median.TargetPrice.Should().Be(154_724_975L, "winning_bid already represents the paid value, so the synthetic clean uplift must be removed");
     }
+
+    [Test]
+    public void CanonicalStarredMidasFullBidSubtractsSyntheticUplift()
+    {
+        const string tag = "STARRED_MIDAS_SWORD";
+        var auction = JsonConvert.DeserializeObject<ApiSaveAuction>(File.ReadAllText("Mock/midas_overvaluation_auction.json"));
+        auction.Should().NotBeNull();
+        auction.HighestBidAmount.Should().Be(177_777_777);
+
+        var canonicalKey = sniperService.ValueKeyForTest(auction);
+        canonicalKey.Key.Modifiers.Should().Contain(new KeyValuePair<string, string>("full_bid", "1"));
+        canonicalKey.Key.Modifiers.Should().Contain(new KeyValuePair<string, string>("rarity_upgrades", "1"));
+        canonicalKey.ValueBreakdown.Should().Contain(v => v.Modifier.Key == "full_bid" && v.Value == 48_000_000);
+        SniperService.ReduceRarity(canonicalKey.Key.Tier).Should().Be(Tier.LEGENDARY,
+            "the canonical rarity_upgrades modifier must select the reduced clean-price tier");
+
+        // The exact canonical bucket in the pricing artifact is thin: two references and price 0.
+        var canonicalBucket = new ReferenceAuctions();
+        canonicalBucket.EnqueueReference(new ReferencePrice { Price = 108_327_242, Day = 1775, SellTime = 1 });
+        canonicalBucket.EnqueueReference(new ReferencePrice { Price = 156_517_242, Day = 1775, SellTime = 174 });
+        var lookup = new PriceLookup
+        {
+            Volume = 4.9f,
+            CleanPricePerTier = { [Tier.LEGENDARY] = 224_337_301 }
+        };
+        lookup.Lookup[canonicalKey.Key] = canonicalBucket;
+        sniperService.Lookups[tag] = lookup;
+        sniperService.UpdateMedian(canonicalBucket, (tag, canonicalKey));
+        canonicalBucket.Price.Should().Be(0, "the exact two-reference bucket exits UpdateMedian before capping");
+
+        var capAtCraftCost = typeof(SniperService).GetMethod("CapAtCraftCost",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        capAtCraftCost.Should().NotBeNull();
+        var capped = (long)capAtCraftCost.Invoke(sniperService, [tag, 329_537_790L, canonicalKey, 0L]);
+        capped.Should().Be(208_137_299L,
+            "the tracked thin-bucket percentile must remove the 80m uplift before adding parsed components");
+
+        var noBidLookup = LoadLookupMock("midas_sword.json");
+        const string noBidTag = "MIDAS_SWORD";
+        sniperService.Lookups[noBidTag] = noBidLookup;
+        var noBidKey = noBidLookup.Lookup.Keys.Single(k => k.Tier == Tier.LEGENDARY
+            && k.Reforge == ItemReferences.Reforge.Any && k.Count == 1
+            && k.Enchants.Count == 0 && k.Modifiers.Count == 0);
+        var noBidBreakdown = sniperService.GetBreakdownKey(noBidKey, noBidTag);
+        var noBidCap = (long)capAtCraftCost.Invoke(sniperService, [noBidTag, 329_537_790L, noBidBreakdown, 0L]);
+        noBidCap.Should().Be(329_537_790L, "a no-bid key must retain the existing Midas valuation");
+    }
+
     [Test]
     public async Task GemstoneValueCausingUndervaluing()
     {

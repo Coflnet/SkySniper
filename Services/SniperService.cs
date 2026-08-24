@@ -3097,6 +3097,10 @@ ORDER BY l.`AuctionId`  DESC;
 
             // determine craft cost 
             long minValue = GetCleanItemPrice(tag, key, lookup);
+            // Paid-bid modifiers already price the Dark Auction payment. Remove the synthetic
+            // clean-Midas uplift before adding them, while leaving clean/no-bid keys unchanged.
+            if (IsMidas(tag) && key.Key.Modifiers.Any(m => m.Key == "full_bid" || m.Key == "winning_bid"))
+                minValue = Math.Max(0, minValue - 80_000_000);
             if (minValue == 0 || currentPrice == minValue)
                 return medianPrice;
             if (IsRune(tag))
