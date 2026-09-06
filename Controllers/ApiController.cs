@@ -14,6 +14,9 @@ using MessagePack;
 using Amazon.S3.Model;
 using Coflnet.Sky.FlipTracker.Client.Api;
 using ComplicatedFlip = Coflnet.Sky.FlipTracker.Client.Model.ComplicatedFlip;
+using System.Diagnostics;
+using System.Threading;
+using Prometheus;
 
 namespace Coflnet.Sky.Sniper.Controllers
 {
@@ -28,6 +31,16 @@ namespace Coflnet.Sky.Sniper.Controllers
         private readonly IPersitanceManager persitanceManager;
         private readonly ITrackerApi trackerApi;
         private readonly ISelfLearningFlipFinderService flipFinder;
+        private readonly ActivitySource activitySource;
+        private static readonly Histogram BatchDuration = Prometheus.Metrics.CreateHistogram(
+            "sky_sniper_batch_duration_seconds", "Time spent pricing an auction batch",
+            new HistogramConfiguration { LabelNames = ["transport"], Buckets = Histogram.ExponentialBuckets(0.001, 2, 14) });
+        private static readonly Histogram BatchDecodeDuration = Prometheus.Metrics.CreateHistogram(
+            "sky_sniper_batch_decode_duration_seconds", "Time spent decoding an auction batch",
+            new HistogramConfiguration { LabelNames = ["transport"], Buckets = Histogram.ExponentialBuckets(0.0001, 2, 14) });
+        private static readonly Histogram BatchSize = Prometheus.Metrics.CreateHistogram(
+            "sky_sniper_batch_size", "Number of auctions in a pricing batch",
+            new HistogramConfiguration { LabelNames = ["transport"], Buckets = Histogram.LinearBuckets(0, 10, 11) });
 
         public SniperController(
             ILogger<SniperController> logger,
@@ -37,7 +50,8 @@ namespace Coflnet.Sky.Sniper.Controllers
             IAttributeFlipService attributeFlipService, // hook into events
             IPersitanceManager persitanceManager,
             ITrackerApi trackerApi,
-            ISelfLearningFlipFinderService flipFinder)
+            ISelfLearningFlipFinderService flipFinder,
+            ActivitySource activitySource)
         {
             _logger = logger;
             this.service = service;
@@ -46,6 +60,7 @@ namespace Coflnet.Sky.Sniper.Controllers
             this.persitanceManager = persitanceManager;
             this.trackerApi = trackerApi;
             this.flipFinder = flipFinder;
+            this.activitySource = activitySource;
         }
 
         [HttpGet]
@@ -225,48 +240,10 @@ namespace Coflnet.Sky.Sniper.Controllers
         /// <returns></returns>
         [Route("price")]
         [HttpPost]
-        public async Task<IEnumerable<PriceEstimate>> GetPrices([FromBody] IEnumerable<ApiSaveAuction> auctions, [FromQuery] bool includeSelfLearning = false)
+        public Task<List<PriceEstimate>> GetPrices([FromBody] IEnumerable<ApiSaveAuction> auctions,
+            [FromQuery] bool includeSelfLearning = false, CancellationToken cancellationToken = default)
         {
-            if (auctions == null)
-                return new List<PriceEstimate>();
-
-            var list = new List<PriceEstimate>();
-            foreach (var a in auctions)
-            {
-                try
-                {
-                    _logger.LogDebug("a: {Auction}", JsonConvert.SerializeObject(a));
-                    var estimate = service.GetPrice(a);
-
-                    if (includeSelfLearning && flipFinder != null)
-                    {
-                        try
-                        {
-                            // convert to ComplicatedFlip using the same detailed breakdown as other callers
-                            var cflip = SaveAuctionExtensions.ToComplicatedFlip(a, includeBreakdown: true, sniper: service);
-                            var sle = await flipFinder.EstimateAsync(cflip);
-                            if (sle != null)
-                            {
-                                estimate.SelfLearningEstimatedValue = sle.EstimatedValue;
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogDebug(ex, "Self-learning estimate failed for auction {AuctionId}", a?.Uuid);
-                            // leave self-learning fields at default (0 / false)
-                        }
-                    }
-
-                    list.Add(estimate);
-                }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, "getting price for auction");
-                    list.Add(new PriceEstimate());
-                }
-            }
-
-            return list;
+            return CalculatePrices(auctions, includeSelfLearning, "json", cancellationToken);
         }
 
         /// <summary>
@@ -276,13 +253,46 @@ namespace Coflnet.Sky.Sniper.Controllers
         /// <returns></returns>
         [Route("prices")]
         [HttpPost]
-        public async Task<IEnumerable<PriceEstimate>> GetPrices([FromBody] string data, [FromQuery] bool includeSelfLearning = false)
+        public Task<List<PriceEstimate>> GetPrices([FromBody] string data,
+            [FromQuery] bool includeSelfLearning = false, CancellationToken cancellationToken = default)
         {
             var options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4Block);
-            var auctions = MessagePackSerializer.Deserialize<IEnumerable<ApiSaveAuction>>(Convert.FromBase64String(data), options);
+            List<ApiSaveAuction> auctions;
+            using (BatchDecodeDuration.WithLabels("base64").NewTimer())
+                auctions = MessagePackSerializer.Deserialize<List<ApiSaveAuction>>(Convert.FromBase64String(data), options);
+            return CalculatePrices(auctions, includeSelfLearning, "base64", cancellationToken);
+        }
+
+        /// <summary>
+        /// Auction array as an LZ4-compressed MessagePack request body.
+        /// </summary>
+        [Route("prices/messagepack")]
+        [HttpPost]
+        [Consumes("application/x-msgpack")]
+        public async Task<List<PriceEstimate>> GetMessagePackPrices(
+            [FromQuery] bool includeSelfLearning = false, CancellationToken cancellationToken = default)
+        {
+            var options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4Block);
+            List<ApiSaveAuction> auctions;
+            using (BatchDecodeDuration.WithLabels("messagepack").NewTimer())
+                auctions = await MessagePackSerializer.DeserializeAsync<List<ApiSaveAuction>>(Request.Body, options, cancellationToken);
+            return await CalculatePrices(auctions, includeSelfLearning, "messagepack", cancellationToken);
+        }
+
+        private async Task<List<PriceEstimate>> CalculatePrices(IEnumerable<ApiSaveAuction> source,
+            bool includeSelfLearning, string transport, CancellationToken cancellationToken)
+        {
+            var auctions = source?.ToList() ?? [];
+            BatchSize.WithLabels(transport).Observe(auctions.Count);
+            using var timer = BatchDuration.WithLabels(transport).NewTimer();
+            using var activity = activitySource?.StartActivity("GetPricesBatch", ActivityKind.Internal);
+            activity?.SetTag("sniper.batch_size", auctions.Count);
+            activity?.SetTag("sniper.transport", transport);
+            activity?.SetTag("sniper.include_self_learning", includeSelfLearning);
             var list = new List<PriceEstimate>();
             foreach (var a in auctions)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
                     var estimate = service.GetPrice(a);

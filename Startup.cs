@@ -47,6 +47,7 @@ namespace Coflnet.Sky.Sniper
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "SkySniper", Version = "v1" });
             });
             services.AddSingleton<SniperService>();
+            services.AddHostedService<RuntimeMetricsService>();
             services.AddSingleton<InternalDataLoader>();
             services.AddHostedService<InternalDataLoader>(d => d.GetRequiredService<InternalDataLoader>());
             services.AddSingleton<ICraftsApi, CraftsApi>(d => new CraftsApi(Configuration["CRAFTS_BASE_URL"]));
