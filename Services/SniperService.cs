@@ -53,8 +53,8 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly PropertyMapper mapper = new();
         private readonly (string, int)[] EmptyArray = [];
         private readonly Dictionary<string, double> BazaarPrices = new();
-        private readonly ConcurrentDictionary<(string, AuctionKey), (PriceEstimate result, DateTime addedAt)> ClosetLbinMapLookup = new();
-        private readonly ConcurrentDictionary<(string, AuctionKey), (PriceEstimate result, DateTime addedAt)> ClosetMedianMapLookup = new();
+        private readonly ConcurrentDictionary<(string, AuctionKey), (KeyValuePair<AuctionKey, ReferenceAuctions> result, DateTime addedAt)> ClosetLbinMapLookup = new();
+        private readonly ConcurrentDictionary<(string, AuctionKey), (MedianCandidates result, DateTime addedAt)> ClosetMedianMapLookup = new();
         private readonly ConcurrentDictionary<(string, AuctionKey), (ReferencePrice result, DateTime addedAt)> HigherValueLbinMapLookup = new();
         private readonly ConcurrentDictionary<ModifierLookupKey, (RankElem, DateTime)> ModifierValueLookup = new();
         private readonly ConcurrentDictionary<(string, AuctionKey), (List<RankElem> value, DateTime addedAt)> ComparisonValueLookup = new();
@@ -900,29 +900,10 @@ ORDER BY l.`AuctionId`  DESC;
             if (result.Median == default)
             {
                 var now = DateTime.UtcNow;
-                var res = ClosetMedianMapLookup
-                            .GetOrAdd(((string, AuctionKey))(auction.Tag, itemKey),
-                                      _ => GetEstimatedMedian(auction, result, lookup, detailedKey, gemVal, now));
-                if (res.addedAt != now)
-                {
-                    result.Median = res.result.Median;
-                    result.MedianKey = res.result.MedianKey;
-                    result.Volume = res.result.Volume;
-                }
+                GetEstimatedMedian(auction, result, lookup, detailedKey, gemVal, now);
             }
             if (result.Lbin.Price == default && l.Count > 0)
-            {
-                var now = DateTime.UtcNow;
-                var res = ClosetLbinMapLookup.GetOrAdd(((string, AuctionKey))(auction.Tag, itemKey), a =>
-                {
-                    return ClosestLbin(auction, result, l, itemKey, now);
-                });
-                if (res.addedAt != now)
-                {
-                    result.Lbin = res.result.Lbin;
-                    result.LbinKey = res.result.LbinKey;
-                }
-            }
+                ClosestLbin(auction, result, l, itemKey, DateTime.UtcNow);
             ReferencePrice lbinCap = GetLbinCap(tagGroup.tag, lookup, itemKey);
             if (lbinCap.Price != 0 && result.Lbin.Price > lbinCap.Price + fullRemovableVal)
             {
@@ -995,10 +976,59 @@ ORDER BY l.`AuctionId`  DESC;
             return lbinCap;
         }
 
-        private (PriceEstimate result, DateTime addedAt) GetEstimatedMedian(SaveAuction auction, PriceEstimate result, PriceLookup lookup, KeyWithValueBreakdown itemKey, long gemVal, DateTime now)
+        // Cache only reference selection. Removable values, breakdowns, attribute adjustments and
+        // post-processing belong to the caller and must never mutate a cached PriceEstimate.
+        private sealed record MedianCandidates(
+            (AuctionKey Key, ReferenceAuctions Value) Top,
+            (AuctionKey Key, ReferenceAuctions Value) Lower,
+            Lazy<Scored[]> Ordered);
+
+        private MedianCandidates CreateMedianCandidates(PriceLookup lookup, AuctionKey itemKey, string tag)
+        {
+            closestMedianBruteCounter.Inc();
+            return new(FindClosestArgMax(lookup.Lookup, itemKey, tag),
+                FindLowerMedianCandidate(lookup, itemKey, tag),
+                new Lazy<Scored[]>(() => FindClosestOrdered(lookup.Lookup, itemKey, tag)));
+        }
+
+        private (AuctionKey Key, ReferenceAuctions Value) FindLowerMedianCandidate(PriceLookup lookup, AuctionKey itemKey, string tag)
+        {
+            AuctionKey maxKey = null;
+            ReferenceAuctions maxBucket = null;
+            long maxPrice = 0;
+            // R4 WS-SHARE: flat scan of the shared DominatorIndex. Direction B: candidates DOMINATED BY the query
+            // (Dominates(cand, query) == IsHigherValue(tag, cand, itemKey)) — i.e. lower-value keys the full item
+            // contains. Same filter and first-wins tie order as OrderByDescending(Price).FirstOrDefault().
+            var index = GetOrBuildDominatorIndex(lookup);
+            var query = DominatorIndex.BuildDomKey(itemKey, scoreInterner);
+            ulong qProv = query.ProvidedMask;
+            bool petSpirit = tag == "PET_SPIRIT";
+            int itemKeyReforge = (int)itemKey.Reforge;
+            for (int i = 0; i < index.Count; i++)
+            {
+                if (index.Reforge[i] != itemKeyReforge)
+                    continue;
+                if ((index.RequiredMask[i] & qProv) != index.RequiredMask[i])
+                    continue; // sound presence prefilter (candidate is the base side)
+                if (!DominatorIndex.Dominates(in index.Doms[i], in query, petSpirit))
+                    continue;
+                var bucket = index.Buckets[i];
+                long price = bucket.Price; // LIVE
+                if (maxKey is null || price > maxPrice)
+                {
+                    maxKey = index.Keys[i];
+                    maxBucket = bucket;
+                    maxPrice = price;
+                }
+            }
+            if (VerifyDominatorIndex)
+                AssertDominatorParity(lookup.Lookup, itemKey, tag, index, baseIsQuery: false);
+            return (maxKey, maxBucket);
+        }
+
+        private void GetEstimatedMedian(SaveAuction auction, PriceEstimate result, PriceLookup lookup, KeyWithValueBreakdown itemKey, long gemVal, DateTime now)
         {
             var l = lookup.Lookup;
-            closestMedianBruteCounter.Inc();
             using var searchActivity = activitySource?.StartActivity("ClosestMedianSearch", ActivityKind.Internal);
             var searchStart = Stopwatch.GetTimestamp();
             // The consumer takes the FIRST closest candidate that yields Median > 0 (almost always the single top-scored
@@ -1006,14 +1036,16 @@ ORDER BY l.`AuctionId`  DESC;
             // materialize+sort the full ordered candidate set (FindClosestOrdered) and continue from the SECOND element.
             // Bit-exact: ProcessMedianCandidate is the identical per-candidate body, the arg-max top == FindClosestOrdered's
             // first element (same score, stable first-wins), and the fallback iterates the same order skipping that first.
-            var top = FindClosestArgMax(l, itemKey, auction.Tag);
+            var candidates = ClosetMedianMapLookup.GetOrAdd((auction.Tag, itemKey.Key), _ =>
+                (CreateMedianCandidates(lookup, itemKey.Key, auction.Tag), now)).result;
+            var top = candidates.Top;
             if (top.Key != null)
             {
                 ProcessMedianCandidate(new KeyValuePair<AuctionKey, ReferenceAuctions>(top.Key, top.Value));
                 if (result.Median <= 0)
                 {
                     bool skippedTop = false;
-                    foreach (var scored in FindClosestOrdered(l, itemKey, auction.Tag))
+                    foreach (var scored in candidates.Ordered.Value)
                     {
                         if (!skippedTop) { skippedTop = true; continue; } // first element already processed by the arg-max
                         ProcessMedianCandidate(new KeyValuePair<AuctionKey, ReferenceAuctions>(scored.Key, scored.Value));
@@ -1059,47 +1091,8 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (result.Median > 0)
             {
-                // check lower value keys
-                // R3-READ: single-pass arg-max over the live dict replaces l.Where(IsHigherValue && Reforge match)
-                //   .OrderByDescending(b => b.Value.Price).FirstOrDefault() — the consumer needs only the highest-priced
-                // higher-value bucket, so the Where/OrderBy/FirstOrDefault chain (predicate/selector closures, a full
-                // sort) is replaced by an arg-max. Bit-exact: same filter, same dict-enumeration order, OrderByDescending
-                // is stable so .FirstOrDefault() picks the first source candidate tied for the max Price, which a
-                // strict-'>' first-wins scan reproduces.
-                AuctionKey maxKey = null;
-                ReferenceAuctions maxBucket = null;
-                long maxPrice = 0;
-                // R4 WS-SHARE: flat scan of the shared DominatorIndex. Direction B: candidates DOMINATED BY the query
-                // (Dominates(cand, query) == IsHigherValue(tag, cand, itemKey)) — i.e. lower-value keys the full item
-                // contains. The implicit KeyWithValueBreakdown->AuctionKey conversion is hoisted once (was the dominant
-                // read-path allocator). Bit-exact: same filter (reforge== AND dominance) over the same dict-enumeration
-                // order, strict-'>' first-wins reproduces the stable OrderByDescending(Price).FirstOrDefault(). Price
-                // read LIVE off each bucket; reforge is the immutable cached column.
-                AuctionKey itemKeyAsKey = itemKey;
-                var index = GetOrBuildDominatorIndex(lookup);
-                var query = DominatorIndex.BuildDomKey(itemKeyAsKey, scoreInterner);
-                ulong qProv = query.ProvidedMask;
-                bool petSpirit = auction.Tag == "PET_SPIRIT";
-                int itemKeyReforge = (int)itemKey.Key.Reforge;
-                for (int i = 0; i < index.Count; i++)
-                {
-                    if (index.Reforge[i] != itemKeyReforge)
-                        continue;
-                    if ((index.RequiredMask[i] & qProv) != index.RequiredMask[i])
-                        continue; // sound presence prefilter (candidate is the base side)
-                    if (!DominatorIndex.Dominates(in index.Doms[i], in query, petSpirit))
-                        continue;
-                    var bucket = index.Buckets[i];
-                    long price = bucket.Price; // LIVE
-                    if (maxKey is null || price > maxPrice)
-                    {
-                        maxKey = index.Keys[i];
-                        maxBucket = bucket;
-                        maxPrice = price;
-                    }
-                }
-                if (VerifyDominatorIndex)
-                    AssertDominatorParity(l, itemKeyAsKey, auction.Tag, index, baseIsQuery: false);
+                var maxKey = candidates.Lower.Key;
+                var maxBucket = candidates.Lower.Value;
                 if (maxBucket != null && maxBucket.Price > result.Median)
                 {
                     result.Median = maxBucket.Price;
@@ -1118,12 +1111,10 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
             RecordSearchDuration(closestMedianSearchDuration, searchStart, searchActivity, auction?.Tag, l.Count, "ClosestMedianSearch");
-            return (result, now);
         }
 
-        private (PriceEstimate result, DateTime addedAt) ClosestLbin(SaveAuction auction, PriceEstimate result, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKeyWithValue itemKey, DateTime now)
+        private void ClosestLbin(SaveAuction auction, PriceEstimate result, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKeyWithValue itemKey, DateTime now)
         {
-            closestLbinBruteCounter.Inc();
             using var searchActivity = activitySource?.StartActivity("ClosestLbinSearch", ActivityKind.Internal);
             var searchStart = Stopwatch.GetTimestamp();
             // R3-READ: only the top-1 closest lbin is consumed here, so a single-pass arg-max over the live dict avoids
@@ -1131,7 +1122,11 @@ ORDER BY l.`AuctionId`  DESC;
             // built only to take its first element. Byte-identical: OrderByDescending is stable and .FirstOrDefault()
             // returns the first source element among those tied for the max score, which a strict-'>' first-wins scan
             // reproduces (same filter, same dict-enumeration order, same float key Similarity(key)+Min(Volume,2)).
-            var closest = ClosestLbinArgMax(l, itemKey);
+            var closest = ClosetLbinMapLookup.GetOrAdd((auction.Tag, itemKey), _ =>
+            {
+                closestLbinBruteCounter.Inc();
+                return (ClosestLbinArgMax(l, itemKey), now);
+            }).result;
             if (closest.Key != default)
             {
                 result.Lbin = closest.Value.Lbin;
@@ -1154,7 +1149,6 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
             RecordSearchDuration(closestLbinSearchDuration, searchStart, searchActivity, auction?.Tag, l.Count, "ClosestLbinSearch");
-            return (result, now);
         }
 
         /// <summary>
