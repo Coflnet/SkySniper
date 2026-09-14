@@ -4807,7 +4807,7 @@ ORDER BY l.`AuctionId`  DESC;
             (var maxExp, var second) = HighExp(tag) ? ("7", GoldenDragonMaxExp) : ("6", PetExpMaxlevel);
             var lvl1Key = new AuctionKey(new(), ItemReferences.Reforge.Any, EmptyPetModifiers.ToList(), Tier.LEGENDARY, 1);
             var maxLevel = new AuctionKey(new(), ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>>() { new("exp", maxExp) }, Tier.LEGENDARY, 1);
-            if (Lookups.TryGetValue(tag, out var lookup) && lookup.Lookup.TryGetValue(lvl1Key, out var baseLevel)
+            if (Lookups.TryGetValue(tag, out var lookup) && lookup.Lookup.TryGetValue(lvl1Key, out var baseLevel) && baseLevel.Price > 0
                 && lookup.Lookup.TryGetValue(maxLevel, out var maxLevelValue) && maxLevelValue.Price > 100)
             {
                 var precise = Math.Max((maxLevelValue.Price - baseLevel.Price) / int.Parse(maxExp), 200_000);
@@ -6450,8 +6450,8 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     var lvl1Price = lvl1Bucket.Price;
                     var lvl100Price = lvl100Bucket.Price;
-                    if (lvl100Price <= lvl1Price)
-                        return 0; // inverted or flat market samples cannot price exp
+                    if (lvl1Price <= 0 || lvl100Price <= lvl1Price)
+                        return 0; // unpriced, inverted or flat market samples cannot price exp
                     var accountedFor = double.Parse(key.Modifiers.Where(m => m.Key == "exp").Select(v => v.Value).FirstOrDefault("0"));
                     if (auction.Tier == Tier.EPIC)
                         accountedFor += 1;

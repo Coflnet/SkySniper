@@ -10,6 +10,31 @@ namespace Coflnet.Sky.Sniper.Services;
 
 public class ExpValueTests
 {
+    [TestCase(0, 243_662_568, 0)]
+    [TestCase(233_743_354, 234_103_584, 12_850)]
+    [TestCase(233_743_354, 0, 0)]
+    public void WitchExpRequiresPricedLegendaryEndpoints(long basePrice, long maxPrice, long expected)
+    {
+        var key = new AuctionKey([], ItemReferences.Reforge.Any,
+            [new("exp", "0"), new("candyUsed", "0")], Tier.COMMON, 1);
+        var lookup = new ConcurrentDictionary<AuctionKey, ReferenceAuctions>();
+        lookup[new AuctionKey(key) { Tier = Tier.LEGENDARY }] = new() { Price = basePrice };
+        lookup[new AuctionKey([], ItemReferences.Reforge.Any,
+            [new("exp", "6")], Tier.LEGENDARY, 1)] = new() { Price = maxPrice };
+        var auction = new SaveAuction
+        {
+            Tag = "PET_WITCH",
+            Tier = Tier.COMMON,
+            Count = 1,
+            FlatenedNBT = new() { ["exp"] = "904451.3828946403", ["candyUsed"] = "0" }
+        };
+
+        var method = typeof(SniperService).GetMethod("GetValueDifferenceForExp", BindingFlags.NonPublic | BindingFlags.Static);
+        var expValue = (long)method!.Invoke(null, new object[] { auction, key, lookup })!;
+
+        expValue.Should().Be(expected, "a zero bucket price means unavailable pricing, not a free level-1 pet");
+    }
+
     [Test]
     public void InvertedLegendaryBucketsDoNotAddExpValueToLvl1Pet()
     {

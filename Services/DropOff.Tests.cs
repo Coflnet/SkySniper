@@ -1401,6 +1401,49 @@ public class DropOffTests
     }
 
     [Test]
+    public void WitchUnpricedLegendaryBaselineDoesNotInflateMedianFlip()
+    {
+        var key = new AuctionKey([], ItemReferences.Reforge.Any,
+            [new("exp", "0"), new("candyUsed", "0")], Tier.COMMON, 1);
+        var bucket = new ReferenceAuctions
+        {
+            Price = 12_500_000,
+            References = new(Enumerable.Range(1, 6).Select(i => new ReferencePrice
+            {
+                AuctionId = i, Price = 12_500_000, Day = SniperService.GetDay(), Seller = (short)i
+            }))
+        };
+        // Reconstruct the reported 20,305,214 breakdown weight and 8,692,408 XP
+        // adjustment from an unpriced baseline and a 243,662,568 Legendary max bucket.
+        sniperService.Lookups["PET_WITCH"] = new PriceLookup
+        {
+            Lookup = new(new Dictionary<AuctionKey, ReferenceAuctions>
+            {
+                [key] = bucket,
+                [new AuctionKey(key) { Tier = Tier.LEGENDARY }] = new() { Price = 0 },
+                [new AuctionKey([], ItemReferences.Reforge.Any,
+                    [new("exp", "6")], Tier.LEGENDARY, 1)] = new() { Price = 243_662_568 }
+            })
+        };
+        var auction = new SaveAuction
+        {
+            Tag = "PET_WITCH", Tier = Tier.COMMON, Count = 1,
+            Uuid = "b5daa89654a14fee90ae06c671f2d354", AuctioneerId = "473b0cc6d4eb47d3a5746e1175efa682",
+            StartingBid = 9_999_000,
+            FlatenedNBT = new() { ["exp"] = "904451.3828946403", ["candyUsed"] = "0" }
+        };
+
+        var flip = TestAuctionLoaded(auction);
+
+        flip.TargetPrice.Should().Be(12_500_000, "an unavailable Legendary baseline must not inflate the Common median to 21,192,408");
+        flip.AdditionalProps.Should().NotContainKey("expvalue");
+        var unpricedWeight = sniperService.GetBreakdownKey(key, auction.Tag).ValueBreakdown.First(v => v.Modifier.Key == "exp").Value;
+        sniperService.Lookups[auction.Tag].Lookup.TryRemove(new AuctionKey(key) { Tier = Tier.LEGENDARY }, out _);
+        sniperService.GetBreakdownKey(key, auction.Tag).ValueBreakdown.First(v => v.Modifier.Key == "exp").Value
+            .Should().Be(unpricedWeight, "unpriced and missing endpoints should use the same fallback weight");
+    }
+
+    [Test]
     public void EndermanStonksLevelComparison()
     {
         SetBazaarPrice("ENDERMAN_SLAYER", 400_000); // not on bazaar but for price test enough
