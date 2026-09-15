@@ -5213,8 +5213,12 @@ ORDER BY l.`AuctionId`  DESC;
             var lookup = Lookups.GetOrAdd(itemGroupTag.Item1, key => new PriceLookup());
             var l = lookup.Lookup;
             var cost = auction.StartingBid;
-            var lbinPrice = auction.StartingBid * 1.03 + itemGroupTag.Item2;
-            var medPrice = auction.StartingBid * 1.05 + itemGroupTag.Item2;
+            // Sold references exclude fragments, while live LBINs retain them. Compare medians
+            // in base-item units and restore fragments after the reference/craft caps.
+            var fragmentValue = CombinableStarred.ContainsKey(auction.Tag) ? itemGroupTag.costSubstract : 0;
+            var conversionCost = itemGroupTag.costSubstract - fragmentValue;
+            var lbinPrice = auction.StartingBid * 1.03 + itemGroupTag.costSubstract;
+            var medPrice = auction.StartingBid * 1.05 + conversionCost - fragmentValue;
             var lastKey = new AuctionKey();
             var shouldTryToFindClosest = false;
             var basekey = DetailedKeyFromSaveAuction(auction, fastMode);
@@ -5272,7 +5276,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (triggerEvents)
                 {
                     using var tryFind = !triggerEvents ? null : activitySource?.StartActivity("TryFind", ActivityKind.Internal);
-                    long extraValue = GetExtraValue(auction, key) - itemGroupTag.Item2;
+                    long extraValue = GetExtraValue(auction, key) - conversionCost;
                     var findFlipStart = Stopwatch.GetTimestamp();
                     var foundFlip = FindFlip(auction, lbinPrice, medPrice, bucket, key, lookup, basekey, extraValue, props =>
                     {
@@ -5295,7 +5299,7 @@ ORDER BY l.`AuctionId`  DESC;
             var topAttrib = basekey.ValueBreakdown.FirstOrDefault();
             if (topAttrib != default)
             {
-                medPrice = auction.StartingBid * 1.06 + itemGroupTag.Item2;
+                medPrice = auction.StartingBid * 1.06 + conversionCost - fragmentValue;
                 // R7 WS-C2: both finders re-parse the same auction via GetFullKey and build BuildDomKey(fullKey); share
                 // the full key + its query DomKey across the two calls (built lazily once, after each finder's gates).
                 var fullKeyQuery = new FullKeyQuery();
@@ -7228,6 +7232,13 @@ ORDER BY l.`AuctionId`  DESC;
         // AuctionKey.ToString(). The emitted props are byte-identical (same value, present on every emitted flip).
         private bool FoundAFlip(SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, long targetPrice, Dictionary<string, string> props, AuctionKey keyForProps = null, long extraValueForProps = 0)
         {
+            // SNIPER is capped by live LBINs, whose stored prices already include fragments.
+            if (type != LowPricedAuction.FinderType.SNIPER && CombinableStarred.ContainsKey(auction.Tag))
+            {
+                var fragmentValue = GetAuctionGroupTag(auction.Tag).costSubstract;
+                targetPrice += fragmentValue;
+                props["fragmentValue"] = fragmentValue.ToString();
+            }
             if (targetPrice < MIN_TARGET || targetPrice < auction.StartingBid * 1.03)
             {
                 LogNonFlip(auction, bucket, defaultKey, 0, bucket.Volume, targetPrice, "Target price too low " + targetPrice);

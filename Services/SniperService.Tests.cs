@@ -3228,6 +3228,51 @@ namespace Coflnet.Sky.Sniper
             Assert.That(40_000_000 + 7 * 20_000, Is.EqualTo(price.Median));
         }
 
+        [TestCase("STARRED_BONE_NECKLACE", "LIVID_FRAGMENT", 7_890_000, true)]
+        [TestCase("STARRED_BONE_NECKLACE", "LIVID_FRAGMENT", 8_700_000, true)]
+        [TestCase("STARRED_BONE_NECKLACE", "LIVID_FRAGMENT", 9_100_000, false)]
+        [TestCase("STARRED_GLACIAL_SCYTHE", "WINTER_FRAGMENT", 8_700_000, true)]
+        public void FraggedFlipRestoresNormalizedValue(string tag, string fragment, long bid, bool expected)
+        {
+            // The missed Bone Necklace had an 8,593,873 base median and 839,720 fragment value.
+            SetBazaarPrice(fragment, 119_960);
+            highestValAuction.Tag = tag;
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.HighestBidAmount = 9_433_593;
+            AddVolume(highestValAuction, 8);
+            var auction = Dupplicate(highestValAuction);
+            auction.StartingBid = bid;
+
+            Assert.That(service.GetPrice(auction).Median, Is.EqualTo(9_433_593));
+            service.TestNewAuction(auction);
+
+            var medians = found.Where(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).ToList();
+            Assert.That(medians.Any(), Is.EqualTo(expected));
+            if (expected)
+                Assert.That(medians.Single().TargetPrice, Is.EqualTo(9_433_593));
+        }
+
+        [Test]
+        public void FraggedSnipeDoesNotAddFragmentsAboveLiveLbin()
+        {
+            SetBazaarPrice("LIVID_FRAGMENT", 119_960);
+            highestValAuction.Tag = "STARRED_BONE_NECKLACE";
+            highestValAuction.FlatenedNBT = new();
+            highestValAuction.HighestBidAmount = 9_433_593;
+            AddVolume(highestValAuction, 8);
+            var bucket = service.GetBucketForAuction(highestValAuction).auctions;
+            bucket.Lbins.Add(new ReferencePrice { AuctionId = 42, Price = 8_700_000 });
+            var auction = Dupplicate(highestValAuction);
+            auction.StartingBid = 7_000_000;
+
+            service.TestNewAuction(auction);
+
+            var snipe = found.Single(f => f.Finder == LowPricedAuction.FinderType.SNIPER);
+            Assert.That(snipe.TargetPrice, Is.LessThan(8_700_000));
+            Assert.That(found.Single(f => f.Finder == LowPricedAuction.FinderType.SNIPER_MEDIAN).TargetPrice,
+                Is.EqualTo(9_433_593));
+        }
+
         [Test]
         public void RemovedFraggedValue()
         {
