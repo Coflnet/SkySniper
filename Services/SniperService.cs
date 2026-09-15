@@ -1953,7 +1953,9 @@ ORDER BY l.`AuctionId`  DESC;
         {
             UpdateFraggedAndRune(auction.Tag);
             (ReferenceAuctions bucket, var key) = GetBucketForAuction(auction);
-            var extraValue = GetExtraValue(auction, key);
+            // HandleGems already includes priced Perfect gems in key.ValueSubstract.
+            // Flawless gems and other removable items still need their separate deduction.
+            var extraValue = GetRemovableItemValue(auction) + GetGemValue(auction, key, includePerfect: false);
             var time = AddAuctionToBucket(auction, preventMedianUpdate, bucket, key.ValueSubstract, extraValue);
             HigherValueLbinMapLookup.TryRemove(((string, AuctionKey))(auction.Tag, key), out _);
             try
@@ -6149,6 +6151,9 @@ ORDER BY l.`AuctionId`  DESC;
         }
 
         private long GetExtraValue(SaveAuction auction, AuctionKey key)
+            => GetRemovableItemValue(auction) + GetGemValue(auction, key);
+
+        private long GetRemovableItemValue(SaveAuction auction)
         {
             long extraValue = 0;
             var flatNbt = auction.FlatenedNBT;
@@ -6186,7 +6191,7 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
 
-            return extraValue + GetGemValue(auction, key);
+            return extraValue;
         }
 
         /// <summary>
@@ -6294,6 +6299,9 @@ ORDER BY l.`AuctionId`  DESC;
         }
 
         public long GetGemValue(SaveAuction auction, AuctionKey key)
+            => GetGemValue(auction, key, includePerfect: true);
+
+        private long GetGemValue(SaveAuction auction, AuctionKey key, bool includePerfect)
         {
             var gemValue = 0L;
             var flatNbt = auction.FlatenedNBT;
@@ -6304,6 +6312,8 @@ ORDER BY l.`AuctionId`  DESC;
             foreach (var item in flatNbt)
             {
                 if (item.Value != "PERFECT" && item.Value != "FLAWLESS")
+                    continue;
+                if (!includePerfect && item.Value == "PERFECT")
                     continue;
 
                 if (ContainsModifierKey(modifiers, item.Key))
