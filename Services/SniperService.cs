@@ -6634,12 +6634,24 @@ ORDER BY l.`AuctionId`  DESC;
         {
             var l = lookup.Lookup;
             var lowestHigherBin = GetLbinCap(groupTag.tag, lookup, breakdown);
-            var higherValueLowerBin = bucket.Lbin.Price;
+            var lbinReference = bucket.Lbin;
+            if (!HasReference(lbinReference))
+                lbinReference = default;
+            if (!HasReference(lowestHigherBin))
+                lowestHigherBin = default;
+            var higherValueLowerBin = lbinReference.Price;
             if (lowestHigherBin.AuctionId != default)
                 if (lowestHigherBin.Price < lbinPrice)
                     return false;
                 else if (higherValueLowerBin > lowestHigherBin.Price || higherValueLowerBin == 0)
+                {
                     higherValueLowerBin = lowestHigherBin.Price;
+                    lbinReference = lowestHigherBin;
+                }
+
+            // Craft costs and sales of better variants cannot replace a listing-backed snipe.
+            if (lbinReference.AuctionId == default)
+                return false;
 
             if (IsStacksize1Cheaper(lbinPrice, key, l))
             {
@@ -6728,7 +6740,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (percentile < lbinPrice)
                     return false; // to low already don't waste time
                 // gate passed -> now allocate the props dict and replay the deferred writes in the ORIGINAL insertion order
-                props = CreateReference(bucket.Lbin.AuctionId, key, extraValue, bucket);
+                props = CreateReference(lbinReference.AuctionId, key, extraValue, bucket);
                 props["mVal"] = bucket.Price.ToString();
                 props["hvlbin"] = hvlbinProp;
                 if (sellerMatchProp != null)
@@ -6772,7 +6784,7 @@ ORDER BY l.`AuctionId`  DESC;
             else
             {
                 // the else branch has no reject gate before FoundAFlip, so allocate + replay mVal/hvlbin here (same order)
-                props = CreateReference(bucket.Lbin.AuctionId, key, extraValue, bucket);
+                props = CreateReference(lbinReference.AuctionId, key, extraValue, bucket);
                 props["mVal"] = bucket.Price.ToString();
                 props["hvlbin"] = hvlbinProp;
                 CapHighValue(groupTag, bucket, key, breakdown, higherValueLowerBin, ref targetPrice, ref percentile, props);
@@ -6780,6 +6792,9 @@ ORDER BY l.`AuctionId`  DESC;
             props["percentile"] = percentile.ToString();
             targetPrice = Math.Min(targetPrice, percentile);
             return FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER, targetPrice, props, key, extraValue);
+
+            bool HasReference(ReferencePrice reference) => reference.Price > 0
+                && reference.AuctionId != default && reference.AuctionId != auction.UId;
         }
 
         // ===== R2-B: de-LINQ'd PotentialSnipe percentile / higher-value-scan helpers =====

@@ -24,6 +24,7 @@ public interface ISelfLearningFlipFinderService
     Task TrainAsync(ComplicatedFlip flip, CancellationToken cancellationToken = default);
     Task TrainBatchAsync(IEnumerable<ComplicatedFlip> flips, CancellationToken cancellationToken = default);
     Task<SelfLearningFlipEstimate?> EstimateAsync(ComplicatedFlip flip, CancellationToken cancellationToken = default);
+    SelfLearningFlipEstimate? EstimateReady(ComplicatedFlip flip, CancellationToken cancellationToken = default) => null;
     SelfLearningFlipModelSnapshot GetSnapshot();
     IReadOnlyDictionary<string, SelfLearningFlipFinderService.ModelStats> GetModelStats();
     Task PersistModelAsync(string? tag = null);
@@ -51,15 +52,17 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     private readonly Dictionary<string, List<FlipData>> trainingDataByItem = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Dictionary<string, int>> featureIndexByItem = new(StringComparer.OrdinalIgnoreCase);
     private readonly object predictionSync = new();
+    // Each published engine keeps the exact schema and metadata it was fitted with. Training
+    // may expand its mutable feature index while this snapshot continues serving predictions.
+    private sealed record ReadyModel(PredictionEngine<FlipData, FlipPrediction> Engine,
+        Dictionary<string, int> Features, int VectorSize, int SampleCount, ModelMetrics? Metrics, float MaxLabel);
+    private readonly Dictionary<string, ReadyModel> readyModels = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, ITransformer?> models = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, PredictionEngine<FlipData, FlipPrediction>?> predictionEngines = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, ModelMetrics?> lastMetricsByItem = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, DateTime> lastPersistedByTag = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> loadedTags = new(StringComparer.OrdinalIgnoreCase);
     // Track last time a model refit was performed per tag to avoid excessive retraining
     private readonly Dictionary<string, DateTime> lastRefitByTag = new(StringComparer.OrdinalIgnoreCase);
-    // Track the expected feature vector size for each model's prediction engine
-    private readonly Dictionary<string, int> modelVectorSizeByTag = new(StringComparer.OrdinalIgnoreCase);
     // Track the maximum sold price observed in training data per tag to cap unrealistic predictions
     private readonly Dictionary<string, float> maxTrainingLabelByTag = new(StringComparer.OrdinalIgnoreCase);
     // Serializes access to the combined metadata blob to prevent concurrent S3 writes
@@ -607,6 +610,10 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
 
         cancellationToken.ThrowIfCancellationRequested();
 
+        var ready = EstimateReady(flip, cancellationToken);
+        if (ready is not null)
+            return Task.FromResult<SelfLearningFlipEstimate?>(ready);
+
         gate.EnterReadLock();
         try
         {
@@ -656,49 +663,61 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 models.TryGetValue(tag, out tagModel);
             }
 
-            if (tagModel is null || !predictionEngines.TryGetValue(tag, out var tagEngine) || fIndex.Count == 0 || list.Count < minSamplesForTraining)
-            {
-                return Task.FromResult<SelfLearningFlipEstimate?>(new SelfLearningFlipEstimate(baseline, baseline, false, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
-            }
-
-            var attrs = new Dictionary<string, long>(flip.AttributeValues ?? new Dictionary<string, long>());
-
-            // Use the exact vector size the model expects (from when it was trained/loaded)
-            // This prevents errors when new features appear that weren't in the training data
-            var expectedVectorSize = modelVectorSizeByTag.GetValueOrDefault(tag, fIndex.Count);
-            var features = CreateFeatureVectorForPrediction(attrs, fIndex, expectedVectorSize);
-
-            if (features.Length != expectedVectorSize)
-            {
-                logger.LogWarning("Feature vector size mismatch for {Tag}: created {ActualSize}, expected {ExpectedSize}",
-                    tag, features.Length, expectedVectorSize);
-                return Task.FromResult<SelfLearningFlipEstimate?>(new SelfLearningFlipEstimate(baseline, baseline, false, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
-            }
-
-            FlipPrediction prediction;
-            lock (predictionSync)
-            {
-                prediction = tagEngine!.Predict(new FlipData { Features = features });
-                logger.LogInformation("Prediction for {Tag}: {Score} (baseline {Baseline})", tag, prediction.Score, baseline);
-            }
-            var score = double.IsNaN(prediction.Score) || prediction.Score <= 0 ? baseline : prediction.Score;
-
-            // Cap prediction to 1.5x the maximum sold price seen in training data.
-            // Prevents items like SKELETON_MASTER_CHESTPLATE from being valued at billions
-            // when no training sample supports such a price (attributes defaulting to high estimates).
-            if (maxTrainingLabelByTag.TryGetValue(tag, out var maxLabel) && maxLabel > 0 && score > maxLabel * 1.5f)
-            {
-                logger.LogWarning("AI prediction for {Tag} capped from {OriginalScore:F0} to {CappedScore:F0} (max training label: {MaxLabel:F0}, attrs: {Attrs})",
-                    tag, score, maxLabel * 1.5f, maxLabel,
-                    string.Join(", ", (flip.AttributeValues ?? new Dictionary<string, long>()).Select(kv => $"{kv.Key}={kv.Value}")));
-                score = maxLabel * 1.5f;
-            }
-
-            return Task.FromResult<SelfLearningFlipEstimate?>(new SelfLearningFlipEstimate(score, baseline, true, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
+            return Task.FromResult<SelfLearningFlipEstimate?>(EstimateReady(flip, cancellationToken)
+                ?? new SelfLearningFlipEstimate(baseline, baseline, false, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
         }
         finally
         {
             gate.ExitReadLock();
+        }
+    }
+
+    /// <summary>Uses an already published model only: never loads, refits, or waits for training/storage.</summary>
+    public SelfLearningFlipEstimate? EstimateReady(ComplicatedFlip flip, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(flip);
+        ObjectDisposedException.ThrowIf(disposed, this);
+        cancellationToken.ThrowIfCancellationRequested();
+        var baseline = ComputeBaseline(flip);
+        lock (predictionSync)
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
+            if (!readyModels.TryGetValue(flip.ItemTag ?? "_global", out var ready))
+                return null;
+            var features = CreateFeatureVectorForPrediction(
+                flip.AttributeValues ?? new Dictionary<string, long>(), ready.Features, ready.VectorSize);
+            var score = ready.Engine.Predict(new FlipData { Features = features }).Score;
+            if (!float.IsFinite(score) || score <= 0)
+                return null;
+            if (ready.MaxLabel > 0)
+                score = Math.Min(score, ready.MaxLabel * 1.5f);
+            return new SelfLearningFlipEstimate(score, baseline, true, ready.SampleCount, ready.Metrics);
+        }
+    }
+
+    private void PublishPrediction(string tag, ITransformer model, SchemaDefinition schema,
+        Dictionary<string, int> features, int vectorSize, int sampleCount, ModelMetrics? metrics, float maxLabel)
+    {
+        var engine = mlContext.Model.CreatePredictionEngine<FlipData, FlipPrediction>(model,
+            ignoreMissingColumns: false, schema, null);
+        var ready = new ReadyModel(engine, new Dictionary<string, int>(features, StringComparer.OrdinalIgnoreCase),
+            vectorSize, sampleCount, metrics, maxLabel);
+        lock (predictionSync)
+        {
+            if (disposed)
+            {
+                engine.Dispose();
+                return;
+            }
+            readyModels.TryGetValue(tag, out var previous);
+            previous?.Engine.Dispose();
+            if (sampleCount >= minSamplesForTraining && features.Count > 0 && vectorSize > 0)
+                readyModels[tag] = ready;
+            else
+            {
+                readyModels.Remove(tag);
+                engine.Dispose();
+            }
         }
     }
 
@@ -732,7 +751,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         {
             RefitModel(tag);
             var hasModel = models.TryGetValue(tag, out var m) && m is not null;
-            var hasEngine = predictionEngines.TryGetValue(tag, out var e) && e is not null;
+            bool hasEngine;
+            lock (predictionSync) hasEngine = readyModels.ContainsKey(tag);
             // diagnostics removed
             return Task.FromResult(hasModel && hasEngine);
         }
@@ -851,12 +871,10 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             models[tag] = null;
             lock (predictionSync)
             {
-                predictionEngines.TryGetValue(tag, out var eng);
-                eng?.Dispose();
-                predictionEngines[tag] = null;
+                if (readyModels.Remove(tag, out var ready))
+                    ready.Engine.Dispose();
             }
             lastMetricsByItem[tag] = null;
-            modelVectorSizeByTag.Remove(tag);
             return;
         }
         // mark that we're about to refit this tag to avoid concurrent/rapid re-fits
@@ -894,18 +912,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         try
         {
             tagModel = pipeline.Fit(dataView);
-            lock (predictionSync)
-            {
-                predictionEngines.TryGetValue(tag, out var existing);
-                existing?.Dispose();
-                // use the same schema definition we used to create the IDataView so the Features vector has a fixed size
-                predictionEngines[tag] = mlContext.Model.CreatePredictionEngine<FlipData, FlipPrediction>(tagModel, ignoreMissingColumns: false, schema, null);
-            }
 
             models[tag] = tagModel;
-
-            // Store the expected vector size for this model
-            modelVectorSizeByTag[tag] = featureCount;
 
             logger.LogDebug("Stored model vector size for {Tag}: {VectorSize} features", tag, featureCount);
 
@@ -913,6 +921,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             rmse = metrics?.RootMeanSquaredError ?? double.NaN;
             r2 = metrics?.RSquared ?? double.NaN;
             lastMetricsByItem[tag] = new ModelMetrics(rmse, r2);
+            PublishPrediction(tag, tagModel, schema, fIndex!, featureCount, list.Count,
+                lastMetricsByItem[tag], maxLabel);
 
             logger.LogInformation("Trained FastTree model for {Tag}: {SampleCount} samples, {FeatureCount} features, RMSE={Rmse:F2}, R²={R2:F3}",
                 tag, list.Count, featureCount, rmse, r2);
@@ -937,12 +947,10 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         models[tag] = null;
         lock (predictionSync)
         {
-            predictionEngines.TryGetValue(tag, out var engine);
-            engine?.Dispose();
-            predictionEngines[tag] = null;
+            if (readyModels.Remove(tag, out var ready))
+                ready.Engine.Dispose();
         }
         lastMetricsByItem[tag] = null;
-        modelVectorSizeByTag.Remove(tag);
     }
 
     /// <summary>
@@ -974,6 +982,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             {
                 FeatureNames = featureIndex.OrderBy(kv => kv.Value).Select(kv => kv.Key).ToArray(),
                 SampleCount = trainingData.Count,
+                MaxTrainingLabel = maxTrainingLabelByTag.GetValueOrDefault(tag),
                 Rmse = double.IsNaN(rmse) ? null : rmse,
                 RSquared = double.IsNaN(rSquared) ? null : rSquared
             };
@@ -1036,100 +1045,61 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
 
     private async Task LoadPersistedModelIfExists(string tag)
     {
-        // Ensure we only try to load once per tag during service lifetime
-        if (!loadedTags.Add(tag))
-            return;
+        gate.EnterWriteLock();
+        try
+        {
+            if (!loadedTags.Add(tag))
+                return;
+        }
+        finally { gate.ExitWriteLock(); }
 
         try
         {
+            PersistMeta? metadata = null;
             try
             {
-                var combinedStream = await persitance.LoadBlob("selflearning/meta/all");
+                using var combinedStream = await persitance.LoadBlob("selflearning/meta/all");
                 if (combinedStream is not null)
-                {
-                    var combined = MessagePack.MessagePackSerializer.Deserialize<Dictionary<string, PersistMeta>>(combinedStream);
-                    if (combined != null && combined.TryGetValue(tag, out var meta))
-                    {
-                        var fIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-                        for (int i = 0; i < meta.FeatureNames.Length; i++)
-                            fIndex[meta.FeatureNames[i]] = i;
-                        featureIndexByItem[tag] = fIndex;
-                        trainingDataByItem.TryGetValue(tag, out var list);
-                        if (meta.Rmse.HasValue || meta.RSquared.HasValue)
-                        {
-                            lastMetricsByItem[tag] = new ModelMetrics(meta.Rmse ?? double.NaN, meta.RSquared ?? double.NaN);
-                        }
-                        else
-                        {
-                            lastMetricsByItem[tag] = new ModelMetrics(double.NaN, double.NaN);
-                        }
-                    }
-                }
+                    metadata = MessagePackSerializer.Deserialize<Dictionary<string, PersistMeta>>(combinedStream).GetValueOrDefault(tag);
             }
             catch (Exception ex)
             {
                 logger.LogDebug(ex, "No persisted combined model/meta available");
             }
-
-            var modelStream = await persitance.LoadBlob($"selflearning/model/{tag}");
-            if (modelStream is not null)
+            using var modelStream = await persitance.LoadBlob($"selflearning/model/{tag}");
+            // Disk I/O is complete before taking the maintenance lock. Ready inference never
+            // takes this lock, and a newer model fitted while loading must not be replaced.
+            gate.EnterWriteLock();
+            try
             {
-                var tagModel = mlContext.Model.Load(modelStream, out var schema);
-                models[tag] = tagModel;
-                lock (predictionSync)
+                if (models.TryGetValue(tag, out var current) && current is not null)
+                    return;
+                if (modelStream is null)
                 {
-                    var inputSchema = SchemaDefinition.Create(typeof(FlipData));
-
-                    // Try to read the feature vector size from the loaded model schema. If unavailable,
-                    // fall back to the stored feature index size for this tag (if present) or 0.
-                    int vectorSize = -1;
-                    var col = schema.GetColumnOrNull(nameof(FlipData.Features));
-                    if (col.HasValue && col.Value.Type is VectorDataViewType v)
-                    {
-                        vectorSize = v.Size;
-                    }
-
-                    if (vectorSize <= 0)
-                    {
-                        // fallback to feature index count if we have it
-                        if (!featureIndexByItem.TryGetValue(tag, out var fIndex))
-                        {
-                            fIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-                            featureIndexByItem[tag] = fIndex;
-                        }
-                        vectorSize = fIndex.Count;
-                    }
-
-                    inputSchema[nameof(FlipData.Features)].ColumnType = new VectorDataViewType(NumberDataViewType.Single, Math.Max(0, vectorSize));
-                    predictionEngines[tag] = mlContext.Model.CreatePredictionEngine<FlipData, FlipPrediction>(tagModel, ignoreMissingColumns: false, inputSchema, null);
-
-                    // Store the expected vector size for this loaded model
-                    modelVectorSizeByTag[tag] = vectorSize;
-
-                    logger.LogInformation("Loaded persisted model for {Tag} with {VectorSize} features", tag, vectorSize);
+                    RefitModel(tag, forcePersist: true);
+                    return;
                 }
+                if (metadata is null || metadata.FeatureNames.Length == 0)
+                    return; // a model without its feature mapping cannot serve predictions
+                var model = mlContext.Model.Load(modelStream, out var schema);
+                var column = schema.GetColumnOrNull(nameof(FlipData.Features));
+                var size = column?.Type is VectorDataViewType vector ? vector.Size : 0;
+                if (size != metadata.FeatureNames.Length)
+                    return;
+                var features = metadata.FeatureNames.Select((name, index) => (name, index))
+                    .ToDictionary(pair => pair.name, pair => pair.index, StringComparer.OrdinalIgnoreCase);
+                var metrics = new ModelMetrics(metadata.Rmse ?? double.NaN, metadata.RSquared ?? double.NaN);
+                var inputSchema = SchemaDefinition.Create(typeof(FlipData));
+                inputSchema[nameof(FlipData.Features)].ColumnType = new VectorDataViewType(NumberDataViewType.Single, size);
+                // Keep the mutable training feature map separate: its pending samples may use
+                // a different schema from the persisted model's immutable serving snapshot.
+                PublishPrediction(tag, model, inputSchema, features, size, metadata.SampleCount, metrics, metadata.MaxTrainingLabel);
+                models[tag] = model;
+                lastMetricsByItem[tag] = metrics;
+                maxTrainingLabelByTag[tag] = metadata.MaxTrainingLabel;
+                logger.LogInformation("Loaded persisted model for {Tag} with {VectorSize} features", tag, size);
             }
-            else
-            {
-                // if there's no model on disk but we have enough in-memory data, refit and persist once
-                if (featureIndexByItem.TryGetValue(tag, out var fIndex) && trainingDataByItem.TryGetValue(tag, out var list) && fIndex.Count > 0 && list.Count >= minSamplesForTraining)
-                {
-                    // upgrade to write lock to refit and persist
-                    gate.EnterWriteLock();
-                    try
-                    {
-                        RefitModel(tag, forcePersist: true);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogWarning(ex, "Refit during load failed for {Tag}", tag);
-                    }
-                    finally
-                    {
-                        gate.ExitWriteLock();
-                    }
-                }
-            }
+            finally { gate.ExitWriteLock(); }
         }
         catch (Exception ex)
         {
@@ -1188,11 +1158,9 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         disposed = true;
         lock (predictionSync)
         {
-            foreach (var eng in predictionEngines.Values)
-            {
-                eng?.Dispose();
-            }
-            predictionEngines.Clear();
+            foreach (var ready in readyModels.Values)
+                ready.Engine.Dispose();
+            readyModels.Clear();
         }
         gate.Dispose();
     }
@@ -1217,6 +1185,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         public double? Rmse { get; set; }
         [Key(3)]
         public double? RSquared { get; set; }
+        [Key(4)]
+        public float MaxTrainingLabel { get; set; }
     }
 
     private sealed class FlipData
