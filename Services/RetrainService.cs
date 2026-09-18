@@ -49,7 +49,7 @@ public class RetrainService : BackgroundService
 
     public void SheduleRetrain(string tag)
     {
-        if (!partialCalcService.ItemKeys.Contains(tag))
+        if (!internalDataLoader.flipFinder.IsRelevantItem(tag))
         {
             logger.LogWarning("Blocked retrain for unknown item " + tag);
             return;

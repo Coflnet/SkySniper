@@ -234,15 +234,9 @@ namespace Coflnet.Sky.Sniper.Services
                                 logger.LogError(e, "shard worker failed processing a new-auction batch");
                             }
 
-                            // Phase 3: CheckForPartial runs HERE — on the consumer thread, after the batch has fully
-                            // drained — NOT on the shard workers. Rationale (threading decision): CheckForPartial calls
-                            // the ML flip finder (flipFinder.EstimateAsync) and writes to the shared Kafka FlipProducer
-                            // via Produceflip; neither is contended-safe to run from N worker threads, and its blocking
-                            // .GetAwaiter().GetResult() would stall a shard worker (serializing that worker's whole tag
-                            // queue and killing throughput scaling). It is also OFF the snipe-finding path the dispatcher
-                            // parallelizes, so keeping it single-threaded here preserves both its original semantics and
-                            // the bit-exact snipe-set parity. It runs strictly after drain, so prices it reads from the
-                            // sniper reflect this batch's writes — identical ordering to the original foreach.
+                            // Ready-model inference runs before committing this batch, after its pricing writes.
+                            // It must never load/train/persist models here: that stalls consumption of NEW_AUCTION.
+                            // Keep supported SNIPER results first; reference-free candidates fall through to AI.
                             foreach (var a in kept)
                             {
                                 try
@@ -278,11 +272,11 @@ namespace Coflnet.Sky.Sniper.Services
 
         private void CheckForPartial(SaveAuction a)
         {
-            if (!flipFinder.IsRelevantItem(a.Tag))
+            if (!ShouldProduceFound() || !flipFinder.IsRelevantItem(a.Tag))
                 return;
             var cflip = SaveAuctionExtensions.ToComplicatedFlip(a, includeBreakdown: true, sniper: sniper, mayorService: mayorService, craftCostService: craftCostService);
-            var estimate = flipFinder.EstimateAsync(cflip).GetAwaiter().GetResult();
-            if (estimate == null)
+            var estimate = flipFinder.EstimateReady(cflip);
+            if (estimate == null || !estimate.ModelReady || !double.IsFinite(estimate.EstimatedValue) || estimate.EstimatedValue <= 0)
                 return;
             // Exclude candyUsed from the attribute sum cap — its weight is a pricing signal
             // for the ML model, not an actual coin value. Including it inflates the cap
@@ -307,7 +301,7 @@ namespace Coflnet.Sky.Sniper.Services
                 var flip = new LowPricedAuction()
                 {
                     Auction = a,
-                    AdditionalProps = new() { { "samples", JsonConvert.SerializeObject(estimate)}, {"cflip", JsonConvert.SerializeObject(cflip)} },
+                    AdditionalProps = new() { { "samples", JsonConvert.SerializeObject(estimate)}, {"cflip", JsonConvert.SerializeObject(cflip)}, { "server", sniper.ServerDnsName } },
                     Finder = LowPricedAuction.FinderType.AI,
                     TargetPrice = (long)(value * 0.9)
                 };
