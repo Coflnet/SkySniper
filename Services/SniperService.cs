@@ -4810,18 +4810,31 @@ ORDER BY l.`AuctionId`  DESC;
 
         private int GetExpValue(string tag, KeyValuePair<string, string> mod)
         {
-            (var maxExp, var second) = HighExp(tag) ? ("7", GoldenDragonMaxExp) : ("6", PetExpMaxlevel);
-            var lvl1Key = new AuctionKey(new(), ItemReferences.Reforge.Any, EmptyPetModifiers.ToList(), Tier.LEGENDARY, 1);
-            var maxLevel = new AuctionKey(new(), ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>>() { new("exp", maxExp) }, Tier.LEGENDARY, 1);
-            if (Lookups.TryGetValue(tag, out var lookup) && lookup.Lookup.TryGetValue(lvl1Key, out var baseLevel) && baseLevel.Price > 0
-                && lookup.Lookup.TryGetValue(maxLevel, out var maxLevelValue) && maxLevelValue.Price > 100)
-            {
-                var precise = Math.Max((maxLevelValue.Price - baseLevel.Price) / int.Parse(maxExp), 200_000);
-                return (int)(precise * Math.Max(float.Parse(mod.Value, CultureInfo.InvariantCulture), 0.5));
-            }
+            if (TryGetTierExpValue(tag, Tier.LEGENDARY, mod, out var value, out _))
+                return value;
             var factor = Math.Max(GetPriceForItem(tag) / 6, 10_000_000);
-            var value = (int)(factor * (float.Parse(mod.Value) + 1));
-            return value;
+            return (int)(factor * (float.Parse(mod.Value) + 1));
+        }
+
+        /// <summary>
+        /// Values the exp bucket <paramref name="mod"/> from the level 1 to max level price spread of <paramref name="tier"/>
+        /// </summary>
+        /// <param name="lvl1Price">price of the level 1 pet of <paramref name="tier"/></param>
+        /// <returns>false when either bucket of that tier is unpriced</returns>
+        public bool TryGetTierExpValue(string tag, Tier tier, KeyValuePair<string, string> mod, out int value, out long lvl1Price)
+        {
+            value = 0;
+            lvl1Price = 0;
+            var maxExp = HighExp(tag) ? "7" : "6";
+            var lvl1Key = new AuctionKey(new(), ItemReferences.Reforge.Any, EmptyPetModifiers.ToList(), tier, 1);
+            var maxLevel = new AuctionKey(new(), ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>>() { new("exp", maxExp) }, tier, 1);
+            if (!Lookups.TryGetValue(tag, out var lookup) || !lookup.Lookup.TryGetValue(lvl1Key, out var baseLevel) || baseLevel.Price <= 0
+                || !lookup.Lookup.TryGetValue(maxLevel, out var maxLevelValue) || maxLevelValue.Price <= 100)
+                return false;
+            lvl1Price = baseLevel.Price;
+            var precise = Math.Max((maxLevelValue.Price - baseLevel.Price) / int.Parse(maxExp), 200_000);
+            value = (int)(precise * Math.Max(float.Parse(mod.Value, CultureInfo.InvariantCulture), 0.5));
+            return true;
         }
 
         private static bool HighExp(string tag)

@@ -26,6 +26,7 @@ public static class SaveAuctionExtensions
             if (sniper == null) throw new ArgumentNullException(nameof(sniper), "sniper is required when includeBreakdown is true");
 
             var withBreakdown = sniper.ValueKeyForTest(auction);
+            long petBasePrice = 0;
             // Use 1 as a presence indicator for categorical features (pet tier, mayor)
             // that don't have a meaningful numeric value.
             const long presenceFlag = 1L;
@@ -52,6 +53,12 @@ public static class SaveAuctionExtensions
                     // can still learn from the candy state without the inflated value.
                     attrs[key] = 1L;
                 }
+                else if (x.Modifier.Key == "exp" && sniper.TryGetTierExpValue(auction.Tag, withBreakdown.Key.Tier, x.Modifier, out var tierExpValue, out petBasePrice))
+                {
+                    // The breakdown prices exp from legendary buckets, which inflates the value
+                    // (and the AI finder's attribute sum cap) of lower tier pets.
+                    attrs[key] = tierExpValue;
+                }
                 else
                 {
                     attrs[key] = x.Value;
@@ -66,6 +73,8 @@ public static class SaveAuctionExtensions
 
             if (craftCostService != null && craftCostService.TryGetCost(auction.Tag, out var cost))
                 attrs["cleancost"] = (long)cost;
+            else if (petBasePrice > 0)
+                attrs["cleancost"] = petBasePrice; // the level 1 pet of this tier is the clean item
         }
         else
         {
