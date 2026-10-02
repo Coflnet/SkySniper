@@ -115,7 +115,7 @@ public class ExpValueTests
 
     [TestCase(80_000_000, 183_583_332, 197_539_376)]
     [TestCase(165_000_000, 183_583_332, 197_539_376)] // worth more than the epic pet is above the rare one
-    [TestCase(80_000_000, 86_000_000, 93_078_304)] // epic priced like rare leaves no room for the boost
+    [TestCase(80_000_000, 86_000_000, 93_078_304)] // epic priced like rare leaves only the presence flag
     public void AiTierFlagIgnoresTierBoost(long boostPrice, long epicBasePrice, long epicMaxPrice)
     {
         var service = new SniperService(new HypixelItemService(null, NullLogger<HypixelItemService>.Instance), null, NullLogger<SniperService>.Instance, null);
@@ -159,9 +159,9 @@ public class ExpValueTests
         boosted.Keys.Should().Contain("tier:RARE", "a tier boosted rare is still a rare pet").And.NotContain("tier:EPIC");
         plain.Keys.Should().Contain("tier:RARE").And.NotContain("petItem:TIER_BOOST");
         unpricedBoost.Should().Contain("petItem:TIER_BOOST", 1L, "without a known price the boost is only a presence flag");
-        var boostValue = Math.Min(boostPrice, tierSpread); // 0 when the tiers are priced the same
+        var boostValue = Math.Max(Math.Min(boostPrice, tierSpread), 1L); // never 0, that reads as no boost
         boosted.Should().Contain("petItem:TIER_BOOST", boostValue, "the boost carries its item price, bounded by the tier spread");
         boosted.Values.Sum().Should().Be(plain.Values.Sum() + boostValue, "the cap is the plain pet of the real tier plus the boost")
-            .And.BeLessThanOrEqualTo(realEpic.Values.Sum(), "a boosted rare is not capped above a real epic");
+            .And.BeLessThanOrEqualTo(Math.Max(realEpic.Values.Sum(), plain.Values.Sum() + 1L), "a boosted rare is not capped above a real epic, except by the presence flag");
     }
 }

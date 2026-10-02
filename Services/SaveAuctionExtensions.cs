@@ -119,7 +119,7 @@ public static class SaveAuctionExtensions
     /// <summary>
     /// The price of the tier boost item, at most what a real pet of the displayed tier is worth more
     /// than the pet without its boost so the attribute sum does not exceed that pet's.
-    /// Only the presence flag if no price is known.
+    /// Only the presence flag if no price is known or the displayed tier is not worth more.
     /// </summary>
     private static long GetTierBoostValue(SaveAuction auction, SniperService sniper, KeyValuePair<string, string>? tierPricedExp, ICraftCostService? craftCostService, long presenceFlag)
     {
@@ -132,6 +132,6 @@ public static class SaveAuctionExtensions
         long spread = displayedExp - realExp;
         if (craftCostService?.TryGetCost(auction.Tag, out _) != true)
             spread += displayedBase - realBase; // cleancost is the level 1 pet of the tier
-        return Math.Max(Math.Min(value, spread), 0);
+        return Math.Max(Math.Min(value, spread), presenceFlag); // 0 would read as no boost
     }
 }
