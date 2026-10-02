@@ -65,7 +65,7 @@ public static class SaveAuctionExtensions
                 }
             }
             if(auction.Tag.StartsWith("PET_"))
-                attrs["tier:" + auction.Tier] = presenceFlag;
+                AddPetTierFlags(auction, attrs, presenceFlag);
 
             var mayor = mayorService?.GetMayor(auction.End);
             if (mayor != null && RelevantMayors.Contains(mayor))
@@ -94,5 +94,18 @@ public static class SaveAuctionExtensions
         };
     }
 
-    
+    /// <summary>
+    /// Flags the tier the pet has without its tier boost and the boost itself as separate features,
+    /// so a boosted pet is not learned (or estimated) as a pet of the higher tier.
+    /// </summary>
+    private static void AddPetTierFlags(SaveAuction auction, Dictionary<string, long> attrs, long presenceFlag)
+    {
+        var tier = auction.Tier;
+        if (auction.FlatenedNBT?.TryGetValue("heldItem", out var heldItem) == true && heldItem == "PET_ITEM_TIER_BOOST")
+        {
+            tier = SniperService.ReduceRarity(tier);
+            attrs[$"{SniperService.PetItemKey}:{SniperService.TierBoostShorthand}"] = presenceFlag;
+        }
+        attrs["tier:" + tier] = presenceFlag;
+    }
 }

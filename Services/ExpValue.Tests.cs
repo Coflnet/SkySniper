@@ -111,4 +111,50 @@ public class ExpValueTests
         cap.Should().BeGreaterThanOrEqualTo(86_000_000, "the cap keeps the rare level 1 pet value so undervalued listings still flip");
         cap.Should().BeLessThan((long)(auction.StartingBid * 1.1), "the reported 90M purchase is not a flip");
     }
+
+    [Test]
+    public void AiTierFlagIgnoresTierBoost()
+    {
+        var service = new SniperService(new HypixelItemService(null, NullLogger<HypixelItemService>.Instance), null, NullLogger<SniperService>.Instance, null);
+        var lookup = new PriceLookup();
+        // bucket medians from the PET_SCATHA pricing state, as in AiExpAttributeUsesPetTierBuckets
+        foreach (var bucketTier in new[] { Tier.RARE, Tier.EPIC })
+        {
+            lookup.Lookup[new AuctionKey([], ItemReferences.Reforge.Any, [new("exp", "0"), new("candyUsed", "0")], bucketTier, 1)] = new()
+            { Price = bucketTier == Tier.RARE ? 86_000_000 : 183_583_332 };
+            lookup.Lookup[new AuctionKey([], ItemReferences.Reforge.Any, [new("exp", "6")], bucketTier, 1)] = new()
+            { Price = bucketTier == Tier.RARE ? 93_078_304 : 197_539_376 };
+        }
+        service.Lookups["PET_SCATHA"] = lookup;
+        SaveAuction Scatha(Tier tier, string heldItem) => new()
+        {
+            Tag = "PET_SCATHA",
+            Tier = tier,
+            Category = Category.MISC,
+            Reforge = ItemReferences.Reforge.None,
+            Bin = true,
+            Count = 1,
+            StartingBid = 90_000_000,
+            HighestBidAmount = 90_000_000,
+            Enchantments = [],
+            FlatenedNBT = new()
+            {
+                ["active"] = "False", ["candyUsed"] = "0", ["exp"] = "47496807.22508164", ["heldItem"] = heldItem,
+                ["hideInfo"] = "False", ["hideRightClick"] = "False", ["noMove"] = "False", ["petSoulbound"] = "False",
+                ["tier"] = tier.ToString(), ["type"] = "SCATHA"
+            }
+        };
+
+        var boosted = Scatha(Tier.EPIC, "PET_ITEM_TIER_BOOST").ToComplicatedFlip(includeBreakdown: true, sniper: service).AttributeValues;
+        var plain = Scatha(Tier.RARE, "BEJEWELED_COLLAR").ToComplicatedFlip(includeBreakdown: true, sniper: service).AttributeValues;
+        var realEpic = Scatha(Tier.EPIC, "BEJEWELED_COLLAR").ToComplicatedFlip(includeBreakdown: true, sniper: service).AttributeValues;
+
+        boosted.Keys.Should().Contain("tier:RARE", "a tier boosted rare is still a rare pet").And.NotContain("tier:EPIC");
+        boosted.Should().Contain("petItem:TIER_BOOST", 1L, "the boost is a separate presence feature");
+        plain.Keys.Should().Contain("tier:RARE").And.NotContain("petItem:TIER_BOOST");
+        // attribute sum cap as computed by InternalDataLoader.CheckForPartial
+        boosted.Values.Sum().Should().BeGreaterThanOrEqualTo(plain.Values.Sum(), "a boost never makes the pet worth less than the plain pet of its real tier")
+            .And.BeLessThan(plain.Values.Sum() + 1_000_000, "the boost flag carries no coin value")
+            .And.BeLessThan(realEpic.Values.Sum(), "a boosted rare is not capped like a real epic");
+    }
 }
