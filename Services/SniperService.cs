@@ -6188,19 +6188,8 @@ ORDER BY l.`AuctionId`  DESC;
 
                     if (item.IsPetItem)
                     {
-                        var isTierBoost = itemTag == "PET_ITEM_TIER_BOOST";
-                        if (BazaarPrices.TryGetValue(itemTag, out var bazaarPrice))
-                        {
-                            itemPrice = (long)bazaarPrice;
-                            if (!isTierBoost)
-                                itemPrice -= itemService.GetPetItemRemovalCost(itemTag);
-                        }
-                        else if (TryGetReferencePrice(itemTag, out var price))
-                        {
-                            itemPrice = price;
-                            if (!isTierBoost)
-                                itemPrice -= itemService.GetPetItemRemovalCost(itemTag);
-                        }
+                        if (TryGetPetItemPrice(itemTag, out itemPrice) && itemTag != "PET_ITEM_TIER_BOOST")
+                            itemPrice -= itemService.GetPetItemRemovalCost(itemTag);
                     }
                     else if (TryGetReferencePrice(itemTag, out var price))
                     {
@@ -6213,6 +6202,19 @@ ORDER BY l.`AuctionId`  DESC;
             }
 
             return extraValue;
+        }
+
+        /// <summary>
+        /// Full price of a held pet item, from bazaar or else from references, without removal cost deducted.
+        /// </summary>
+        internal bool TryGetPetItemPrice(string itemTag, out long price)
+        {
+            if (BazaarPrices.TryGetValue(itemTag, out var bazaarPrice))
+            {
+                price = (long)bazaarPrice;
+                return true;
+            }
+            return TryGetReferencePrice(itemTag, out price);
         }
 
         /// <summary>
