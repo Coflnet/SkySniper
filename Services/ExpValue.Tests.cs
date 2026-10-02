@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -110,5 +111,57 @@ public class ExpValueTests
         var cap = flip.AttributeValues.Where(a => !a.Key.StartsWith("candyUsed:")).Sum(a => a.Value);
         cap.Should().BeGreaterThanOrEqualTo(86_000_000, "the cap keeps the rare level 1 pet value so undervalued listings still flip");
         cap.Should().BeLessThan((long)(auction.StartingBid * 1.1), "the reported 90M purchase is not a flip");
+    }
+
+    [TestCase(80_000_000, 183_583_332, 197_539_376)]
+    [TestCase(165_000_000, 183_583_332, 197_539_376)] // worth more than the epic pet is above the rare one
+    [TestCase(80_000_000, 86_000_000, 93_078_304)] // epic priced like rare leaves only the presence flag
+    public void AiTierFlagIgnoresTierBoost(long boostPrice, long epicBasePrice, long epicMaxPrice)
+    {
+        var service = new SniperService(new HypixelItemService(null, NullLogger<HypixelItemService>.Instance), null, NullLogger<SniperService>.Instance, null);
+        var lookup = new PriceLookup();
+        // bucket medians from the PET_SCATHA pricing state, as in AiExpAttributeUsesPetTierBuckets
+        foreach (var bucketTier in new[] { Tier.RARE, Tier.EPIC })
+        {
+            lookup.Lookup[new AuctionKey([], ItemReferences.Reforge.Any, [new("exp", "0"), new("candyUsed", "0")], bucketTier, 1)] = new()
+            { Price = bucketTier == Tier.RARE ? 86_000_000 : epicBasePrice };
+            lookup.Lookup[new AuctionKey([], ItemReferences.Reforge.Any, [new("exp", "6")], bucketTier, 1)] = new()
+            { Price = bucketTier == Tier.RARE ? 93_078_304 : epicMaxPrice };
+        }
+        service.Lookups["PET_SCATHA"] = lookup;
+        SaveAuction Scatha(Tier tier, string heldItem) => new()
+        {
+            Tag = "PET_SCATHA",
+            Tier = tier,
+            Category = Category.MISC,
+            Reforge = ItemReferences.Reforge.None,
+            Bin = true,
+            Count = 1,
+            StartingBid = 90_000_000,
+            HighestBidAmount = 90_000_000,
+            Enchantments = [],
+            FlatenedNBT = new()
+            {
+                ["active"] = "False", ["candyUsed"] = "0", ["exp"] = "47496807.22508164", ["heldItem"] = heldItem,
+                ["hideInfo"] = "False", ["hideRightClick"] = "False", ["noMove"] = "False", ["petSoulbound"] = "False",
+                ["tier"] = tier.ToString(), ["type"] = "SCATHA"
+            }
+        };
+
+        var plain = Scatha(Tier.RARE, "BEJEWELED_COLLAR").ToComplicatedFlip(includeBreakdown: true, sniper: service).AttributeValues;
+        var realEpic = Scatha(Tier.EPIC, "BEJEWELED_COLLAR").ToComplicatedFlip(includeBreakdown: true, sniper: service).AttributeValues;
+        var unpricedBoost = Scatha(Tier.EPIC, "PET_ITEM_TIER_BOOST").ToComplicatedFlip(includeBreakdown: true, sniper: service).AttributeValues;
+        // attribute sum cap as computed by InternalDataLoader.CheckForPartial
+        var tierSpread = realEpic.Values.Sum() - plain.Values.Sum();
+        service.UpdateBazaar(new() { Products = [new() { ProductId = "PET_ITEM_TIER_BOOST", SellSummary = [new() { PricePerUnit = boostPrice }], BuySummery = [] }] });
+        var boosted = Scatha(Tier.EPIC, "PET_ITEM_TIER_BOOST").ToComplicatedFlip(includeBreakdown: true, sniper: service).AttributeValues;
+
+        boosted.Keys.Should().Contain("tier:RARE", "a tier boosted rare is still a rare pet").And.NotContain("tier:EPIC");
+        plain.Keys.Should().Contain("tier:RARE").And.NotContain("petItem:TIER_BOOST");
+        unpricedBoost.Should().Contain("petItem:TIER_BOOST", 1L, "without a known price the boost is only a presence flag");
+        var boostValue = Math.Max(Math.Min(boostPrice, tierSpread), 1L); // never 0, that reads as no boost
+        boosted.Should().Contain("petItem:TIER_BOOST", boostValue, "the boost carries its item price, bounded by the tier spread");
+        boosted.Values.Sum().Should().Be(plain.Values.Sum() + boostValue, "the cap is the plain pet of the real tier plus the boost")
+            .And.BeLessThanOrEqualTo(Math.Max(realEpic.Values.Sum(), plain.Values.Sum() + 1L), "a boosted rare is not capped above a real epic, except by the presence flag");
     }
 }
