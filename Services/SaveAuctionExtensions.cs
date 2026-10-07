@@ -11,6 +11,9 @@ public static class SaveAuctionExtensions
 {
     // Small set of mayors relevant for pricing (kept in sync with AIFormattingService)
     private static readonly HashSet<string> RelevantMayors = new() { "scorpius", "derpy", "jerry", "diana", "aatrox", "marina" };
+    // Modifiers the sniper values with a weight for ranking instead of coins, they only get a presence flag
+    private static readonly HashSet<string> WeightOnlyModifiers = new() { "candyUsed", "pgems" };
+    private const string TierBoost = "PET_ITEM_TIER_BOOST";
 
     /// <summary>
     /// Convert a SaveAuction to a ComplicatedFlip used by the self-learning service.
@@ -25,7 +28,9 @@ public static class SaveAuctionExtensions
         {
             if (sniper == null) throw new ArgumentNullException(nameof(sniper), "sniper is required when includeBreakdown is true");
 
-            var withBreakdown = sniper.ValueKeyForTest(auction);
+            // the lookup key keeps only its five most valuable elements, the features need all of them
+            var withBreakdown = sniper.FullValueBreakdown(auction);
+            AddValuesOutsideOfKey(attrs, auction, sniper, withBreakdown.Key);
             long petBasePrice = 0;
             // Use 1 as a presence indicator for categorical features (pet tier, mayor)
             // that don't have a meaningful numeric value.
@@ -47,7 +52,8 @@ public static class SaveAuctionExtensions
                 // For candyUsed: the value from GetCandyPrice is a weight (min 10M) intended
                 // as a pricing signal, not an actual coin value. Exclude it from the ML
                 // feature set to prevent inflating attribute sums and predictions.
-                if (x.Modifier.Key == "candyUsed")
+                // The same holds for pgems (flat 100M), the gems themselves are valued in "gems".
+                if (WeightOnlyModifiers.Contains(x.Modifier.Key))
                 {
                     // Use a small presence flag instead of the large weight so the ML model
                     // can still learn from the candy state without the inflated value.
@@ -67,7 +73,7 @@ public static class SaveAuctionExtensions
             if(auction.Tag.StartsWith("PET_"))
                 attrs["tier:" + auction.Tier] = presenceFlag;
 
-            var mayor = mayorService?.GetMayor(auction.End);
+            var mayor = mayorService?.GetMayor(TimeOfSale(auction))?.ToLowerInvariant();
             if (mayor != null && RelevantMayors.Contains(mayor))
                 attrs["m:" + mayor] = presenceFlag;
 
@@ -94,5 +100,28 @@ public static class SaveAuctionExtensions
         };
     }
 
-    
+    /// <summary>
+    /// Adds what the sniper values outside of the lookup key and its breakdown: removable parts and gems.
+    /// </summary>
+    private static void AddValuesOutsideOfKey(Dictionary<string, long> attrs, SaveAuction auction, SniperService sniper, Models.AuctionKey key)
+    {
+        foreach (var part in sniper.RemovableItemBreakdown(auction))
+        {
+            // the tier boost changes the tier of the pet and is not a part with a value of its own
+            if (part.Modifier.Value != TierBoost)
+                attrs[$"{part.Modifier.Key}:{part.Modifier.Value}"] = part.Value;
+        }
+        var gemValue = sniper.GetGemValue(auction, key);
+        if (gemValue > 0)
+            attrs["gems"] = gemValue;
+    }
+
+    /// <summary>
+    /// A sold auction ended when it was bought, a running one ends in the future and is valued as of now.
+    /// </summary>
+    private static DateTime TimeOfSale(SaveAuction auction)
+    {
+        var now = DateTime.UtcNow;
+        return auction.End > now ? now : auction.End;
+    }
 }

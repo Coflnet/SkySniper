@@ -3818,6 +3818,39 @@ ORDER BY l.`AuctionId`  DESC;
             return DetailedKeyFromSaveAuction(auction);
         }
 
+        /// <summary>
+        /// The same key as <see cref="ValueKeyForTest"/>, but its breakdown lists every valued enchant, modifier and
+        /// reforge of the item instead of only the five most valuable ones the lookup key is capped to.
+        /// </summary>
+        public KeyWithValueBreakdown FullValueBreakdown(SaveAuction auction)
+        {
+            var key = DetailedKeyFromSaveAuction(auction);
+            var (enchants, modifiers) = SelectValuable(auction);
+            // CapKeyLength strips the enchants that do not fit into the key from the list it is given
+            var withEffect = RemoveNoEffectEnchants(auction, enchants == null ? [] : [.. enchants]);
+            var valued = CapKeyLength(enchants, modifiers, auction, 5, int.MaxValue).ranked;
+            valued.RemoveAll(r => r.Enchant.Type != default && !ContainsEnchantType(withEffect, r.Enchant.Type));
+            return new KeyWithValueBreakdown { Key = key.Key, SubstractedValue = key.SubstractedValue, ValueBreakdown = valued };
+        }
+
+        /// <summary>
+        /// Values the parts the lookup key never contains because they can be taken off the item again
+        /// (drill and rod parts, pet items), each as what the sniper adds back for it.
+        /// </summary>
+        public IEnumerable<RankElem> RemovableItemBreakdown(SaveAuction auction)
+        {
+            foreach (var item in RemovableItems)
+            {
+                if (!TryGetItemKeyValue(auction.FlatenedNBT, item, out var value))
+                    continue;
+                // price each part on its own through the sniper's valuation instead of mirroring its rules here
+                var single = new SaveAuction { Tag = auction.Tag, FlatenedNBT = new() { [item.Key] = value } };
+                var price = GetRemovableItemValue(single);
+                if (price > 0)
+                    yield return new RankElem(item.Key, value.ToUpperInvariant(), price);
+            }
+        }
+
         /// <summary>WS-A test hook: parse <paramref name="auction"/> a FRESH way (memo bypassed) and then via the parse
         /// memo at the SAME pricing epoch (forcing a store-then-serve), and return whether the two outputs are equal by
         /// the parse contract (<see cref="ParseResultsEqual"/>). Used by the parse-memo bit-exactness unit test so the
