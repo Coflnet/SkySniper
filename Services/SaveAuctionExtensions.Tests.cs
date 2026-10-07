@@ -104,7 +104,7 @@ public class SaveAuctionExtensionsTests
         features.Should().Contain("rarity_upgrades:1", 10_661_112, "a recombobulator is not one of the five most valuable modifiers");
         features.Should().Contain("art_of_war_count:1", 12_544_591);
         features.Should().Contain("cleave:6", 17_870_987);
-        features.Should().Contain("gems", 2 * (13_858_060 - 500_000), "perfect gems are taken out of the lookup key");
+        features.Should().Contain("removable:gems", 2 * (13_858_060 - 500_000), "perfect gems are taken out of the lookup key");
         features.Keys.Should().NotContain("scavenger:5", "scavenger does nothing on dungeon items");
         Cap(features).Should().BeGreaterThan(1_300_000_000,
             "the clean item and the five modifiers of the lookup key only make 1.23B of the 1.5B it sold for");
@@ -171,10 +171,11 @@ public class SaveAuctionExtensionsTests
         var features = auction.ToComplicatedFlip(includeBreakdown: true, sniper: service).AttributeValues;
 
         // what the sniper adds back for a part: its price after auction house tax and the removal fee
-        features.Should().Contain("drill_part_engine:AMBER_POLISHED_DRILL_ENGINE", 227_315_841L * 97 / 100 - 50_000);
-        features.Should().Contain("drill_part_fuel_tank:PERFECTLY_CUT_FUEL_TANK", 85_191_243L * 97 / 100 - 50_000);
-        features.Should().Contain("drill_part_upgrade_module:GOBLIN_OMELETTE_SUNNY_SIDE", 4_613_777L * 97 / 100 - 50_000);
-        features.Should().Contain("gems", 13_460_578 + 14_432_197 + 14_507_088 - 3 * 500_000);
+        features.Should().Contain("removable:listed", 0, "a flip without the marker is an older record with its parts inside the price");
+        features.Should().Contain("removable:drill_part_engine:AMBER_POLISHED_DRILL_ENGINE", 227_315_841L * 97 / 100 - 50_000);
+        features.Should().Contain("removable:drill_part_fuel_tank:PERFECTLY_CUT_FUEL_TANK", 85_191_243L * 97 / 100 - 50_000);
+        features.Should().Contain("removable:drill_part_upgrade_module:GOBLIN_OMELETTE_SUNNY_SIDE", 4_613_777L * 97 / 100 - 50_000);
+        features.Should().Contain("removable:gems", 13_460_578 + 14_432_197 + 14_507_088 - 3 * 500_000);
     }
 
     [Test]
@@ -191,7 +192,7 @@ public class SaveAuctionExtensionsTests
         var features = auction.ToComplicatedFlip(includeBreakdown: true, sniper: service).AttributeValues;
 
         var gemValue = 2 * gemPrices["PERFECT_JADE_GEM"] + 2 * gemPrices["PERFECT_AMBER_GEM"] + gemPrices["PERFECT_TOPAZ_GEM"] - 5 * 500_000;
-        features.Should().Contain("gems", gemValue);
+        features.Should().Contain("removable:gems", gemValue);
         features.Should().Contain("pgems:5", 1, "the flat 100M of pgems ranks the modifier in the lookup key, it is not what the gems are worth");
     }
 
