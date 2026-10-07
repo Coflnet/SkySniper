@@ -595,6 +595,28 @@ namespace Coflnet.Sky.Sniper
             Assert.That(foundFlip, Is.EqualTo(1_000_000_000 - 1), JsonConvert.SerializeObject(found, Formatting.Indented));
         }
         /// <summary>
+        /// Frog's Spirit scroll on fig boots was priced as 162M wither scroll average
+        /// </summary>
+        [Test]
+        public void ScrollCountValueDependsOnItem()
+        {
+            SetBazaarPrice("IMPLOSION_SCROLL", 160_000_000);
+            SetBazaarPrice("SHADOW_WARP_SCROLL", 160_000_000);
+            SetBazaarPrice("WITHER_SHIELD_SCROLL", 160_000_000);
+            SetBazaarPrice("FROGS_SPIRIT_SCROLL", 2_300_000);
+            var estimate = typeof(SniperService).GetMethod("ModifierEstimate", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            long Value(string tag, string scroll, string count)
+            {
+                var mod = new KeyValuePair<string, string>("scroll_count", count);
+                var nbt = new Dictionary<string, string>() { { "ability_scroll", scroll } };
+                var elem = (SniperService.RankElem)estimate.Invoke(service, [new List<KeyValuePair<string, string>>() { mod }, tag, nbt, mod]);
+                return elem.Value;
+            }
+            Assert.That(Value("FIG_BOOTS", "FROGS_SPIRIT_SCROLL", "1"), Is.EqualTo(2_300_000));
+            Assert.That(Value("HYPERION", "IMPLOSION_SCROLL SHADOW_WARP_SCROLL WITHER_SHIELD_SCROLL", "3"), Is.EqualTo(480_000_000));
+            Assert.That(Value("STICK", "FROGS_SPIRIT_SCROLL", "1"), Is.EqualTo(0));
+        }
+        /// <summary>
         /// https://discord.com/channels/267680588666896385/1264680179624706050/1264685231063961753
         /// </summary>
         [Test]

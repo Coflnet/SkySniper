@@ -700,6 +700,22 @@ ORDER BY l.`AuctionId`  DESC;
             "new_years_cake" // not that valuable but the only attribute
         };
 
+        // ability scrolls (ABILITY_SCROLL category) by the items they can be applied to
+        private static readonly HashSet<string> WitherScrollItems = new() { "HYPERION", "VALKYRIE", "ASTRAEA", "SCYLLA", "NECRON_BLADE" };
+        private static readonly HashSet<string> FrogsSpiritScrollItems = new() { "CANOPY_BOOTS", "FIG_BOOTS", "HELIX_ARMOR_BOOTS" };
+
+        /// <summary>
+        /// Value of <paramref name="count"/> applied ability scrolls on an item, unknown items yield 0
+        /// </summary>
+        internal long GetScrollValue(string tag, int count)
+        {
+            if (tag != null && WitherScrollItems.Contains(tag))
+                return (GetPriceForItem("IMPLOSION_SCROLL") + GetPriceForItem("SHADOW_WARP_SCROLL") + GetPriceForItem("WITHER_SHIELD_SCROLL")) / 3 * count;
+            if (tag != null && FrogsSpiritScrollItems.Contains(tag))
+                return GetPriceForItem("FROGS_SPIRIT_SCROLL") * count;
+            return 0;
+        }
+
         public static KeyValuePair<string, string> Ignore { get; } = new KeyValuePair<string, string>(string.Empty, string.Empty);
 
 
@@ -792,7 +808,7 @@ ORDER BY l.`AuctionId`  DESC;
             */
             Converters["upgrade_level"] = m => new(m.Modifier, EstStarCost(m.ItemTag, int.Parse(m.Modifier.Value)));
             Converters["unlocked_slots"] = m => new(m.Modifier, GetGemstoneSlotWorth(m.RelevantModifiers, m.ItemTag, m.Modifier));
-            Converters["scroll_count"] = m => new(m.Modifier, (GetPriceForItem("IMPLOSION_SCROLL") + GetPriceForItem("SHADOW_WARP_SCROLL") + GetPriceForItem("WITHER_SHIELD_SCROLL")) / 3 * int.Parse(m.Modifier.Value));
+            Converters["scroll_count"] = m => new(m.Modifier, GetScrollValue(m.ItemTag, int.Parse(m.Modifier.Value)));
             Converters["bass_weight"] = m => new(m.Modifier, 5_000_000 * int.Parse(m.Modifier.Value.Split(',')[0]));
         }
 
