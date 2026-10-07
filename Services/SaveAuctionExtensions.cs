@@ -37,6 +37,8 @@ public static class SaveAuctionExtensions
                 string key;
                 if (x.Enchant.Type != default)
                     key = $"{x.Enchant.Type}:{x.Enchant.Lvl}";
+                else if (KillCounterValue.Keys.Contains(x.Modifier.Key))
+                    key = x.Modifier.Key; // one feature per counter, its value rises with the bucket so a trend can be learned
                 else if (!string.IsNullOrEmpty(x.Modifier.Key))
                     key = $"{x.Modifier.Key}:{x.Modifier.Value}";
                 else

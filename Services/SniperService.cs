@@ -397,7 +397,6 @@ namespace Coflnet.Sky.Sniper.Services
             { "full_bid", m => new (m.Modifier, (int)(float.Parse(m.Modifier.Value) * 48_000_000))},
             { "winning_bid", m => new (m.Modifier, (int)(float.Parse(m.Modifier.Value) * 25_000_000))},
             //{ "rarity_upgrades", m => new (m.Modifier, 50_000_000)}, item value
-            { "eman_kills", m => new (m.Modifier, 3_000_000 * (int)Math.Pow(2, int.Parse(m.Modifier.Value))) {IsEstimate=true}},
             { "expertise_kills", m => new (m.Modifier, 3_000_000 * (int)Math.Pow(2, int.Parse(m.Modifier.Value))) {IsEstimate=true}},
             { "mined_crops", m => new (m.Modifier, 13_000_000 * (int)Math.Pow(2, int.Parse(m.Modifier.Value))) {IsEstimate=true}},
             { "blocksBroken", m => new (m.Modifier, 1_000_000 * (int)Math.Pow(2, int.Parse(m.Modifier.Value))) {IsEstimate=true}},
@@ -468,19 +467,7 @@ namespace Coflnet.Sky.Sniper.Services
             new("heldItem", true),
         ];
 
-        private static readonly HashSet<string> KillKeys = [
-            "blaze_kills",
-            "blood_god_kills",
-            "bow_kills",
-            "eman_kills",
-            "expertise_kills",
-            "raider_kills",
-            "runic_kills",
-            "skeletorKills",
-            "spider_kills",
-            "sword_kills",
-            "zombie_kills"
-            ];
+        private static readonly HashSet<string> KillKeys = KillCounterValue.Keys;
 
         private static readonly Dictionary<string, short> ShardAttributes = new(){
             {"mana_pool", 1},
@@ -4761,7 +4748,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (KillKeys.Contains(mod.Key))
             {
-                sum += 300_000 * (int)Math.Pow(2, int.Parse(mod.Value)) + 300_000;
+                sum += KillCounterValue.ForBucket(mod.Key, mod.Value);
             }
 
             if (Constants.AttributeKeys.Contains(mod.Key))
@@ -5005,8 +4992,8 @@ ORDER BY l.`AuctionId`  DESC;
                         return NormalizeNumberTo(s, 25_000_000, 5);
                 else
                     return Ignore;
-            if (s.Key == "eman_kills")
-                return NormalizeGroupNumber(s, 10_000, 25_000, 50_000, 75_000, 100_000, 125_000, 150_000, 200_000);
+            if (KillCounterValue.TryNormalizeByTier(s, out var byTier))
+                return byTier;
             if (s.Key == "blood_god_kills")
                 return NormalizeGroupNumber(s, 1_000_000, 10_000_000, 20_000_000, 100_000_000);
             if (s.Key == "expertise_kills")
@@ -6052,13 +6039,8 @@ ORDER BY l.`AuctionId`  DESC;
                 var killModifier = missingModifiers.FirstOrDefault(m => KillKeys.Contains(m.Key));
                 if (killModifier.Key != default)
                 {
-                    var killCount = int.Parse(killModifier.Value);
                     var present = key.Modifiers.FirstOrDefault(n => n.Key == killModifier.Key);
-                    var difference = killCount - int.Parse(present.Value ?? "0");
-                    var killPrice = difference * 1_000_000;
-                    if (difference < 0)
-                        killPrice /= 2; // only half for adding kills
-                    toSubstract += killPrice;
+                    toSubstract += KillCounterValue.ReferenceDifference(killModifier.Key, killModifier.Value, present.Value);
                 }
                 var formatted = string.Join(",", missingModifiers.Select(m => $"{m.Key}:{m.Value}"));
                 if (toSubstract == 0)

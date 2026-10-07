@@ -2239,6 +2239,144 @@ namespace Coflnet.Sky.Sniper
             Assert.That("zombie_kills:2 (2000000)", Is.EqualTo(estimate.AdditionalProps["missingModifiers"]));
         }
 
+        /// <summary>
+        /// Sold for 10M with 146,666 zombie kills (bucket 14 of 10,000 kills each), production weighted the kills 620,532,704
+        /// </summary>
+        private static SaveAuction ReaperChestplateWithKills() => new()
+        {
+            Tag = "REAPER_CHESTPLATE",
+            Tier = Tier.LEGENDARY,
+            Reforge = ItemReferences.Reforge.ancient,
+            Category = Category.ARMOR,
+            Bin = true,
+            Count = 1,
+            StartingBid = 10_000_000,
+            HighestBidAmount = 10_000_000,
+            Start = new DateTime(2026, 9, 27, 9, 26, 13),
+            End = new DateTime(2026, 9, 27, 10, 17, 51),
+            Enchantments = [new(Enchantment.EnchantmentType.rejuvenate, 5), new(Enchantment.EnchantmentType.thorns, 3),
+                new(Enchantment.EnchantmentType.growth, 5), new(Enchantment.EnchantmentType.protection, 5)],
+            FlatenedNBT = new() { { "cc", "1" }, { "color", "27:27:27" }, { "hpc", "10" }, { "zombie_kills", "146666" } }
+        };
+
+        /// <summary>
+        /// Sold for 29M with 139,782 spider kills, bucket 13 of 10,000 kills each was the first that wrapped to a negative value
+        /// </summary>
+        private static SaveAuction PrimordialHelmetWithKills() => new()
+        {
+            Tag = "PRIMORDIAL_HELMET",
+            Tier = Tier.MYTHIC,
+            Reforge = ItemReferences.Reforge.ancient,
+            Category = Category.ARMOR,
+            Bin = true,
+            Count = 1,
+            StartingBid = 29_000_000,
+            HighestBidAmount = 29_000_000,
+            Start = new DateTime(2026, 8, 27, 4, 8, 24),
+            End = new DateTime(2026, 8, 27, 7, 27, 38),
+            Enchantments = [new(Enchantment.EnchantmentType.ultimate_last_stand, 5), new(Enchantment.EnchantmentType.transylvanian, 5),
+                new(Enchantment.EnchantmentType.rejuvenate, 5), new(Enchantment.EnchantmentType.thorns, 3),
+                new(Enchantment.EnchantmentType.protection, 5), new(Enchantment.EnchantmentType.respiration, 3),
+                new(Enchantment.EnchantmentType.growth, 5)],
+            FlatenedNBT = new() { { "dungeon_item", "1" }, { "hpc", "10" }, { "rarity_upgrades", "1" },
+                { "spider_kills", "139782" }, { "upgrade_level", "5" } }
+        };
+
+        [Test]
+        public void KillCounterValueDoesNotOverflow()
+        {
+            foreach (var auction in new[] { ReaperChestplateWithKills(), PrimordialHelmetWithKills() })
+            {
+                var kills = service.ValueKeyForTest(auction).ValueBreakdown.Single(v => v.Modifier.Key?.EndsWith("_kills") ?? false);
+                kills.Value.Should().BeInRange(1, 3_000_000, $"no sale supports more for {kills.Modifier} on {auction.Tag}");
+            }
+        }
+
+        [TestCase("zombie_kills", "100000", "10")]
+        [TestCase("zombie_kills", "146666", "10")]
+        [TestCase("spider_kills", "61000", "5")]
+        [TestCase("spider_kills", "9999", "0")]
+        [TestCase("eman_kills", "5000", "0")]
+        [TestCase("eman_kills", "4999", null)]
+        public void KillsOfOneBonusTierShareABucket(string counter, string kills, string bucket)
+        {
+            highestValAuction.FlatenedNBT = new() { { counter, kills } };
+            var inKey = service.KeyFromSaveAuction(highestValAuction).Modifiers.FirstOrDefault(m => m.Key == counter);
+            Assert.That(inKey.Value, Is.EqualTo(bucket));
+        }
+
+        [Test]
+        public void AiFeatureForKillsIsOneBoundedValuePerCounter()
+        {
+            var auction = ReaperChestplateWithKills();
+            auction.FlatenedNBT.Remove("color"); // the default color, production drops it but the test item service has no item data
+            // The pricing state has one unpriced reference in this item's bucket, so production valued it from the
+            // estimates alone like the empty lookup does here. Clean cost and bazaar prices are the ones recorded
+            // in the AI finder's context for this auction.
+            craftCost.Costs["REAPER_CHESTPLATE"] = 4_395_140;
+            SetBazaarPrice("HOT_POTATO_BOOK", 81_269);
+            SetBazaarPrice("ENCHANTMENT_REJUVENATE_5", 394_491);
+
+            var flip = auction.ToComplicatedFlip(includeBreakdown: true, sniper: service, craftCostService: craftCost);
+
+            flip.AttributeValues.Keys.Where(k => k.StartsWith("zombie_kills")).Should().Equal("zombie_kills");
+            // attribute sum cap as computed by InternalDataLoader.CheckForPartial
+            flip.AttributeValues.Sum(a => a.Value).Should().BeLessThan((long)(auction.StartingBid * 1.1),
+                "the kills must not lift the cap enough to report the 10M listing as a flip");
+        }
+
+        [Test]
+        public void SalesBackedKillCountersUseObservedPremium()
+        {
+            // buckets 1 and 3 keep their weight, only the higher ones had sales in both compared groups against it
+            EmanKillValue("15000").Should().Be(6_000_000);
+            EmanKillValue("60000").Should().Be(24_000_000);
+            EmanKillValue("130000").Should().Be(53_000_000,
+                "Final Destination pieces with 125k-150k kills sold at least 53M above the piece without kills");
+            EmanKillValue("250000").Should().Be(83_000_000, "maxed pieces sold 83M to 99M above the piece without kills");
+        }
+
+        private long EmanKillValue(string kills)
+        {
+            highestValAuction.FlatenedNBT = new() { { "eman_kills", kills } };
+            return service.ValueKeyForTest(highestValAuction).ValueBreakdown.Single().Value;
+        }
+
+        [Test]
+        public void StonksSubstractsObservedPremiumForFewerEmanKills()
+        {
+            highestValAuction.Tag = "FINAL_DESTINATION_HELMET";
+            highestValAuction.FlatenedNBT = new() { { "eman_kills", "15000" } };
+            var moreKills = Dupplicate(highestValAuction);
+            moreKills.HighestBidAmount = 37_500_000; // median of clean helmets with 50k-75k kills
+            moreKills.FlatenedNBT["eman_kills"] = "60000";
+            AddVolume(moreKills);
+
+            TestNewAuction(highestValAuction);
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
+            Assert.That("eman_kills:3 (18000000)", Is.EqualTo(estimate.AdditionalProps["missingModifiers"]));
+            Assert.That(17_550_000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+        }
+
+        [Test]
+        public void StonksIncreaseForUnprovenKillsIsBounded()
+        {
+            // TARANTULA_BOOTS with 202,510 spider kills sold for 4.4M while pieces with few kills sold for 2.5M
+            highestValAuction.Tag = "TARANTULA_BOOTS";
+            highestValAuction.FlatenedNBT = new() { { "spider_kills", "202510" } };
+            var lessKills = Dupplicate(highestValAuction);
+            lessKills.HighestBidAmount = 2_500_000;
+            lessKills.FlatenedNBT["spider_kills"] = "5000";
+            AddVolume(lessKills);
+
+            TestNewAuction(highestValAuction);
+            var estimate = found.Where(f => f.Finder == LowPricedAuction.FinderType.STONKS).FirstOrDefault();
+            Assert.That(estimate, Is.Not.Null, JsonConvert.SerializeObject(found));
+            Assert.That("spider_kills:0 (-1500000)", Is.EqualTo(estimate.AdditionalProps["missingModifiers"]));
+            Assert.That(3_600_000, Is.EqualTo(estimate.TargetPrice), JsonConvert.SerializeObject(estimate.AdditionalProps));
+        }
+
         [Test]
         public void LoadedFinalDestinationHelmetWithTwentyFiveThousandKillsUsesRecentSales()
         {
