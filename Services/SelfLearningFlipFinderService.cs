@@ -32,8 +32,10 @@ public interface ISelfLearningFlipFinderService
 
 /// <summary>
 /// Model evaluation metrics for regression tasks.
+/// Rmse and RSquared are measured on the training samples in the unit the model is fit in (log price).
+/// The held-out figures are relative price errors on sales the serving model had not been trained on yet.
 /// </summary>
-public sealed record ModelMetrics(double Rmse, double RSquared);
+public sealed record ModelMetrics(double Rmse, double RSquared, double? HeldOutMedianError = null, double? HeldOutP90Error = null, int HeldOutSales = 0);
 
 /// <summary>
 /// Self-learning auction price predictor using ML.NET FastTree regression.
@@ -62,8 +64,23 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     private readonly Dictionary<string, int> modelVectorSizeByTag = new(StringComparer.OrdinalIgnoreCase);
     // Track the maximum sold price observed in training data per tag to cap unrealistic predictions
     private readonly Dictionary<string, float> maxTrainingLabelByTag = new(StringComparer.OrdinalIgnoreCase);
-    // Serializes access to the combined metadata blob to prevent concurrent S3 writes
-    private readonly object metaSaveLock = new();
+    // Offset added to the score of a model that predicts the logarithm of the price; a tag without one holds a legacy raw-coin model
+    private readonly Dictionary<string, double> logLabelCenterByTag = new(StringComparer.OrdinalIgnoreCase);
+    // End of the newest sale seen per tag: only a later sale can be new to the serving model, a replay never is
+    private readonly Dictionary<string, DateTime> newestSaleByTag = new(StringComparer.OrdinalIgnoreCase);
+    // Tags whose serving model was fit in this process. What a loaded model was trained on is unknown
+    private readonly HashSet<string> tagsFitHere = new(StringComparer.OrdinalIgnoreCase);
+    // Relative errors of the serving model on sales it was not trained on yet, newest last
+    private readonly Dictionary<string, Queue<float>> heldOutErrorsByTag = new(StringComparer.OrdinalIgnoreCase);
+    private const int HeldOutWindow = 200;
+    // Extra column holding the sum of all attribute values, the same sum the AI finder caps its price with
+    private const string AttributeSumFeature = "attributesum";
+    // A sale priced above this multiple of the tag's usual price to attribute sum ratio is a coin transfer, not a price
+    private const float TransferAboveUsualRatio = 2f;
+    // A sale below this fraction of the tag's median price is junk; on a log scale a single one moves a whole leaf
+    private const float JunkBelowMedianFraction = 1f / 20;
+    private const string LogModelBlobPrefix = "selflearning/logmodel/";
+    private const string LegacyModelBlobPrefix = "selflearning/model/";
     // Only keep/train models for these complicated / relevant items (mirror of AIFormattingService.RelevantItems)
     private static readonly HashSet<string> RelevantItems = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -470,13 +487,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
 
             foreach (var flip in flips)
             {
-                var attributes = new Dictionary<string, long>(flip.AttributeValues);
-                var featureVector = CreateFeatureVector(attributes, featureIndex, expandFeatureSpace: true, sampleList);
-                sampleList.Add(new FlipData
-                {
-                    Features = featureVector,
-                    Label = SafeToFloat(flip.SoldFor)
-                });
+                sampleList.Add(CreateSample(tag, flip, featureIndex, sampleList));
             }
         }
     }
@@ -577,13 +588,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 featureIndexByItem[tag] = fIndex;
             }
 
-            var attrs = new Dictionary<string, long>(flip.AttributeValues);
-            var featureVector = CreateFeatureVector(attrs, fIndex, expandFeatureSpace: true, list);
-            list.Add(new FlipData
-            {
-                Features = featureVector,
-                Label = SafeToFloat(flip.SoldFor)
-            });
+            list.Add(CreateSample(tag, flip, fIndex, list));
 
             if (list.Count >= minSamplesForTraining && fIndex.Count > 0)
             {
@@ -661,7 +666,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 return Task.FromResult<SelfLearningFlipEstimate?>(new SelfLearningFlipEstimate(baseline, baseline, false, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
             }
 
-            var attrs = new Dictionary<string, long>(flip.AttributeValues ?? new Dictionary<string, long>());
+            var attrs = WithAttributeSum(flip.AttributeValues ?? new Dictionary<string, long>(), out _);
 
             // Use the exact vector size the model expects (from when it was trained/loaded)
             // This prevents errors when new features appear that weren't in the training data
@@ -675,13 +680,13 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 return Task.FromResult<SelfLearningFlipEstimate?>(new SelfLearningFlipEstimate(baseline, baseline, false, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
             }
 
-            FlipPrediction prediction;
+            double predictedPrice;
             lock (predictionSync)
             {
-                prediction = tagEngine!.Predict(new FlipData { Features = features });
-                logger.LogInformation("Prediction for {Tag}: {Score} (baseline {Baseline})", tag, prediction.Score, baseline);
+                predictedPrice = ScoreToPrice(tag, tagEngine!.Predict(new FlipData { Features = features }).Score);
+                logger.LogInformation("Prediction for {Tag}: {Score} (baseline {Baseline})", tag, predictedPrice, baseline);
             }
-            var score = double.IsNaN(prediction.Score) || prediction.Score <= 0 ? baseline : prediction.Score;
+            var score = !double.IsFinite(predictedPrice) || predictedPrice <= 0 ? baseline : predictedPrice;
 
             // Cap prediction to 1.5x the maximum sold price seen in training data.
             // Prevents items like SKELETON_MASTER_CHESTPLATE from being valued at billions
@@ -765,7 +770,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 continue;
             }
 
-            vector[index] = SafeToFloat(value);
+            vector[index] = ToSplitSafe(SafeToFloat(value));
         }
 
         return vector;
@@ -796,11 +801,142 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             // Only set the value if the index is within the expected vector size
             if (index < expectedVectorSize)
             {
-                vector[index] = SafeToFloat(value);
+                vector[index] = ToSplitSafe(SafeToFloat(value));
             }
         }
 
         return vector;
+    }
+
+    /// <summary>
+    /// Drops the two lowest mantissa bits. FastTree stores a split threshold as the float nearest to the midpoint of
+    /// two neighbouring values; when those are adjacent floats (coin values one coin apart) the threshold lands on
+    /// the upper one and prediction sends it down the other branch than training did.
+    /// </summary>
+    private static float ToSplitSafe(float value)
+    {
+        return BitConverter.Int32BitsToSingle(BitConverter.SingleToInt32Bits(value) & ~3);
+    }
+
+    /// <summary>
+    /// Copies the attributes and adds their sum as one more feature.
+    /// The sum leaves out the candy flag like the cap in the AI finder does.
+    /// </summary>
+    private static Dictionary<string, long> WithAttributeSum(IDictionary<string, long> attributes, out long attributeSum)
+    {
+        var result = new Dictionary<string, long>(attributes);
+        attributeSum = 0;
+        foreach (var (key, value) in attributes)
+        {
+            if (!key.StartsWith("candyUsed:", StringComparison.OrdinalIgnoreCase))
+                attributeSum += value;
+        }
+        result[AttributeSumFeature] = attributeSum;
+        return result;
+    }
+
+    /// <summary>
+    /// Turns a sold auction into a training sample. The serving model is scored on it first.
+    /// </summary>
+    private FlipData CreateSample(string tag, ComplicatedFlip flip, Dictionary<string, int> featureIndex, List<FlipData> samples)
+    {
+        var attributes = WithAttributeSum(flip.AttributeValues, out var attributeSum);
+        RecordHeldOutError(tag, flip, attributes, featureIndex);
+        return new FlipData
+        {
+            Features = CreateFeatureVector(attributes, featureIndex, expandFeatureSpace: true, samples),
+            Label = SafeToFloat(flip.SoldFor),
+            AttributeSum = SafeToFloat(attributeSum),
+            HasCleanCost = flip.AttributeValues.ContainsKey("cleancost")
+        };
+    }
+
+    /// <summary>
+    /// Converts a model score into coins. Log models predict the offset from the centre their labels were shifted by.
+    /// </summary>
+    private double ScoreToPrice(string tag, float score)
+    {
+        return logLabelCenterByTag.TryGetValue(tag, out var center) ? Math.Exp(score + center) : score;
+    }
+
+    /// <summary>
+    /// Scores a sale with the serving model before it becomes a training sample and remembers the relative error.
+    /// Only a sale that ended after everything seen so far counts, and only against a model fit in this process:
+    /// a replayed sale is already part of the training data, and a loaded model may have been trained on anything.
+    /// </summary>
+    private void RecordHeldOutError(string tag, ComplicatedFlip flip, Dictionary<string, long> attributes, Dictionary<string, int> featureIndex)
+    {
+        if (newestSaleByTag.TryGetValue(tag, out var newest) && flip.EndedAt <= newest)
+            return;
+        newestSaleByTag[tag] = flip.EndedAt;
+        if (!tagsFitHere.Contains(tag) || !predictionEngines.TryGetValue(tag, out var engine) || engine is null || !modelVectorSizeByTag.TryGetValue(tag, out var vectorSize))
+            return;
+
+        var features = CreateFeatureVectorForPrediction(attributes, featureIndex, vectorSize);
+        double price;
+        lock (predictionSync)
+        {
+            price = ScoreToPrice(tag, engine.Predict(new FlipData { Features = features }).Score);
+        }
+        if (!double.IsFinite(price))
+            return;
+
+        if (!heldOutErrorsByTag.TryGetValue(tag, out var errors))
+        {
+            errors = new Queue<float>();
+            heldOutErrorsByTag[tag] = errors;
+        }
+        errors.Enqueue((float)(Math.Abs(price - flip.SoldFor) / flip.SoldFor));
+        if (errors.Count > HeldOutWindow)
+            errors.Dequeue();
+    }
+
+    /// <summary>
+    /// Builds the metrics of a freshly fit model: its in-sample fit and the held-out errors collected so far.
+    /// </summary>
+    private ModelMetrics BuildMetrics(string tag, double rmse, double rSquared)
+    {
+        if (!heldOutErrorsByTag.TryGetValue(tag, out var errors) || errors.Count == 0)
+            return new ModelMetrics(rmse, rSquared);
+        var sorted = errors.ToArray();
+        Array.Sort(sorted);
+        return new ModelMetrics(rmse, rSquared, sorted[sorted.Length / 2], sorted[(int)((sorted.Length - 1) * 0.9)], sorted.Length);
+    }
+
+    /// <summary>
+    /// Sets the label every sample is trained on: the logarithm of its price, shifted by the logarithm of the
+    /// median price, and returns that shift. An overpriced sale then weighs like a few sales instead of hundreds,
+    /// and because boosting starts at zero a model that finds no split predicts the median instead of nothing.
+    /// </summary>
+    private static double PrepareTrainLabels(List<FlipData> samples)
+    {
+        var center = Math.Log(Median(samples.Select(s => s.Label)));
+        foreach (var sample in samples)
+            sample.TrainLabel = (float)(Math.Log(sample.Label) - center);
+        return center;
+    }
+
+    /// <summary>
+    /// Leaves out the sales no model should learn from: coin transfers through an item (far above what its
+    /// attributes are usually worth) and junk prices (far below what the tag sells for). A price far below the
+    /// attribute sum stays, it is what teaches the model that a sum overstates.
+    /// </summary>
+    private static List<FlipData> SelectTrainingSamples(List<FlipData> samples)
+    {
+        var junkBelow = Median(samples.Select(s => s.Label)) * JunkBelowMedianFraction;
+        // only with a clean cost is the sum a valuation of the whole item
+        var transferAbove = Median(samples.Where(s => s.HasCleanCost && s.AttributeSum > 0).Select(s => s.Label / s.AttributeSum)) * TransferAboveUsualRatio;
+        var kept = samples.FindAll(s => s.Label >= junkBelow && !(s.HasCleanCost && s.Label > s.AttributeSum * transferAbove));
+        return kept.Count > 0 ? kept : samples;
+    }
+
+    private static float Median(IEnumerable<float> values)
+    {
+        var sorted = values.ToArray();
+        if (sorted.Length == 0)
+            return 0;
+        Array.Sort(sorted);
+        return sorted[sorted.Length / 2];
     }
 
     private void EnsureFeatureExists(string key, Dictionary<string, int> featureIndex, List<FlipData> trainingList)
@@ -857,32 +993,37 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             }
             lastMetricsByItem[tag] = null;
             modelVectorSizeByTag.Remove(tag);
+            logLabelCenterByTag.Remove(tag);
+            tagsFitHere.Remove(tag);
             return;
         }
         // mark that we're about to refit this tag to avoid concurrent/rapid re-fits
         lastRefitByTag[tag] = DateTime.UtcNow;
 
+        var training = SelectTrainingSamples(list);
+
         // Track the maximum sold price (label) in training data to cap unrealistic predictions
-        var maxLabel = list.Max(s => s.Label);
+        var maxLabel = training.Max(s => s.Label);
         if (maxLabel > 0)
             maxTrainingLabelByTag[tag] = maxLabel;
 
         var schema = SchemaDefinition.Create(typeof(FlipData));
         schema[nameof(FlipData.Features)].ColumnType = new VectorDataViewType(NumberDataViewType.Single, featureCount);
 
-        var dataView = mlContext.Data.LoadFromEnumerable(list, schema);
+        var labelCenter = PrepareTrainLabels(training);
+        var dataView = mlContext.Data.LoadFromEnumerable(training, schema);
 
         // Use linear regression (SDCA) instead of FastForest since attributes have additive/linear effects
         // FastTree is a gradient boosted decision tree trainer that handles large feature values well
         // and can learn non-linear relationships between attributes and price
         // Configuration: balanced between accuracy and overfitting prevention
         // Adjust parameters based on sample size for better small-sample performance
-        var minLeafSize = list.Count < 100 ? 1 : Math.Max(5, list.Count / 100);
-        var numTrees = list.Count < 100 ? 50 : 100;
+        var minLeafSize = training.Count < 100 ? 1 : Math.Max(5, training.Count / 100);
+        var numTrees = training.Count < 100 ? 50 : 100;
 
         var pipeline = mlContext.Regression.Trainers.FastTree(
             featureColumnName: nameof(FlipData.Features),
-            labelColumnName: nameof(FlipData.Label),
+            labelColumnName: nameof(FlipData.TrainLabel),
             numberOfLeaves: 20,            // Moderate tree complexity
             minimumExampleCountPerLeaf: minLeafSize, // Adaptive: allow smaller leaves for small datasets
             numberOfTrees: numTrees,       // Adaptive: fewer trees for small datasets
@@ -893,7 +1034,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         double rmse = double.NaN, r2 = double.NaN;
         try
         {
-            tagModel = pipeline.Fit(dataView);
+            var fitted = pipeline.Fit(dataView);
+            tagModel = fitted;
             lock (predictionSync)
             {
                 predictionEngines.TryGetValue(tag, out var existing);
@@ -906,16 +1048,20 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
 
             // Store the expected vector size for this model
             modelVectorSizeByTag[tag] = featureCount;
+            logLabelCenterByTag[tag] = labelCenter;
+            tagsFitHere.Add(tag);
 
             logger.LogDebug("Stored model vector size for {Tag}: {VectorSize} features", tag, featureCount);
 
-            var metrics = mlContext.Regression.Evaluate(tagModel!.Transform(dataView), labelColumnName: nameof(FlipData.Label));
+            var metrics = mlContext.Regression.Evaluate(tagModel!.Transform(dataView), labelColumnName: nameof(FlipData.TrainLabel));
             rmse = metrics?.RootMeanSquaredError ?? double.NaN;
             r2 = metrics?.RSquared ?? double.NaN;
-            lastMetricsByItem[tag] = new ModelMetrics(rmse, r2);
+            var modelMetrics = BuildMetrics(tag, rmse, r2);
+            lastMetricsByItem[tag] = modelMetrics;
 
-            logger.LogInformation("Trained FastTree model for {Tag}: {SampleCount} samples, {FeatureCount} features, RMSE={Rmse:F2}, R²={R2:F3}",
-                tag, list.Count, featureCount, rmse, r2);
+            logger.LogInformation("Trained FastTree model for {Tag}: {SampleCount} samples, {FeatureCount} features, RMSE={Rmse:F2}, R²={R2:F3}, trees={Trees}, dropped={Dropped}, heldOutMedianError={HeldOutMedianError:F3}, heldOutP90Error={HeldOutP90Error:F3}, heldOutSales={HeldOutSales}",
+                tag, list.Count, featureCount, rmse, r2, fitted.Model.TrainedTreeEnsemble.Trees.Count, list.Count - training.Count,
+                modelMetrics.HeldOutMedianError, modelMetrics.HeldOutP90Error, modelMetrics.HeldOutSales);
             // mark last refit timestamp
             lastRefitByTag[tag] = DateTime.UtcNow;
         }
@@ -926,7 +1072,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             return;
         }
 
-        PersistModelAndMetadata(tag, tagModel, dataView, fIndex!, list!, rmse, r2, forcePersist);
+        PersistModelAndMetadata(tag, tagModel, dataView, fIndex!, list!, rmse, r2, forcePersist, labelCenter);
     }
 
     /// <summary>
@@ -943,95 +1089,52 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         }
         lastMetricsByItem[tag] = null;
         modelVectorSizeByTag.Remove(tag);
+        logLabelCenterByTag.Remove(tag);
+        tagsFitHere.Remove(tag);
     }
 
     /// <summary>
-    /// Persists the trained model and metadata to storage.
-    /// Combined metadata save is serialized with a dedicated lock to prevent
-    /// concurrent S3 writes to the same object.
+    /// Persists the trained model to storage. Its metadata travels in front of it in the same blob: the feature
+    /// order and the label centre describe this one model, and a shared metadata object could be overwritten by
+    /// another instance (or another version of the service) between the two writes.
     /// </summary>
     private void PersistModelAndMetadata(string tag, ITransformer model, IDataView dataView,
         Dictionary<string, int> featureIndex, List<FlipData> trainingData,
-        double rmse, double rSquared, bool forcePersist)
+        double rmse, double rSquared, bool forcePersist, double labelCenter)
     {
         try
         {
-            using var ms = new System.IO.MemoryStream();
-            mlContext.Model.Save(model, dataView.Schema, ms);
-            ms.Position = 0;
-
             var shouldPersist = forcePersist ||
                 !lastPersistedByTag.TryGetValue(tag, out var lastPersist) ||
                 (DateTime.UtcNow - lastPersist) > TimeSpan.FromDays(1);
+            if (!shouldPersist)
+                return;
 
-            if (shouldPersist)
-            {
-                _ = persitance.SaveBlob($"selflearning/model/{tag}", ms);
-                lastPersistedByTag[tag] = DateTime.UtcNow;
-            }
-
-            var meta = new PersistMeta
+            var meta = MessagePack.MessagePackSerializer.Serialize(new PersistMeta
             {
                 FeatureNames = featureIndex.OrderBy(kv => kv.Value).Select(kv => kv.Key).ToArray(),
                 SampleCount = trainingData.Count,
                 Rmse = double.IsNaN(rmse) ? null : rmse,
-                RSquared = double.IsNaN(rSquared) ? null : rSquared
-            };
-
-            lock (metaSaveLock)
+                RSquared = double.IsNaN(rSquared) ? null : rSquared,
+                LabelCenter = labelCenter
+            });
+            using var ms = new System.IO.MemoryStream();
+            ms.Write(BitConverter.GetBytes(meta.Length));
+            ms.Write(meta);
+            using (var modelStream = new System.IO.MemoryStream())
             {
-                try
-                {
-                    var combinedMeta = LoadCombinedMetadata();
-                    combinedMeta[tag] = meta;
-                    if (shouldPersist)
-                        SaveCombinedMetadata(combinedMeta);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "Failed to persist combined metadata for {Tag}", tag);
-                }
+                mlContext.Model.Save(model, dataView.Schema, modelStream);
+                modelStream.WriteTo(ms);
             }
+            ms.Position = 0;
+
+            _ = persitance.SaveBlob(LogModelBlobPrefix + tag, ms);
+            lastPersistedByTag[tag] = DateTime.UtcNow;
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to persist model for {Tag}", tag);
         }
-    }
-
-    /// <summary>
-    /// Loads all persisted metadata from storage.
-    /// </summary>
-    private Dictionary<string, PersistMeta> LoadCombinedMetadata()
-    {
-        try
-        {
-            var existing = persitance.LoadBlob("selflearning/meta/all").Result;
-            if (existing is not null)
-            {
-                return MessagePack.MessagePackSerializer.Deserialize<Dictionary<string, PersistMeta>>(existing);
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogDebug(ex, "Could not load combined metadata, starting fresh");
-        }
-
-        return new Dictionary<string, PersistMeta>(StringComparer.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// Saves all metadata to storage synchronously.
-    /// Callers should hold <see cref="metaSaveLock"/> to prevent concurrent
-    /// writes to the same S3 object (which would trigger
-    /// "Reduce your concurrent request rate" errors).
-    /// </summary>
-    private void SaveCombinedMetadata(Dictionary<string, PersistMeta> metadata)
-    {
-        using var outStream = new System.IO.MemoryStream();
-        MessagePack.MessagePackSerializer.Serialize(outStream, metadata);
-        outStream.Position = 0;
-        persitance.SaveBlob("selflearning/meta/all", outStream).GetAwaiter().GetResult();
     }
 
     private async Task LoadPersistedModelIfExists(string tag)
@@ -1042,40 +1145,23 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
 
         try
         {
-            try
-            {
-                var combinedStream = await persitance.LoadBlob("selflearning/meta/all");
-                if (combinedStream is not null)
-                {
-                    var combined = MessagePack.MessagePackSerializer.Deserialize<Dictionary<string, PersistMeta>>(combinedStream);
-                    if (combined != null && combined.TryGetValue(tag, out var meta))
-                    {
-                        var fIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-                        for (int i = 0; i < meta.FeatureNames.Length; i++)
-                            fIndex[meta.FeatureNames[i]] = i;
-                        featureIndexByItem[tag] = fIndex;
-                        trainingDataByItem.TryGetValue(tag, out var list);
-                        if (meta.Rmse.HasValue || meta.RSquared.HasValue)
-                        {
-                            lastMetricsByItem[tag] = new ModelMetrics(meta.Rmse ?? double.NaN, meta.RSquared ?? double.NaN);
-                        }
-                        else
-                        {
-                            lastMetricsByItem[tag] = new ModelMetrics(double.NaN, double.NaN);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogDebug(ex, "No persisted combined model/meta available");
-            }
+            var bundle = await LoadLogModelBundle(tag);
+            var meta = bundle?.meta ?? await LoadLegacyMetadata(tag);
+            if (meta is not null)
+                ApplyPersistedMetadata(tag, meta);
 
-            var modelStream = await persitance.LoadBlob($"selflearning/model/{tag}");
+            var modelStream = bundle?.model ?? await persitance.LoadBlob(LegacyModelBlobPrefix + tag);
+            // a legacy model scores in coins and has no centre
+            var labelCenter = bundle?.meta.LabelCenter;
             if (modelStream is not null)
             {
                 var tagModel = mlContext.Model.Load(modelStream, out var schema);
                 models[tag] = tagModel;
+                tagsFitHere.Remove(tag);
+                if (labelCenter.HasValue)
+                    logLabelCenterByTag[tag] = labelCenter.Value;
+                else
+                    logLabelCenterByTag.Remove(tag);
                 lock (predictionSync)
                 {
                     var inputSchema = SchemaDefinition.Create(typeof(FlipData));
@@ -1135,6 +1221,67 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         {
             logger.LogDebug(ex, "No persisted model/meta for {Tag}", tag);
         }
+    }
+
+    /// <summary>
+    /// Loads the model of a tag in the current format together with the metadata stored in front of it.
+    /// </summary>
+    private async Task<(PersistMeta meta, System.IO.Stream model)?> LoadLogModelBundle(string tag)
+    {
+        System.IO.Stream? bundle;
+        try
+        {
+            bundle = await persitance.LoadBlob(LogModelBlobPrefix + tag);
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "No persisted log model for {Tag}, trying the legacy one", tag);
+            return null;
+        }
+        if (bundle is null)
+            return null;
+
+        using (bundle)
+        {
+            var length = new byte[sizeof(int)];
+            bundle.ReadExactly(length);
+            var meta = new byte[BitConverter.ToInt32(length)];
+            bundle.ReadExactly(meta);
+            var model = new System.IO.MemoryStream();
+            await bundle.CopyToAsync(model);
+            model.Position = 0;
+            return (MessagePack.MessagePackSerializer.Deserialize<PersistMeta>(meta), model);
+        }
+    }
+
+    /// <summary>
+    /// Loads the metadata of a model stored before metadata travelled with the model. That shared object is only
+    /// read: instances still running the previous version keep writing it together with their raw-coin models.
+    /// </summary>
+    private async Task<PersistMeta?> LoadLegacyMetadata(string tag)
+    {
+        try
+        {
+            var combinedStream = await persitance.LoadBlob("selflearning/meta/all");
+            if (combinedStream is null)
+                return null;
+            var combined = MessagePack.MessagePackSerializer.Deserialize<Dictionary<string, PersistMeta>>(combinedStream);
+            return combined != null && combined.TryGetValue(tag, out var meta) ? meta : null;
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "No persisted combined model/meta available");
+            return null;
+        }
+    }
+
+    private void ApplyPersistedMetadata(string tag, PersistMeta meta)
+    {
+        var fIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (int i = 0; i < meta.FeatureNames.Length; i++)
+            fIndex[meta.FeatureNames[i]] = i;
+        featureIndexByItem[tag] = fIndex;
+        lastMetricsByItem[tag] = new ModelMetrics(meta.Rmse ?? double.NaN, meta.RSquared ?? double.NaN);
     }
 
     private static float ComputeBaseline(ComplicatedFlip flip)
@@ -1217,12 +1364,22 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         public double? Rmse { get; set; }
         [Key(3)]
         public double? RSquared { get; set; }
+        /// <summary>Offset of a log model's label, absent for a model that scores in coins</summary>
+        [Key(4)]
+        public double? LabelCenter { get; set; }
     }
 
     private sealed class FlipData
     {
         public float[] Features { get; set; } = Array.Empty<float>();
+        /// <summary>Sold price in coins</summary>
         public float Label { get; set; }
+        /// <summary>What the model is fit on, set on every refit by <see cref="PrepareTrainLabels"/></summary>
+        public float TrainLabel { get; set; }
+        [NoColumn]
+        public float AttributeSum { get; set; }
+        [NoColumn]
+        public bool HasCleanCost { get; set; }
     }
 
     private sealed class FlipPrediction
