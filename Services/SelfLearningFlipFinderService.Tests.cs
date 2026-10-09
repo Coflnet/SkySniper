@@ -17,7 +17,7 @@ namespace Coflnet.Sky.Sniper.Services.Tests;
 [TestFixture]
 public class SelfLearningFlipFinderServiceTests
 {
-    private class TestPersistence : IPersitanceManager
+    internal class TestPersistence : IPersitanceManager
     {
         private readonly Dictionary<string, byte[]> store = new();
         public Task LoadLookups(SniperService service) => Task.CompletedTask;
@@ -554,6 +554,43 @@ public class SelfLearningFlipFinderServiceTests
             await restarted.TrainAsync(replayed);
 
         logger.Messages.Last(m => m.StartsWith("Trained FastTree model for WITHER_GOGGLES")).Should().EndWith("heldOutSales=0");
+    }
+
+    /// <summary>
+    /// The held-out error is what tells whether a model can be shown to players. It took days of sales to measure
+    /// and must not be gone, nor reset by the replay refit, after a pod restart.
+    /// </summary>
+    [Test]
+    public async Task HeldOutErrorsSurviveRestart()
+    {
+        const int sales = 150;
+        const int laterSales = 30;
+        var persistence = new TestPersistence();
+        var history = GogglesHistory(sales + laterSales);
+        ModelMetrics measured;
+        using (var beforeRestart = new SelfLearningFlipFinderService(NullLogger<SelfLearningFlipFinderService>.Instance, persistence, minSamplesForTraining: sales))
+        {
+            foreach (var sale in history)
+                await beforeRestart.TrainAsync(sale);
+            await beforeRestart.PersistModelAsync("WITHER_GOGGLES");
+            measured = beforeRestart.GetModelStats()["WITHER_GOGGLES"].Metrics;
+        }
+        measured.HeldOutSales.Should().Be(laterSales);
+
+        using var restarted = new SelfLearningFlipFinderService(NullLogger<SelfLearningFlipFinderService>.Instance, persistence, minSamplesForTraining: sales);
+        await restarted.TrainAsync(history[0]);
+        await restarted.EstimateAsync(Sale("WITHER_GOGGLES", 0, history[0].AttributeValues));
+        var loaded = restarted.GetModelStats()["WITHER_GOGGLES"].Metrics;
+        foreach (var replayed in history.Skip(1))
+            await restarted.TrainAsync(replayed);
+        var refit = restarted.GetModelStats()["WITHER_GOGGLES"].Metrics;
+
+        foreach (var metrics in new[] { loaded, refit })
+        {
+            metrics.HeldOutSales.Should().Be(laterSales);
+            metrics.HeldOutMedianError.Should().Be(measured.HeldOutMedianError);
+            metrics.HeldOutP90Error.Should().Be(measured.HeldOutP90Error);
+        }
     }
 
     private static List<ComplicatedFlip> GogglesHistory(int sales)

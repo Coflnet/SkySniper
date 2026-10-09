@@ -1,5 +1,7 @@
+using System.IO;
 using System.Threading.Tasks;
 using Coflnet.Sky.Core;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
 namespace Coflnet.Sky.Sniper.Services;
@@ -38,6 +40,18 @@ public class PropertyMapperTests
     {
         await mapper.LoadNeuConstants();
         var cost = mapper.GetReforgeCost(ItemReferences.Reforge.aote_stone, Tier.EPIC);
-        Assert.That(5_000_000,Is.EqualTo(cost.Item2));
+        Assert.That("AOTE_STONE",Is.EqualTo(cost.Item1));
+        Assert.That(NeuReforgeCost("AOTE_STONE", "EPIC"),Is.EqualTo(cost.Item2));
+    }
+
+    /// <summary>
+    /// The NEU repo is cloned at its current tip, so the expected cost is read from the same file instead of hardcoded
+    /// </summary>
+    private static int NeuReforgeCost(string stoneTag, string tier)
+    {
+        var stones = JObject.Parse(File.ReadAllText("NEU-REPO/constants/reforgestones.json"));
+        var cost = stones[stoneTag]["reforgeCosts"][tier].Value<int>();
+        Assert.That(cost, Is.GreaterThan(0));
+        return cost;
     }
 }

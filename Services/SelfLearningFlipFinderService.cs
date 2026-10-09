@@ -24,6 +24,11 @@ public interface ISelfLearningFlipFinderService
     Task TrainAsync(ComplicatedFlip flip, CancellationToken cancellationToken = default);
     Task TrainBatchAsync(IEnumerable<ComplicatedFlip> flips, CancellationToken cancellationToken = default);
     Task<SelfLearningFlipEstimate?> EstimateAsync(ComplicatedFlip flip, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Estimate from the model already in memory. Never loads or trains one, so it is safe on a latency bound path.
+    /// Null when no trained model is ready for the item.
+    /// </summary>
+    SelfLearningFlipEstimate? EstimateWithLoadedModel(ComplicatedFlip flip);
     SelfLearningFlipModelSnapshot GetSnapshot();
     IReadOnlyDictionary<string, SelfLearningFlipFinderService.ModelStats> GetModelStats();
     Task PersistModelAsync(string? tag = null);
@@ -615,7 +620,6 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         gate.EnterReadLock();
         try
         {
-            var baseline = ComputeBaseline(flip);
             var tag = flip.ItemTag ?? "_global";
             if (!RelevantItems.Contains(tag) || !trainingDataByItem.TryGetValue(tag, out var list) || !featureIndexByItem.TryGetValue(tag, out var fIndex))
             {
@@ -661,50 +665,83 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 models.TryGetValue(tag, out tagModel);
             }
 
-            if (tagModel is null || !predictionEngines.TryGetValue(tag, out var tagEngine) || fIndex.Count == 0 || list.Count < minSamplesForTraining)
-            {
-                return Task.FromResult<SelfLearningFlipEstimate?>(new SelfLearningFlipEstimate(baseline, baseline, false, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
-            }
-
-            var attrs = WithAttributeSum(flip.AttributeValues ?? new Dictionary<string, long>(), out _);
-
-            // Use the exact vector size the model expects (from when it was trained/loaded)
-            // This prevents errors when new features appear that weren't in the training data
-            var expectedVectorSize = modelVectorSizeByTag.GetValueOrDefault(tag, fIndex.Count);
-            var features = CreateFeatureVectorForPrediction(attrs, fIndex, expectedVectorSize);
-
-            if (features.Length != expectedVectorSize)
-            {
-                logger.LogWarning("Feature vector size mismatch for {Tag}: created {ActualSize}, expected {ExpectedSize}",
-                    tag, features.Length, expectedVectorSize);
-                return Task.FromResult<SelfLearningFlipEstimate?>(new SelfLearningFlipEstimate(baseline, baseline, false, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
-            }
-
-            double predictedPrice;
-            lock (predictionSync)
-            {
-                predictedPrice = ScoreToPrice(tag, tagEngine!.Predict(new FlipData { Features = features }).Score);
-                logger.LogInformation("Prediction for {Tag}: {Score} (baseline {Baseline})", tag, predictedPrice, baseline);
-            }
-            var score = !double.IsFinite(predictedPrice) || predictedPrice <= 0 ? baseline : predictedPrice;
-
-            // Cap prediction to 1.5x the maximum sold price seen in training data.
-            // Prevents items like SKELETON_MASTER_CHESTPLATE from being valued at billions
-            // when no training sample supports such a price (attributes defaulting to high estimates).
-            if (maxTrainingLabelByTag.TryGetValue(tag, out var maxLabel) && maxLabel > 0 && score > maxLabel * 1.5f)
-            {
-                logger.LogWarning("AI prediction for {Tag} capped from {OriginalScore:F0} to {CappedScore:F0} (max training label: {MaxLabel:F0}, attrs: {Attrs})",
-                    tag, score, maxLabel * 1.5f, maxLabel,
-                    string.Join(", ", (flip.AttributeValues ?? new Dictionary<string, long>()).Select(kv => $"{kv.Key}={kv.Value}")));
-                score = maxLabel * 1.5f;
-            }
-
-            return Task.FromResult<SelfLearningFlipEstimate?>(new SelfLearningFlipEstimate(score, baseline, true, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
+            return Task.FromResult<SelfLearningFlipEstimate?>(ScoreWithModel(tag, flip, tagModel, list, fIndex));
         }
         finally
         {
             gate.ExitReadLock();
         }
+    }
+
+    public SelfLearningFlipEstimate? EstimateWithLoadedModel(ComplicatedFlip flip)
+    {
+        if (flip is null)
+            throw new ArgumentNullException(nameof(flip));
+        if (disposed)
+            throw new ObjectDisposedException(nameof(SelfLearningFlipFinderService));
+
+        gate.EnterReadLock();
+        try
+        {
+            var tag = flip.ItemTag ?? "_global";
+            if (!RelevantItems.Contains(tag) || !trainingDataByItem.TryGetValue(tag, out var list) || !featureIndexByItem.TryGetValue(tag, out var fIndex))
+                return null;
+            if (!models.TryGetValue(tag, out var tagModel) || tagModel is null)
+                return null;
+            var estimate = ScoreWithModel(tag, flip, tagModel, list, fIndex);
+            return estimate.ModelReady ? estimate : null;
+        }
+        finally
+        {
+            gate.ExitReadLock();
+        }
+    }
+
+    /// <summary>
+    /// Scores the flip with the model in memory, the baseline when that model can not be used. Needs the read lock.
+    /// </summary>
+    private SelfLearningFlipEstimate ScoreWithModel(string tag, ComplicatedFlip flip, ITransformer? tagModel, List<FlipData> list, Dictionary<string, int> fIndex)
+    {
+        var baseline = ComputeBaseline(flip);
+        if (tagModel is null || !predictionEngines.TryGetValue(tag, out var tagEngine) || fIndex.Count == 0 || list.Count < minSamplesForTraining)
+        {
+            return new SelfLearningFlipEstimate(baseline, baseline, false, list.Count, lastMetricsByItem.GetValueOrDefault(tag));
+        }
+
+        var attrs = WithAttributeSum(flip.AttributeValues ?? new Dictionary<string, long>(), out _);
+
+        // Use the exact vector size the model expects (from when it was trained/loaded)
+        // This prevents errors when new features appear that weren't in the training data
+        var expectedVectorSize = modelVectorSizeByTag.GetValueOrDefault(tag, fIndex.Count);
+        var features = CreateFeatureVectorForPrediction(attrs, fIndex, expectedVectorSize);
+
+        if (features.Length != expectedVectorSize)
+        {
+            logger.LogWarning("Feature vector size mismatch for {Tag}: created {ActualSize}, expected {ExpectedSize}",
+                tag, features.Length, expectedVectorSize);
+            return new SelfLearningFlipEstimate(baseline, baseline, false, list.Count, lastMetricsByItem.GetValueOrDefault(tag));
+        }
+
+        double predictedPrice;
+        lock (predictionSync)
+        {
+            predictedPrice = ScoreToPrice(tag, tagEngine!.Predict(new FlipData { Features = features }).Score);
+            logger.LogInformation("Prediction for {Tag}: {Score} (baseline {Baseline})", tag, predictedPrice, baseline);
+        }
+        var score = !double.IsFinite(predictedPrice) || predictedPrice <= 0 ? baseline : predictedPrice;
+
+        // Cap prediction to 1.5x the maximum sold price seen in training data.
+        // Prevents items like SKELETON_MASTER_CHESTPLATE from being valued at billions
+        // when no training sample supports such a price (attributes defaulting to high estimates).
+        if (maxTrainingLabelByTag.TryGetValue(tag, out var maxLabel) && maxLabel > 0 && score > maxLabel * 1.5f)
+        {
+            logger.LogWarning("AI prediction for {Tag} capped from {OriginalScore:F0} to {CappedScore:F0} (max training label: {MaxLabel:F0}, attrs: {Attrs})",
+                tag, score, maxLabel * 1.5f, maxLabel,
+                string.Join(", ", (flip.AttributeValues ?? new Dictionary<string, long>()).Select(kv => $"{kv.Key}={kv.Value}")));
+            score = maxLabel * 1.5f;
+        }
+
+        return new SelfLearningFlipEstimate(score, baseline, true, list.Count, lastMetricsByItem.GetValueOrDefault(tag));
     }
 
     public SelfLearningFlipModelSnapshot GetSnapshot()
@@ -897,7 +934,11 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     private ModelMetrics BuildMetrics(string tag, double rmse, double rSquared)
     {
         if (!heldOutErrorsByTag.TryGetValue(tag, out var errors) || errors.Count == 0)
-            return new ModelMetrics(rmse, rSquared);
+        {
+            // nothing measured in this process yet, keep what was persisted before the restart
+            var persisted = lastMetricsByItem.GetValueOrDefault(tag);
+            return new ModelMetrics(rmse, rSquared, persisted?.HeldOutMedianError, persisted?.HeldOutP90Error, persisted?.HeldOutSales ?? 0);
+        }
         var sorted = errors.ToArray();
         Array.Sort(sorted);
         return new ModelMetrics(rmse, rSquared, sorted[sorted.Length / 2], sorted[(int)((sorted.Length - 1) * 0.9)], sorted.Length);
@@ -1031,7 +1072,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         );
 
         ITransformer? tagModel = null;
-        double rmse = double.NaN, r2 = double.NaN;
+        ModelMetrics modelMetrics;
         try
         {
             var fitted = pipeline.Fit(dataView);
@@ -1054,9 +1095,9 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             logger.LogDebug("Stored model vector size for {Tag}: {VectorSize} features", tag, featureCount);
 
             var metrics = mlContext.Regression.Evaluate(tagModel!.Transform(dataView), labelColumnName: nameof(FlipData.TrainLabel));
-            rmse = metrics?.RootMeanSquaredError ?? double.NaN;
-            r2 = metrics?.RSquared ?? double.NaN;
-            var modelMetrics = BuildMetrics(tag, rmse, r2);
+            var rmse = metrics?.RootMeanSquaredError ?? double.NaN;
+            var r2 = metrics?.RSquared ?? double.NaN;
+            modelMetrics = BuildMetrics(tag, rmse, r2);
             lastMetricsByItem[tag] = modelMetrics;
 
             logger.LogInformation("Trained FastTree model for {Tag}: {SampleCount} samples, {FeatureCount} features, RMSE={Rmse:F2}, R²={R2:F3}, trees={Trees}, dropped={Dropped}, heldOutMedianError={HeldOutMedianError:F3}, heldOutP90Error={HeldOutP90Error:F3}, heldOutSales={HeldOutSales}",
@@ -1072,7 +1113,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             return;
         }
 
-        PersistModelAndMetadata(tag, tagModel, dataView, fIndex!, list!, rmse, r2, forcePersist, labelCenter);
+        PersistModelAndMetadata(tag, tagModel, dataView, fIndex!, list!, modelMetrics, forcePersist, labelCenter);
     }
 
     /// <summary>
@@ -1100,7 +1141,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     /// </summary>
     private void PersistModelAndMetadata(string tag, ITransformer model, IDataView dataView,
         Dictionary<string, int> featureIndex, List<FlipData> trainingData,
-        double rmse, double rSquared, bool forcePersist, double labelCenter)
+        ModelMetrics metrics, bool forcePersist, double labelCenter)
     {
         try
         {
@@ -1114,9 +1155,13 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             {
                 FeatureNames = featureIndex.OrderBy(kv => kv.Value).Select(kv => kv.Key).ToArray(),
                 SampleCount = trainingData.Count,
-                Rmse = double.IsNaN(rmse) ? null : rmse,
-                RSquared = double.IsNaN(rSquared) ? null : rSquared,
-                LabelCenter = labelCenter
+                Rmse = double.IsNaN(metrics.Rmse) ? null : metrics.Rmse,
+                RSquared = double.IsNaN(metrics.RSquared) ? null : metrics.RSquared,
+                LabelCenter = labelCenter,
+                HeldOutMedianError = metrics.HeldOutMedianError,
+                HeldOutP90Error = metrics.HeldOutP90Error,
+                HeldOutSales = metrics.HeldOutSales,
+                MaxTrainingLabel = maxTrainingLabelByTag.GetValueOrDefault(tag)
             });
             using var ms = new System.IO.MemoryStream();
             ms.Write(BitConverter.GetBytes(meta.Length));
@@ -1281,7 +1326,10 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         for (int i = 0; i < meta.FeatureNames.Length; i++)
             fIndex[meta.FeatureNames[i]] = i;
         featureIndexByItem[tag] = fIndex;
-        lastMetricsByItem[tag] = new ModelMetrics(meta.Rmse ?? double.NaN, meta.RSquared ?? double.NaN);
+        lastMetricsByItem[tag] = new ModelMetrics(meta.Rmse ?? double.NaN, meta.RSquared ?? double.NaN, meta.HeldOutMedianError, meta.HeldOutP90Error, meta.HeldOutSales);
+        // without it a loaded model would extrapolate unbounded until its first refit
+        if (meta.MaxTrainingLabel > 0)
+            maxTrainingLabelByTag[tag] = meta.MaxTrainingLabel;
     }
 
     private static float ComputeBaseline(ComplicatedFlip flip)
@@ -1367,6 +1415,16 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         /// <summary>Offset of a log model's label, absent for a model that scores in coins</summary>
         [Key(4)]
         public double? LabelCenter { get; set; }
+        /// <summary>Median relative error on sales the model had not been trained on, absent if none were measured</summary>
+        [Key(5)]
+        public double? HeldOutMedianError { get; set; }
+        [Key(6)]
+        public double? HeldOutP90Error { get; set; }
+        [Key(7)]
+        public int HeldOutSales { get; set; }
+        /// <summary>Highest sold price the model was trained on, predictions are capped relative to it</summary>
+        [Key(8)]
+        public float MaxTrainingLabel { get; set; }
     }
 
     private sealed class FlipData
