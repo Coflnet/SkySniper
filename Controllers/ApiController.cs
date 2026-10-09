@@ -31,6 +31,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         private readonly IPersitanceManager persitanceManager;
         private readonly ITrackerApi trackerApi;
         private readonly ISelfLearningFlipFinderService flipFinder;
+        private readonly DisplayPriceEstimator displayPrice;
         private readonly ActivitySource activitySource;
         private static readonly Histogram BatchDuration = Prometheus.Metrics.CreateHistogram(
             "sky_sniper_batch_duration_seconds", "Time spent pricing an auction batch",
@@ -51,7 +52,8 @@ namespace Coflnet.Sky.Sniper.Controllers
             IPersitanceManager persitanceManager,
             ITrackerApi trackerApi,
             ISelfLearningFlipFinderService flipFinder,
-            ActivitySource activitySource)
+            ActivitySource activitySource,
+            IMayorService mayorService = null)
         {
             _logger = logger;
             this.service = service;
@@ -60,6 +62,7 @@ namespace Coflnet.Sky.Sniper.Controllers
             this.persitanceManager = persitanceManager;
             this.trackerApi = trackerApi;
             this.flipFinder = flipFinder;
+            this.displayPrice = new DisplayPriceEstimator(service, flipFinder, mayorService, craftCostService);
             this.activitySource = activitySource;
         }
 
@@ -279,7 +282,7 @@ namespace Coflnet.Sky.Sniper.Controllers
             return await CalculatePrices(auctions, includeSelfLearning, "messagepack", cancellationToken);
         }
 
-        private async Task<List<PriceEstimate>> CalculatePrices(IEnumerable<ApiSaveAuction> source,
+        private Task<List<PriceEstimate>> CalculatePrices(IEnumerable<ApiSaveAuction> source,
             bool includeSelfLearning, string transport, CancellationToken cancellationToken)
         {
             var auctions = source?.ToList() ?? [];
@@ -295,24 +298,7 @@ namespace Coflnet.Sky.Sniper.Controllers
                 cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-                    var estimate = service.GetPrice(a);
-                    if (includeSelfLearning && flipFinder != null)
-                    {
-                        try
-                        {
-                            var cflip = SaveAuctionExtensions.ToComplicatedFlip(a, includeBreakdown: true, sniper: service);
-                            var sle = await flipFinder.EstimateAsync(cflip);
-                            if (sle != null)
-                            {
-                                estimate.SelfLearningEstimatedValue = sle.EstimatedValue;
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogDebug(ex, "Self-learning estimate failed for auction {AuctionId}", a?.Uuid);
-                        }
-                    }
-                    list.Add(estimate);
+                    list.Add(GetDisplayPrice(a, includeSelfLearning));
                 }
                 catch (Exception e)
                 {
@@ -320,7 +306,23 @@ namespace Coflnet.Sky.Sniper.Controllers
                     list.Add(new PriceEstimate());
                 }
             }
-            return list;
+            return Task.FromResult(list);
+        }
+
+        /// <summary>
+        /// The reference based price, its median replaced by the self-learning estimate for items that are not easily comparable
+        /// </summary>
+        private PriceEstimate GetDisplayPrice(ApiSaveAuction auction, bool includeSelfLearning)
+        {
+            try
+            {
+                return displayPrice.GetPrice(auction, includeSelfLearning);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Self-learning estimate failed for auction {AuctionId}", auction?.Uuid);
+                return service.GetPrice(auction);
+            }
         }
 
         [Route("similar/{tag}/{auctionId}")]

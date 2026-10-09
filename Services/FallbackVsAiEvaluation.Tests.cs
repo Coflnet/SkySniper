@@ -34,6 +34,8 @@ namespace Coflnet.Sky.Sniper.Services
     /// <see cref="SniperService.AddSoldItem"/> and used to train the AI model through the production feature path
     /// (<see cref="SaveAuctionExtensions.ToComplicatedFlip"/>), then both estimate the held out item and are compared
     /// with the median it actually sold for. The AI model is therefore one trained on the capture, not the deployed one.
+    /// The AI estimate is reported as the price endpoint bounds it and as the model returns it, next to the median that
+    /// endpoint displays.
     /// </para>
     /// </summary>
     public class FallbackVsAiEvaluation
@@ -114,14 +116,19 @@ namespace Coflnet.Sky.Sniper.Services
             using var ai = new SelfLearningFlipFinderService(NullLogger<SelfLearningFlipFinderService>.Instance, new NoPersistence());
             await ai.TrainBatchAsync(sales.Select(s => s.ToComplicatedFlip(true, service, null, craftCost)));
             await ai.EnsureTrainedModelAsync(tag);
+            var uncapped = (await ai.EstimateAsync(Sold(held.Item, Unsold, 0).ToComplicatedFlip(true, service, null, craftCost)))?.EstimatedValue ?? 0;
+            // the price endpoint: reference based or self-learning median, whichever it displays
+            var controller = new Controllers.SniperController(null, service, null, craftCost, null, null, null, ai, null);
+            var request = new ApiSaveAuction { Tag = held.Item.Tag, Tier = held.Item.Tier, Reforge = held.Item.Reforge, Count = held.Item.Count,
+                ItemCreatedAt = held.Item.ItemCreatedAt, Enchantments = new(held.Item.Enchantments), FlatenedNBT = new(held.Item.FlatenedNBT) };
             var aiWatch = Stopwatch.StartNew();
-            var estimate = await ai.EstimateAsync(Sold(held.Item, Unsold, 0).ToComplicatedFlip(true, service, null, craftCost));
+            var displayed = (await controller.GetPrices([request], true)).Single();
             aiWatch.Stop();
-
             var soldMedian = held.Sales.Select(s => s.Price).OrderBy(p => p).ElementAt(held.Sales.Count / 2);
             Console.WriteLine($"EVAL {tag} | {held.Key} | sales={held.Sales.Count} soldMedian={soldMedian} bucketPrice={held.Price}"
                 + $" | fallback={fallback.Median} ({Percent(fallback.Median, soldMedian)}) via {fallback.MedianKey} {fallbackWatch.Elapsed.TotalMilliseconds:F1}ms"
-                + $" | ai={estimate?.EstimatedValue:F0} ({Percent(estimate?.EstimatedValue ?? 0, soldMedian)}) ready={estimate?.ModelReady} samples={estimate?.SampleCount} {aiWatch.Elapsed.TotalMilliseconds:F1}ms");
+                + $" | ai={displayed.SelfLearningEstimatedValue:F0} ({Percent(displayed.SelfLearningEstimatedValue, soldMedian)}) uncapped={uncapped:F0} ({Percent(uncapped, soldMedian)})"
+                + $" | displayed={displayed.Median} ({Percent(displayed.Median, soldMedian)}) via {(displayed.MedianKey?.EndsWith("+AI") == true ? "AI" : "reference")} {aiWatch.Elapsed.TotalMilliseconds:F1}ms");
         }
 
         private static string Percent(double estimate, long actual) => $"{(estimate - actual) / actual * 100:+0;-0}%";

@@ -1696,11 +1696,222 @@ namespace Coflnet.Sky.Sniper
         {
             SetKatanaBazaarPrices();
             AddVolume(ChimeraKatana(0, 48_400_000, false));
+            // the share is only credited because katanas with these enchants sold for that much more
+            AddVolume(ChimeraKatana(4, 225_400_000, false));
 
             var estimate = service.GetPrice(ChimeraKatana(5, 0, true));
 
-            // clean 48.4m + 60% of the 370m Chimera V and 156.5m Sharpness VII sell value, below the price of crafting it
-            Assert.That(estimate.Median, Is.InRange(360_000_000, KatanaCraftPrice), estimate.MedianKey);
+            // Chimera IV reference + 60% of the step to Chimera V; Sharpness VII never sold on a katana here and adds nothing
+            Assert.That(estimate.Median, Is.InRange(340_000_000, KatanaCraftPrice), estimate.MedianKey);
+        }
+
+        [Test]
+        public void CombinedUpgradesAreNotCreditedBeyondTheirSalePremium()
+        {
+            SetKatanaBazaarPrices();
+            AddVolume(ChimeraKatana(0, 48_400_000, false));
+            var sold = ChimeraKatana(4, 225_400_000, false);
+            sold.Enchantments.Add(new(Enchantment.EnchantmentType.sharpness, 7));
+            AddVolume(sold);
+            var recombobulated = Dupplicate(sold);
+            recombobulated.HighestBidAmount = 0;
+            recombobulated.FlatenedNBT = new() { { "rarity_upgrades", "1" } };
+
+            var estimate = service.GetPrice(recombobulated);
+
+            // Chimera IV and Sharpness VII together realised 177m above the clean katana, so the same two on another
+            // katana are worth that once: the 225.4m sale plus at most the 9.5m recombobulator
+            Assert.That(estimate.Median, Is.InRange(225_400_000, 235_000_000), estimate.MedianKey);
+        }
+
+        /// <summary>
+        /// Pricing relevant fields of a completed 451,451,451 coin BIN sale of 2026-10-07, identifiers removed.
+        /// References are the clean price and the Chimera IV bucket of the pricing-state capture.
+        /// </summary>
+        [Test]
+        public void SoldChimeraKatanaIsValuedBetweenItsReferenceAndItsSale()
+        {
+            SetKatanaBazaarPrices();
+            SetBazaarPrice("ENCHANTMENT_ENDER_SLAYER_7", 49_800_000);
+            AddVolume(ChimeraKatana(0, 48_400_000, false));
+            AddVolume(ChimeraKatana(4, 225_400_000, false));
+            var sold = Dupplicate(highestValAuction);
+            sold.Tag = "ATOMSPLIT_KATANA";
+            sold.Tier = Tier.MYTHIC;
+            sold.Reforge = ItemReferences.Reforge.Fabled;
+            sold.Bin = true;
+            sold.StartingBid = 451_451_451;
+            sold.HighestBidAmount = 0;
+            sold.FlatenedNBT = new()
+            {
+                { "rarity_upgrades", "1" }, { "hpc", "15" }, { "art_of_war_count", "1" }, { "power_ability_scroll", "JASPER_POWER_SCROLL" },
+                { "RUNE_MUSIC", "2" }, { "stats_book", "22889" }, { "champion_combat_xp", "16472174.677625299" },
+                { "JASPER_0", "FLAWED" }, { "SAPPHIRE_0", "FLAWED" }, { "SAPPHIRE_1", "FLAWED" }, { "unlocked_slots", "JASPER_0,SAPPHIRE_0,SAPPHIRE_1" }
+            };
+            sold.Enchantments = new (Enchantment.EnchantmentType type, byte level)[]
+            {
+                (Enchantment.EnchantmentType.ultimate_chimera, 5), (Enchantment.EnchantmentType.ender_slayer, 7), (Enchantment.EnchantmentType.champion, 10),
+                (Enchantment.EnchantmentType.dragon_hunter, 6), (Enchantment.EnchantmentType.thunderlord, 7), (Enchantment.EnchantmentType.vampirism, 6),
+                (Enchantment.EnchantmentType.sharpness, 6), (Enchantment.EnchantmentType.experience, 4), (Enchantment.EnchantmentType.life_steal, 4),
+                (Enchantment.EnchantmentType.scavenger, 5), (Enchantment.EnchantmentType.venomous, 6), (Enchantment.EnchantmentType.giant_killer, 6),
+                (Enchantment.EnchantmentType.smite, 6), (Enchantment.EnchantmentType.lethality, 6), (Enchantment.EnchantmentType.luck, 6),
+                (Enchantment.EnchantmentType.fire_aspect, 3), (Enchantment.EnchantmentType.looting, 4), (Enchantment.EnchantmentType.critical, 6),
+                (Enchantment.EnchantmentType.bane_of_arthropods, 6), (Enchantment.EnchantmentType.cleave, 5), (Enchantment.EnchantmentType.execute, 5),
+                (Enchantment.EnchantmentType.triple_strike, 4), (Enchantment.EnchantmentType.magmarizer, 5), (Enchantment.EnchantmentType.cubism, 5)
+            }.Select(e => new Core.Enchantment(e.type, e.level)).ToList();
+
+            var estimate = service.GetPrice(sold);
+
+            // a player would have been shown the 225.4m Chimera IV reference; the buyer paid 451m
+            Assert.That(estimate.Median, Is.InRange(340_000_000, 451_451_451), estimate.MedianKey);
+        }
+
+        [Test]
+        public void ValuableEnchantNeverSoldOnTheItemIsNotCredited()
+        {
+            SetKatanaBazaarPrices();
+            AddVolume(ChimeraJerry(0, 100_000));
+
+            var estimate = service.GetPrice(ChimeraJerry(5, 0));
+
+            // nobody paid for Chimera on an Aspect of the Jerry, so the 370m book says nothing about this sword
+            Assert.That(estimate.Median, Is.LessThan(10_000_000), estimate.MedianKey);
+        }
+
+        [Test]
+        public void ValuableEnchantCreditFollowsWhatItSoldForOnTheItem()
+        {
+            SetKatanaBazaarPrices();
+            AddVolume(ChimeraJerry(0, 100_000));
+            AddVolume(ChimeraJerry(4, 40_000_000));
+
+            var estimate = service.GetPrice(ChimeraJerry(5, 0));
+
+            // Chimera IV realised a quarter of its 160m book on this sword, the 210m step to Chimera V is credited alike
+            Assert.That(estimate.Median, Is.InRange(40_000_000, 100_000_000), estimate.MedianKey);
+        }
+
+        private SaveAuction ChimeraJerry(int chimeraLevel, long price)
+        {
+            var jerry = Dupplicate(highestValAuction);
+            jerry.Tag = "ASPECT_OF_THE_JERRY";
+            jerry.Tier = Tier.COMMON;
+            jerry.HighestBidAmount = price;
+            jerry.FlatenedNBT = new();
+            jerry.Enchantments = chimeraLevel == 0 ? new() : new() { new(Enchantment.EnchantmentType.ultimate_chimera, (byte)chimeraLevel) };
+            return jerry;
+        }
+
+        [Test]
+        public async Task ComparableItemKeepsReferencePrice()
+        {
+            SetKatanaBazaarPrices();
+            AddVolume(ChimeraKatana(5, 520_000_000, true));
+            using var model = await TrainedKatanaModel();
+
+            var displayed = DisplayedPrice(model, ChimeraKatana(5, 0, true));
+
+            Assert.That(displayed.Volume, Is.GreaterThanOrEqualTo(1), "at least one sale per day");
+            Assert.That(displayed.Median, Is.InRange(510_000_000, 520_000_000), displayed.MedianKey);
+            Assert.That(displayed.MedianKey, Does.Not.Contain("AI"));
+        }
+
+        [Test]
+        public async Task ItemWithoutOwnReferenceBucketUsesSelfLearningEstimate()
+        {
+            SetKatanaBazaarPrices();
+            AddVolume(ChimeraKatana(0, 48_400_000, false));
+            AddVolume(ChimeraKatana(4, 225_400_000, false));
+            using var model = await TrainedKatanaModel();
+
+            var reference = service.GetPrice(ChimeraKatana(5, 0, true));
+            var displayed = DisplayedPrice(model, ChimeraKatana(5, 0, true), includeSelfLearning: true);
+
+            // sold for 600m with these upgrades, the closest reference fallback stays below 400m
+            Assert.That(reference.Median, Is.InRange(340_000_000, 400_000_000), reference.MedianKey);
+            Assert.That(displayed.Median, Is.InRange(500_000_000, KatanaCraftPrice), displayed.MedianKey);
+            Assert.That(displayed.MedianKey, Does.EndWith("+AI"));
+            Assert.That(displayed.SelfLearningEstimatedValue, Is.EqualTo(displayed.Median).Within(1));
+            Assert.That(displayed.Lbin, Is.EqualTo(reference.Lbin), "the lbin stays reference based");
+        }
+
+        [Test]
+        public async Task ManyValuableModifiersUseSelfLearningEstimate()
+        {
+            SetKatanaBazaarPrices();
+            SetBazaarPrice("ENCHANTMENT_ENDER_SLAYER_7", 30_000_000);
+            SetBazaarPrice("ENCHANTMENT_GIANT_KILLER_7", 144_000_000);
+            SetBazaarPrice("ENCHANTMENT_CRITICAL_7", 50_000_000);
+            // six upgrades worth more than a million: the three enchants above, Chimera V, Sharpness VII and the recombobulator
+            var maxed = ChimeraKatana(5, 520_000_000, true);
+            maxed.Enchantments.Add(new(Enchantment.EnchantmentType.giant_killer, 7));
+            maxed.Enchantments.Add(new(Enchantment.EnchantmentType.critical, 7));
+            AddVolume(maxed);
+            using var model = await TrainedKatanaModel();
+
+            var reference = service.GetPrice(maxed);
+            var displayed = DisplayedPrice(model, maxed);
+
+            Assert.That(reference.Volume, Is.GreaterThanOrEqualTo(1), "its own bucket sells often enough");
+            Assert.That(reference.Median, Is.InRange(490_000_000, 520_000_000), reference.MedianKey);
+            Assert.That(displayed.MedianKey, Does.EndWith("+AI"));
+            Assert.That(displayed.Median, Is.InRange(550_000_000, 700_000_000));
+        }
+
+        [Test]
+        public void WithoutLoadedModelTheReferencePriceIsKept()
+        {
+            SetKatanaBazaarPrices();
+            AddVolume(ChimeraKatana(0, 48_400_000, false));
+            AddVolume(ChimeraKatana(4, 225_400_000, false));
+            using var untrained = new SelfLearningFlipFinderService(NullLogger<SelfLearningFlipFinderService>.Instance, new Services.Tests.SelfLearningFlipFinderServiceTests.TestPersistence());
+
+            var displayed = DisplayedPrice(untrained, ChimeraKatana(5, 0, true), includeSelfLearning: true);
+
+            Assert.That(displayed.Median, Is.EqualTo(service.GetPrice(ChimeraKatana(5, 0, true)).Median), displayed.MedianKey);
+            Assert.That(displayed.Median, Is.InRange(340_000_000, 400_000_000), displayed.MedianKey);
+            Assert.That(displayed.SelfLearningEstimatedValue, Is.Zero);
+        }
+
+        /// <summary>
+        /// What the <c>/price</c> endpoint answers for the item
+        /// </summary>
+        private PriceEstimate DisplayedPrice(ISelfLearningFlipFinderService model, SaveAuction item, bool includeSelfLearning = false)
+        {
+            var controller = new Controllers.SniperController(null, service, null, craftCost, null, null, null, model, null);
+            var request = new ApiSaveAuction
+            {
+                Tag = item.Tag,
+                Tier = item.Tier,
+                Reforge = item.Reforge,
+                Count = item.Count,
+                Category = item.Category,
+                ItemCreatedAt = item.ItemCreatedAt,
+                Enchantments = item.Enchantments,
+                FlatenedNBT = item.FlatenedNBT,
+                HighestBidAmount = item.HighestBidAmount
+            };
+            return controller.GetPrices([request], includeSelfLearning).Result.Single();
+        }
+
+        private const int KatanaModelSales = 90;
+
+        /// <summary>
+        /// Model trained on katana sales at the prices of the three fixtures: clean, Chimera IV and upgraded Chimera V
+        /// </summary>
+        private async Task<SelfLearningFlipFinderService> TrainedKatanaModel()
+        {
+            craftCost.Costs["ATOMSPLIT_KATANA"] = 48_400_000;
+            var model = new SelfLearningFlipFinderService(NullLogger<SelfLearningFlipFinderService>.Instance, new Services.Tests.SelfLearningFlipFinderServiceTests.TestPersistence(), minSamplesForTraining: KatanaModelSales);
+            var sales = Enumerable.Range(0, KatanaModelSales).Select(i => (i % 3) switch
+            {
+                0 => ChimeraKatana(0, 48_400_000, false),
+                1 => ChimeraKatana(4, 225_400_000, false),
+                _ => ChimeraKatana(5, 600_000_000, true)
+            }).Select(sale => sale.ToComplicatedFlip(true, service, null, craftCost));
+            await model.TrainBatchAsync(sales);
+            await model.EnsureTrainedModelAsync("ATOMSPLIT_KATANA");
+            return model;
         }
 
         [Test]
@@ -1726,8 +1937,8 @@ namespace Coflnet.Sky.Sniper
 
             var estimate = service.GetPrice(ChimeraKatana(5, 0, true));
 
-            // cheap Chimera IV listing + credit is 226m, below the floor of the clean item plus its valuable enchants
-            Assert.That(estimate.Lbin.Price, Is.InRange(360_000_000, KatanaCraftPrice), estimate.LbinKey);
+            // cheap Chimera IV listing + credit is 226m, below the floor of the clean item plus 60% of Chimera V
+            Assert.That(estimate.Lbin.Price, Is.InRange(300_000_000, KatanaCraftPrice), estimate.LbinKey);
         }
 
         [Test]
@@ -1792,9 +2003,11 @@ namespace Coflnet.Sky.Sniper
             katana.Enchantments = chimeraLevel == 0 ? new() : new()
             {
                 new(Enchantment.EnchantmentType.ultimate_chimera, (byte)chimeraLevel),
-                new(Enchantment.EnchantmentType.sharpness, 7),
                 new(Enchantment.EnchantmentType.ender_slayer, 7)
             };
+            // the captured 225.4m Chimera IV bucket has no Sharpness VII, only the priced item carries it
+            if (upgraded)
+                katana.Enchantments.Add(new(Enchantment.EnchantmentType.sharpness, 7));
             return katana;
         }
 

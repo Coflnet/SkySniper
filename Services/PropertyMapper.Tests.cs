@@ -40,16 +40,18 @@ public class PropertyMapperTests
     {
         await mapper.LoadNeuConstants();
         var cost = mapper.GetReforgeCost(ItemReferences.Reforge.aote_stone, Tier.EPIC);
-        // the NEU repo is cloned at its current tip, so the expected cost has to come from the loaded file
-        var expected = await ReadNeuReforgeCost("AOTE_STONE", "EPIC");
-        Assert.That(expected,Is.GreaterThan(0));
         Assert.That("AOTE_STONE",Is.EqualTo(cost.Item1));
-        Assert.That(expected,Is.EqualTo(cost.Item2));
+        Assert.That(NeuReforgeCost("AOTE_STONE", "EPIC"),Is.EqualTo(cost.Item2));
     }
 
-    private static async Task<int> ReadNeuReforgeCost(string stoneTag, string tier)
+    /// <summary>
+    /// The NEU repo is cloned at its current tip, so the expected cost is read from the same file instead of hardcoded
+    /// </summary>
+    private static int NeuReforgeCost(string stoneTag, string tier)
     {
-        var json = await File.ReadAllTextAsync("NEU-REPO/constants/reforgestones.json");
-        return JObject.Parse(json)[stoneTag]["reforgeCosts"].Value<int>(tier);
+        var stones = JObject.Parse(File.ReadAllText("NEU-REPO/constants/reforgestones.json"));
+        var cost = stones[stoneTag]["reforgeCosts"][tier].Value<int>();
+        Assert.That(cost, Is.GreaterThan(0));
+        return cost;
     }
 }

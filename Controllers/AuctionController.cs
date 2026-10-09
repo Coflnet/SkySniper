@@ -24,6 +24,7 @@ public class AuctionController : ControllerBase
     private readonly ISelfLearningFlipFinderService flipFinder;
     private readonly IMayorService mayorService;
     private readonly ICraftCostService craftCostService;
+    private readonly DisplayPriceEstimator displayPrice;
 
     public AuctionController(ILogger<AuctionController> logger, SniperService service, HypixelContext db, ISelfLearningFlipFinderService flipFinder, IMayorService mayorService, ICraftCostService craftCostService)
     {
@@ -33,6 +34,7 @@ public class AuctionController : ControllerBase
         this.flipFinder = flipFinder;
         this.mayorService = mayorService;
         this.craftCostService = craftCostService;
+        this.displayPrice = new DisplayPriceEstimator(service, flipFinder, mayorService, craftCostService);
     }
 
     [Route("auction/{auctionUuid}/key")]
@@ -53,6 +55,25 @@ public class AuctionController : ControllerBase
         if (auction == null)
             return NotFound();
         return await GetEstimateFromInternal(auction);
+    }
+
+    /// <summary>
+    /// The self-learning estimate of an auction next to the reference based one, with the sample count and metrics
+    /// of the model that produced it. Read only.
+    /// </summary>
+    [Route("auction/{auctionUuid}/estimate/comparison")]
+    [HttpGet]
+    public ActionResult<DisplayEstimateComparison> GetEstimateComparison(string auctionUuid)
+    {
+        var uid = AuctionService.Instance.GetId(auctionUuid);
+        var auction = db.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments).FirstOrDefault(a => a.UId == uid);
+        if (auction == null)
+            return NotFound();
+        var comparison = displayPrice.Compare(auction);
+        // without an estimate the model state still tells why there is none
+        if (comparison.SelfLearningEstimate == null && flipFinder.GetModelStats().TryGetValue(comparison.Tag, out var stats))
+            comparison = comparison with { SampleCount = stats.SampleCount, Metrics = stats.Metrics };
+        return comparison;
     }
 
     [Route("auction/{auctionUuid}/estimate")]
