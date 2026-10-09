@@ -1692,6 +1692,128 @@ namespace Coflnet.Sky.Sniper
         }
 
         [Test]
+        public void FallbackMedianIsAtLeastCleanPlusValuableEnchant()
+        {
+            SetKatanaBazaarPrices();
+            AddVolume(ChimeraKatana(0, 48_400_000, false));
+
+            var estimate = service.GetPrice(ChimeraKatana(5, 0, true));
+
+            // clean 48.4m + 60% of the 370m Chimera V and 156.5m Sharpness VII sell value, below the price of crafting it
+            Assert.That(estimate.Median, Is.InRange(360_000_000, KatanaCraftPrice), estimate.MedianKey);
+        }
+
+        [Test]
+        public void FallbackFloorNeedsReferenceWithoutTheValuableEnchants()
+        {
+            SetKatanaBazaarPrices();
+            AddVolume(ChimeraKatana(4, 225_400_000, false));
+
+            var estimate = service.GetPrice(ChimeraKatana(5, 0, true));
+
+            // Chimera IV reference + 60% of the 210m difference to Chimera V, the reference's own enchants are not added again
+            Assert.That(estimate.Median, Is.InRange(340_000_000, 355_000_000), estimate.MedianKey);
+        }
+
+        [Test]
+        public void FallbackLbinIsAtLeastCleanPlusValuableEnchant()
+        {
+            SetKatanaBazaarPrices();
+            AddVolume(ChimeraKatana(0, 48_400_000, false));
+            AddVolume(ChimeraKatana(4, 225_400_000, false));
+            var chimera4Bucket = service.GetBucketForAuction(ChimeraKatana(4, 0, false)).auctions;
+            chimera4Bucket.Lbins.Add(new ReferencePrice { AuctionId = 42, Price = 100_000_000 });
+
+            var estimate = service.GetPrice(ChimeraKatana(5, 0, true));
+
+            // cheap Chimera IV listing + credit is 226m, below the floor of the clean item plus its valuable enchants
+            Assert.That(estimate.Lbin.Price, Is.InRange(360_000_000, KatanaCraftPrice), estimate.LbinKey);
+        }
+
+        [Test]
+        public void FallbackLbinStaysCappedByDominatingListing()
+        {
+            SetKatanaBazaarPrices();
+            SetBazaarPrice("ENCHANTMENT_144_793_781_KILLER_7", 144_793_781, 144_793_781);
+            AddVolume(ChimeraKatana(0, 48_400_000, false));
+            var better = ChimeraKatana(5, 500_000_000, true);
+            better.Enchantments.Add(new(Enchantment.EnchantmentType.giant_killer, 7));
+            AddVolume(better);
+            service.GetBucketForAuction(better).auctions.Lbins.Add(new ReferencePrice { AuctionId = 42, Price = 150_000_000 });
+
+            var estimate = service.GetPrice(ChimeraKatana(5, 0, true));
+
+            Assert.That(estimate.Lbin.Price, Is.EqualTo(150_000_000), estimate.LbinKey);
+        }
+
+        [Test]
+        public async Task HigherStarLevelThanReferenceIsNotCreditedTwice()
+        {
+            await service.Init();
+            SetBazaarPrice("FIRST_MASTER_STAR", 14_200_000);
+            SetBazaarPrice("SECOND_MASTER_STAR", 16_600_000);
+            SetBazaarPrice("THIRD_MASTER_STAR", 25_000_000);
+            SetBazaarPrice("FOURTH_MASTER_STAR", 64_400_000);
+            SetBazaarPrice("ESSENCE_UNDEAD", 630);
+            firstAuction.Tag = "REAPER_MASK";
+            firstAuction.FlatenedNBT = new() { { "upgrade_level", "6" } };
+            firstAuction.HighestBidAmount = 100_000_000;
+            AddVolume(firstAuction);
+            var target = Dupplicate(firstAuction);
+            target.FlatenedNBT["upgrade_level"] = "9";
+
+            var estimate = service.GetPrice(target);
+            // reference + the three additional master stars (106m), not another share of all four
+            Assert.That(estimate.Median, Is.InRange(200_000_000, 210_000_000), estimate.MedianKey);
+        }
+
+        /// <summary>
+        /// Clean katana plus the buy price of Chimera V and Sharpness VII
+        /// </summary>
+        private const long KatanaCraftPrice = 48_400_000 + 454_000_000 + 163_900_000;
+
+        private void SetKatanaBazaarPrices()
+        {
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_CHIMERA_5", 370_000_000, 454_000_000);
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_CHIMERA_4", 160_000_000, 251_500_000);
+            SetBazaarPrice("ENCHANTMENT_SHARPNESS_7", 156_500_000, 163_900_000);
+            SetBazaarPrice("RECOMBOBULATOR_3000", 9_300_000, 9_500_000);
+        }
+
+        private SaveAuction ChimeraKatana(int chimeraLevel, long price, bool upgraded)
+        {
+            var katana = Dupplicate(highestValAuction);
+            katana.Tag = "ATOMSPLIT_KATANA";
+            katana.Tier = upgraded ? Tier.MYTHIC : Tier.LEGENDARY;
+            katana.HighestBidAmount = price;
+            katana.FlatenedNBT = upgraded
+                ? new() { { "rarity_upgrades", "1" }, { "hpc", "15" }, { "art_of_war_count", "1" } }
+                : new();
+            katana.Enchantments = chimeraLevel == 0 ? new() : new()
+            {
+                new(Enchantment.EnchantmentType.ultimate_chimera, (byte)chimeraLevel),
+                new(Enchantment.EnchantmentType.sharpness, 7),
+                new(Enchantment.EnchantmentType.ender_slayer, 7)
+            };
+            return katana;
+        }
+
+        [Test]
+        public void HigherEnchantLevelThanReferenceIsCredited()
+        {
+            SetKatanaBazaarPrices();
+            AddVolume(ChimeraKatana(0, 48_400_000, false));
+            AddVolume(ChimeraKatana(4, 225_400_000, false));
+            var chimera4Bucket = service.GetBucketForAuction(ChimeraKatana(4, 0, false)).auctions;
+            chimera4Bucket.Lbins.Add(new ReferencePrice { AuctionId = 42, Price = 280_000_000 });
+
+            var estimate = service.GetPrice(ChimeraKatana(5, 0, true));
+            // Chimera IV reference + 60% of the 210m sell value difference to Chimera V, below the price of crafting it
+            Assert.That(estimate.Median, Is.InRange(340_000_000, KatanaCraftPrice), estimate.MedianKey);
+            Assert.That(estimate.Lbin.Price, Is.InRange(400_000_000, KatanaCraftPrice), estimate.LbinKey);
+        }
+
+        [Test]
         public void SubstractsEnchants()
         {
             highestValAuction.FlatenedNBT = new();

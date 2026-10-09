@@ -918,7 +918,14 @@ ORDER BY l.`AuctionId`  DESC;
                 var now = DateTime.UtcNow;
                 var res = ClosetLbinMapLookup.GetOrAdd(((string, AuctionKey))(auction.Tag, itemKey), a =>
                 {
-                    return ClosestLbin(auction, result, l, itemKey, now);
+                    var closest = ClosestLbin(auction, result, l, itemKey, detailedKey.ValueBreakdown, now);
+                    var floor = FallbackFloor(auction.Tag, detailedKey, lookup);
+                    if (result.Lbin.Price != 0 && result.Lbin.Price < floor)
+                    {
+                        result.Lbin = new(result.Lbin) { Price = floor };
+                        result.LbinKey += "+floor";
+                    }
+                    return closest;
                 });
                 if (res.addedAt != now)
                 {
@@ -1030,6 +1037,7 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 AssignMedian(result, c.Key, c.Value, gemVal);
                 GetDifferenceSum(auction, result, itemKey, c, out var diffExp, out var changeAmount);
+                var upgradeCredit = ValuableUpgradeCredit(auction.Tag, itemKey.ValueBreakdown, c.Key);
                 if (changeAmount != 0)
                 {
                     result.MedianKey += diffExp;
@@ -1044,8 +1052,10 @@ ORDER BY l.`AuctionId`  DESC;
                         result.MedianKey += "*" + percentDiff.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
                     }
                     else
-                        result.Median -= changeAmount;
+                        result.Median += upgradeCredit - changeAmount;
                 }
+                else
+                    result.Median += upgradeCredit;
                 foreach (var item in itemKey.Key.Modifiers.Where(m => Constants.AttributeKeys.Contains(m.Key)))
                 {
                     // "scrap for parts"
@@ -1114,17 +1124,111 @@ ORDER BY l.`AuctionId`  DESC;
                     for (int bi = 0; bi < breakdown.Count; bi++)
                     {
                         var m = breakdown[bi];
+                        if (ValuableUpgradeValue(auction.Tag, m, maxKey) > 0)
+                            continue; // credited below instead of the one-ninth share
                         if (!maxKey.Modifiers.Contains(m.Modifier) && !maxKey.Enchants.Contains(m.Enchant))
                             add += m.IsEstimate ? m.Value / 20 : m.Value;
                     }
-                    result.Median += add / 9;
+                    result.Median += add / 9 + ValuableUpgradeCredit(auction.Tag, breakdown, maxKey);
                 }
+            }
+            var floor = FallbackFloor(auction.Tag, itemKey, lookup);
+            if (result.Median < floor)
+            {
+                result.Median = floor;
+                result.MedianKey += "+floor";
             }
             RecordSearchDuration(closestMedianSearchDuration, searchStart, searchActivity, auction?.Tag, l.Count, "ClosestMedianSearch");
             return (result, now);
         }
 
-        private (PriceEstimate result, DateTime addedAt) ClosestLbin(SaveAuction auction, PriceEstimate result, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKeyWithValue itemKey, DateTime now)
+        /// <summary>
+        /// Minimum upgrade value for an enchant/modifier to be credited in the displayed fallback estimate
+        /// </summary>
+        private const long ValuableUpgradeMinValue = 20_000_000;
+        /// <summary>
+        /// Upper limit of the share of a valuable upgrade credited in the displayed fallback estimate,
+        /// kept below what <see cref="CraftCostFinder"/> credits
+        /// </summary>
+        private const double ValuableUpgradeMaxShare = 0.6;
+
+        /// <summary>
+        /// Value the item has beyond <paramref name="reference"/> through one very valuable enchant or modifier,
+        /// either absent from the reference or only present at a lower enchant level. 0 if not valuable enough.
+        /// </summary>
+        private long ValuableUpgradeValue(string itemTag, RankElem elem, AuctionKey reference)
+        {
+            if (elem.IsEstimate || elem.Reforge != default || elem.Modifier.Key == itemTag
+                || Constants.AttributeKeys.Contains(elem.Modifier.Key ?? string.Empty))
+                return 0;
+            var value = elem.Value;
+            if (reference is not null && elem.Modifier.Key != null)
+            {
+                if (reference.Modifiers.Contains(elem.Modifier))
+                    return 0;
+                // a differing star level is already netted by GetPriceSumForModifiers
+                if (elem.Modifier.Key == "upgrade_level" && reference.Modifiers.Any(m => m.Key == elem.Modifier.Key))
+                    return 0;
+            }
+            else if (reference is not null)
+            {
+                var onReference = reference.Enchants.FirstOrDefault(e => e.Type == elem.Enchant.Type);
+                if (onReference.Lvl >= elem.Enchant.Lvl)
+                    return 0;
+                if (onReference.Lvl > 0)
+                    value -= mapper.EnchantValue(new Core.Enchantment(onReference.Type, onReference.Lvl), null, BazaarPrices, itemTag);
+            }
+            return value < ValuableUpgradeMinValue ? 0 : value;
+        }
+
+        /// <summary>
+        /// Conservative credit for all very valuable upgrades the item has beyond <paramref name="reference"/>
+        /// (beyond the clean item if null). Only for the displayed fallback estimate, not for flip targets.
+        /// </summary>
+        private long ValuableUpgradeCredit(string itemTag, List<RankElem> breakdown, AuctionKey reference = null)
+        {
+            long credit = 0;
+            foreach (var elem in breakdown)
+            {
+                var componentKey = elem.Modifier.Key ?? elem.Enchant.Type.ToString();
+                var share = Math.Min(CraftComponentShare(componentKey, itemTag), ValuableUpgradeMaxShare);
+                credit += (long)(ValuableUpgradeValue(itemTag, elem, reference) * share);
+            }
+            return credit;
+        }
+
+        /// <summary>
+        /// Lower limit for a fallback estimate: the clean item plus the conservative credit for its very valuable upgrades.
+        /// 0 if the item has none.
+        /// </summary>
+        private long FallbackFloor(string itemTag, KeyWithValueBreakdown itemKey, PriceLookup lookup)
+        {
+            var credit = ValuableUpgradeCredit(itemTag, itemKey.ValueBreakdown);
+            if (credit == 0)
+                return 0;
+            var anchor = PriceWithoutValuableUpgrades(itemTag, itemKey, lookup);
+            return anchor == 0 ? 0 : anchor + credit;
+        }
+
+        /// <summary>
+        /// Lowest median of a reference that has none of the item's very valuable upgrades, at most the clean price.
+        /// The clean price alone can stem from upgraded references and would count those upgrades twice. 0 if there is none.
+        /// </summary>
+        private long PriceWithoutValuableUpgrades(string itemTag, KeyWithValueBreakdown itemKey, PriceLookup lookup)
+        {
+            long lowest = 0;
+            foreach (var reference in lookup.Lookup)
+            {
+                var price = reference.Value.Price;
+                if (price <= 0 || lowest != 0 && price >= lowest || reference.Key.Count != itemKey.Key.Count)
+                    continue;
+                if (itemKey.ValueBreakdown.All(e => ValuableUpgradeValue(itemTag, e, null) == ValuableUpgradeValue(itemTag, e, reference.Key)))
+                    lowest = price;
+            }
+            return lowest == 0 ? 0 : Math.Min(lowest, GetCleanItemPrice(itemTag, itemKey, lookup));
+        }
+
+        private (PriceEstimate result, DateTime addedAt) ClosestLbin(SaveAuction auction, PriceEstimate result, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKeyWithValue itemKey, List<RankElem> breakdown, DateTime now)
         {
             closestLbinBruteCounter.Inc();
             using var searchActivity = activitySource?.StartActivity("ClosestLbinSearch", ActivityKind.Internal);
@@ -1141,11 +1245,13 @@ ORDER BY l.`AuctionId`  DESC;
                 result.LbinKey = closest.Key.ToString();
 
                 GetDifferenceSum(auction, result, itemKey, closest, out var diffExp, out var changeAmount);
-                if (changeAmount != 0)
+                var upgradeCredit = ValuableUpgradeCredit(auction.Tag, breakdown, closest.Key);
+                if (changeAmount != 0 || upgradeCredit != 0)
                 {
                     var lbinPrice = result.Lbin.Price - changeAmount;
                     if (lbinPrice < 0)
                         lbinPrice = result.Lbin.Price;
+                    lbinPrice += upgradeCredit;
                     result.Lbin = new ReferencePrice()
                     {
                         AuctionId = result.Lbin.AuctionId,
@@ -5368,6 +5474,24 @@ ORDER BY l.`AuctionId`  DESC;
             {"INFERNO_ROD", ["MAGMA_ROD"]}
         };
 
+        /// <summary>
+        /// Share of a component's craft value the market pays for it once applied to an item
+        /// </summary>
+        private static double CraftComponentShare(string componentKey, string itemTag)
+        {
+            return componentKey switch
+            {
+                "skin" => itemTag.StartsWith("PET") ? 0.5 : 0.4,
+                "ultimate_fatal_tempo" => 0.65,
+                "rarity_upgrades" => 0.5,
+                "upgrade_level" => 0.84,
+                "talisman_enrichment" => 0.10,
+                var s when IsRune(s) => 0.55,
+                var s when Constants.AttributeKeys.Contains(s) => 0.01,
+                _ => 0.85
+            };
+        }
+
         private void CraftCostFinder(SaveAuction auction, (string tag, long costSubstract) itemGroupTag, PriceLookup lookup, double medPrice, KeyWithValueBreakdown basekey)
         {
             var componentGuess = basekey.ValueBreakdown.Sum(c => c.IsEstimate ? GetValueEstimate(c) : c.Value);
@@ -5400,17 +5524,7 @@ ORDER BY l.`AuctionId`  DESC;
                 "STARRED_MIDAS_SWORD" => 20_000_000,
                 _ => cleanCost
             });
-            var componentSum = valueLookup.Sum(v => (long)(v.Key switch
-            {
-                "skin" => auction.Tag.StartsWith("PET") ? 0.5 : 0.4,
-                "ultimate_fatal_tempo" => 0.65,
-                "rarity_upgrades" => 0.5,
-                "upgrade_level" => 0.84,
-                "talisman_enrichment" => 0.10,
-                var s when IsRune(s) => 0.55,
-                var s when Constants.AttributeKeys.Contains(s) => 0.01,
-                _ => 0.85
-            } * v.Value));
+            var componentSum = valueLookup.Sum(v => (long)(CraftComponentShare(v.Key, auction.Tag) * v.Value));
             if (cleanCost == componentGuess)
             {
                 componentSum = 0; // unique runes shouldn't be counted twice
