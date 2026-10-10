@@ -424,6 +424,61 @@ public class SelfLearningFlipFinderServiceTests
     }
 
     /// <summary>
+    /// A drill part or gem can be taken off and sold, so it is worth its price on every item.
+    /// As a feature a part the model saw on no sale added nothing, and the parts it saw blurred the price of the item itself.
+    /// </summary>
+    [Test]
+    public async Task RemovablePartsAreAddedToTheEstimateInsteadOfLearned()
+    {
+        const int sales = 300;
+        using var service = new SelfLearningFlipFinderService(NullLogger<SelfLearningFlipFinderService>.Instance, new TestPersistence(), minSamplesForTraining: sales);
+        var random = new Random(11);
+        for (var i = 0; i < sales; i++)
+        {
+            var attributes = new Dictionary<string, long> { ["cleancost"] = 90_000_000, ["removable:listed"] = 0 };
+            var partValue = i % 3 == 0 ? 20_000_000 + i * 500_000L : 0;
+            if (partValue > 0)
+                attributes[$"removable:drill_part_engine:ENGINE_{i % 4}"] = partValue;
+            await service.TrainAsync(Sale("TITANIUM_DRILL_4", SpreadPrice(random, 100_000_000, 0.05) + partValue, attributes));
+        }
+
+        var clean = await service.EstimateAsync(Sale("TITANIUM_DRILL_4", 0, new() { ["cleancost"] = 90_000_000, ["removable:listed"] = 0 }));
+        var withUnseenPart = await service.EstimateAsync(DrillWithListedEngine());
+
+        clean.EstimatedValue.Should().BeInRange(95_000_000, 105_000_000, "parts on other sales say nothing about the drill itself");
+        (withUnseenPart.EstimatedValue - clean.EstimatedValue).Should().Be(400_000_000, "the part is worth what it sells for");
+    }
+
+    private static ComplicatedFlip DrillWithListedEngine() => Sale("TITANIUM_DRILL_4", 0, new()
+    {
+        ["cleancost"] = 90_000_000, ["removable:listed"] = 0, ["removable:drill_part_engine:AMBER_POLISHED_DRILL_ENGINE"] = 400_000_000
+    });
+
+    /// <summary>
+    /// Records from before removable parts were features carry the parts inside their price and do not list them.
+    /// A model retrained on such records already prices the parts, adding them again would count them twice.
+    /// </summary>
+    [Test]
+    public async Task RecordsThatDoNotListTheirPartsKeepThePartsInsideThePrice()
+    {
+        const int sales = 300;
+        using var service = new SelfLearningFlipFinderService(NullLogger<SelfLearningFlipFinderService>.Instance, new TestPersistence(), minSamplesForTraining: sales);
+        var random = new Random(11);
+        var history = new List<ComplicatedFlip>();
+        for (var i = 0; i < sales; i++)
+        {
+            // every sale had an engine worth about 400M on it, the record only knows the price
+            history.Add(Sale("TITANIUM_DRILL_4", SpreadPrice(random, 500_000_000, 0.05), new() { ["cleancost"] = 90_000_000 }));
+        }
+        await service.TrainBatchAsync(history);
+
+        var estimate = await service.EstimateAsync(DrillWithListedEngine());
+
+        estimate.ModelReady.Should().BeTrue();
+        estimate.EstimatedValue.Should().BeInRange(475_000_000, 525_000_000, "the learned price already contains the engine");
+    }
+
+    /// <summary>
     /// Two coin transfers among the 70 sales of an upgrade moved the whole leaf when the label was the raw price.
     /// On a log scale a single sale for 100 coins does the same downwards, so neither is trained on.
     /// </summary>

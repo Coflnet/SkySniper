@@ -70,6 +70,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     private readonly Dictionary<string, DateTime> newestSaleByTag = new(StringComparer.OrdinalIgnoreCase);
     // Tags whose serving model was fit in this process. What a loaded model was trained on is unknown
     private readonly HashSet<string> tagsFitHere = new(StringComparer.OrdinalIgnoreCase);
+    // Tags whose model was fit on prices without the removable parts, only their estimates get the parts added
+    private readonly HashSet<string> tagsFitWithoutRemovables = new(StringComparer.OrdinalIgnoreCase);
     // Relative errors of the serving model on sales it was not trained on yet, newest last
     private readonly Dictionary<string, Queue<float>> heldOutErrorsByTag = new(StringComparer.OrdinalIgnoreCase);
     private const int HeldOutWindow = 200;
@@ -666,7 +668,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 return Task.FromResult<SelfLearningFlipEstimate?>(new SelfLearningFlipEstimate(baseline, baseline, false, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
             }
 
-            var attrs = WithAttributeSum(flip.AttributeValues ?? new Dictionary<string, long>(), out _);
+            var attrs = WithAttributeSum(WithoutRemovable(flip.AttributeValues ?? new Dictionary<string, long>(), out var removableValue, out _), out _);
 
             // Use the exact vector size the model expects (from when it was trained/loaded)
             // This prevents errors when new features appear that weren't in the training data
@@ -699,7 +701,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 score = maxLabel * 1.5f;
             }
 
-            return Task.FromResult<SelfLearningFlipEstimate?>(new SelfLearningFlipEstimate(score, baseline, true, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
+            // what can be taken off and sold is worth its price on any item, the model only estimates the rest
+            return Task.FromResult<SelfLearningFlipEstimate?>(new SelfLearningFlipEstimate(score + RemovableValueToAdd(tag, removableValue), baseline, true, list.Count, lastMetricsByItem.GetValueOrDefault(tag)));
         }
         finally
         {
@@ -836,16 +839,62 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     }
 
     /// <summary>
+    /// Splits off the parts and gems that can be taken off the item and sold on their own.
+    /// Their price is known, so they are neither features nor part of the price the model learns.
+    /// </summary>
+    private static Dictionary<string, long> WithoutRemovable(IDictionary<string, long> attributes, out long removableValue, out bool removablesListed)
+    {
+        var result = new Dictionary<string, long>();
+        removableValue = 0;
+        removablesListed = attributes.ContainsKey(SaveAuctionExtensions.RemovablesListedMarker);
+        foreach (var (key, value) in attributes)
+        {
+            if (key.StartsWith(SaveAuctionExtensions.RemovablePrefix, StringComparison.Ordinal))
+                removableValue += value;
+            else
+                result[key] = value;
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// The removable value an estimate of this tag has to add: nothing for a model that learned full prices,
+    /// it already contains what the parts were worth on the sales it was fit on.
+    /// </summary>
+    private long RemovableValueToAdd(string tag, long removableValue)
+    {
+        return tagsFitWithoutRemovables.Contains(tag) ? removableValue : 0;
+    }
+
+    /// <summary>
+    /// Sets the price every sample is trained on and returns whether it is the price without the removable parts.
+    /// That needs every sample to list its parts. A record from before they were features has them inside its
+    /// price at an unknown value, so with one of those the tag is trained on full prices like before.
+    /// </summary>
+    private static bool PrepareLabels(List<FlipData> samples)
+    {
+        var withoutRemovables = samples.TrueForAll(s => s.RemovablesListed);
+        foreach (var sample in samples)
+        {
+            // at least one coin so the logarithm exists
+            sample.Label = withoutRemovables ? Math.Max(sample.SoldFor - sample.RemovableValue, 1) : sample.SoldFor;
+        }
+        return withoutRemovables;
+    }
+
+    /// <summary>
     /// Turns a sold auction into a training sample. The serving model is scored on it first.
     /// </summary>
     private FlipData CreateSample(string tag, ComplicatedFlip flip, Dictionary<string, int> featureIndex, List<FlipData> samples)
     {
-        var attributes = WithAttributeSum(flip.AttributeValues, out var attributeSum);
-        RecordHeldOutError(tag, flip, attributes, featureIndex);
+        var attributes = WithAttributeSum(WithoutRemovable(flip.AttributeValues, out var removableValue, out var removablesListed), out var attributeSum);
+        RecordHeldOutError(tag, flip, attributes, featureIndex, RemovableValueToAdd(tag, removableValue));
         return new FlipData
         {
             Features = CreateFeatureVector(attributes, featureIndex, expandFeatureSpace: true, samples),
-            Label = SafeToFloat(flip.SoldFor),
+            SoldFor = SafeToFloat(flip.SoldFor),
+            RemovableValue = SafeToFloat(removableValue),
+            RemovablesListed = removablesListed,
             AttributeSum = SafeToFloat(attributeSum),
             HasCleanCost = flip.AttributeValues.ContainsKey("cleancost")
         };
@@ -864,7 +913,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     /// Only a sale that ended after everything seen so far counts, and only against a model fit in this process:
     /// a replayed sale is already part of the training data, and a loaded model may have been trained on anything.
     /// </summary>
-    private void RecordHeldOutError(string tag, ComplicatedFlip flip, Dictionary<string, long> attributes, Dictionary<string, int> featureIndex)
+    private void RecordHeldOutError(string tag, ComplicatedFlip flip, Dictionary<string, long> attributes, Dictionary<string, int> featureIndex, long removableValue)
     {
         if (newestSaleByTag.TryGetValue(tag, out var newest) && flip.EndedAt <= newest)
             return;
@@ -876,7 +925,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         double price;
         lock (predictionSync)
         {
-            price = ScoreToPrice(tag, engine.Predict(new FlipData { Features = features }).Score);
+            price = ScoreToPrice(tag, engine.Predict(new FlipData { Features = features }).Score) + removableValue;
         }
         if (!double.IsFinite(price))
             return;
@@ -995,11 +1044,13 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             modelVectorSizeByTag.Remove(tag);
             logLabelCenterByTag.Remove(tag);
             tagsFitHere.Remove(tag);
+            tagsFitWithoutRemovables.Remove(tag);
             return;
         }
         // mark that we're about to refit this tag to avoid concurrent/rapid re-fits
         lastRefitByTag[tag] = DateTime.UtcNow;
 
+        var withoutRemovables = PrepareLabels(list);
         var training = SelectTrainingSamples(list);
 
         // Track the maximum sold price (label) in training data to cap unrealistic predictions
@@ -1050,6 +1101,10 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             modelVectorSizeByTag[tag] = featureCount;
             logLabelCenterByTag[tag] = labelCenter;
             tagsFitHere.Add(tag);
+            if (withoutRemovables)
+                tagsFitWithoutRemovables.Add(tag);
+            else
+                tagsFitWithoutRemovables.Remove(tag);
 
             logger.LogDebug("Stored model vector size for {Tag}: {VectorSize} features", tag, featureCount);
 
@@ -1091,6 +1146,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         modelVectorSizeByTag.Remove(tag);
         logLabelCenterByTag.Remove(tag);
         tagsFitHere.Remove(tag);
+        tagsFitWithoutRemovables.Remove(tag);
     }
 
     /// <summary>
@@ -1116,7 +1172,8 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 SampleCount = trainingData.Count,
                 Rmse = double.IsNaN(rmse) ? null : rmse,
                 RSquared = double.IsNaN(rSquared) ? null : rSquared,
-                LabelCenter = labelCenter
+                LabelCenter = labelCenter,
+                WithoutRemovables = tagsFitWithoutRemovables.Contains(tag)
             });
             using var ms = new System.IO.MemoryStream();
             ms.Write(BitConverter.GetBytes(meta.Length));
@@ -1158,6 +1215,10 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
                 var tagModel = mlContext.Model.Load(modelStream, out var schema);
                 models[tag] = tagModel;
                 tagsFitHere.Remove(tag);
+                if (bundle?.meta.WithoutRemovables == true)
+                    tagsFitWithoutRemovables.Add(tag);
+                else
+                    tagsFitWithoutRemovables.Remove(tag);
                 if (labelCenter.HasValue)
                     logLabelCenterByTag[tag] = labelCenter.Value;
                 else
@@ -1367,12 +1428,15 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         /// <summary>Offset of a log model's label, absent for a model that scores in coins</summary>
         [Key(4)]
         public double? LabelCenter { get; set; }
+        /// <summary>Whether the labels were prices without the removable parts, absent for a model that learned full prices</summary>
+        [Key(5)]
+        public bool WithoutRemovables { get; set; }
     }
 
     private sealed class FlipData
     {
         public float[] Features { get; set; } = Array.Empty<float>();
-        /// <summary>Sold price in coins</summary>
+        /// <summary>Price in coins the sample stands for, set on every refit by <see cref="PrepareLabels"/></summary>
         public float Label { get; set; }
         /// <summary>What the model is fit on, set on every refit by <see cref="PrepareTrainLabels"/></summary>
         public float TrainLabel { get; set; }
@@ -1380,6 +1444,13 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         public float AttributeSum { get; set; }
         [NoColumn]
         public bool HasCleanCost { get; set; }
+        [NoColumn]
+        public float SoldFor { get; set; }
+        [NoColumn]
+        public float RemovableValue { get; set; }
+        /// <summary>False for a record from before removable parts were features</summary>
+        [NoColumn]
+        public bool RemovablesListed { get; set; }
     }
 
     private sealed class FlipPrediction
