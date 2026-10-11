@@ -81,6 +81,8 @@ public static class SaveAuctionExtensions
             throw new Exception("Lightweight conversion is not supported anymore. Always include breakdown.");
         }
 
+        ValueLoweringFeatures.AddTo(attrs, auction);
+
         var id = Guid.TryParse(auction.Uuid, out var g) ? g : Guid.Empty;
 
         return new ComplicatedFlip

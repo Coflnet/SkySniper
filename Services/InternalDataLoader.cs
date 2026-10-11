@@ -284,12 +284,7 @@ namespace Coflnet.Sky.Sniper.Services
             var estimate = flipFinder.EstimateAsync(cflip).GetAwaiter().GetResult();
             if (estimate == null)
                 return;
-            // Exclude candyUsed from the attribute sum cap — its weight is a pricing signal
-            // for the ML model, not an actual coin value. Including it inflates the cap
-            // and causes cheap pets to be reported as flips.
-            var attrSum = cflip.AttributeValues
-                .Where(a => !a.Key.StartsWith("candyUsed:", StringComparison.OrdinalIgnoreCase))
-                .Sum(a => a.Value);
+            var attrSum = AttributeSumCap(cflip);
             var value = Math.Min(estimate.EstimatedValue, attrSum);
 
             // Log suspicious cases where the AI estimate greatly exceeds the attribute sum cap
@@ -314,6 +309,20 @@ namespace Coflnet.Sky.Sniper.Services
                 Produceflip(flip, FlipProducer);
                 FoundPartialFlip?.Invoke(flip);
             }
+        }
+
+        /// <summary>
+        /// Upper bound for an AI estimate: the coin values of all attributes.
+        /// </summary>
+        private static long AttributeSumCap(Coflnet.Sky.FlipTracker.Client.Model.ComplicatedFlip cflip)
+        {
+            // Exclude candyUsed from the attribute sum cap — its weight is a pricing signal
+            // for the ML model, not an actual coin value. Including it inflates the cap
+            // and causes cheap pets to be reported as flips.
+            // Value lowering features are a scale for the model as well, they neither add to nor reduce the cap.
+            return cflip.AttributeValues
+                .Where(a => !a.Key.StartsWith("candyUsed:", StringComparison.OrdinalIgnoreCase) && !ValueLoweringFeatures.IsValueLowering(a.Key))
+                .Sum(a => a.Value);
         }
 
         private async Task LoadActiveAuctions(CancellationToken stoppingToken)

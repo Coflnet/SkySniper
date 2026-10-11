@@ -111,4 +111,82 @@ public class ExpValueTests
         cap.Should().BeGreaterThanOrEqualTo(86_000_000, "the cap keeps the rare level 1 pet value so undervalued listings still flip");
         cap.Should().BeLessThan((long)(auction.StartingBid * 1.1), "the reported 90M purchase is not a flip");
     }
+
+    [Test]
+    public void AiCandyOnSkinnedPetScalesWithSkinPrice()
+    {
+        var service = new SniperService(new HypixelItemService(null, NullLogger<HypixelItemService>.Instance), null, NullLogger<SniperService>.Instance, null);
+        // medians from the public price api: legendary PET_ENDER_DRAGON at level 1 and level 100, and the skin item
+        var lookup = new PriceLookup();
+        lookup.Lookup[new AuctionKey([], ItemReferences.Reforge.Any, [new("exp", "0"), new("candyUsed", "0")], Tier.LEGENDARY, 1)] = new() { Price = 455_000_000 };
+        lookup.Lookup[new AuctionKey([], ItemReferences.Reforge.Any, [new("exp", "6")], Tier.LEGENDARY, 1)] = new() { Price = 474_000_000 };
+        service.Lookups["PET_ENDER_DRAGON"] = lookup;
+        var skinLookup = new PriceLookup();
+        skinLookup.Lookup[new AuctionKey([], ItemReferences.Reforge.Any, [], Tier.LEGENDARY, 1)] = new() { Price = 245_000_000 };
+        service.Lookups["PET_SKIN_DRAGON_PASTEL"] = skinLookup;
+
+        // two sold [Lvl 100] Ender Dragons with the pastel skin: 520M with 10 candy used, 580M without
+        var candied = PastelEnderDragon("10", "261668719.64115986", 520_000_000).ToComplicatedFlip(includeBreakdown: true, sniper: service);
+        var uncandied = PastelEnderDragon("0", "39677507.9426545", 579_999_999).ToComplicatedFlip(includeBreakdown: true, sniper: service);
+
+        uncandied.AttributeValues.Should().NotContainKey("candiedskin");
+        candied.AttributeValues.Should().ContainKey("candiedskin", "candy on a skinned pet lowers what collectors pay for it")
+            .WhoseValue.Should().Be(-245_000_000, "the loss grows with the price of the skin");
+        candied.AttributeValues["skin:DRAGON_PASTEL"].Should().Be(245_000_000);
+        AttributeSumCap(candied).Should().Be(AttributeSumCap(uncandied), "a value lowering feature is no coin value and leaves the cap alone");
+    }
+
+    [TestCase("16", 34_300_000)]
+    [TestCase("288", 2_000_000)]
+    public void AiCakeYearIsOneNumericFeature(string year, long soldFor)
+    {
+        var service = new SniperService(new HypixelItemService(null, NullLogger<HypixelItemService>.Instance), null, NullLogger<SniperService>.Instance, null);
+        var auction = new SaveAuction
+        {
+            Tag = "NEW_YEAR_CAKE",
+            Tier = Tier.SPECIAL,
+            Category = Category.MISC,
+            Reforge = ItemReferences.Reforge.None,
+            Bin = true,
+            Count = 1,
+            StartingBid = soldFor,
+            HighestBidAmount = soldFor,
+            Enchantments = [],
+            FlatenedNBT = new() { ["new_years_cake"] = year }
+        };
+
+        var flip = auction.ToComplicatedFlip(includeBreakdown: true, sniper: service);
+
+        flip.AttributeValues.Should().ContainKey("cakeyear", "a feature per year can not tell the model that later cakes sell for less")
+            .WhoseValue.Should().Be(-long.Parse(year));
+        AttributeSumCap(flip).Should().Be(flip.AttributeValues[$"new_years_cake:{year}"], "the year is no coin value");
+    }
+
+    private static SaveAuction PastelEnderDragon(string candyUsed, string exp, long soldFor)
+    {
+        return new SaveAuction
+        {
+            Tag = "PET_ENDER_DRAGON",
+            Tier = Tier.LEGENDARY,
+            Category = Category.MISC,
+            Reforge = ItemReferences.Reforge.None,
+            Bin = true,
+            Count = 1,
+            StartingBid = soldFor,
+            HighestBidAmount = soldFor,
+            Enchantments = [],
+            FlatenedNBT = new()
+            {
+                ["type"] = "ENDER_DRAGON", ["active"] = "False", ["exp"] = exp, ["tier"] = "LEGENDARY", ["hideInfo"] = "False",
+                ["heldItem"] = "CROCHET_TIGER_PLUSHIE", ["candyUsed"] = candyUsed, ["skin"] = "DRAGON_PASTEL",
+                ["hideRightClick"] = "False", ["noMove"] = "False", ["petSoulbound"] = "False"
+            }
+        };
+    }
+
+    private static long AttributeSumCap(Coflnet.Sky.FlipTracker.Client.Model.ComplicatedFlip flip)
+    {
+        var method = typeof(InternalDataLoader).GetMethod("AttributeSumCap", BindingFlags.NonPublic | BindingFlags.Static);
+        return (long)method!.Invoke(null, new object[] { flip })!;
+    }
 }
