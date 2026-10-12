@@ -253,7 +253,7 @@ namespace Coflnet.Sky.Sniper.Services
             }
         }
 
-        private static MessagePackSerializerOptions GroupOptions()
+        public static MessagePackSerializerOptions GroupOptions()
         {
             return MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
         }
@@ -506,4 +506,4 @@ namespace Coflnet.Sky.Sniper.Services
             });
         }
     }
-}
+}

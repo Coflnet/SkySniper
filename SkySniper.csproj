@@ -20,6 +20,7 @@
   <ItemGroup>
     <!-- Lets the benchmark project measure the internal hot-path method ComparisonValue directly. -->
     <InternalsVisibleTo Include="SkySniper.Benchmarks" />
+    <InternalsVisibleTo Include="SkyBFCS" />
   </ItemGroup>
 
 

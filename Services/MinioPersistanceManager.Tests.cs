@@ -97,6 +97,57 @@ public class S3PersistanceManagerTests
         result.Should().Be(shouldFlush);
     }
 
+    [Test]
+    public void LegacyGroupingSerializationFailsOnLiveLookups()
+    {
+        var lookups = CreateLookups();
+        var grouped = S3PersistanceManager.GetGroups(lookups).ToList();
+        Action serialize = () => MessagePackSerializer.Serialize(grouped,
+            MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4Block));
+        var ex = serialize.Should().Throw<Exception>().Which;
+        TestContext.Out.WriteLine(ex.GetType().FullName + ": " + ex.Message);
+    }
+
+    [Test]
+    public void GroupPayloadRoundTripsInPersistedFormat()
+    {
+        var lookups = CreateLookups();
+        var groupId = S3PersistanceManager.GetGroups(lookups).First().Key;
+        var payload = Coflnet.Sky.Sniper.Controllers.SniperController.SerializeGroup(lookups, groupId);
+
+        var loaded = MessagePackSerializer.Deserialize<List<KeyValuePair<string, PriceLookup>>>(
+            Convert.FromBase64String(payload), S3PersistanceManager.GroupOptions());
+
+        loaded.Should().NotBeEmpty();
+        loaded.Select(l => l.Key).Should().BeEquivalentTo(
+            S3PersistanceManager.GetGroups(lookups).First(g => g.Key == groupId).Select(l => l.Key));
+        loaded[0].Value.Lookup.Values.First().References.Should().HaveCount(1);
+    }
+
+    [Test]
+    public void GroupPayloadForUnknownGroupIsEmptyList()
+    {
+        var payload = Coflnet.Sky.Sniper.Controllers.SniperController.SerializeGroup(CreateLookups(), 12345);
+        MessagePackSerializer.Deserialize<List<KeyValuePair<string, PriceLookup>>>(
+            Convert.FromBase64String(payload), S3PersistanceManager.GroupOptions()).Should().BeEmpty();
+    }
+
+    private static ConcurrentDictionary<string, PriceLookup> CreateLookups()
+    {
+        var lookups = new ConcurrentDictionary<string, PriceLookup>();
+        foreach (var tag in new[] { "PET_BABY_YETI", "HYPERION", "ASPECT_OF_THE_END" })
+        {
+            lookups[tag] = new PriceLookup
+            {
+                Lookup = new ConcurrentDictionary<AuctionKey, ReferenceAuctions>(new[]
+                {
+                    new KeyValuePair<AuctionKey, ReferenceAuctions>(CreateKey("6"), CreateBucket(95, 26_925_000))
+                })
+            };
+        }
+        return lookups;
+    }
+
     private static AuctionKey CreateKey(string exp)
     {
         return new AuctionKey(

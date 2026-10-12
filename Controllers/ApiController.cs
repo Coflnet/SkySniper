@@ -140,8 +140,17 @@ namespace Coflnet.Sky.Sniper.Controllers
         public string GetLookupGroup(int groupId, [FromHeader] string Authorization)
         {
             CountUsageAndValidate(Authorization);
-            var grouped = S3PersistanceManager.GetGroups(service.Lookups).Where(g => g.Key == groupId).ToList();
-            return Convert.ToBase64String(MessagePackSerializer.Serialize(grouped, MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4Block)));
+            return SerializeGroup(service.Lookups, groupId);
+        }
+
+        /// <summary>
+        /// Serializes one group in the same format that is persisted to the bucket
+        /// </summary>
+        internal static string SerializeGroup(System.Collections.Concurrent.ConcurrentDictionary<string, PriceLookup> lookups, int groupId)
+        {
+            var group = S3PersistanceManager.GetGroups(lookups).Where(g => g.Key == groupId).SelectMany(g => g).ToList();
+            var serializable = S3PersistanceManager.CreateSerializableGroupCopy(group);
+            return Convert.ToBase64String(MessagePackSerializer.Serialize(serializable, S3PersistanceManager.GroupOptions()));
         }
 
         [HttpGet]
