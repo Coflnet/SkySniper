@@ -48,6 +48,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     private readonly int minSamplesForTraining;
     private readonly ILogger<SelfLearningFlipFinderService> logger;
     private readonly MLContext mlContext;
+    private readonly int trainingSeed = Environment.TickCount;
     private readonly IPersitanceManager persitance;
     private readonly ReaderWriterLockSlim gate = new(LockRecursionPolicy.NoRecursion);
     private readonly Dictionary<string, List<FlipData>> trainingDataByItem = new(StringComparer.OrdinalIgnoreCase);
@@ -363,7 +364,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     {
         this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
         this.persitance = persitance ?? throw new ArgumentNullException(nameof(persitance));
-        mlContext = new MLContext(seed: Environment.TickCount);
+        mlContext = new MLContext(seed: trainingSeed);
         this.minSamplesForTraining = minSamplesForTraining;
 
         // no eager restore; models are loaded on demand per item when training or estimating
@@ -1013,7 +1014,6 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         var labelCenter = PrepareTrainLabels(training);
         var dataView = mlContext.Data.LoadFromEnumerable(training, schema);
 
-        // Use linear regression (SDCA) instead of FastForest since attributes have additive/linear effects
         // FastTree is a gradient boosted decision tree trainer that handles large feature values well
         // and can learn non-linear relationships between attributes and price
         // Configuration: balanced between accuracy and overfitting prevention
@@ -1021,20 +1021,11 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
         var minLeafSize = training.Count < 100 ? 1 : Math.Max(5, training.Count / 100);
         var numTrees = training.Count < 100 ? 50 : 100;
 
-        var pipeline = mlContext.Regression.Trainers.FastTree(
-            featureColumnName: nameof(FlipData.Features),
-            labelColumnName: nameof(FlipData.TrainLabel),
-            numberOfLeaves: 20,            // Moderate tree complexity
-            minimumExampleCountPerLeaf: minLeafSize, // Adaptive: allow smaller leaves for small datasets
-            numberOfTrees: numTrees,       // Adaptive: fewer trees for small datasets
-            learningRate: 0.2              // Moderate learning rate
-        );
-
         ITransformer? tagModel = null;
         double rmse = double.NaN, r2 = double.NaN;
         try
         {
-            var fitted = pipeline.Fit(dataView);
+            var fitted = IsolatedFastTreeTrainer.Fit(mlContext, dataView, minLeafSize, numTrees, trainingSeed);
             tagModel = fitted;
             lock (predictionSync)
             {

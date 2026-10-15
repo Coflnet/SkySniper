@@ -2983,11 +2983,13 @@ namespace Coflnet.Sky.Sniper
         public void BazaarSampledEvery10min()
         {
             var time = DateTime.UtcNow.RoundDown(TimeSpan.FromMinutes(10));
+            // Keep the baseline constant: clock-derived synthetic buyer/seller IDs can change
+            // anti-manipulation grouping; this test exercises sampling, not price quantiles.
             AddUpdate(TimeSpan.FromMinutes(0), 5_000_000);
-            AddUpdate(TimeSpan.FromMinutes(1), 7_000_000);
-            AddUpdate(TimeSpan.FromMinutes(2), 16_000_000);
-            AddUpdate(TimeSpan.FromMinutes(3), 6_000_000);
-            AddUpdate(TimeSpan.FromMinutes(4), 6_000_000);
+            AddUpdate(TimeSpan.FromMinutes(1), 5_000_000);
+            AddUpdate(TimeSpan.FromMinutes(2), 5_000_000);
+            AddUpdate(TimeSpan.FromMinutes(3), 5_000_000);
+            AddUpdate(TimeSpan.FromMinutes(4), 5_000_000);
             CurrentValue().Should().Be(3_000_000);
             AddUpdate(TimeSpan.FromMinutes(15), 6_000_000);
             AddUpdate(TimeSpan.FromMinutes(26), 6_000_000);
@@ -2995,6 +2997,8 @@ namespace Coflnet.Sky.Sniper
             AddUpdate(TimeSpan.FromMinutes(27), 50_000_000);
             AddUpdate(TimeSpan.FromMinutes(28), 50_000_000);
             AddUpdate(TimeSpan.FromMinutes(29), 50_000_000);
+            service.Lookups["SAMPLE"].Lookup.First().Value.ReferenceCount.Should().Be(7,
+                "only the five initial samples and the updates at minutes 15 and 26 should be retained");
             CurrentValue().Should().Be(3_000_000, "should ignore expensive values in short frames");
             AddUpdate(TimeSpan.FromMinutes(36.5), 6_000_000);
             CurrentValue().Should().BeLessThanOrEqualTo(3_500_000);

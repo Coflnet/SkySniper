@@ -14,6 +14,7 @@ namespace Coflnet.Sky.Sniper
         public static void Main(string[] args)
         {
             System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+            if (Services.IsolatedFastTreeTrainer.TryRun(args)) return;
             var host = CreateHostBuilder(args).Build();
             HypixelContext.SetConfiguration(host.Services.GetRequiredService<IConfiguration>());
             host.Run();
