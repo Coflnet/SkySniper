@@ -45,6 +45,7 @@ namespace Coflnet.Sky.Sniper
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "SkySniper", Version = "v1" });
+                c.DocumentFilter<Coflnet.OpenApi.NullOnlySchemaDocumentFilter>();
             });
             services.AddSingleton<SniperService>();
             services.AddHostedService<RuntimeMetricsService>();
