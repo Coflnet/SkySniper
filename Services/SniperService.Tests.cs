@@ -118,6 +118,28 @@ namespace Coflnet.Sky.Sniper
             Assert.That(0, Is.EqualTo(service.Lookups[sell.Tag].Lookup.First().Value.Lbins.Count));
         }
         /// <summary>
+        /// A cancelled auction stub (only UId) removes the lbin everywhere and leaves references untouched
+        /// </summary>
+        [Test]
+        public void RemoveActiveRemovesLbinWithoutTouchingReferences()
+        {
+            var listed = Dupplicate(highestValAuction);
+            listed.End = DateTime.UtcNow + TimeSpan.FromDays(10);
+            service.TestNewAuction(listed);
+            service.FinishedUpdate();
+            var bucket = service.Lookups[listed.Tag].Lookup.First().Value;
+            Assert.That(bucket.Lbins.Count, Is.EqualTo(1));
+            var referencesBefore = bucket.References.Count;
+            var priceBefore = bucket.Price;
+
+            var removed = service.RemoveActive(new SaveAuction { UId = listed.UId, AuctioneerId = listed.AuctioneerId, End = DateTime.UtcNow });
+
+            Assert.That(removed, Is.EqualTo(1));
+            Assert.That(bucket.Lbins.Count, Is.EqualTo(0));
+            Assert.That(bucket.References.Count, Is.EqualTo(referencesBefore));
+            Assert.That(bucket.Price, Is.EqualTo(priceBefore));
+        }
+        /// <summary>
         /// Least valuable entries are removed first until only 5 are left
         /// </summary>
         [Test]

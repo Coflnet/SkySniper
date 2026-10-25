@@ -113,6 +113,7 @@ namespace Coflnet.Sky.Sniper.Services
                 Task.WhenAll(ActiveUpdater(stoppingToken),
                              StartProducer(stoppingToken),
                              bazaarConsume,
+                             RunTilStopped(ProcessCancelled(stoppingToken), stoppingToken),
                              loadActive,
                              sellLoad,
                              dueGroupFlush));
@@ -692,6 +693,20 @@ namespace Coflnet.Sky.Sniper.Services
 
             }, stoppingToken, 4);
             logger.LogInformation("processing sells stopped");
+        }
+
+        private async Task ProcessCancelled(CancellationToken stoppingToken)
+        {
+            var topic = config["TOPICS:MISSING_AUCTION"];
+            if (string.IsNullOrEmpty(topic))
+                return;
+            await Kafka.KafkaConsumer.ConsumeBatch<SaveAuction>(ConsumerConfig, new string[] { topic }, batch =>
+            {
+                foreach (var a in batch)
+                    sniper.RemoveActive(a);
+                return Task.CompletedTask;
+            }, stoppingToken, 20);
+            logger.LogInformation("processing cancellations stopped");
         }
 
         private int saveCount = 1;

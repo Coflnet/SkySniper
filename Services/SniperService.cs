@@ -1952,6 +1952,31 @@ ORDER BY l.`AuctionId`  DESC;
             while (bucket.ReferenceCount > SizeToKeep && bucket.TryDequeueReference(out _)) { }
         }
 
+        private static readonly Counter cancelledRemoved = Metrics.CreateCounter("sky_sniper_cancelled_removed", "Number of lowest bins removed because the auction was cancelled");
+
+        /// <summary>
+        /// Removes a cancelled auction from the lowest bin lists of every lookup. Does not touch references or medians.
+        /// </summary>
+        /// <returns>number of removed lbin entries</returns>
+        public int RemoveActive(SaveAuction auction)
+        {
+            var auctionId = auction.UId != 0 ? auction.UId : AuctionService.Instance.GetId(auction.Uuid);
+            var removed = 0;
+            foreach (var lookup in Lookups)
+            {
+                foreach (var bucket in lookup.Value.Lookup)
+                {
+                    var lbins = bucket.Value.Lbins;
+                    if (lbins == null || lbins.Count == 0)
+                        continue;
+                    removed += lbins.RemoveAll(l => l.AuctionId == auctionId);
+                }
+            }
+            if (removed > 0)
+                cancelledRemoved.Inc(removed);
+            return removed;
+        }
+
         public short AddSoldItem(SaveAuction auction, bool preventMedianUpdate = false)
         {
             UpdateFraggedAndRune(auction.Tag);
