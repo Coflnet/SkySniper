@@ -74,6 +74,18 @@ public class SelfLearningFlipFinderServiceTests
     }
 
     [Test]
+    public async Task TrainingSamplesStayBounded()
+    {
+        using var service = new SelfLearningFlipFinderService(NullLogger<SelfLearningFlipFinderService>.Instance, new TestPersistence(), minSamplesForTraining: 6, maxSamplesPerTag: 50);
+        var random = new Random(1);
+        for (var i = 0; i < 500; i++)
+            await service.TrainAsync(Sale("HYPERION", SpreadPrice(random, 1_000_000_000), new() { ["cleancost"] = 900_000_000, ["strength"] = 100 + i % 7 }));
+        await service.TrainBatchAsync(Enumerable.Range(0, 500).Select(i => Sale("HYPERION", SpreadPrice(random, 1_000_000_000), new() { ["cleancost"] = 900_000_000, ["strength"] = 100 + i % 7 })));
+
+        service.GetModelStats()["HYPERION"].SampleCount.Should().BeLessThanOrEqualTo(55);
+    }
+
+    [Test]
     public async Task EstimateWithoutTraining_IsNull()
     {
     using var service = new SelfLearningFlipFinderService(NullLogger<SelfLearningFlipFinderService>.Instance, new TestPersistence(), minSamplesForTraining: 6);

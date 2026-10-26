@@ -360,8 +360,17 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
 
     private bool disposed;
 
-    public SelfLearningFlipFinderService(ILogger<SelfLearningFlipFinderService> logger, IPersitanceManager persitance, int minSamplesForTraining = 120)
+    /// <summary>
+    /// Upper bound of training samples kept in memory per item tag. Every sale used to be retained forever, and the
+    /// manager replays the same sales many times per retrain, so the lists (each sample holds a dense float vector)
+    /// grew until the process hit its heap limit. The oldest samples are dropped first.
+    /// </summary>
+    public const int DefaultMaxSamplesPerTag = 20_000;
+    private readonly int maxSamplesPerTag;
+
+    public SelfLearningFlipFinderService(ILogger<SelfLearningFlipFinderService> logger, IPersitanceManager persitance, int minSamplesForTraining = 120, int maxSamplesPerTag = DefaultMaxSamplesPerTag)
     {
+        this.maxSamplesPerTag = Math.Max(maxSamplesPerTag, minSamplesForTraining);
         this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
         this.persitance = persitance ?? throw new ArgumentNullException(nameof(persitance));
         mlContext = new MLContext(seed: trainingSeed);
@@ -469,6 +478,16 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
     }
 
     /// <summary>
+    /// Drops the oldest samples once the list exceeds the cap by 10 %, so the removal cost is amortised.
+    /// </summary>
+    private void TrimSamples(List<FlipData> samples)
+    {
+        if (samples.Count <= maxSamplesPerTag + maxSamplesPerTag / 10)
+            return;
+        samples.RemoveRange(0, samples.Count - maxSamplesPerTag);
+    }
+
+    /// <summary>
     /// Adds training samples for multiple tags.
     /// </summary>
     private void AddTrainingSamples(Dictionary<string, List<ComplicatedFlip>> flipsByTag)
@@ -490,6 +509,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             {
                 sampleList.Add(CreateSample(tag, flip, featureIndex, sampleList));
             }
+            TrimSamples(sampleList);
         }
     }
 
@@ -590,6 +610,7 @@ public sealed class SelfLearningFlipFinderService : ISelfLearningFlipFinderServi
             }
 
             list.Add(CreateSample(tag, flip, fIndex, list));
+            TrimSamples(list);
 
             if (list.Count >= minSamplesForTraining && fIndex.Count > 0)
             {
