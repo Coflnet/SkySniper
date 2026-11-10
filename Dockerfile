@@ -1,7 +1,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /build
 ARG CACHEBUST=20261025
-RUN git clone --depth=1 https://github.com/Coflnet/HypixelSkyblock.git dev
+RUN git init dev && git -C dev remote add origin https://github.com/Coflnet/HypixelSkyblock.git && git -C dev fetch --depth=1 origin 2df0f7c7a34c8c04653e4cf7c02ab6805876eb7a && git -C dev checkout --detach FETCH_HEAD
 WORKDIR /build/sky
 RUN git clone --depth=1 https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO.git NEU-REPO \
     && rm -rf NEU-REPO/.git NEU-REPO/items
