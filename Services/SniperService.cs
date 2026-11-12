@@ -2212,7 +2212,8 @@ ORDER BY l.`AuctionId`  DESC;
                         && !IsMidas(keyCombo.tag))
                         limitedPrice = Math.Max(limitedPrice, tierval);
                 }
-                limitedPrice = CapAtCraftCost(keyCombo.tag, limitedPrice, keyCombo.key, bucket.Price);
+                limitedPrice = CapAtCraftCostOrReferences(keyCombo.tag, keyCombo.key, limitedPrice, bucket.Price,
+                    monthSpan.Count >= 4 ? monthSpan : deduplicated, out var raisedAboveCraftCost);
                 var craftCostCap = limitedPrice;
                 if (limitedPrice == 0 || IsLevel100CleanPet(keyCombo.key))
                 {
@@ -2232,6 +2233,8 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     bucket.RiskyEstimate = limitedPrice;
                 }
+                if (raisedAboveCraftCost)
+                    bucket.RiskyEstimate = Math.Min(bucket.RiskyEstimate, limitedPrice);
 
                 if (limitedPrice == 0)
                 {
@@ -2253,7 +2256,7 @@ ORDER BY l.`AuctionId`  DESC;
                 bool lbinListedForShort = bucket.Lbins.Where(l => l.Price < medianPrice * 1.1).Select(l => l.Day - GetDay()).Take(4).DefaultIfEmpty(3).Average() < 4;
                 if (bucket.Volume >= 4 && bucket.Lbin.AuctionId != default && lbinListedForShort && percentileRecent > medianPrice)
                 { // volume high enought to risk higher percentile
-                    var cappedPrice = preLimitedPrice == medianPrice ? preLimitedPrice * 12 / 10 : limitedPrice;
+                    var cappedPrice = preLimitedPrice == medianPrice && !raisedAboveCraftCost ? preLimitedPrice * 12 / 10 : limitedPrice;
                     medianPrice = Math.Min(Math.Max(bucket.RiskyEstimate, medianPrice), Math.Min(cappedPrice, percentileRecent));
                     var deduplicatedRecent = deduplicated.OrderByDescending(r => r.Day).Take(9).OrderBy(r => r.Price).Skip(6).FirstOrDefault();
                     if (deduplicatedRecent.AuctionId != default && deduplicatedRecent.Price < medianPrice)
@@ -3090,6 +3093,102 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 return oldMedian > secondNewestMedian && longTerm > shortTermPrice && secondNewestMedian > shortTermPrice;
             }
+        }
+
+        /// <summary>
+        /// Share of a bucket's own references that may sell below the cap used instead of the craft cost.
+        /// </summary>
+        private const int NonCraftableReferencePercentile = 25;
+
+        /// <summary>
+        /// A missing enchant book price only means "not sold as a book" once the bazaar table holds this many book
+        /// prices; before the first full bazaar update every book is missing.
+        /// </summary>
+        private const int MinEnchantBookPrices = 100;
+
+        /// <summary>
+        /// The craft cost only counts as disproven when the bucket's own lower quartile is at least this many times
+        /// higher. Below that the component sum stays the cap, as for every other key.
+        /// </summary>
+        private const double MinLowerQuartileToCraftCost = 1.25;
+        private volatile bool enchantBookPricesLoaded;
+
+        private int CountEnchantBookPrices()
+        {
+            var count = 0;
+            foreach (var id in BazaarPrices.Keys)
+                if (id.StartsWith("ENCHANTMENT_", StringComparison.Ordinal))
+                    count++;
+            return count;
+        }
+
+        /// <summary>
+        /// Caps <paramref name="price"/> at the craft cost. When the key holds a component that can not be bought, the
+        /// component sum is only a lower estimate. If the bucket's own references show that (their lower quartile is
+        /// at least <see cref="MinLowerQuartileToCraftCost"/> times the craft cost), the cap is that lower quartile
+        /// instead, never above <paramref name="price"/>. <paramref name="raisedAboveCraftCost"/> tells the caller
+        /// that the result is still a cap, so no later step may lift the price above it.
+        /// Without enchant book prices from the bazaar the craft cost is used unchanged.
+        /// </summary>
+        internal long CapAtCraftCostOrReferences(string tag, KeyWithValueBreakdown key, long price, long currentPrice,
+            List<ReferencePrice> references, out bool raisedAboveCraftCost)
+        {
+            var capped = CapAtCraftCost(tag, price, key, currentPrice);
+            raisedAboveCraftCost = false;
+            if (capped >= price || !enchantBookPricesLoaded || !HasNonCraftableComponent(key))
+                return capped;
+            var lowerQuartile = ReferencePercentile(references, NonCraftableReferencePercentile);
+            if (lowerQuartile < capped * MinLowerQuartileToCraftCost)
+                return capped;
+            raisedAboveCraftCost = true;
+            return Math.Min(price, lowerQuartile);
+        }
+
+        /// <summary>
+        /// True when the key holds a component that can not be bought and applied to a clean item: an enchant that
+        /// only levels up through use (only its level 1 book exists) or an enchant without a known book price.
+        /// </summary>
+        internal static bool HasNonCraftableComponent(KeyWithValueBreakdown key)
+        {
+            return HasUsageLeveledEnchant(key.Key.Enchants) || HasUnpricedEnchant(key.ValueBreakdown);
+        }
+
+        private static bool HasUsageLeveledEnchant(IReadOnlyList<Enchant> enchants)
+        {
+            if (enchants == null)
+                return false;
+            for (int i = 0; i < enchants.Count; i++)
+                if (enchants[i].Lvl > 1 && Constants.EnchantToAttribute.ContainsKey(enchants[i].Type))
+                    return true;
+            return false;
+        }
+
+        /// <summary>
+        /// The enchant valuation returns a negative value when no book price for the enchant is known.
+        /// </summary>
+        private static bool HasUnpricedEnchant(List<RankElem> breakdown)
+        {
+            if (breakdown == null)
+                return false;
+            foreach (var part in breakdown)
+                if (part.Enchant.Type != default && part.Value < 0)
+                    return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Lower nearest-rank percentile: the sorted reference price at index (count - 1) * percent / 100, rounded
+        /// down. For four references and 25 percent this is the cheapest one. 0 without references.
+        /// </summary>
+        internal static long ReferencePercentile(List<ReferencePrice> references, int percent)
+        {
+            if (references.Count == 0)
+                return 0;
+            var prices = new long[references.Count];
+            for (int i = 0; i < prices.Length; i++)
+                prices[i] = references[i].Price;
+            Array.Sort(prices);
+            return prices[(prices.Length - 1) * percent / 100];
         }
 
         private long CapAtCraftCost(string tag, long medianPrice, KeyWithValueBreakdown key, long currentPrice)
@@ -6648,6 +6747,7 @@ ORDER BY l.`AuctionId`  DESC;
                     }
                 }
             }
+            enchantBookPricesLoaded = CountEnchantBookPrices() >= MinEnchantBookPrices;
             logger.LogInformation($"Updated bazaar {Lookups.Count} items {bazaar.Timestamp}");
 
             void MakePriceAtLeast90PercentHigherthanLowerLevel(dev.ProductInfo item, ReferenceAuctions refernces, double? cheapestBuy)
