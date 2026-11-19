@@ -1042,9 +1042,9 @@ ORDER BY l.`AuctionId`  DESC;
             var searchStart = Stopwatch.GetTimestamp();
             // The consumer takes the FIRST closest candidate that yields Median > 0 (almost always the single top-scored
             // one). So try the top-1 via a zero-alloc arg-max first; only if it does not produce a positive median do we
-            // materialize+sort the full ordered candidate set (FindClosestOrdered) and continue from the SECOND element.
-            // Bit-exact: ProcessMedianCandidate is the identical per-candidate body, the arg-max top == FindClosestOrdered's
-            // first element (same score, stable first-wins), and the fallback iterates the same order skipping that first.
+            // materialize+sort the full ordered candidate set (FindClosestOrdered) and try every candidate except the top.
+            // The top is cached with the entry while the ordered set is built lazily, possibly much later against a
+            // changed lookup, so its first element need not be the cached top: skip the top by key, never by position.
             var candidates = ClosetMedianMapLookup.GetOrAdd((auction.Tag, itemKey.Key), _ =>
                 (CreateMedianCandidates(lookup, itemKey.Key, auction.Tag), now)).result;
             var top = candidates.Top;
@@ -1053,10 +1053,10 @@ ORDER BY l.`AuctionId`  DESC;
                 ProcessMedianCandidate(new KeyValuePair<AuctionKey, ReferenceAuctions>(top.Key, top.Value));
                 if (result.Median <= 0)
                 {
-                    bool skippedTop = false;
                     foreach (var scored in candidates.Ordered.Value)
                     {
-                        if (!skippedTop) { skippedTop = true; continue; } // first element already processed by the arg-max
+                        if (scored.Key.Equals(top.Key))
+                            continue; // already processed above
                         ProcessMedianCandidate(new KeyValuePair<AuctionKey, ReferenceAuctions>(scored.Key, scored.Value));
                         if (result.Median > 0)
                             break;

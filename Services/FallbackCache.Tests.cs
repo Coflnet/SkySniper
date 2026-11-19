@@ -185,6 +185,46 @@ public class FallbackCacheTests
         }
     }
 
+    [Test]
+    public void LazyFallbackStillTriesACloserCandidateThanTheCachedTop()
+    {
+        var auction = new SaveAuction { Tag = "ASPECT_OF_THE_END", Tier = Tier.RARE, Count = 1, FlatenedNBT = new() };
+        var service = new SniperService(new HypixelItemService(null, NullLogger<HypixelItemService>.Instance),
+            null, NullLogger<SniperService>.Instance, new SniperServiceTests.CraftCostMock());
+        var key = service.KeyFromSaveAuction(auction);
+        var cachedTop = PricedBucket(10_000_000);
+        var lookup = new PriceLookup { Lookup = new() {
+            [new AuctionKey(key) { Count = 3 }] = cachedTop,
+            [new AuctionKey(key) { Count = 4 }] = PricedBucket(5_000_000) } };
+        service.Lookups[auction.Tag] = lookup;
+        Assert.That(service.GetPrice(auction).Median, Is.EqualTo(10_000_000), "the count-3 bucket is the cached top");
+
+        // The cached top stops yielding a median and a closer bucket appears. The lazily built ordered
+        // candidates now start with that closer bucket, which is not the cached top.
+        cachedTop.Price = 0;
+        lookup.Lookup[new AuctionKey(key) { Count = 2 }] = PricedBucket(20_000_000);
+
+        var fresh = new SniperService(new HypixelItemService(null, NullLogger<HypixelItemService>.Instance),
+            null, NullLogger<SniperService>.Instance, new SniperServiceTests.CraftCostMock());
+        var unpriced = PricedBucket(10_000_000);
+        unpriced.Price = 0;
+        fresh.Lookups[auction.Tag] = new PriceLookup { Lookup = new() {
+            [new AuctionKey(key) { Count = 3 }] = unpriced,
+            [new AuctionKey(key) { Count = 4 }] = PricedBucket(5_000_000),
+            [new AuctionKey(key) { Count = 2 }] = PricedBucket(20_000_000) } };
+        var expected = fresh.GetPrice(auction);
+        Assert.That(expected.Median, Is.EqualTo(20_000_000), "a fresh search prices from the closer bucket");
+        AssertEstimate(service.GetPrice(auction), expected);
+        Assert.That(CacheCount(service, "ClosetMedianMapLookup"), Is.EqualTo(1), "the cached selection was reused");
+    }
+
+    private static ReferenceAuctions PricedBucket(long price)
+    {
+        var bucket = new ReferenceAuctions { Price = price, Volume = 1, OldestRef = (short)SniperService.GetDay() };
+        bucket.References.Enqueue(new ReferencePrice { Price = price, Day = SniperService.GetDay() });
+        return bucket;
+    }
+
     private static Dictionary<string, double> Bazaar(SniperService service) =>
         (Dictionary<string, double>)typeof(SniperService).GetField("BazaarPrices", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(service);
 
