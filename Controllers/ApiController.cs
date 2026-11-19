@@ -13,7 +13,6 @@ using Newtonsoft.Json;
 using MessagePack;
 using Amazon.S3.Model;
 using Coflnet.Sky.FlipTracker.Client.Api;
-using ComplicatedFlip = Coflnet.Sky.FlipTracker.Client.Model.ComplicatedFlip;
 using System.Diagnostics;
 using System.Threading;
 using Prometheus;
@@ -30,7 +29,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         private readonly ICraftCostService craftCostService;
         private readonly IPersitanceManager persitanceManager;
         private readonly ITrackerApi trackerApi;
-        private readonly ISelfLearningFlipFinderService flipFinder;
+        private readonly IAiFinder aiFinder;
         private readonly ActivitySource activitySource;
         private static readonly Histogram BatchDuration = Prometheus.Metrics.CreateHistogram(
             "sky_sniper_batch_duration_seconds", "Time spent pricing an auction batch",
@@ -50,7 +49,7 @@ namespace Coflnet.Sky.Sniper.Controllers
             IAttributeFlipService attributeFlipService, // hook into events
             IPersitanceManager persitanceManager,
             ITrackerApi trackerApi,
-            ISelfLearningFlipFinderService flipFinder,
+            IAiFinder aiFinder,
             ActivitySource activitySource)
         {
             _logger = logger;
@@ -59,7 +58,7 @@ namespace Coflnet.Sky.Sniper.Controllers
             this.craftCostService = craftCostService;
             this.persitanceManager = persitanceManager;
             this.trackerApi = trackerApi;
-            this.flipFinder = flipFinder;
+            this.aiFinder = aiFinder;
             this.activitySource = activitySource;
         }
 
@@ -69,15 +68,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         {
             try
             {
-                var stats = flipFinder.GetModelStats();
-                return Ok(stats.Values.Select(s => new
-                {
-                    s.Tag,
-                    FeatureNames = s.FeatureNames,
-                    s.SampleCount,
-                    s.ModelLoaded,
-                    Metrics = s.Metrics
-                }));
+                return Ok(aiFinder.GetModelStats());
             }
             catch (Exception ex)
             {
@@ -92,7 +83,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         {
             try
             {
-                await flipFinder.PersistModelAsync(string.IsNullOrEmpty(tag) ? null : tag);
+                await aiFinder.PersistModel(string.IsNullOrEmpty(tag) ? null : tag);
                 return Ok();
             }
             catch (Exception ex)
@@ -140,8 +131,17 @@ namespace Coflnet.Sky.Sniper.Controllers
         public string GetLookupGroup(int groupId, [FromHeader] string Authorization)
         {
             CountUsageAndValidate(Authorization);
-            var grouped = S3PersistanceManager.GetGroups(service.Lookups).Where(g => g.Key == groupId).ToList();
-            return Convert.ToBase64String(MessagePackSerializer.Serialize(grouped, MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4Block)));
+            return SerializeGroup(service.Lookups, groupId);
+        }
+
+        /// <summary>
+        /// Serializes one group in the same format that is persisted to the bucket
+        /// </summary>
+        internal static string SerializeGroup(System.Collections.Concurrent.ConcurrentDictionary<string, PriceLookup> lookups, int groupId)
+        {
+            var group = S3PersistanceManager.GetGroups(lookups).Where(g => g.Key == groupId).SelectMany(g => g).ToList();
+            var serializable = S3PersistanceManager.CreateSerializableGroupCopy(group);
+            return Convert.ToBase64String(MessagePackSerializer.Serialize(serializable, S3PersistanceManager.GroupOptions()));
         }
 
         [HttpGet]
@@ -296,12 +296,11 @@ namespace Coflnet.Sky.Sniper.Controllers
                 try
                 {
                     var estimate = service.GetPrice(a);
-                    if (includeSelfLearning && flipFinder != null)
+                    if (includeSelfLearning && aiFinder != null)
                     {
                         try
                         {
-                            var cflip = SaveAuctionExtensions.ToComplicatedFlip(a, includeBreakdown: true, sniper: service);
-                            var sle = await flipFinder.EstimateAsync(cflip);
+                            var sle = await aiFinder.Estimate(a);
                             if (sle != null)
                             {
                                 estimate.SelfLearningEstimatedValue = sle.EstimatedValue;
@@ -411,7 +410,7 @@ namespace Coflnet.Sky.Sniper.Controllers
             try
             {
                 var flips = await trackerApi.GetComplicatedFlipsAsync(tag);
-                await flipFinder.TrainBatchAsync(flips);
+                await aiFinder.TrainFromTracker(flips);
                 return flips?.Count() ?? 0;
             }
             catch (Exception ex)

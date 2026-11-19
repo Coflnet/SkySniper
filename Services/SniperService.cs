@@ -178,6 +178,12 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly ConcurrentDictionary<string, int> pausedFlipFindingTags = new(StringComparer.Ordinal);
 
         public event Action<LowPricedAuction> FoundSnipe;
+        /// <summary>
+        /// A new auction was tested (the event triggering path only). Runs on the snipe-finding thread: listeners must
+        /// only hand the auction over to their own work queue.
+        /// </summary>
+        public event Action<SaveAuction> AuctionTested;
+
         public event Action<PotentialCraftFlip> CappedKey;
         public event Action<(SaveAuction, AuctionKeyWithValue)> OnSold;
         public event Action OnSummaryUpdate;
@@ -397,7 +403,6 @@ namespace Coflnet.Sky.Sniper.Services
             { "full_bid", m => new (m.Modifier, (int)(float.Parse(m.Modifier.Value) * 48_000_000))},
             { "winning_bid", m => new (m.Modifier, (int)(float.Parse(m.Modifier.Value) * 25_000_000))},
             //{ "rarity_upgrades", m => new (m.Modifier, 50_000_000)}, item value
-            { "eman_kills", m => new (m.Modifier, 3_000_000 * (int)Math.Pow(2, int.Parse(m.Modifier.Value))) {IsEstimate=true}},
             { "expertise_kills", m => new (m.Modifier, 3_000_000 * (int)Math.Pow(2, int.Parse(m.Modifier.Value))) {IsEstimate=true}},
             { "mined_crops", m => new (m.Modifier, 13_000_000 * (int)Math.Pow(2, int.Parse(m.Modifier.Value))) {IsEstimate=true}},
             { "blocksBroken", m => new (m.Modifier, 1_000_000 * (int)Math.Pow(2, int.Parse(m.Modifier.Value))) {IsEstimate=true}},
@@ -468,19 +473,7 @@ namespace Coflnet.Sky.Sniper.Services
             new("heldItem", true),
         ];
 
-        private static readonly HashSet<string> KillKeys = [
-            "blaze_kills",
-            "blood_god_kills",
-            "bow_kills",
-            "eman_kills",
-            "expertise_kills",
-            "raider_kills",
-            "runic_kills",
-            "skeletorKills",
-            "spider_kills",
-            "sword_kills",
-            "zombie_kills"
-            ];
+        private static readonly HashSet<string> KillKeys = KillCounterValue.Keys;
 
         private static readonly Dictionary<string, short> ShardAttributes = new(){
             {"mana_pool", 1},
@@ -713,6 +706,22 @@ ORDER BY l.`AuctionId`  DESC;
             "new_years_cake" // not that valuable but the only attribute
         };
 
+        // ability scrolls (ABILITY_SCROLL category) by the items they can be applied to
+        private static readonly HashSet<string> WitherScrollItems = new() { "HYPERION", "VALKYRIE", "ASTRAEA", "SCYLLA", "NECRON_BLADE" };
+        private static readonly HashSet<string> FrogsSpiritScrollItems = new() { "CANOPY_BOOTS", "FIG_BOOTS", "HELIX_ARMOR_BOOTS" };
+
+        /// <summary>
+        /// Value of <paramref name="count"/> applied ability scrolls on an item, unknown items yield 0
+        /// </summary>
+        internal long GetScrollValue(string tag, int count)
+        {
+            if (tag != null && WitherScrollItems.Contains(tag))
+                return (GetPriceForItem("IMPLOSION_SCROLL") + GetPriceForItem("SHADOW_WARP_SCROLL") + GetPriceForItem("WITHER_SHIELD_SCROLL")) / 3 * count;
+            if (tag != null && FrogsSpiritScrollItems.Contains(tag))
+                return GetPriceForItem("FROGS_SPIRIT_SCROLL") * count;
+            return 0;
+        }
+
         public static KeyValuePair<string, string> Ignore { get; } = new KeyValuePair<string, string>(string.Empty, string.Empty);
 
 
@@ -805,7 +814,7 @@ ORDER BY l.`AuctionId`  DESC;
             */
             Converters["upgrade_level"] = m => new(m.Modifier, EstStarCost(m.ItemTag, int.Parse(m.Modifier.Value)));
             Converters["unlocked_slots"] = m => new(m.Modifier, GetGemstoneSlotWorth(m.RelevantModifiers, m.ItemTag, m.Modifier));
-            Converters["scroll_count"] = m => new(m.Modifier, (GetPriceForItem("IMPLOSION_SCROLL") + GetPriceForItem("SHADOW_WARP_SCROLL") + GetPriceForItem("WITHER_SHIELD_SCROLL")) / 3 * int.Parse(m.Modifier.Value));
+            Converters["scroll_count"] = m => new(m.Modifier, GetScrollValue(m.ItemTag, int.Parse(m.Modifier.Value)));
             Converters["bass_weight"] = m => new(m.Modifier, 5_000_000 * int.Parse(m.Modifier.Value.Split(',')[0]));
         }
 
@@ -1943,11 +1952,38 @@ ORDER BY l.`AuctionId`  DESC;
             while (bucket.ReferenceCount > SizeToKeep && bucket.TryDequeueReference(out _)) { }
         }
 
+        private static readonly Counter cancelledRemoved = Metrics.CreateCounter("sky_sniper_cancelled_removed", "Number of lowest bins removed because the auction was cancelled");
+
+        /// <summary>
+        /// Removes a cancelled auction from the lowest bin lists of every lookup. Does not touch references or medians.
+        /// </summary>
+        /// <returns>number of removed lbin entries</returns>
+        public int RemoveActive(SaveAuction auction)
+        {
+            var auctionId = auction.UId != 0 ? auction.UId : AuctionService.Instance.GetId(auction.Uuid);
+            var removed = 0;
+            foreach (var lookup in Lookups)
+            {
+                foreach (var bucket in lookup.Value.Lookup)
+                {
+                    var lbins = bucket.Value.Lbins;
+                    if (lbins == null || lbins.Count == 0)
+                        continue;
+                    removed += lbins.RemoveAll(l => l.AuctionId == auctionId);
+                }
+            }
+            if (removed > 0)
+                cancelledRemoved.Inc(removed);
+            return removed;
+        }
+
         public short AddSoldItem(SaveAuction auction, bool preventMedianUpdate = false)
         {
             UpdateFraggedAndRune(auction.Tag);
             (ReferenceAuctions bucket, var key) = GetBucketForAuction(auction);
-            var extraValue = GetExtraValue(auction, key);
+            // HandleGems already includes priced Perfect gems in key.ValueSubstract.
+            // Flawless gems and other removable items still need their separate deduction.
+            var extraValue = GetRemovableItemValue(auction) + GetGemValue(auction, key, includePerfect: false);
             var time = AddAuctionToBucket(auction, preventMedianUpdate, bucket, key.ValueSubstract, extraValue);
             HigherValueLbinMapLookup.TryRemove(((string, AuctionKey))(auction.Tag, key), out _);
             try
@@ -2176,7 +2212,8 @@ ORDER BY l.`AuctionId`  DESC;
                         && !IsMidas(keyCombo.tag))
                         limitedPrice = Math.Max(limitedPrice, tierval);
                 }
-                limitedPrice = CapAtCraftCost(keyCombo.tag, limitedPrice, keyCombo.key, bucket.Price);
+                limitedPrice = CapAtCraftCostOrReferences(keyCombo.tag, keyCombo.key, limitedPrice, bucket.Price,
+                    monthSpan.Count >= 4 ? monthSpan : deduplicated, out var raisedAboveCraftCost);
                 var craftCostCap = limitedPrice;
                 if (limitedPrice == 0 || IsLevel100CleanPet(keyCombo.key))
                 {
@@ -2196,6 +2233,8 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     bucket.RiskyEstimate = limitedPrice;
                 }
+                if (raisedAboveCraftCost)
+                    bucket.RiskyEstimate = Math.Min(bucket.RiskyEstimate, limitedPrice);
 
                 if (limitedPrice == 0)
                 {
@@ -2217,7 +2256,7 @@ ORDER BY l.`AuctionId`  DESC;
                 bool lbinListedForShort = bucket.Lbins.Where(l => l.Price < medianPrice * 1.1).Select(l => l.Day - GetDay()).Take(4).DefaultIfEmpty(3).Average() < 4;
                 if (bucket.Volume >= 4 && bucket.Lbin.AuctionId != default && lbinListedForShort && percentileRecent > medianPrice)
                 { // volume high enought to risk higher percentile
-                    var cappedPrice = preLimitedPrice == medianPrice ? preLimitedPrice * 12 / 10 : limitedPrice;
+                    var cappedPrice = preLimitedPrice == medianPrice && !raisedAboveCraftCost ? preLimitedPrice * 12 / 10 : limitedPrice;
                     medianPrice = Math.Min(Math.Max(bucket.RiskyEstimate, medianPrice), Math.Min(cappedPrice, percentileRecent));
                     var deduplicatedRecent = deduplicated.OrderByDescending(r => r.Day).Take(9).OrderBy(r => r.Price).Skip(6).FirstOrDefault();
                     if (deduplicatedRecent.AuctionId != default && deduplicatedRecent.Price < medianPrice)
@@ -3056,6 +3095,102 @@ ORDER BY l.`AuctionId`  DESC;
             }
         }
 
+        /// <summary>
+        /// Share of a bucket's own references that may sell below the cap used instead of the craft cost.
+        /// </summary>
+        private const int NonCraftableReferencePercentile = 25;
+
+        /// <summary>
+        /// A missing enchant book price only means "not sold as a book" once the bazaar table holds this many book
+        /// prices; before the first full bazaar update every book is missing.
+        /// </summary>
+        private const int MinEnchantBookPrices = 100;
+
+        /// <summary>
+        /// The craft cost only counts as disproven when the bucket's own lower quartile is at least this many times
+        /// higher. Below that the component sum stays the cap, as for every other key.
+        /// </summary>
+        private const double MinLowerQuartileToCraftCost = 1.25;
+        private volatile bool enchantBookPricesLoaded;
+
+        private int CountEnchantBookPrices()
+        {
+            var count = 0;
+            foreach (var id in BazaarPrices.Keys)
+                if (id.StartsWith("ENCHANTMENT_", StringComparison.Ordinal))
+                    count++;
+            return count;
+        }
+
+        /// <summary>
+        /// Caps <paramref name="price"/> at the craft cost. When the key holds a component that can not be bought, the
+        /// component sum is only a lower estimate. If the bucket's own references show that (their lower quartile is
+        /// at least <see cref="MinLowerQuartileToCraftCost"/> times the craft cost), the cap is that lower quartile
+        /// instead, never above <paramref name="price"/>. <paramref name="raisedAboveCraftCost"/> tells the caller
+        /// that the result is still a cap, so no later step may lift the price above it.
+        /// Without enchant book prices from the bazaar the craft cost is used unchanged.
+        /// </summary>
+        internal long CapAtCraftCostOrReferences(string tag, KeyWithValueBreakdown key, long price, long currentPrice,
+            List<ReferencePrice> references, out bool raisedAboveCraftCost)
+        {
+            var capped = CapAtCraftCost(tag, price, key, currentPrice);
+            raisedAboveCraftCost = false;
+            if (capped >= price || !enchantBookPricesLoaded || !HasNonCraftableComponent(key))
+                return capped;
+            var lowerQuartile = ReferencePercentile(references, NonCraftableReferencePercentile);
+            if (lowerQuartile < capped * MinLowerQuartileToCraftCost)
+                return capped;
+            raisedAboveCraftCost = true;
+            return Math.Min(price, lowerQuartile);
+        }
+
+        /// <summary>
+        /// True when the key holds a component that can not be bought and applied to a clean item: an enchant that
+        /// only levels up through use (only its level 1 book exists) or an enchant without a known book price.
+        /// </summary>
+        internal static bool HasNonCraftableComponent(KeyWithValueBreakdown key)
+        {
+            return HasUsageLeveledEnchant(key.Key.Enchants) || HasUnpricedEnchant(key.ValueBreakdown);
+        }
+
+        private static bool HasUsageLeveledEnchant(IReadOnlyList<Enchant> enchants)
+        {
+            if (enchants == null)
+                return false;
+            for (int i = 0; i < enchants.Count; i++)
+                if (enchants[i].Lvl > 1 && Constants.EnchantToAttribute.ContainsKey(enchants[i].Type))
+                    return true;
+            return false;
+        }
+
+        /// <summary>
+        /// The enchant valuation returns a negative value when no book price for the enchant is known.
+        /// </summary>
+        private static bool HasUnpricedEnchant(List<RankElem> breakdown)
+        {
+            if (breakdown == null)
+                return false;
+            foreach (var part in breakdown)
+                if (part.Enchant.Type != default && part.Value < 0)
+                    return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Lower nearest-rank percentile: the sorted reference price at index (count - 1) * percent / 100, rounded
+        /// down. For four references and 25 percent this is the cheapest one. 0 without references.
+        /// </summary>
+        internal static long ReferencePercentile(List<ReferencePrice> references, int percent)
+        {
+            if (references.Count == 0)
+                return 0;
+            var prices = new long[references.Count];
+            for (int i = 0; i < prices.Length; i++)
+                prices[i] = references[i].Price;
+            Array.Sort(prices);
+            return prices[(prices.Length - 1) * percent / 100];
+        }
+
         private long CapAtCraftCost(string tag, long medianPrice, KeyWithValueBreakdown key, long currentPrice)
         {
             List<RankElem> breakdown = key.ValueBreakdown;
@@ -3091,6 +3226,10 @@ ORDER BY l.`AuctionId`  DESC;
 
             // determine craft cost 
             long minValue = GetCleanItemPrice(tag, key, lookup);
+            // Paid-bid modifiers already price the Dark Auction payment. Remove the synthetic
+            // clean-Midas uplift before adding them, while leaving clean/no-bid keys unchanged.
+            if (IsMidas(tag) && key.Key.Modifiers.Any(m => m.Key == "full_bid" || m.Key == "winning_bid"))
+                minValue = Math.Max(0, minValue - 80_000_000);
             if (minValue == 0 || currentPrice == minValue)
                 return medianPrice;
             if (IsRune(tag))
@@ -4749,7 +4888,7 @@ ORDER BY l.`AuctionId`  DESC;
             }
             if (KillKeys.Contains(mod.Key))
             {
-                sum += 300_000 * (int)Math.Pow(2, int.Parse(mod.Value)) + 300_000;
+                sum += KillCounterValue.ForBucket(mod.Key, mod.Value);
             }
 
             if (Constants.AttributeKeys.Contains(mod.Key))
@@ -4798,18 +4937,31 @@ ORDER BY l.`AuctionId`  DESC;
 
         private int GetExpValue(string tag, KeyValuePair<string, string> mod)
         {
-            (var maxExp, var second) = HighExp(tag) ? ("7", GoldenDragonMaxExp) : ("6", PetExpMaxlevel);
-            var lvl1Key = new AuctionKey(new(), ItemReferences.Reforge.Any, EmptyPetModifiers.ToList(), Tier.LEGENDARY, 1);
-            var maxLevel = new AuctionKey(new(), ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>>() { new("exp", maxExp) }, Tier.LEGENDARY, 1);
-            if (Lookups.TryGetValue(tag, out var lookup) && lookup.Lookup.TryGetValue(lvl1Key, out var baseLevel)
-                && lookup.Lookup.TryGetValue(maxLevel, out var maxLevelValue) && maxLevelValue.Price > 100)
-            {
-                var precise = Math.Max((maxLevelValue.Price - baseLevel.Price) / int.Parse(maxExp), 200_000);
-                return (int)(precise * Math.Max(float.Parse(mod.Value, CultureInfo.InvariantCulture), 0.5));
-            }
+            if (TryGetTierExpValue(tag, Tier.LEGENDARY, mod, out var value, out _))
+                return value;
             var factor = Math.Max(GetPriceForItem(tag) / 6, 10_000_000);
-            var value = (int)(factor * (float.Parse(mod.Value) + 1));
-            return value;
+            return (int)(factor * (float.Parse(mod.Value) + 1));
+        }
+
+        /// <summary>
+        /// Values the exp bucket <paramref name="mod"/> from the level 1 to max level price spread of <paramref name="tier"/>
+        /// </summary>
+        /// <param name="lvl1Price">price of the level 1 pet of <paramref name="tier"/></param>
+        /// <returns>false when either bucket of that tier is unpriced</returns>
+        public bool TryGetTierExpValue(string tag, Tier tier, KeyValuePair<string, string> mod, out int value, out long lvl1Price)
+        {
+            value = 0;
+            lvl1Price = 0;
+            var maxExp = HighExp(tag) ? "7" : "6";
+            var lvl1Key = new AuctionKey(new(), ItemReferences.Reforge.Any, EmptyPetModifiers.ToList(), tier, 1);
+            var maxLevel = new AuctionKey(new(), ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>>() { new("exp", maxExp) }, tier, 1);
+            if (!Lookups.TryGetValue(tag, out var lookup) || !lookup.Lookup.TryGetValue(lvl1Key, out var baseLevel) || baseLevel.Price <= 0
+                || !lookup.Lookup.TryGetValue(maxLevel, out var maxLevelValue) || maxLevelValue.Price <= 100)
+                return false;
+            lvl1Price = baseLevel.Price;
+            var precise = Math.Max((maxLevelValue.Price - baseLevel.Price) / int.Parse(maxExp), 200_000);
+            value = (int)(precise * Math.Max(float.Parse(mod.Value, CultureInfo.InvariantCulture), 0.5));
+            return true;
         }
 
         private static bool HighExp(string tag)
@@ -4980,8 +5132,8 @@ ORDER BY l.`AuctionId`  DESC;
                         return NormalizeNumberTo(s, 25_000_000, 5);
                 else
                     return Ignore;
-            if (s.Key == "eman_kills")
-                return NormalizeGroupNumber(s, 10_000, 25_000, 50_000, 75_000, 100_000, 125_000, 150_000, 200_000);
+            if (KillCounterValue.TryNormalizeByTier(s, out var byTier))
+                return byTier;
             if (s.Key == "blood_god_kills")
                 return NormalizeGroupNumber(s, 1_000_000, 10_000_000, 20_000_000, 100_000_000);
             if (s.Key == "expertise_kills")
@@ -5183,6 +5335,9 @@ ORDER BY l.`AuctionId`  DESC;
             try
             {
                 TestNewAuctionInternal(auction, triggerEvents, fastMode);
+                // inside the measured time so the cost of every listener shows in the duration metric
+                if (triggerEvents)
+                    AuctionTested?.Invoke(auction);
             }
             finally
             {
@@ -5207,8 +5362,12 @@ ORDER BY l.`AuctionId`  DESC;
             var lookup = Lookups.GetOrAdd(itemGroupTag.Item1, key => new PriceLookup());
             var l = lookup.Lookup;
             var cost = auction.StartingBid;
-            var lbinPrice = auction.StartingBid * 1.03 + itemGroupTag.Item2;
-            var medPrice = auction.StartingBid * 1.05 + itemGroupTag.Item2;
+            // Sold references exclude fragments, while live LBINs retain them. Compare medians
+            // in base-item units and restore fragments after the reference/craft caps.
+            var fragmentValue = CombinableStarred.ContainsKey(auction.Tag) ? itemGroupTag.costSubstract : 0;
+            var conversionCost = itemGroupTag.costSubstract - fragmentValue;
+            var lbinPrice = auction.StartingBid * 1.03 + itemGroupTag.costSubstract;
+            var medPrice = auction.StartingBid * 1.05 + conversionCost - fragmentValue;
             var lastKey = new AuctionKey();
             var shouldTryToFindClosest = false;
             var basekey = DetailedKeyFromSaveAuction(auction, fastMode);
@@ -5266,7 +5425,7 @@ ORDER BY l.`AuctionId`  DESC;
                 if (triggerEvents)
                 {
                     using var tryFind = !triggerEvents ? null : activitySource?.StartActivity("TryFind", ActivityKind.Internal);
-                    long extraValue = GetExtraValue(auction, key) - itemGroupTag.Item2;
+                    long extraValue = GetExtraValue(auction, key) - conversionCost;
                     var findFlipStart = Stopwatch.GetTimestamp();
                     var foundFlip = FindFlip(auction, lbinPrice, medPrice, bucket, key, lookup, basekey, extraValue, props =>
                     {
@@ -5289,7 +5448,7 @@ ORDER BY l.`AuctionId`  DESC;
             var topAttrib = basekey.ValueBreakdown.FirstOrDefault();
             if (topAttrib != default)
             {
-                medPrice = auction.StartingBid * 1.06 + itemGroupTag.Item2;
+                medPrice = auction.StartingBid * 1.06 + conversionCost - fragmentValue;
                 // R7 WS-C2: both finders re-parse the same auction via GetFullKey and build BuildDomKey(fullKey); share
                 // the full key + its query DomKey across the two calls (built lazily once, after each finder's gates).
                 var fullKeyQuery = new FullKeyQuery();
@@ -6023,13 +6182,8 @@ ORDER BY l.`AuctionId`  DESC;
                 var killModifier = missingModifiers.FirstOrDefault(m => KillKeys.Contains(m.Key));
                 if (killModifier.Key != default)
                 {
-                    var killCount = int.Parse(killModifier.Value);
                     var present = key.Modifiers.FirstOrDefault(n => n.Key == killModifier.Key);
-                    var difference = killCount - int.Parse(present.Value ?? "0");
-                    var killPrice = difference * 1_000_000;
-                    if (difference < 0)
-                        killPrice /= 2; // only half for adding kills
-                    toSubstract += killPrice;
+                    toSubstract += KillCounterValue.ReferenceDifference(killModifier.Key, killModifier.Value, present.Value);
                 }
                 var formatted = string.Join(",", missingModifiers.Select(m => $"{m.Key}:{m.Value}"));
                 if (toSubstract == 0)
@@ -6143,6 +6297,9 @@ ORDER BY l.`AuctionId`  DESC;
         }
 
         private long GetExtraValue(SaveAuction auction, AuctionKey key)
+            => GetRemovableItemValue(auction) + GetGemValue(auction, key);
+
+        private long GetRemovableItemValue(SaveAuction auction)
         {
             long extraValue = 0;
             var flatNbt = auction.FlatenedNBT;
@@ -6156,19 +6313,8 @@ ORDER BY l.`AuctionId`  DESC;
 
                     if (item.IsPetItem)
                     {
-                        var isTierBoost = itemTag == "PET_ITEM_TIER_BOOST";
-                        if (BazaarPrices.TryGetValue(itemTag, out var bazaarPrice))
-                        {
-                            itemPrice = (long)bazaarPrice;
-                            if (!isTierBoost)
-                                itemPrice -= itemService.GetPetItemRemovalCost(itemTag);
-                        }
-                        else if (TryGetReferencePrice(itemTag, out var price))
-                        {
-                            itemPrice = price;
-                            if (!isTierBoost)
-                                itemPrice -= itemService.GetPetItemRemovalCost(itemTag);
-                        }
+                        if (TryGetPetItemPrice(itemTag, out itemPrice) && itemTag != "PET_ITEM_TIER_BOOST")
+                            itemPrice -= itemService.GetPetItemRemovalCost(itemTag);
                     }
                     else if (TryGetReferencePrice(itemTag, out var price))
                     {
@@ -6180,7 +6326,20 @@ ORDER BY l.`AuctionId`  DESC;
                 }
             }
 
-            return extraValue + GetGemValue(auction, key);
+            return extraValue;
+        }
+
+        /// <summary>
+        /// Full price of a held pet item, from bazaar or else from references, without removal cost deducted.
+        /// </summary>
+        internal bool TryGetPetItemPrice(string itemTag, out long price)
+        {
+            if (BazaarPrices.TryGetValue(itemTag, out var bazaarPrice))
+            {
+                price = (long)bazaarPrice;
+                return true;
+            }
+            return TryGetReferencePrice(itemTag, out price);
         }
 
         /// <summary>
@@ -6288,6 +6447,9 @@ ORDER BY l.`AuctionId`  DESC;
         }
 
         public long GetGemValue(SaveAuction auction, AuctionKey key)
+            => GetGemValue(auction, key, includePerfect: true);
+
+        private long GetGemValue(SaveAuction auction, AuctionKey key, bool includePerfect)
         {
             var gemValue = 0L;
             var flatNbt = auction.FlatenedNBT;
@@ -6298,6 +6460,8 @@ ORDER BY l.`AuctionId`  DESC;
             foreach (var item in flatNbt)
             {
                 if (item.Value != "PERFECT" && item.Value != "FLAWLESS")
+                    continue;
+                if (!includePerfect && item.Value == "PERFECT")
                     continue;
 
                 if (ContainsModifierKey(modifiers, item.Key))
@@ -6444,8 +6608,8 @@ ORDER BY l.`AuctionId`  DESC;
                 {
                     var lvl1Price = lvl1Bucket.Price;
                     var lvl100Price = lvl100Bucket.Price;
-                    if (lvl100Price <= lvl1Price)
-                        return 0; // inverted or flat market samples cannot price exp
+                    if (lvl1Price <= 0 || lvl100Price <= lvl1Price)
+                        return 0; // unpriced, inverted or flat market samples cannot price exp
                     var accountedFor = double.Parse(key.Modifiers.Where(m => m.Key == "exp").Select(v => v.Value).FirstOrDefault("0"));
                     if (auction.Tier == Tier.EPIC)
                         accountedFor += 1;
@@ -6586,6 +6750,7 @@ ORDER BY l.`AuctionId`  DESC;
                     }
                 }
             }
+            enchantBookPricesLoaded = CountEnchantBookPrices() >= MinEnchantBookPrices;
             logger.LogInformation($"Updated bazaar {Lookups.Count} items {bazaar.Timestamp}");
 
             void MakePriceAtLeast90PercentHigherthanLowerLevel(dev.ProductInfo item, ReferenceAuctions refernces, double? cheapestBuy)
@@ -7222,6 +7387,13 @@ ORDER BY l.`AuctionId`  DESC;
         // AuctionKey.ToString(). The emitted props are byte-identical (same value, present on every emitted flip).
         private bool FoundAFlip(SaveAuction auction, ReferenceAuctions bucket, LowPricedAuction.FinderType type, long targetPrice, Dictionary<string, string> props, AuctionKey keyForProps = null, long extraValueForProps = 0)
         {
+            // SNIPER is capped by live LBINs, whose stored prices already include fragments.
+            if (type != LowPricedAuction.FinderType.SNIPER && CombinableStarred.ContainsKey(auction.Tag))
+            {
+                var fragmentValue = GetAuctionGroupTag(auction.Tag).costSubstract;
+                targetPrice += fragmentValue;
+                props["fragmentValue"] = fragmentValue.ToString();
+            }
             if (targetPrice < MIN_TARGET || targetPrice < auction.StartingBid * 1.03)
             {
                 LogNonFlip(auction, bucket, defaultKey, 0, bucket.Volume, targetPrice, "Target price too low " + targetPrice);

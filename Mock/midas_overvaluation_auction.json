@@ -1,0 +1,43 @@
+{
+  "tag": "STARRED_MIDAS_SWORD",
+  "tier": "MYTHIC",
+  "reforge": "Gilded",
+  "startingBid": 177777777,
+  "highestBidAmount": 177777777,
+  "bin": true,
+  "count": 1,
+  "anvilUses": 0,
+  "flatNbt": {
+    "additional_coins": "41070000",
+    "hpc": "15",
+    "rarity_upgrades": "1",
+    "upgrade_level": "1",
+    "winning_bid": "8930000"
+  },
+  "enchantments": [
+    { "type": "thunderbolt", "level": 7 },
+    { "type": "sharpness", "level": 6 },
+    { "type": "giant_killer", "level": 6 },
+    { "type": "vampirism", "level": 6 },
+    { "type": "venomous", "level": 6 },
+    { "type": "experience", "level": 4 },
+    { "type": "ultimate_combo", "level": 5 },
+    { "type": "lethality", "level": 6 },
+    { "type": "smite", "level": 6 },
+    { "type": "luck", "level": 6 },
+    { "type": "looting", "level": 4 },
+    { "type": "fire_aspect", "level": 3 },
+    { "type": "scavenger", "level": 4 },
+    { "type": "critical", "level": 6 },
+    { "type": "ender_slayer", "level": 6 },
+    { "type": "bane_of_arthropods", "level": 7 },
+    { "type": "impaling", "level": 5 },
+    { "type": "cleave", "level": 5 },
+    { "type": "life_steal", "level": 4 },
+    { "type": "first_strike", "level": 4 },
+    { "type": "dragon_hunter", "level": 5 },
+    { "type": "magmarizer", "level": 5 },
+    { "type": "cubism", "level": 5 },
+    { "type": "prosecute", "level": 5 }
+  ]
+}

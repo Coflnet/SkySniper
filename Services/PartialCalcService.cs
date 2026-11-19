@@ -10,38 +10,26 @@ namespace Coflnet.Sky.Sniper.Services;
 #nullable enable
 /// <summary>
 /// Adapter that preserves the external API of the old PartialCalcService but delegates
-/// predictions and training to the self-learning flip finder service. This keeps
+/// predictions and training to the AI finder (<see cref="IAiFinder"/>). This keeps
 /// callers unchanged while switching logic to the ML-based estimator.
 /// </summary>
 public class PartialCalcService
 {
     private readonly SniperService sniper;
-    private readonly ICraftCostService craftCostService;
-    private readonly IMayorService mayorService;
-    private readonly ISelfLearningFlipFinderService flipFinder;
+    private readonly IAiFinder aiFinder;
     private readonly ILogger<PartialCalcService> logger;
 
-    public PartialCalcService(
-        SniperService sniper,
-        ICraftCostService craftCostService,
-        IMayorService mayorService,
-        IPersitanceManager persitanceManager,
-        ILogger<PartialCalcService> logger,
-        Core.Services.HypixelItemService itemService,
-    AIFormattingService? aiFormattingService,
-    ISelfLearningFlipFinderService flipFinder)
+    public PartialCalcService(SniperService sniper, ILogger<PartialCalcService> logger, IAiFinder aiFinder)
     {
         this.sniper = sniper;
-        this.craftCostService = craftCostService;
-        this.mayorService = mayorService;
         this.logger = logger;
-        this.flipFinder = flipFinder ?? throw new ArgumentNullException(nameof(flipFinder));
+        this.aiFinder = aiFinder ?? throw new ArgumentNullException(nameof(aiFinder));
         IsPrimary = sniper.ServerDnsName.Contains("manager");
     }
 
     public bool IsPrimary { get; set; }
 
-    public IEnumerable<string> ItemKeys => flipFinder.GetModelStats().Keys;
+    public IEnumerable<string> ItemKeys => aiFinder.ModelTags;
 
     public class PartialResult
     {
@@ -67,8 +55,7 @@ public class PartialCalcService
         var result = new PartialResult();
         try
         {
-            var flip = SaveAuctionExtensions.ToComplicatedFlip(auction, includeBreakdown: true, sniper: sniper, mayorService: mayorService, craftCostService: craftCostService);
-            var estimate = flipFinder.EstimateAsync(flip).GetAwaiter().GetResult();
+            var estimate = aiFinder.Estimate(auction).GetAwaiter().GetResult();
             result.Price = (long)(estimate?.EstimatedValue ?? 0);
             if (includeBreakDown)
             {
@@ -97,8 +84,7 @@ public class PartialCalcService
     {
         try
         {
-            var flip = SaveAuctionExtensions.ToComplicatedFlip(auction, includeBreakdown: true, sniper: sniper, mayorService: mayorService, craftCostService: craftCostService);
-            await flipFinder.TrainAsync(flip);
+            await aiFinder.AddSale(auction);
         }
         catch (Exception ex)
         {

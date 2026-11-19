@@ -15,3 +15,5 @@ jobs:
       repo_url: https://github.com/Coflnet/k8s
     secrets:
       ARGO_WEBHOOK_SECRET: ${{ secrets.ARGO_WEBHOOK_SECRET }}
+      # read token for the private SkyAIFinder repository; without it (forks, outside builds) the image has no AI finder
+      SKYAIFINDER_TOKEN: ${{ secrets.SKYAIFINDER_TOKEN }}
