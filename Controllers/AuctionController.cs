@@ -6,8 +6,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 using Coflnet.Sky.Core;
-using ComplicatedFlip = Coflnet.Sky.FlipTracker.Client.Model.ComplicatedFlip;
-using Coflnet.Sky.FlipTracker.Client.Model;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using Newtonsoft.Json;
@@ -21,18 +19,14 @@ public class AuctionController : ControllerBase
     private readonly ILogger<AuctionController> _logger;
     private readonly SniperService service;
     private readonly HypixelContext db;
-    private readonly ISelfLearningFlipFinderService flipFinder;
-    private readonly IMayorService mayorService;
-    private readonly ICraftCostService craftCostService;
+    private readonly IAiFinder aiFinder;
 
-    public AuctionController(ILogger<AuctionController> logger, SniperService service, HypixelContext db, ISelfLearningFlipFinderService flipFinder, IMayorService mayorService, ICraftCostService craftCostService)
+    public AuctionController(ILogger<AuctionController> logger, SniperService service, HypixelContext db, IAiFinder aiFinder)
     {
         _logger = logger;
         this.service = service;
         this.db = db;
-        this.flipFinder = flipFinder;
-        this.mayorService = mayorService;
-        this.craftCostService = craftCostService;
+        this.aiFinder = aiFinder;
     }
 
     [Route("auction/{auctionUuid}/key")]
@@ -66,10 +60,10 @@ public class AuctionController : ControllerBase
     {
         try
         {
-            // Convert to ComplicatedFlip using the shared helper (include full breakdown)
-            var flip = SaveAuctionExtensions.ToComplicatedFlip(auction, includeBreakdown: true, sniper: service, mayorService: mayorService, craftCostService: craftCostService);
-            _logger.LogInformation(JsonConvert.SerializeObject(flip));
-            var estimate = await flipFinder.EstimateAsync(flip);
+            var estimate = await aiFinder.Estimate(auction);
+            if (estimate == null)
+                return StatusCode(503, $"No AI estimate, AI finder: {aiFinder.Variant}");
+            _logger.LogInformation(JsonConvert.SerializeObject(estimate.Sample));
 
             // obtain the value breakdown used by the baseline estimator for visibility
             KeyWithValueBreakdown breakdown = null;
@@ -86,10 +80,9 @@ public class AuctionController : ControllerBase
             return Ok(new
             {
                 Estimated = estimate.EstimatedValue,
-                Baseline = estimate.BaselineValue,
                 ModelReady = estimate.ModelReady,
                 SampleCount = estimate.SampleCount,
-                Metrics = estimate.Metrics,
+                Quality = estimate.Quality,
                 Breakdown = breakdown?.ValueBreakdown
             });
         }

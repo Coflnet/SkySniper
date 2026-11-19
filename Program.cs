@@ -14,10 +14,26 @@ namespace Coflnet.Sky.Sniper
         public static void Main(string[] args)
         {
             System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
-            if (Services.IsolatedFastTreeTrainer.TryRun(args)) return;
+#if AI_FINDER
+            if (AIFinder.IsolatedFastTreeTrainer.TryRun(args)) return;
+            // the AI finder fits its models in a child process of this assembly
+            AIFinder.IsolatedFastTreeTrainer.HostAssemblyPath = typeof(SnipProgram).Assembly.Location;
+#endif
             var host = CreateHostBuilder(args).Build();
+            LogAiFinderVariant(host.Services);
             HypixelContext.SetConfiguration(host.Services.GetRequiredService<IConfiguration>());
             host.Run();
+        }
+
+        /// <summary>One line at startup that says whether this build contains the AI finder, so a build without it is noticed</summary>
+        private static void LogAiFinderVariant(System.IServiceProvider services)
+        {
+            var (active, variant) = Services.AiFinderRegistration.Describe(services.GetRequiredService<IConfiguration>());
+            var logger = services.GetRequiredService<ILogger<SnipProgram>>();
+            if (active)
+                logger.LogInformation("AI finder: {Variant}", variant);
+            else
+                logger.LogWarning("AI finder: {Variant}, no AI flips will be found", variant);
         }
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>

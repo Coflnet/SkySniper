@@ -73,18 +73,10 @@ namespace Coflnet.Sky.Sniper
             services.AddSingleton<IPersitanceManager, S3PersistanceManager>();
             services.AddSingleton<ITokenService, TokenService>();
             services.AddSingleton<ActiveUpdater>();
-            services.AddSingleton<ISelfLearningFlipFinderService, SelfLearningFlipFinderService>();
-            services.AddSingleton<AIFormattingService>();
-            // PartialCalcService is now an adapter delegating to SelfLearningFlipFinderService
-            services.AddSingleton<PartialCalcService>(sp => new PartialCalcService(
-                sp.GetRequiredService<SniperService>(),
-                sp.GetRequiredService<ICraftCostService>(),
-                sp.GetRequiredService<IMayorService>(),
-                sp.GetRequiredService<IPersitanceManager>(),
-                sp.GetRequiredService<ILogger<PartialCalcService>>(),
-                sp.GetRequiredService<HypixelItemService>(),
-                sp.GetRequiredService<AIFormattingService>(),
-                sp.GetRequiredService<ISelfLearningFlipFinderService>()));
+            // the AI finder: SkyAIFinder when this build has it, trained by the manager, loaded by the workers
+            services.AddAiFinder(Configuration, trains: bool.TryParse(Configuration["IS_MANAGER"], out var isManager) && isManager);
+            // PartialCalcService is an adapter delegating to the AI finder
+            services.AddSingleton<PartialCalcService>();
             services.AddSingleton<Kafka.KafkaCreator>();
             services.AddSingleton<HypixelItemService>();
             services.AddSingleton<IAttributeFlipService, AttributeFlipService>();

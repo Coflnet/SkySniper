@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Coflnet.Sky.AIFinder;
 using Microsoft.ML;
 using Microsoft.ML.Data;
 using NUnit.Framework;
@@ -17,62 +18,30 @@ public class IsolatedFastTreeTrainerTests
     {
         [VectorType(2)]
         public float[] Features { get; set; } = Array.Empty<float>();
-        public float Label { get; set; }
         public float TrainLabel { get; set; }
     }
 
-    public sealed class Prediction
+    /// <summary>The fit itself is tested in SkyAIFinder; here the child is this service's own entry point</summary>
+    [Test]
+    public void ChildFitRunsInTheSniperHost()
     {
-        public float Score { get; set; }
-    }
-
-    private static IDataView TrainingData(MLContext context) => context.Data.LoadFromEnumerable(
-        Enumerable.Range(0, 80).Select(i => new Sample
+        var context = new MLContext(seed: 17);
+        var data = context.Data.LoadFromEnumerable(Enumerable.Range(0, 80).Select(i => new Sample
         {
             Features = new[] { (float)(i % 2), i / 80f },
-            TrainLabel = i % 2 == 0 ? 2 : 8,
-            Label = i % 2 == 0 ? -2 : -8
+            TrainLabel = i % 2 == 0 ? 2 : 8
         }));
-
-    [Test]
-    public void ChildFitPreservesFixedVectorTrainLabelAndPersistedScores()
-    {
-        var context = new MLContext(seed: 17);
-        var data = TrainingData(context);
-        var fitted = IsolatedFastTreeTrainer.Fit(context, data, 1, 50, 17);
-        using var predictor = context.Model.CreatePredictionEngine<Sample, Prediction>(fitted);
-        var low = new Sample { Features = new[] { 0f, 0.5f } };
-        var high = new Sample { Features = new[] { 1f, 0.5f } };
-        var lowScore = predictor.Predict(low).Score;
-        var highScore = predictor.Predict(high).Score;
-
-        using var saved = new MemoryStream();
-        context.Model.Save(fitted, data.Schema, saved);
-        saved.Position = 0;
-        var reloaded = context.Model.Load(saved, out var schema);
-        using var restoredPredictor = context.Model.CreatePredictionEngine<Sample, Prediction>(reloaded);
-
-        Assert.Multiple(() =>
+        var previousHost = IsolatedFastTreeTrainer.HostAssemblyPath;
+        IsolatedFastTreeTrainer.HostAssemblyPath = typeof(SnipProgram).Assembly.Location;
+        try
         {
-            Assert.That(((VectorDataViewType)schema[nameof(Sample.Features)].Type).Size, Is.EqualTo(2));
-            Assert.That(schema[nameof(Sample.TrainLabel)].Type, Is.EqualTo(NumberDataViewType.Single));
-            // Label deliberately has the opposite sign: fitting the wrong column fails these checks.
-            Assert.That(lowScore, Is.EqualTo(2).Within(1));
-            Assert.That(highScore, Is.EqualTo(8).Within(1));
-            Assert.That(restoredPredictor.Predict(low).Score, Is.EqualTo(lowScore).Within(0.000001));
-            Assert.That(restoredPredictor.Predict(high).Score, Is.EqualTo(highScore).Within(0.000001));
+            var fitted = IsolatedFastTreeTrainer.Fit(context, data, new FastTreeParams(20, 50, 0.2, 1, 17, false));
             Assert.That(fitted.Model.TrainedTreeEnsemble.Trees.Count, Is.GreaterThan(0));
-        });
-    }
-
-    [Test]
-    public void TimedOutChildDoesNotFallBackAndRemovesItsTemporaryFiles()
-    {
-        var before = Directory.GetDirectories(Path.GetTempPath(), "sky-sniper-fit-*").ToHashSet();
-        var context = new MLContext(seed: 17);
-        Assert.Throws<TimeoutException>(() =>
-            IsolatedFastTreeTrainer.Fit(context, TrainingData(context), 1, 50, 17, TimeSpan.FromMilliseconds(1)));
-        Assert.That(Directory.GetDirectories(Path.GetTempPath(), "sky-sniper-fit-*").Except(before), Is.Empty);
+        }
+        finally
+        {
+            IsolatedFastTreeTrainer.HostAssemblyPath = previousHost;
+        }
     }
 
     [TestCase(false)]
@@ -96,7 +65,7 @@ public class IsolatedFastTreeTrainerTests
             child.StartInfo.ArgumentList.Add(typeof(SnipProgram).Assembly.Location);
             child.StartInfo.ArgumentList.Add("--fit-fast-tree");
             if (!incompleteArguments)
-                foreach (var argument in new[] { input, output, "1", "50", "17" })
+                foreach (var argument in new[] { input, output, "20", "50", "0.2", "1", "17", "0" })
                     child.StartInfo.ArgumentList.Add(argument);
             started = child.Start();
             var stdout = child.StandardOutput.ReadToEndAsync();

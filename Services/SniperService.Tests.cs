@@ -2350,26 +2350,6 @@ namespace Coflnet.Sky.Sniper
         }
 
         [Test]
-        public void AiFeatureForKillsIsOneBoundedValuePerCounter()
-        {
-            var auction = ReaperChestplateWithKills();
-            auction.FlatenedNBT.Remove("color"); // the default color, production drops it but the test item service has no item data
-            // The pricing state has one unpriced reference in this item's bucket, so production valued it from the
-            // estimates alone like the empty lookup does here. Clean cost and bazaar prices are the ones recorded
-            // in the AI finder's context for this auction.
-            craftCost.Costs["REAPER_CHESTPLATE"] = 4_395_140;
-            SetBazaarPrice("HOT_POTATO_BOOK", 81_269);
-            SetBazaarPrice("ENCHANTMENT_REJUVENATE_5", 394_491);
-
-            var flip = auction.ToComplicatedFlip(includeBreakdown: true, sniper: service, craftCostService: craftCost);
-
-            flip.AttributeValues.Keys.Where(k => k.StartsWith("zombie_kills")).Should().Equal("zombie_kills");
-            // attribute sum cap as computed by InternalDataLoader.CheckForPartial
-            flip.AttributeValues.Sum(a => a.Value).Should().BeLessThan((long)(auction.StartingBid * 1.1),
-                "the kills must not lift the cap enough to report the 10M listing as a flip");
-        }
-
-        [Test]
         public void SalesBackedKillCountersUseObservedPremium()
         {
             // buckets 1 and 3 keep their weight, only the higher ones had sales in both compared groups against it

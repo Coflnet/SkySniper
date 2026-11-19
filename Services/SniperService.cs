@@ -178,6 +178,12 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly ConcurrentDictionary<string, int> pausedFlipFindingTags = new(StringComparer.Ordinal);
 
         public event Action<LowPricedAuction> FoundSnipe;
+        /// <summary>
+        /// A new auction was tested (the event triggering path only). Runs on the snipe-finding thread: listeners must
+        /// only hand the auction over to their own work queue.
+        /// </summary>
+        public event Action<SaveAuction> AuctionTested;
+
         public event Action<PotentialCraftFlip> CappedKey;
         public event Action<(SaveAuction, AuctionKeyWithValue)> OnSold;
         public event Action OnSummaryUpdate;
@@ -5335,6 +5341,9 @@ ORDER BY l.`AuctionId`  DESC;
             try
             {
                 TestNewAuctionInternal(auction, triggerEvents, fastMode);
+                // inside the measured time so the cost of every listener shows in the duration metric
+                if (triggerEvents)
+                    AuctionTested?.Invoke(auction);
             }
             finally
             {

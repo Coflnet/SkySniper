@@ -27,11 +27,10 @@ namespace Coflnet.Sky.Sniper.Services
         private readonly ActiveUpdater activeUpdater;
         private readonly Kafka.KafkaCreator kafkaCreator;
         private readonly PartialCalcService partialCalcService;
-        private readonly IMayorService mayorService;
         public event Action<LowPricedAuction> FoundPartialFlip;
-        public readonly ISelfLearningFlipFinderService flipFinder;
-        public readonly ICraftCostService craftCostService;
-        private readonly ItemDetails itemDetails;
+        public readonly IAiFinder aiFinder;
+        // new-auction batches the shard workers are processing; the AI finder stands down while there is one
+        private int batchesInFlight;
 
         private readonly ILogger<InternalDataLoader> logger;
         private IProducer<string, LowPricedAuction> FlipProducer;
@@ -57,10 +56,7 @@ namespace Coflnet.Sky.Sniper.Services
             ActiveUpdater activeUpdater,
             Kafka.KafkaCreator kafkaCreator,
             PartialCalcService partialCalcService,
-            IMayorService mayorService,
-            ItemDetails itemDetails,
-            ISelfLearningFlipFinderService flipFinder,
-            ICraftCostService craftCostService)
+            IAiFinder aiFinder)
         {
             this.sniper = sniper;
             this.config = config;
@@ -71,10 +67,7 @@ namespace Coflnet.Sky.Sniper.Services
             this.activeUpdater = activeUpdater;
             this.kafkaCreator = kafkaCreator;
             this.partialCalcService = partialCalcService;
-            this.mayorService = mayorService;
-            this.itemDetails = itemDetails;
-            this.flipFinder = flipFinder;
-            this.craftCostService = craftCostService;
+            this.aiFinder = aiFinder;
         }
 
 
@@ -130,6 +123,11 @@ namespace Coflnet.Sky.Sniper.Services
         {
             await kafkaCreator.CreateTopicIfNotExist(LowPricedAuctionTopic);
             FlipProducer = kafkaCreator.BuildProducer<string, LowPricedAuction>(true, pb => pb);
+            aiFinder.Start(flip =>
+            {
+                Produceflip(flip, FlipProducer);
+                FoundPartialFlip?.Invoke(flip);
+            }, IsProcessingNewAuctions);
             if (ShouldProduceFound())
             {
                 Console.WriteLine("starting producer\n-----------------");
@@ -143,6 +141,23 @@ namespace Coflnet.Sky.Sniper.Services
                 await Task.Delay(2000);
             }
             FlipProducer.Dispose();
+        }
+
+        /// <summary>True while the shard workers process a batch of new auctions</summary>
+        internal bool IsProcessingNewAuctions() => Volatile.Read(ref batchesInFlight) > 0;
+
+        /// <summary>Processes a batch on the shard workers and counts it as in flight meanwhile</summary>
+        internal void ProcessInFlight(Action process)
+        {
+            Interlocked.Increment(ref batchesInFlight);
+            try
+            {
+                process();
+            }
+            finally
+            {
+                Interlocked.Decrement(ref batchesInFlight);
+            }
         }
 
         private void Produceflip(LowPricedAuction flip, IProducer<string, LowPricedAuction> lpp)
@@ -202,8 +217,7 @@ namespace Coflnet.Sky.Sniper.Services
         {
             // Phase 1: select the auctions this batch will actually process (bins only) and stamp
             // receive-latency context, preserving the original per-auction bookkeeping. We materialize
-            // the kept list so we can (a) feed it to the dispatcher and (b) run CheckForPartial over it
-            // afterwards on this (consumer) thread.
+            // the kept list to feed it to the dispatcher.
             var kept = new List<SaveAuction>();
             foreach (var a in auctions)
             {
@@ -231,7 +245,7 @@ namespace Coflnet.Sky.Sniper.Services
             // the callback so the offset is NOT committed and Kafka re-delivers the batch (no loss).
             try
             {
-                snipeDispatcher.ProcessBatchAndWait(kept, stoppingToken);
+                ProcessInFlight(() => snipeDispatcher.ProcessBatchAndWait(kept, stoppingToken));
             }
             catch (OperationCanceledException)
             {
@@ -245,68 +259,10 @@ namespace Coflnet.Sky.Sniper.Services
                 logger.LogError(e, "shard worker failed processing a new-auction batch");
             }
 
-            // Phase 3: CheckForPartial runs HERE — on the consumer thread, after the batch has fully
-            // drained — NOT on the shard workers. Rationale (threading decision): CheckForPartial calls
-            // the ML flip finder (flipFinder.EstimateAsync) and writes to the shared Kafka FlipProducer
-            // via Produceflip; neither is contended-safe to run from N worker threads, and its blocking
-            // .GetAwaiter().GetResult() would stall a shard worker (serializing that worker's whole tag
-            // queue and killing throughput scaling). It is also OFF the snipe-finding path the dispatcher
-            // parallelizes, so keeping it single-threaded here preserves both its original semantics and
-            // the bit-exact snipe-set parity. It runs strictly after drain, so prices it reads from the
-            // sniper reflect this batch's writes — identical ordering to the original foreach.
-            foreach (var a in kept)
-            {
-                try
-                {
-                    CheckForPartial(a);
-                }
-                catch (Exception e)
-                {
-                    logger.LogError(e, "CheckForPartial failed " + a.Uuid);
-                }
-            }
+            // The AI finder is not run here: the sniper hands every tested auction to the finder's own queue
+            // (SniperService.AuctionTested), and its background worker values it and publishes flips, see StartProducer.
             backoff.Reset(); // only after the whole batch was handled
             return Task.CompletedTask;
-        }
-
-        private void CheckForPartial(SaveAuction a)
-        {
-            if (!flipFinder.IsRelevantItem(a.Tag))
-                return;
-            var cflip = SaveAuctionExtensions.ToComplicatedFlip(a, includeBreakdown: true, sniper: sniper, mayorService: mayorService, craftCostService: craftCostService);
-            var estimate = flipFinder.EstimateAsync(cflip).GetAwaiter().GetResult();
-            if (estimate == null)
-                return;
-            // Exclude candyUsed from the attribute sum cap — its weight is a pricing signal
-            // for the ML model, not an actual coin value. Including it inflates the cap
-            // and causes cheap pets to be reported as flips.
-            var attrSum = cflip.AttributeValues
-                .Where(a => !a.Key.StartsWith("candyUsed:", StringComparison.OrdinalIgnoreCase))
-                .Sum(a => a.Value);
-            var value = Math.Min(estimate.EstimatedValue, attrSum);
-
-            // Log suspicious cases where the AI estimate greatly exceeds the attribute sum cap
-            // These are likely items with attributes that default to high estimate values
-            if (estimate.EstimatedValue > attrSum * 3 && estimate.EstimatedValue > 50_000_000)
-            {
-                logger.LogWarning("AI overvaluation detected for {Tag} ({Uuid}): estimate={Estimate:F0}, attrSumCap={AttrSum}, bid={Bid}, attrs=[{Attrs}]",
-                    a.Tag, a.Uuid, estimate.EstimatedValue, attrSum, a.StartingBid,
-                    string.Join(", ", cflip.AttributeValues.Select(kv => $"{kv.Key}={kv.Value}")));
-            }
-
-            if (value > a.StartingBid * 1.1 && value - a.StartingBid > 3_000_000)
-            {
-                logger.LogInformation("found potential ai flip for {content} {metadata}", JsonConvert.SerializeObject(estimate), JsonConvert.SerializeObject(cflip));
-                var flip = new LowPricedAuction()
-                {
-                    Auction = a,
-                    AdditionalProps = new() { { "samples", JsonConvert.SerializeObject(estimate)}, {"cflip", JsonConvert.SerializeObject(cflip)} },
-                    Finder = LowPricedAuction.FinderType.AI,
-                    TargetPrice = (long)(value * 0.9)
-                };
-                Produceflip(flip, FlipProducer);
-                FoundPartialFlip?.Invoke(flip);
-            }
         }
 
         private async Task LoadActiveAuctions(CancellationToken stoppingToken)
@@ -444,98 +400,12 @@ namespace Coflnet.Sky.Sniper.Services
 
         public async Task<Dictionary<string, Dictionary<string, double>>> PartialAnalysis(string targetTag, CancellationToken stoppinToken, DateTime totalStart = default)
         {
-            var context = new HypixelContext();
             using var scope = logger.BeginScope("partial analysis");
             logger.LogInformation("loading aote from db");
-            var id = itemDetails.GetItemIdForTag(targetTag);
-            if (totalStart == default)
-                totalStart = DateTime.UtcNow - TimeSpan.FromDays(100);
-
-            var samples = new List<SaveAuction>();
-            var tickSize = TimeSpan.FromDays(2);
-            for (var start = totalStart; start < DateTime.UtcNow; start += tickSize)
-            {
-                var end = start + tickSize;
-                samples.AddRange(await LoadpartialBatch(context, id, start, end, stoppinToken, samples));
-                if (samples.Count > 5000)
-                {
-                    var commonalityCount = samples.GroupBy(s => s.Tag).ToDictionary(g => g.Key, g => g.Count());
-                    samples = samples.OrderBy(s => Random.Shared.NextDouble() / commonalityCount.GetValueOrDefault(s.Tag, 1)).Take(2500).ToList();
-                }
-            }
+            await aiFinder.Retrain(targetTag, stoppinToken, totalStart, partialCalcService.AddSell);
             logger.LogInformation(Newtonsoft.Json.JsonConvert.SerializeObject(partialCalcService.GetAttributeCosts(targetTag), Newtonsoft.Json.Formatting.Indented));
 
             return partialCalcService.GetAttributeCosts(targetTag);
-        }
-
-        private async Task<List<SaveAuction>> LoadpartialBatch(HypixelContext context, int id, DateTime start, DateTime end, CancellationToken stoppinToken, List<SaveAuction> lastSample)
-        {
-            var batch = await context.Auctions.Include(a => a.NbtData).Include(a => a.Enchantments)
-                        .Where(a => a.End > start && a.End < end && a.Bin && a.HighestBidAmount > 0 && id == a.ItemId)
-                        .Take(10_000)
-                        .AsNoTracking()
-                        .ToListAsync(stoppinToken);
-            Console.WriteLine("applying aote");
-            // filter underpriced ones
-            batch = batch.Where(s => s.StartingBid != 0).ToList();
-            var newSample = batch.OrderBy(s => Random.Shared.NextDouble()).Take(100).ToList();
-            batch = batch.Concat(lastSample).ToList();
-            const int MillisecondsDelay = 500;
-            //ApplyData(sold, 0.2);
-            for (int i = 0; i < 5; i++)
-            {
-                await ApplyData(batch, 0.023);
-                await Task.Delay(MillisecondsDelay);
-            }
-            batch = batch.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(30)).ToList();
-            if (batch.Count == 0)
-                return newSample;
-            for (int i = 0; i < 5; i++)
-            {
-                await ApplyData(batch, 0.03);
-                await Task.Delay(MillisecondsDelay);
-            }
-            var lastWeek = batch.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(5)).ToList();
-            if (lastWeek.Count > 20)
-                batch = lastWeek;
-            for (int i = 0; i < 50; i++)
-            {
-                await ApplyData(batch, 0.015);
-                await Task.Delay(MillisecondsDelay);
-            }
-            var recent = batch.Where(s => s.End > DateTime.UtcNow - TimeSpan.FromDays(1))
-                .OrderByDescending(s => s.End).Take(50).ToList();
-            if (recent.Count > 10)
-                for (int i = 0; i < 20; i++)
-                {
-                    await ApplyData(recent, 0.005);
-                }
-            return newSample;
-        }
-
-
-        private async Task ApplyData(List<SaveAuction> sold, double v)
-        {
-            if (v == 1)
-                foreach (var item in sold)
-                {
-                    AddHistoricalSoldAuction(item);
-                }
-            partialCalcService.SetLearningRate(v);
-            Parallel.ForEach(sold, async item =>
-            {
-                try
-                {
-                    await partialCalcService.AddSell(item);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                    Console.WriteLine(e.StackTrace);
-                }
-            });
-            if (v > 0.01 && sold.Count > 1000)
-                await partialCalcService.CapAtCraftCost();
         }
 
         private void AddHistoricalSoldAuction(SaveAuction item)
