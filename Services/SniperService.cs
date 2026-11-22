@@ -3129,10 +3129,20 @@ ORDER BY l.`AuctionId`  DESC;
         }
 
         /// <summary>
-        /// Caps <paramref name="price"/> at the craft cost. When the key holds a component that can not be bought, the
-        /// component sum is only a lower estimate. If the bucket's own references show that (their lower quartile is
-        /// at least <see cref="MinLowerQuartileToCraftCost"/> times the craft cost), the cap is that lower quartile
-        /// instead, never above <paramref name="price"/>. <paramref name="raisedAboveCraftCost"/> tells the caller
+        /// Percent taken off the lower quartile when the pet experience made the bucket qualify. The craft cost of a
+        /// pet with little experience is underestimated, but the quartile of its own sales is a looser bound than
+        /// for non-craftable components, so a margin is taken off.
+        /// </summary>
+        private const int PetExperienceSafetyMarginPercent = 5;
+
+        /// <summary>
+        /// Caps <paramref name="price"/> at the craft cost. When the key holds a component that can not be bought, or
+        /// is a pet in one of the lowest experience groups, the component sum is only a lower estimate. If the
+        /// bucket's own references show that (their lower quartile is at least
+        /// <see cref="MinLowerQuartileToCraftCost"/> times the craft cost), the cap is that lower quartile instead,
+        /// never above <paramref name="price"/>. When the bucket qualifies only through pet experience, or through
+        /// both, the cap is the lower quartile reduced by <see cref="PetExperienceSafetyMarginPercent"/> percent; the threshold is
+        /// always tested against the unreduced quartile. <paramref name="raisedAboveCraftCost"/> tells the caller
         /// that the result is still a cap, so no later step may lift the price above it.
         /// Without enchant book prices from the bazaar the craft cost is used unchanged.
         /// </summary>
@@ -3141,13 +3151,44 @@ ORDER BY l.`AuctionId`  DESC;
         {
             var capped = CapAtCraftCost(tag, price, key, currentPrice);
             raisedAboveCraftCost = false;
-            if (capped >= price || !enchantBookPricesLoaded || !HasNonCraftableComponent(key))
+            if (capped >= price || !enchantBookPricesLoaded)
+                return capped;
+            var lowExpPet = HasLowPetExperience(tag, key);
+            if (!lowExpPet && !HasNonCraftableComponent(key))
                 return capped;
             var lowerQuartile = ReferencePercentile(references, NonCraftableReferencePercentile);
             if (lowerQuartile < capped * MinLowerQuartileToCraftCost)
                 return capped;
             raisedAboveCraftCost = true;
-            return Math.Min(price, lowerQuartile);
+            var referenceCap = lowExpPet ? lowerQuartile * (100 - PetExperienceSafetyMarginPercent) / 100 : lowerQuartile;
+            return Math.Min(price, referenceCap);
+        }
+
+        /// <summary>
+        /// True for a pet whose experience modifier is in one of the three lowest non-zero groups ("0.3", "0.6", "1",
+        /// see <see cref="NormalizeData"/>). There the linear experience valuation is far too low. The groups are on
+        /// the scale of a legendary pet, so common and uncommon pets (which are near their max level in these
+        /// groups) and pets with a longer experience scale do not qualify. Neither do pets that were given candy:
+        /// their experience did not take time to gain. Higher groups and non-pet items keep the craft cost cap too.
+        /// </summary>
+        internal static bool HasLowPetExperience(string tag, KeyWithValueBreakdown key)
+        {
+            if (!NBT.IsPet(tag) || HighExp(tag))
+                return false;
+            if (key.Key.Tier is not (Tier.RARE or Tier.EPIC or Tier.LEGENDARY or Tier.MYTHIC))
+                return false;
+            var modifiers = key.Key.Modifiers;
+            if (modifiers == null || ModifierValue(modifiers, "candyUsed") == "1")
+                return false;
+            return ModifierValue(modifiers, "exp") is "0.3" or "0.6" or "1";
+        }
+
+        private static string ModifierValue(IReadOnlyList<KeyValuePair<string, string>> modifiers, string name)
+        {
+            for (int i = 0; i < modifiers.Count; i++)
+                if (modifiers[i].Key == name)
+                    return modifiers[i].Value;
+            return null;
         }
 
         /// <summary>

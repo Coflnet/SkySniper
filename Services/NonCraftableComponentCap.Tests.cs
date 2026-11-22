@@ -186,6 +186,206 @@ public class NonCraftableComponentCapTests
         bucket.RiskyEstimate.Should().BeLessThanOrEqualTo(25_100_000);
     }
 
+    [TestCase("0.3")]
+    [TestCase("0.6")]
+    [TestCase("1")]
+    public void LowestPetExperienceGroupsQualify(string group)
+    {
+        SniperService.HasLowPetExperience("PET_SKELETON", PetBreakdown(group)).Should().BeTrue();
+    }
+
+    [TestCase("0")]
+    [TestCase("2")]
+    [TestCase("3")]
+    [TestCase("6")]
+    public void OtherPetExperienceGroupsDoNotQualify(string group)
+    {
+        SniperService.HasLowPetExperience("PET_SKELETON", PetBreakdown(group)).Should().BeFalse();
+    }
+
+    [Test]
+    public void NonPetWithExperienceModifierDoesNotQualify()
+    {
+        SniperService.HasLowPetExperience("SOME_SWORD", PetBreakdown("0.3")).Should().BeFalse();
+    }
+
+    [Test]
+    public void PetWithoutExperienceModifierDoesNotQualify()
+    {
+        var key = PetBreakdown(Tier.LEGENDARY, new KeyValuePair<string, string>("candyUsed", "0"));
+        SniperService.HasLowPetExperience("PET_SKELETON", key).Should().BeFalse();
+    }
+
+    /// <summary>The experience groups are on the legendary scale: in these groups a common or uncommon pet is close to its max level</summary>
+    [TestCase(Tier.COMMON)]
+    [TestCase(Tier.UNCOMMON)]
+    public void CommonAndUncommonPetsDoNotQualify(Tier tier)
+    {
+        var key = PetBreakdown(tier, new("candyUsed", "0"), new("exp", "0.3"));
+        SniperService.HasLowPetExperience("PET_SKELETON", key).Should().BeFalse();
+    }
+
+    [TestCase(Tier.RARE)]
+    [TestCase(Tier.EPIC)]
+    [TestCase(Tier.MYTHIC)]
+    public void RareAndHigherPetsQualify(Tier tier)
+    {
+        var key = PetBreakdown(tier, new("candyUsed", "0"), new("exp", "0.6"));
+        SniperService.HasLowPetExperience("PET_SKELETON", key).Should().BeTrue();
+    }
+
+    /// <summary>On the longer experience scale the same groups are levels around 100, not little experience</summary>
+    [Test]
+    public void PetWithLongerExperienceScaleDoesNotQualify()
+    {
+        SniperService.HasLowPetExperience("PET_GOLDEN_DRAGON", PetBreakdown("0.3")).Should().BeFalse();
+    }
+
+    /// <summary>Candy gives the experience at once, so the craft cost stays the bound</summary>
+    [Test]
+    public void PetGivenCandyDoesNotQualify()
+    {
+        var key = PetBreakdown(Tier.LEGENDARY, new("candyUsed", "1"), new("exp", "0.6"));
+        SniperService.HasLowPetExperience("PET_SKELETON", key).Should().BeFalse();
+    }
+
+    [Test]
+    public void LowExperiencePetIsCappedAtNinetyFivePercentOfLowerQuartile()
+    {
+        var service = CreateService(new Fixture { Day = 1000, Bazaar = WithBookTable() });
+        AddSkeletonPetBuckets(service);
+        var key = service.GetBreakdownKey(LowExpPetKey, "PET_SKELETON");
+
+        var price = service.CapAtCraftCostOrReferences("PET_SKELETON", key, 20_000_000, 0, PetReferences(12_000_000, 13_000_000, 14_000_000, 15_000_000), out var raised);
+
+        price.Should().Be(11_400_000, "95 percent of the 12M lower quartile");
+        raised.Should().BeTrue();
+    }
+
+    [Test]
+    public void LowExperiencePetThresholdUsesUnreducedLowerQuartile()
+    {
+        var service = CreateService(new Fixture { Day = 1000, Bazaar = WithBookTable() });
+        AddSkeletonPetBuckets(service);
+        var key = service.GetBreakdownKey(LowExpPetKey, "PET_SKELETON");
+        var capped = service.CapAtCraftCostOrReferences("PET_SKELETON", key, 20_000_000, 0, PetReferences(1_000_000), out _);
+        capped.Should().BeLessThan(20_000_000, "the craft cost caps the price");
+
+        var belowThreshold = service.CapAtCraftCostOrReferences("PET_SKELETON", key, 20_000_000, 0, PetReferences(capped * 124 / 100), out var raisedBelow);
+        var aboveThreshold = service.CapAtCraftCostOrReferences("PET_SKELETON", key, 20_000_000, 0, PetReferences(capped * 126 / 100), out var raisedAbove);
+
+        belowThreshold.Should().Be(capped);
+        raisedBelow.Should().BeFalse();
+        aboveThreshold.Should().BeGreaterThan(capped, "1.26 times the craft cost is above the threshold, and 95 percent of it still above the cap");
+        raisedAbove.Should().BeTrue();
+    }
+
+    [Test]
+    public void LowExperiencePetCapNeverExceedsUncappedPrice()
+    {
+        var service = CreateService(new Fixture { Day = 1000, Bazaar = WithBookTable() });
+        AddSkeletonPetBuckets(service);
+        var key = service.GetBreakdownKey(LowExpPetKey, "PET_SKELETON");
+        var capped = service.CapAtCraftCostOrReferences("PET_SKELETON", key, 20_000_000, 0, PetReferences(1_000_000), out _);
+        var price = capped + 1_000_000;
+
+        var result = service.CapAtCraftCostOrReferences("PET_SKELETON", key, price, 0, PetReferences(capped * 3, capped * 3, capped * 3, capped * 3), out _);
+
+        result.Should().Be(price);
+    }
+
+    [Test]
+    public void HigherPetExperienceKeepsCraftCostCap()
+    {
+        var service = CreateService(new Fixture { Day = 1000, Bazaar = WithBookTable() });
+        AddSkeletonPetBuckets(service);
+        var key = service.GetBreakdownKey(new AuctionKey(new(), ItemReferences.Reforge.Any,
+            new List<KeyValuePair<string, string>> { new("exp", "2") }, Tier.LEGENDARY, 1), "PET_SKELETON");
+        var capped = service.CapAtCraftCostOrReferences("PET_SKELETON", key, 20_000_000, 0, PetReferences(1_000_000), out _);
+        capped.Should().BeLessThan(20_000_000);
+
+        var result = service.CapAtCraftCostOrReferences("PET_SKELETON", key, 20_000_000, 0, PetReferences(19_000_000, 19_000_000, 19_000_000, 19_000_000), out var raised);
+
+        result.Should().Be(capped);
+        raised.Should().BeFalse();
+    }
+
+    [Test]
+    public void ComponentAndPetExperienceBothApplyUsesReducedQuartile()
+    {
+        var service = CreateService(new Fixture { Day = 1000, Bazaar = WithBookTable(("RECOMBOBULATOR_3000", 8_000_000)) });
+        AddSkeletonPetBuckets(service);
+        var key = service.GetBreakdownKey(new AuctionKey(new List<Enchant> { new() { Type = Enchantment.EnchantmentType.absorb, Lvl = 9 } },
+            ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>> { new("candyUsed", "0"), new("exp", "0.3") }, Tier.LEGENDARY, 1), "PET_SKELETON");
+        var references = BucketWithReferences(1000, 40_000_000, 41_000_000, 42_000_000, 43_000_000).References.ToList();
+
+        var price = service.CapAtCraftCostOrReferences("PET_SKELETON", key, 50_000_000, 0, references, out var raised);
+
+        SniperService.HasNonCraftableComponent(key).Should().BeTrue();
+        price.Should().Be(38_000_000, "95 percent of the 40M lower quartile");
+        raised.Should().BeTrue();
+    }
+
+    /// <summary>
+    /// Pets with little experience sell for about twice their craft cost estimate. Bucket price must follow the sales.
+    /// </summary>
+    [Test]
+    public void LowExperiencePetBucketFollowsOwnSalesInsteadOfCraftCost()
+    {
+        var service = CreateService(new Fixture { Day = 1000, Bazaar = WithBookTable() });
+        var bucket = AddSkeletonPetBuckets(service);
+
+        service.RefreshLookup("PET_SKELETON");
+
+        bucket.Price.Should().BeInRange(12_000_000, 12_800_000, "about 95 percent of the 13.4M lower quartile instead of the 6.9M craft cost");
+        bucket.Price.Should().BeGreaterThan(9_000_000 * 130 / 100, "a pet listed at 9M is recognisably underpriced");
+    }
+
+    private static readonly AuctionKey LowExpPetKey = new(new(), ItemReferences.Reforge.Any,
+        new List<KeyValuePair<string, string>> { new("candyUsed", "0"), new("exp", "0.3") }, Tier.LEGENDARY, 1);
+
+    private static ReferenceAuctions AddSkeletonPetBuckets(SniperService service)
+    {
+        var bucket = BucketWithReferences(1000, 13_200_000, 13_300_000, 13_400_000, 13_500_000, 13_600_000, 13_700_000, 14_000_000, 14_500_000, 15_000_000, 16_000_000);
+        var lookup = service.Lookups.GetOrAdd("PET_SKELETON", _ => new PriceLookup());
+        lookup.Lookup[LowExpPetKey] = bucket;
+        lookup.Lookup[new AuctionKey(new(), ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>> { new("candyUsed", "0"), new("exp", "0") }, Tier.LEGENDARY, 1)] =
+            BucketWithReferences(1000, 5_000_000, 5_000_000, 5_000_000, 5_000_000, 5_000_000, 5_000_000);
+        lookup.Lookup[new AuctionKey(new(), ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>> { new("exp", "6") }, Tier.LEGENDARY, 1)] =
+            BucketWithReferences(1000, 25_700_000, 25_700_000, 25_700_000, 25_700_000, 25_700_000, 25_700_000);
+        foreach (var level in lookup.Lookup.Values.Where(b => b != bucket))
+            level.Price = level.References.First().Price;
+        return bucket;
+    }
+
+    private static KeyWithValueBreakdown PetBreakdown(string expGroup)
+    {
+        return PetBreakdown(Tier.LEGENDARY, new("candyUsed", "0"), new("exp", expGroup));
+    }
+
+    private static KeyWithValueBreakdown PetBreakdown(Tier tier, params KeyValuePair<string, string>[] modifiers)
+    {
+        return new KeyWithValueBreakdown
+        {
+            Key = new AuctionKeyWithValue { Enchants = new List<Enchant>().AsReadOnly(), Modifiers = modifiers.ToList().AsReadOnly(), Tier = tier },
+            ValueBreakdown = new List<SniperService.RankElem>()
+        };
+    }
+
+    private static KeyWithValueBreakdown BreakdownWith(List<Enchant> enchants, params KeyValuePair<string, string>[] modifiers)
+    {
+        return new KeyWithValueBreakdown
+        {
+            Key = new AuctionKeyWithValue { Enchants = enchants.AsReadOnly(), Modifiers = modifiers.ToList().AsReadOnly() },
+            ValueBreakdown = new List<SniperService.RankElem>()
+        };
+    }
+
+    private static List<ReferencePrice> PetReferences(params long[] prices)
+    {
+        return BucketWithReferences(1000, prices).References.ToList();
+    }
+
     private static readonly AuctionKey UnpricedHelmetKey = new(new List<Enchant> { new() { Type = Enchantment.EnchantmentType.forest_pledge, Lvl = 6 } },
         ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>> { new("rarity_upgrades", "1") }, Tier.LEGENDARY, 1);
 
