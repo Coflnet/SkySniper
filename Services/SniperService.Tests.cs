@@ -2941,6 +2941,18 @@ namespace Coflnet.Sky.Sniper
         }
 
         [Test]
+        public void SmolderingVUsesTheSamePricingKeyAsAnUnenchantedWeapon()
+        {
+            SetBazaarPrice("ENCHANTMENT_SMOLDERING_5", 0, 50_000_000);
+            highestValAuction.FlatenedNBT.Clear();
+            highestValAuction.Tag = "HYPERION";
+            var cleanKey = service.KeyFromSaveAuction(highestValAuction);
+            highestValAuction.Enchantments = [new(Enchantment.EnchantmentType.smoldering, 5)];
+
+            service.KeyFromSaveAuction(highestValAuction).Should().Be(cleanKey);
+        }
+
+        [Test]
         public void UseSellOrdersIfBadBuyOrders()
         {
             service.UpdateBazaar(new()

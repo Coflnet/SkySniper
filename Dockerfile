@@ -2,7 +2,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /build
 ARG CACHEBUST=20261025
-RUN git init dev && git -C dev remote add origin https://github.com/Coflnet/HypixelSkyblock.git && git -C dev fetch --depth=1 origin 2df0f7c7a34c8c04653e4cf7c02ab6805876eb7a && git -C dev checkout --detach FETCH_HEAD
+RUN git init dev && git -C dev remote add origin https://github.com/Coflnet/HypixelSkyblock.git && git -C dev fetch --depth=1 origin 91ee97884331758d509d8b2b292a1e7b4b60deb5 && git -C dev checkout --detach FETCH_HEAD
 # The AI finder lives in the private repository SkyAIFinder and is built from source next to this one, pinned like the core.
 # It is fetched only when the BuildKit secret "skyaifinder_token" holds a read-only deploy key of that repository (the OpenSSH
 # private key, base64 on one line):
