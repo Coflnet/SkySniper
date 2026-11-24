@@ -14,7 +14,7 @@ namespace Coflnet.Sky.Sniper.Controllers;
 
 /// <summary>
 /// The list price suggestion uses a non-zero self-learning value instead of the median, so it is only set where the AI is the
-/// better source: a ready model and an item the median keys by more than one value modifier
+/// better source: a ready model and an item carrying more than one value modifier
 /// </summary>
 public class SniperControllerPriceTests
 {
@@ -53,6 +53,33 @@ public class SniperControllerPriceTests
         finder.Estimated = Estimate(ready: true);
 
         (await SelfLearningValue(OneModifier())).Should().Be(0);
+    }
+
+    [Test]
+    public async Task CleanItemLeavesItAtZero()
+    {
+        finder.Estimated = Estimate(ready: true);
+        var clean = new ApiSaveAuction() { Tag = "HYPERION", Uuid = Guid.NewGuid().ToString("N"), FlatenedNBT = new() };
+
+        (await SelfLearningValue(clean)).Should().Be(0);
+    }
+
+    /// <summary>Regression: the median key of this item keeps one modifier, the item itself carries many</summary>
+    [Test]
+    public async Task ManyModifiersOnTheItemSetTheValue()
+    {
+        finder.Estimated = Estimate(ready: true);
+        var terminator = new ApiSaveAuction()
+        {
+            Tag = "TERMINATOR",
+            Uuid = Guid.NewGuid().ToString("N"),
+            Tier = Tier.MYTHIC,
+            Reforge = ItemReferences.Reforge.Precise,
+            Enchantments = SniperServiceTests.TerminatorEnchants(),
+            FlatenedNBT = new() { { "rarity_upgrades", "1" } },
+        };
+
+        (await SelfLearningValue(terminator)).Should().Be(AiValue);
     }
 
     [TestCase(0)]
@@ -94,11 +121,11 @@ public class SniperControllerPriceTests
 
     private static AiEstimate Estimate(bool ready, double value = AiValue) => new(value, ready, 500, null, new object());
 
-    /// <summary>Keyed by one enchant and a relevant reforge</summary>
+    /// <summary>One enchant and a reforge</summary>
     private static ApiSaveAuction TwoModifiers() => Hyperion(ItemReferences.Reforge.Fabled);
 
-    /// <summary>Keyed by one enchant; the reforge is not one the key keeps</summary>
-    private static ApiSaveAuction OneModifier() => Hyperion(ItemReferences.Reforge.Necrotic);
+    /// <summary>One enchant and no reforge</summary>
+    private static ApiSaveAuction OneModifier() => Hyperion(ItemReferences.Reforge.None);
 
     private static ApiSaveAuction Hyperion(ItemReferences.Reforge reforge) => new()
     {

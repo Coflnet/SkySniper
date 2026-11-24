@@ -3981,19 +3981,37 @@ ORDER BY l.`AuctionId`  DESC;
         {
             return DetailedKeyFromSaveAuction(auction).GetReduced(dropLevel);
         }
+        private static readonly HashSet<string> GemQualities = new() { "ROUGH", "FLAWED", "FINE", "FLAWLESS", "PERFECT" };
+
         /// <summary>
-        /// How many value modifiers the key <see cref="GetPrice"/> prices this auction by holds: its enchants, its modifiers
-        /// and its reforge when the key keeps it (only relevant reforges are kept, each splits the item into its own bucket)
+        /// How many value modifiers the item itself carries: enchantments, a reforge, recombobulator, stars, ability scroll,
+        /// applied gems, hot potato books and art of war (the last six groups count once each)
         /// </summary>
-        public int ValueModifierCount(SaveAuction auction)
+        public static int ItemModifierCount(SaveAuction auction)
         {
-            var key = DetailedKeyFromSaveAuction(auction).GetReduced(0);
-            var reforge = KeepsReforge(key.Reforge) ? 1 : 0;
-            return (key.Enchants?.Count ?? 0) + (key.Modifiers?.Count ?? 0) + reforge;
+            var count = auction.Enchantments?.Count(e => e.Level > 0) ?? 0;
+            if (auction.Reforge != ItemReferences.Reforge.None && auction.Reforge != ItemReferences.Reforge.Unknown)
+                count++;
+            var nbt = auction.FlatenedNBT;
+            if (nbt == null)
+                return count;
+            return count + NbtModifierCount(nbt);
         }
 
-        private static bool KeepsReforge(ItemReferences.Reforge reforge)
-            => reforge != ItemReferences.Reforge.Any && reforge != ItemReferences.Reforge.None;
+        private static int NbtModifierCount(Dictionary<string, string> nbt)
+        {
+            var count = 0;
+            if (HasPositiveNumber(nbt, "rarity_upgrades")) count++;
+            if (HasPositiveNumber(nbt, "upgrade_level") || HasPositiveNumber(nbt, "dungeon_item_level")) count++;
+            if (nbt.TryGetValue("ability_scroll", out var scroll) && !string.IsNullOrEmpty(scroll)) count++;
+            if (nbt.Values.Any(v => v != null && GemQualities.Contains(v))) count++;
+            if (HasPositiveNumber(nbt, "hot_potato_count")) count++;
+            if (HasPositiveNumber(nbt, "art_of_war_count")) count++;
+            return count;
+        }
+
+        private static bool HasPositiveNumber(Dictionary<string, string> nbt, string key)
+            => nbt.TryGetValue(key, out var value) && int.TryParse(value, out var number) && number > 0;
 
         public KeyWithValueBreakdown ValueKeyForTest(SaveAuction auction)
         {

@@ -323,14 +323,14 @@ namespace Coflnet.Sky.Sniper.Controllers
 
         /// <summary>
         /// The AI estimate, which takes the place of the median where it is set: only from a ready model and only for items
-        /// the median prices by more than one value modifier, 0 otherwise
+        /// carrying more than one value modifier, 0 otherwise
         /// </summary>
         private async Task<double> SelfLearningValue(SaveAuction auction)
         {
             var estimate = await aiFinder.Estimate(auction);
             if (estimate is not { ModelReady: true } || !(estimate.EstimatedValue > 0) || !double.IsFinite(estimate.EstimatedValue))
                 return 0;
-            if (service.ValueModifierCount(auction) <= 1)
+            if (SniperService.ItemModifierCount(auction) <= 1)
                 return 0;
             return estimate.EstimatedValue;
         }

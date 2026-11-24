@@ -201,44 +201,95 @@ namespace Coflnet.Sky.Sniper
             Assert.That(ItemReferences.Reforge.Fabled, Is.EqualTo(key.Reforge));
         }
 
-        /// <summary>A reforge the key keeps splits the item into its own bucket, so it counts as a value modifier; others do not</summary>
-        [TestCase(ItemReferences.Reforge.Fabled, 2)]
-        [TestCase(ItemReferences.Reforge.Necrotic, 1)]
-        [TestCase(ItemReferences.Reforge.None, 1)]
-        public void ValueModifierCountCountsOnlyAKeptReforge(ItemReferences.Reforge reforge, int expected)
+        [Test]
+        public void ItemModifierCountOfCleanItemIsZero()
         {
-            SetBazaarPrice("ENCHANTMENT_ULTIMATE_LEGION_1", 1_800_000);
-            var auction = new SaveAuction()
-            {
-                Enchantments = new List<Core.Enchantment>() { new(Enchantment.EnchantmentType.ultimate_legion, 1) },
-                FlatenedNBT = new(),
-                Reforge = reforge,
-            };
-
-            service.ValueModifierCount(auction).Should().Be(expected);
+            SniperService.ItemModifierCount(new SaveAuction() { FlatenedNBT = new() }).Should().Be(0);
         }
 
         [Test]
-        public void ValueModifierCountCountsEnchantsAndModifiers()
+        public void ItemModifierCountToleratesNullCollections()
         {
-            SetBazaarPrice("ENCHANTMENT_ULTIMATE_LEGION_1", 1_800_000);
-            SetBazaarPrice("ENCHANTMENT_SNIPE_4", 86_000_000);
+            var auction = new SaveAuction() { Enchantments = null, FlatenedNBT = null };
+
+            SniperService.ItemModifierCount(auction).Should().Be(0);
+        }
+
+        [Test]
+        public void ItemModifierCountOfSingleEnchantIsOne()
+        {
+            SniperService.ItemModifierCount(WithEnchant()).Should().Be(1);
+        }
+
+        [Test]
+        public void ItemModifierCountAddsRecombobulator()
+        {
+            var auction = WithEnchant();
+            auction.FlatenedNBT["rarity_upgrades"] = "1";
+
+            SniperService.ItemModifierCount(auction).Should().Be(2);
+        }
+
+        [Test]
+        public void ItemModifierCountIgnoresZeroLevelsAndUnsetValues()
+        {
             var auction = new SaveAuction()
             {
-                Enchantments = new List<Core.Enchantment>()
-                {
-                    new(Enchantment.EnchantmentType.ultimate_legion, 1),
-                    new(Enchantment.EnchantmentType.snipe, 4),
-                },
-                FlatenedNBT = new() { { "skin", "bear" } },
-                Tier = Tier.MYTHIC,
+                Enchantments = new() { new(Enchantment.EnchantmentType.snipe, 0) },
+                FlatenedNBT = new() { { "rarity_upgrades", "0" }, { "upgrade_level", "0" }, { "ability_scroll", "" }, { "hot_potato_count", "0" } },
+                Reforge = ItemReferences.Reforge.None,
             };
-            var key = service.KeyFromSaveAuction(auction);
 
-            service.ValueModifierCount(auction).Should().Be(key.Enchants.Count + key.Modifiers.Count);
-            key.Enchants.Should().NotBeEmpty();
-            key.Modifiers.Should().NotBeEmpty();
+            SniperService.ItemModifierCount(auction).Should().Be(0);
         }
+
+        [Test]
+        public void ItemModifierCountCountsNbtGroupsOnce()
+        {
+            var auction = new SaveAuction()
+            {
+                FlatenedNBT = new()
+                {
+                    { "upgrade_level", "5" }, { "dungeon_item_level", "5" },
+                    { "ability_scroll", "IMPLOSION_SCROLL SHADOW_WARP_SCROLL" },
+                    { "JASPER_0", "FLAWLESS" }, { "AMBER_0", "PERFECT" },
+                    { "hot_potato_count", "10" }, { "art_of_war_count", "1" },
+                },
+            };
+
+            SniperService.ItemModifierCount(auction).Should().Be(5);
+        }
+
+        /// <summary>Regression: a heavily modified item has a reduced key with a single modifier but many on the item itself</summary>
+        [Test]
+        public void ItemModifierCountOfTerminatorExceedsOne()
+        {
+            var auction = new SaveAuction()
+            {
+                Tag = "TERMINATOR",
+                Tier = Tier.MYTHIC,
+                Reforge = ItemReferences.Reforge.Precise,
+                Enchantments = TerminatorEnchants(),
+                FlatenedNBT = new() { { "rarity_upgrades", "1" } },
+            };
+
+            SniperService.ItemModifierCount(auction).Should().BeGreaterThan(5);
+        }
+
+        internal static List<Core.Enchantment> TerminatorEnchants() => new()
+        {
+            new(Enchantment.EnchantmentType.ultimate_duplex, 5),
+            new(Enchantment.EnchantmentType.power, 7),
+            new(Enchantment.EnchantmentType.overload, 5),
+            new(Enchantment.EnchantmentType.snipe, 4),
+            new(Enchantment.EnchantmentType.sharpness, 6),
+        };
+
+        private static SaveAuction WithEnchant() => new()
+        {
+            Enchantments = new() { new(Enchantment.EnchantmentType.ultimate_legion, 1) },
+            FlatenedNBT = new(),
+        };
 
         /// <summary>
         /// Regression for the WISE_WITHER_BOOTS (ddb819df) overvaluation: on the Wise/Power Wither armor sets strong_mana
