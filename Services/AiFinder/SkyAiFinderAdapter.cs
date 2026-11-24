@@ -22,30 +22,35 @@ public sealed class SkyAiFinderAdapter : IAiFinder, IDisposable
     private readonly ISelfLearningFlipFinderService model;
     private readonly AiFeatureExtractor extractor;
     private readonly SniperService sniper;
-    private readonly ItemDetails? itemDetails;
     private readonly ILogger<SkyAiFinderAdapter> logger;
     private readonly AiFinderSettings settings;
     private readonly Action<string> report;
     private readonly Func<string?> currentMayor;
     private readonly AiFlipWorker worker;
+    private readonly Func<string, ISoldAuctionSource>? soldAuctions;
     private readonly List<Timer> timers = new();
     private int started;
 
     /// <param name="report">Where the summary lines go; the logger when null</param>
     /// <param name="currentMayor">The mayor the training instance shares with the instances that only load models</param>
+    /// <param name="soldAuctions">Where a tag's sold auctions are replayed from; the auction database when null and <paramref name="itemDetails"/> is set</param>
     public SkyAiFinderAdapter(ISelfLearningFlipFinderService model, AiFlipFinder flipFinder, AiFeatureExtractor extractor, SniperService sniper,
-        ItemDetails? itemDetails, ILogger<SkyAiFinderAdapter> logger, AiFinderSettings settings, Action<string>? report = null, Func<string?>? currentMayor = null)
+        ItemDetails? itemDetails, ILogger<SkyAiFinderAdapter> logger, AiFinderSettings settings, Action<string>? report = null, Func<string?>? currentMayor = null,
+        Func<string, ISoldAuctionSource>? soldAuctions = null)
     {
         this.model = model;
         this.extractor = extractor;
         this.sniper = sniper;
-        this.itemDetails = itemDetails;
         this.logger = logger;
         this.settings = settings;
         this.report = report ?? (line => logger.LogInformation("{Line}", line));
         this.currentMayor = currentMayor ?? (() => null);
         worker = new AiFlipWorker(flipFinder.Check, model.IsRelevantItem, logger, settings.Worker);
+        this.soldAuctions = soldAuctions ?? DatabaseSales(itemDetails);
     }
+
+    private static Func<string, ISoldAuctionSource>? DatabaseSales(ItemDetails? itemDetails)
+        => itemDetails == null ? null : tag => new HypixelSoldAuctionSource(new HypixelContext(), itemDetails.GetItemIdForTag(tag));
 
     public static string VariantName => "SkyAIFinder " + typeof(AiFlipFinder).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
 
@@ -54,6 +59,8 @@ public sealed class SkyAiFinderAdapter : IAiFinder, IDisposable
     public bool Active => true;
 
     public IEnumerable<string> ModelTags => model.GetModelStats().Keys;
+
+    public IReadOnlyList<string> ActiveTags => settings.Model.ActiveTags.Order(StringComparer.Ordinal).ToList();
 
     public void Start(Action<LowPricedAuction> publish, Func<bool>? pause = null)
     {
@@ -89,12 +96,28 @@ public sealed class SkyAiFinderAdapter : IAiFinder, IDisposable
         }
     }
 
+    /// <summary>
+    /// A sold auction: the training instance learns from it; an instance that only loads models moves its price levels and
+    /// clean prices with it, so its estimates follow the newest sales between model reloads
+    /// </summary>
     public Task AddSale(SaveAuction auction)
     {
-        if (!model.Trains || !model.IsRelevantItem(auction.Tag))
+        if (!model.IsRelevantItem(auction.Tag))
             return Task.CompletedTask;
-        return model.TrainAsync(extractor.Extract(auction));
+        if (model.Trains)
+            return model.TrainAsync(extractor.Extract(auction));
+        if (CanMoveServedModel(auction))
+            model.ObserveSale(extractor.Extract(auction));
+        return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// A sale moves only models fit before it ended, and an instance that only loads models serves none older than the
+    /// maximum model age, so older sales (most of a history load) are not worth valuing
+    /// </summary>
+    private bool CanMoveServedModel(SaveAuction auction) => auction.End > DateTime.UtcNow - settings.Model.MaxModelAge;
+
+    public IDisposable BeginReplay(string tag) => model.BeginReplay(tag);
 
     public async Task<AiEstimate?> Estimate(SaveAuction auction)
     {
@@ -108,11 +131,21 @@ public sealed class SkyAiFinderAdapter : IAiFinder, IDisposable
     }
 
     public Task Retrain(string tag, CancellationToken cancellationToken, DateTime totalStart, Func<SaveAuction, Task> addSale)
+        => Replay(tag, totalStart, addSale, cancellationToken);
+
+    public Task ReplayHistory(string tag, CancellationToken cancellationToken)
+        => Replay(tag, DateTime.UtcNow - settings.Model.StoreWindow, AddSale, cancellationToken);
+
+    /// <summary>Feeds the tag's sold auctions since <paramref name="start"/> to <paramref name="addSale"/> inside its replay scope</summary>
+    private async Task Replay(string tag, DateTime start, Func<SaveAuction, Task> addSale, CancellationToken cancellationToken)
     {
-        if (!model.Trains || itemDetails == null)
-            return Task.CompletedTask;
-        var source = new HypixelSoldAuctionSource(new HypixelContext(), itemDetails.GetItemIdForTag(tag));
-        return new TrainingReplay(source, addSale, logger).Run(tag, cancellationToken, totalStart);
+        if (!model.Trains || soldAuctions == null || !model.IsRelevantItem(tag))
+            return;
+        using var scope = model.BeginReplay(tag);
+        var source = soldAuctions(tag);
+        using var ownedSource = source as IDisposable;
+        var fed = await new TrainingReplay(source, addSale, logger).Run(tag, cancellationToken, start);
+        logger.LogInformation("AI finder replayed {Count} sales of {Tag}", fed, tag);
     }
 
     public Task TrainFromTracker(IEnumerable<TrackerFlip>? flips) => model.TrainBatchAsync(flips?.Select(f => f.ToSample()) ?? []);

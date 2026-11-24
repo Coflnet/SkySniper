@@ -201,6 +201,45 @@ namespace Coflnet.Sky.Sniper
             Assert.That(ItemReferences.Reforge.Fabled, Is.EqualTo(key.Reforge));
         }
 
+        /// <summary>A reforge the key keeps splits the item into its own bucket, so it counts as a value modifier; others do not</summary>
+        [TestCase(ItemReferences.Reforge.Fabled, 2)]
+        [TestCase(ItemReferences.Reforge.Necrotic, 1)]
+        [TestCase(ItemReferences.Reforge.None, 1)]
+        public void ValueModifierCountCountsOnlyAKeptReforge(ItemReferences.Reforge reforge, int expected)
+        {
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_LEGION_1", 1_800_000);
+            var auction = new SaveAuction()
+            {
+                Enchantments = new List<Core.Enchantment>() { new(Enchantment.EnchantmentType.ultimate_legion, 1) },
+                FlatenedNBT = new(),
+                Reforge = reforge,
+            };
+
+            service.ValueModifierCount(auction).Should().Be(expected);
+        }
+
+        [Test]
+        public void ValueModifierCountCountsEnchantsAndModifiers()
+        {
+            SetBazaarPrice("ENCHANTMENT_ULTIMATE_LEGION_1", 1_800_000);
+            SetBazaarPrice("ENCHANTMENT_SNIPE_4", 86_000_000);
+            var auction = new SaveAuction()
+            {
+                Enchantments = new List<Core.Enchantment>()
+                {
+                    new(Enchantment.EnchantmentType.ultimate_legion, 1),
+                    new(Enchantment.EnchantmentType.snipe, 4),
+                },
+                FlatenedNBT = new() { { "skin", "bear" } },
+                Tier = Tier.MYTHIC,
+            };
+            var key = service.KeyFromSaveAuction(auction);
+
+            service.ValueModifierCount(auction).Should().Be(key.Enchants.Count + key.Modifiers.Count);
+            key.Enchants.Should().NotBeEmpty();
+            key.Modifiers.Should().NotBeEmpty();
+        }
+
         /// <summary>
         /// Regression for the WISE_WITHER_BOOTS (ddb819df) overvaluation: on the Wise/Power Wither armor sets strong_mana
         /// only differentiates a reference bucket at level 9+. Keeping strong_mana 7 as a differentiator split the boots
@@ -1387,7 +1426,7 @@ namespace Coflnet.Sky.Sniper
                 var auction = new SaveAuction
                 {
                     Tag = "1",
-                    FlatenedNBT = new() { { "rarity_upgrades", "1" } },
+                    FlatenedNBT = new() { { "skin", "bear" } },
                     StartingBid = amount,
                     HighestBidAmount = amount,
                     End = end

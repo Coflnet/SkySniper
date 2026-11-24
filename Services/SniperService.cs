@@ -3981,6 +3981,20 @@ ORDER BY l.`AuctionId`  DESC;
         {
             return DetailedKeyFromSaveAuction(auction).GetReduced(dropLevel);
         }
+        /// <summary>
+        /// How many value modifiers the key <see cref="GetPrice"/> prices this auction by holds: its enchants, its modifiers
+        /// and its reforge when the key keeps it (only relevant reforges are kept, each splits the item into its own bucket)
+        /// </summary>
+        public int ValueModifierCount(SaveAuction auction)
+        {
+            var key = DetailedKeyFromSaveAuction(auction).GetReduced(0);
+            var reforge = KeepsReforge(key.Reforge) ? 1 : 0;
+            return (key.Enchants?.Count ?? 0) + (key.Modifiers?.Count ?? 0) + reforge;
+        }
+
+        private static bool KeepsReforge(ItemReferences.Reforge reforge)
+            => reforge != ItemReferences.Reforge.Any && reforge != ItemReferences.Reforge.None;
+
         public KeyWithValueBreakdown ValueKeyForTest(SaveAuction auction)
         {
             return DetailedKeyFromSaveAuction(auction);

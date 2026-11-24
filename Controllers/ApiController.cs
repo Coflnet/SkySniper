@@ -297,20 +297,7 @@ namespace Coflnet.Sky.Sniper.Controllers
                 {
                     var estimate = service.GetPrice(a);
                     if (includeSelfLearning && aiFinder != null)
-                    {
-                        try
-                        {
-                            var sle = await aiFinder.Estimate(a);
-                            if (sle != null)
-                            {
-                                estimate.SelfLearningEstimatedValue = sle.EstimatedValue;
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogDebug(ex, "Self-learning estimate failed for auction {AuctionId}", a?.Uuid);
-                        }
-                    }
+                        await AddSelfLearningValue(estimate, a);
                     list.Add(estimate);
                 }
                 catch (Exception e)
@@ -320,6 +307,32 @@ namespace Coflnet.Sky.Sniper.Controllers
                 }
             }
             return list;
+        }
+
+        private async Task AddSelfLearningValue(PriceEstimate estimate, SaveAuction auction)
+        {
+            try
+            {
+                estimate.SelfLearningEstimatedValue = await SelfLearningValue(auction);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Self-learning estimate failed for auction {AuctionId}", auction?.Uuid);
+            }
+        }
+
+        /// <summary>
+        /// The AI estimate, which takes the place of the median where it is set: only from a ready model and only for items
+        /// the median prices by more than one value modifier, 0 otherwise
+        /// </summary>
+        private async Task<double> SelfLearningValue(SaveAuction auction)
+        {
+            var estimate = await aiFinder.Estimate(auction);
+            if (estimate is not { ModelReady: true } || !(estimate.EstimatedValue > 0) || !double.IsFinite(estimate.EstimatedValue))
+                return 0;
+            if (service.ValueModifierCount(auction) <= 1)
+                return 0;
+            return estimate.EstimatedValue;
         }
 
         [Route("similar/{tag}/{auctionId}")]

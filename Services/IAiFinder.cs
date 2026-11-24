@@ -27,6 +27,9 @@ public interface IAiFinder
     /// <summary>Tags the finder has models for</summary>
     IEnumerable<string> ModelTags { get; }
 
+    /// <summary>Tags this instance values (and the training instance trains), in a stable order; empty when it finds no AI flips</summary>
+    IReadOnlyList<string> ActiveTags { get; }
+
     /// <summary>
     /// Starts valuing new auctions in the background: the sniper hands each tested auction over without waiting, flips go
     /// to <paramref name="publish"/> on the finder's own thread
@@ -34,8 +37,20 @@ public interface IAiFinder
     /// <param name="pause">While it returns true the finder does not value anything, for hosts that want every core while they process new auctions</param>
     void Start(Action<LowPricedAuction> publish, Func<bool>? pause = null);
 
-    /// <summary>Learns from a sold auction</summary>
+    /// <summary>Learns from a sold auction (training instance) or moves the price levels with it (instances that only load models)</summary>
     Task AddSale(SaveAuction auction);
+
+    /// <summary>
+    /// Marks the tag's history as being replayed until the scope is disposed: its sales are kept, but the model is not fit on
+    /// them meanwhile. Hold it while feeding stored sales of the tag through <see cref="AddSale"/> and dispose it also when that fails.
+    /// </summary>
+    IDisposable BeginReplay(string tag);
+
+    /// <summary>
+    /// Replays the stored sales of <paramref name="tag"/> as far back as the model keeps them into the finder only (no other
+    /// state sees them); does nothing on an instance that does not train
+    /// </summary>
+    Task ReplayHistory(string tag, CancellationToken cancellationToken);
 
     /// <returns>The estimate, null when the finder has no model for the item (yet)</returns>
     Task<AiEstimate?> Estimate(SaveAuction auction);
@@ -65,13 +80,25 @@ public sealed class NoAiFinder(string variant = NoAiFinder.VariantName) : IAiFin
     public string Variant => variant;
     public bool Active => false;
     public IEnumerable<string> ModelTags => [];
+    public IReadOnlyList<string> ActiveTags => [];
     public void Start(Action<LowPricedAuction> publish, Func<bool>? pause = null) { }
     public Task AddSale(SaveAuction auction) => Task.CompletedTask;
+    public IDisposable BeginReplay(string tag) => NoReplay.Instance;
+    public Task ReplayHistory(string tag, CancellationToken cancellationToken) => Task.CompletedTask;
     public Task<AiEstimate?> Estimate(SaveAuction auction) => Task.FromResult<AiEstimate?>(null);
     public Task Retrain(string tag, CancellationToken cancellationToken, DateTime totalStart, Func<SaveAuction, Task> addSale) => Task.CompletedTask;
     public Task TrainFromTracker(IEnumerable<TrackerFlip>? flips) => Task.CompletedTask;
     public IEnumerable<object> GetModelStats() => [];
     public Task PersistModel(string? tag) => Task.CompletedTask;
+
+    private sealed class NoReplay : IDisposable
+    {
+        public static readonly NoReplay Instance = new();
+
+        public void Dispose()
+        {
+        }
+    }
 }
 
 /// <summary>Registers the AI finder of this build: SkyAIFinder when it was built in and is enabled, <see cref="NoAiFinder"/> otherwise</summary>

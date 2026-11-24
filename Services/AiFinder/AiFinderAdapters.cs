@@ -84,7 +84,7 @@ public sealed class MayorServiceLookup : IMayorLookup
 }
 
 /// <summary>Sold BIN auctions of a tag from the auction database in pages ordered by end and id, one context per retrain</summary>
-public sealed class HypixelSoldAuctionSource : ISoldAuctionSource
+public sealed class HypixelSoldAuctionSource : ISoldAuctionSource, IDisposable
 {
     private readonly HypixelContext context;
     private readonly int itemId;
@@ -106,6 +106,8 @@ public sealed class HypixelSoldAuctionSource : ISoldAuctionSource
             .AsNoTracking()
             .ToListAsync(cancellationToken);
     }
+
+    public void Dispose() => context.Dispose();
 }
 
 /// <summary>Conversions between the AI finder's samples and the flip tracker's complicated flips</summary>

@@ -332,6 +332,8 @@ namespace Coflnet.Sky.Sniper.Services
 
         private async Task LoadSellHistory(CancellationToken stoppinToken)
         {
+            // the bulk load feeds the AI finder old sales in no particular order, so it must not fit on them before the replay ends
+            using var aiReplays = new AiReplayScopes(aiFinder);
             await Task.Delay(TimeSpan.FromSeconds(10), stoppinToken);
             var maxId = 0;
             using (var context = new HypixelContext())
@@ -361,6 +363,36 @@ namespace Coflnet.Sky.Sniper.Services
                 }
             }
             sniper.State = SniperState.FullyLoaded;
+            await ReplayAiHistory(aiReplays, stoppinToken);
+        }
+
+        /// <summary>
+        /// The AI finder keeps more history per tag (90 days by default) than the bulk load reads. The training instance replays
+        /// it per tag into the finder only, so the sniper's medians do not count these sales twice. A tag's replay scope ends
+        /// when its replay does, so it can be fit while the next tag replays.
+        /// </summary>
+        internal async Task ReplayAiHistory(AiReplayScopes scopes, CancellationToken stoppingToken)
+        {
+            var started = Stopwatch.StartNew();
+            foreach (var tag in scopes.Tags)
+            {
+                await ReplayAiHistory(tag, stoppingToken);
+                scopes.End(tag);
+            }
+            if (scopes.Tags.Count > 0)
+                logger.LogInformation("AI finder history of {Count} tags replayed in {Minutes:0.0} min", scopes.Tags.Count, started.Elapsed.TotalMinutes);
+        }
+
+        private async Task ReplayAiHistory(string tag, CancellationToken stoppingToken)
+        {
+            try
+            {
+                await aiFinder.ReplayHistory(tag, stoppingToken);
+            }
+            catch (Exception e) when (!stoppingToken.IsCancellationRequested)
+            {
+                logger.LogError(e, "AI finder history replay failed for {Tag}", tag);
+            }
         }
 
         private async Task LoadOnepass(int maxId, int batchSize, int allStart, int differential, int i, CancellationToken stoppinToken)
