@@ -30,17 +30,24 @@ public static partial class AiFinderRegistration
         var settings = AiFinderSettings.From(config.GetSection(AiFinderSettings.Section), trains);
         settings.RequireValuesFor(hostHasValues: true);
         // the manager trains and stores the models, every other instance (workers, edge instances) only loads them
+        services.AddSingleton<SniperRareCostTable>();
+        services.AddHostedService(sp => sp.GetRequiredService<SniperRareCostTable>());
         services.AddSingleton<IModelBlobStore>(sp => new PersistenceModelBlobStore(sp.GetRequiredService<IPersitanceManager>()));
         services.AddSingleton<ISelfLearningFlipFinderService>(sp => new SelfLearningFlipFinderService(
-            sp.GetRequiredService<ILogger<SelfLearningFlipFinderService>>(), sp.GetRequiredService<IModelBlobStore>(), settings.Model, settings.Features().Signature));
+            sp.GetRequiredService<ILogger<SelfLearningFlipFinderService>>(), sp.GetRequiredService<IModelBlobStore>(), settings.Model with { RareCosts = sp.GetRequiredService<SniperRareCostTable>() }, settings.Features().Signature));
         services.AddSingleton(sp => CreateExtractor(sp, settings));
         services.AddSingleton(sp => new AiFlipFinder(sp.GetRequiredService<ISelfLearningFlipFinderService>(), sp.GetRequiredService<AiFeatureExtractor>(),
             sp.GetRequiredService<ILogger<AiFlipFinder>>(), settings.Rule, instance));
         return services.AddSingleton<IAiFinder>(sp => new SkyAiFinderAdapter(sp.GetRequiredService<ISelfLearningFlipFinderService>(),
             sp.GetRequiredService<AiFlipFinder>(), sp.GetRequiredService<AiFeatureExtractor>(), sp.GetRequiredService<SniperService>(),
             sp.GetService<ItemDetails>(), sp.GetRequiredService<ILogger<SkyAiFinderAdapter>>(), settings, report,
-            () => sp.GetService<IMayorService>() is { } mayors ? new MayorServiceLookup(mayors).GetMayor(DateTime.UtcNow) : null));
+            () => sp.GetService<IMayorService>() is { } mayors ? new MayorServiceLookup(mayors).GetMayor(DateTime.UtcNow) : null,
+            costsReady: CostsReady(settings, sp)));
     }
+
+    /// <summary>With the premium cap on, the finder waits for the first cost snapshot; without it nothing reads the costs</summary>
+    private static Func<bool> CostsReady(AiFinderSettings settings, IServiceProvider services)
+        => settings.Model.RareCostCap ? () => services.GetRequiredService<SniperRareCostTable>().HasSnapshot : () => true;
 
     /// <summary>
     /// The finder's feature extraction, reading this sniper's values. The mayor comes from the mayor service where the host has

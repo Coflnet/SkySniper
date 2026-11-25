@@ -5049,7 +5049,32 @@ ORDER BY l.`AuctionId`  DESC;
             public KeyValuePair<string, string> Modifier;
         }
 
-        private long GetReforgeValue(ItemReferences.Reforge reforge)
+        private const double MaxEnchantBookPrice = 500_000_000;
+
+        /// <summary>
+        /// The coin value of an enchantment level when the sniper has a real price for exactly that level (the same book price
+        /// the modifier sum reads), null when the level would only be extrapolated from level 1 or another recipe
+        /// </summary>
+        internal long? ExactEnchantCost(Core.Enchantment.EnchantmentType type, int level)
+        {
+            if (!BazaarPrices.TryGetValue(EnchantBookKey(type, level), out var price) || price <= 0 || price >= MaxEnchantBookPrice)
+                return null;
+            if (BazaarPrices.TryGetValue(EnchantBookKey(type, 1), out var levelOne) && levelOne > price)
+                return null;
+            var value = mapper.EnchantValue(new Core.Enchantment(type, (byte)level), null, BazaarPrices, null);
+            return value == (long)price ? value : null;
+        }
+
+        private static string EnchantBookKey(Core.Enchantment.EnchantmentType type, int level)
+            => type == Core.Enchantment.EnchantmentType.ultimate_duplex
+                ? $"ENCHANTMENT_ULTIMATE_REITERATE_{level}"
+                : $"ENCHANTMENT_{type.ToString().ToUpper()}_{level}";
+
+        /// <summary>The reforge's value when its stone has a price; without one the value would be only the apply cost, so there is none</summary>
+        internal long? ExactReforgeValue(ItemReferences.Reforge reforge)
+            => GetPriceForItem(mapper.GetReforgeCost(reforge).Item1) > 0 ? GetReforgeValue(reforge) : null;
+
+        internal long GetReforgeValue(ItemReferences.Reforge reforge)
         {
             var reforgeCost = mapper.GetReforgeCost(reforge);
             var itemCost = GetPriceForItem(reforgeCost.Item1);

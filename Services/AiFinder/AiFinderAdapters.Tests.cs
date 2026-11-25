@@ -144,6 +144,29 @@ public class AiFinderAdaptersTests
         model.Calls.Should().BeEmpty();
     }
 
+    /// <summary>With the premium cap on, sales are not observed before the costs are known: the levels would learn uncapped premiums</summary>
+    [Test]
+    public async Task LoadOnlyInstanceDoesNotObserveSalesBeforeTheCostsAreKnown()
+    {
+        var model = new RecordingModel(trains: false);
+        var ready = false;
+        var adapter = Adapter(model, costsReady: () => ready);
+
+        await adapter.AddSale(Sale("HYPERION"));
+        ready = true;
+        await adapter.AddSale(Sale("HYPERION"));
+
+        model.Calls.Should().Equal("observe HYPERION");
+    }
+
+    [Test]
+    public async Task EstimateWaitsForTheCosts()
+    {
+        var estimate = await Adapter(new RecordingModel(trains: false), costsReady: () => false).Estimate(Sale("HYPERION"));
+
+        estimate.Should().BeNull();
+    }
+
     [Test]
     public async Task TrainingInstanceTrainsOnSales()
     {
@@ -239,12 +262,12 @@ public class AiFinderAdaptersTests
         Adapter(new RecordingModel(trains: true), settings: settings).ActiveTags.Should().Equal("HYPERION", "TERMINATOR");
     }
 
-    private static SkyAiFinderAdapter Adapter(RecordingModel model, Func<string, ISoldAuctionSource>? sales = null, AiFinderSettings? settings = null)
+    private static SkyAiFinderAdapter Adapter(RecordingModel model, Func<string, ISoldAuctionSource>? sales = null, AiFinderSettings? settings = null, Func<bool>? costsReady = null)
     {
         var extractor = new AiFeatureExtractor(null);
         var flipFinder = new AiFlipFinder(model, extractor, NullLogger<AiFlipFinder>.Instance);
         return new SkyAiFinderAdapter(model, flipFinder, extractor, null!, null, NullLogger<SkyAiFinderAdapter>.Instance,
-            settings ?? AiFinderSettings.Defaults(model.Trains), soldAuctions: sales);
+            settings ?? AiFinderSettings.Defaults(model.Trains), soldAuctions: sales, costsReady: costsReady);
     }
 
     private static Coflnet.Sky.Core.SaveAuction Sale(string tag, DateTime? end = null) => new()

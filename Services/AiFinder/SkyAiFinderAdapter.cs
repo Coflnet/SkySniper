@@ -28,16 +28,19 @@ public sealed class SkyAiFinderAdapter : IAiFinder, IDisposable
     private readonly Func<string?> currentMayor;
     private readonly AiFlipWorker worker;
     private readonly Func<string, ISoldAuctionSource>? soldAuctions;
+    private readonly Func<bool> costsReady;
     private readonly List<Timer> timers = new();
     private int started;
 
     /// <param name="report">Where the summary lines go; the logger when null</param>
     /// <param name="currentMayor">The mayor the training instance shares with the instances that only load models</param>
+    /// <param name="costsReady">Whether the modifier costs the finder caps premiums at are known; until then nothing is valued or observed (default: always)</param>
     /// <param name="soldAuctions">Where a tag's sold auctions are replayed from; the auction database when null and <paramref name="itemDetails"/> is set</param>
     public SkyAiFinderAdapter(ISelfLearningFlipFinderService model, AiFlipFinder flipFinder, AiFeatureExtractor extractor, SniperService sniper,
         ItemDetails? itemDetails, ILogger<SkyAiFinderAdapter> logger, AiFinderSettings settings, Action<string>? report = null, Func<string?>? currentMayor = null,
-        Func<string, ISoldAuctionSource>? soldAuctions = null)
+        Func<string, ISoldAuctionSource>? soldAuctions = null, Func<bool>? costsReady = null)
     {
+        this.costsReady = costsReady ?? (() => true);
         this.model = model;
         this.extractor = extractor;
         this.sniper = sniper;
@@ -45,7 +48,7 @@ public sealed class SkyAiFinderAdapter : IAiFinder, IDisposable
         this.settings = settings;
         this.report = report ?? (line => logger.LogInformation("{Line}", line));
         this.currentMayor = currentMayor ?? (() => null);
-        worker = new AiFlipWorker(flipFinder.Check, model.IsRelevantItem, logger, settings.Worker);
+        worker = new AiFlipWorker(flipFinder.Check, tag => this.costsReady() && model.IsRelevantItem(tag), logger, settings.Worker);
         this.soldAuctions = soldAuctions ?? DatabaseSales(itemDetails);
     }
 
@@ -106,7 +109,7 @@ public sealed class SkyAiFinderAdapter : IAiFinder, IDisposable
             return Task.CompletedTask;
         if (model.Trains)
             return model.TrainAsync(extractor.Extract(auction));
-        if (CanMoveServedModel(auction))
+        if (costsReady() && CanMoveServedModel(auction))
             model.ObserveSale(extractor.Extract(auction));
         return Task.CompletedTask;
     }
@@ -121,7 +124,7 @@ public sealed class SkyAiFinderAdapter : IAiFinder, IDisposable
 
     public async Task<AiEstimate?> Estimate(SaveAuction auction)
     {
-        if (!model.IsRelevantItem(auction.Tag))
+        if (!costsReady() || !model.IsRelevantItem(auction.Tag))
             return null;
         var sample = extractor.Extract(auction);
         var estimate = await model.EstimateAsync(sample);
