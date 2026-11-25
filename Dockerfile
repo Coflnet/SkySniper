@@ -12,7 +12,7 @@ RUN git init dev && git -C dev remote add origin https://github.com/Coflnet/Hypi
 # The key only exists in a tmpfs file of this one RUN step and is deleted at its end; it is never an ARG, never in git config,
 # never in a layer. The fetch uses GitHub's SSH endpoint on port 443 (CI runners may only reach ports 80 and 443) with
 # GitHub's published host keys pinned (https://api.github.com/meta, ssh_keys; the same keys serve ssh.github.com:443).
-ARG SKYAIFINDER_SHA=fcd77da7b44f42beda4d81e3d190f447bf0dbde0
+ARG SKYAIFINDER_SHA=10e657c1e804a8f5ed4374cbb341454dfca1c22f
 # set to 1 together with the secret (container-ci does) so a cached build without the finder is not reused
 ARG SKYAIFINDER_ENABLED=0
 RUN --mount=type=secret,id=skyaifinder_token,required=false \
