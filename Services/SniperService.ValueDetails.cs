@@ -16,7 +16,7 @@ public partial class SniperService
         var detailed = DetailedKeyFromSaveAuction(auction);
         var estimate = GetPrice(auction);
         return new ItemValueDetails(AllValuedModifiers(auction), detailed.SubstractedValue,
-            GetFullRemovableValue(auction, detailed.Key), CleanPriceOf(auction), estimate?.Median ?? 0, LowestBinPrice(estimate));
+            GetFullRemovableValue(auction, detailed.Key), CleanPriceOf(auction, detailed.Key), estimate?.Median ?? 0, LowestBinPrice(estimate));
     }
 
     private List<RankElem> AllValuedModifiers(SaveAuction auction)
@@ -25,12 +25,13 @@ public partial class SniperService
         return CapKeyLength(enchants, modifiers, auction, 500_000, int.MaxValue).ranked.ToList();
     }
 
-    /// <summary>The clean price of the lookup the auction is priced with (items of a group share their group's lookup)</summary>
-    private long CleanPriceOf(SaveAuction auction)
+    /// <summary>The clean price of the lookup the auction is priced with (items of a group share their group's lookup).
+    /// A tier boosted pet has none and reports 0.</summary>
+    private long CleanPriceOf(SaveAuction auction, AuctionKey key)
     {
-        if (auction.Tag == null || !Lookups.TryGetValue(GetAuctionGroupTag(auction.Tag).tag, out var lookup) || lookup.CleanPricePerTier == null)
+        if (auction.Tag == null || !Lookups.TryGetValue(GetAuctionGroupTag(auction.Tag).tag, out var lookup))
             return 0;
-        return lookup.CleanPricePerTier.GetValueOrDefault(auction.Tier);
+        return TryGetStoredCleanPrice(lookup, key, auction.Tier, out var price) ? price : 0;
     }
 
     private static long LowestBinPrice(PriceEstimate estimate)

@@ -954,7 +954,7 @@ namespace Coflnet.Sky.Sniper
         }
 
         [Test]
-        public void WithTierBoostUsesLowerRarityForHigherValue()
+        public void TierBoostedPetIgnoresPlainHigherValueBucket()
         {
             SetBazaarPrice("PET_ITEM_TIER_BOOST", 95_000_000);
             SetBazaarPrice("PET_SKIN_DRAGON_NEON_BLUE", 251_000_000);
@@ -976,7 +976,9 @@ namespace Coflnet.Sky.Sniper
             sample.HighestBidAmount = 0;
             sample.StartingBid = 1000;
             TestNewAuction(sample);
-            found.First().TargetPrice.Should().BeLessThan(490_000_000, JsonConvert.SerializeObject(found, Formatting.Indented));
+            // only the boosted sales (600m) may value the boosted pet, never the plain 800m bucket
+            found.Should().NotBeEmpty();
+            found.Should().OnlyContain(f => f.TargetPrice <= 600_000_000, JsonConvert.SerializeObject(found, Formatting.Indented));
         }
         [Test]
         public void HigherValueCheckUsedOnLbinGetPrice()
@@ -1874,7 +1876,7 @@ namespace Coflnet.Sky.Sniper
         }
 
         [Test]
-        public async Task TierBoostReferencesSubtractFullTierBoostCostBeforeStoring()
+        public async Task TierBoostReferencesAreStoredAtFullPriceInOwnBucket()
         {
             await itemService.GetItemsAsync();
             SetBazaarPrice("PET_ITEM_TIER_BOOST", 165_000_000);
@@ -1891,13 +1893,196 @@ namespace Coflnet.Sky.Sniper
             };
 
             var expectedKey = service.KeyFromSaveAuction(tierBoosted);
-            Assert.That(expectedKey.Tier, Is.EqualTo(Tier.EPIC), "tier boost should store against the reduced rarity bucket");
+            Assert.That(expectedKey.Tier, Is.EqualTo(Tier.LEGENDARY), "tier boost should store against the displayed rarity");
+            Assert.That(SniperService.HasTierBoost(expectedKey.Modifiers), Is.True, "tier boost should be part of the key");
 
             service.AddSoldItem(tierBoosted, true);
 
+            Assert.That(service.Lookups[tierBoosted.Tag].Lookup.Keys, Has.Count.EqualTo(1), "only the boosted bucket may receive the sale");
             var storedBucket = service.Lookups[tierBoosted.Tag].Lookup[expectedKey];
             var storedReference = storedBucket.References.Single();
-            Assert.That(storedReference.Price, Is.EqualTo(135_000_000), JsonConvert.SerializeObject(storedReference));
+            Assert.That(storedReference.Price, Is.EqualTo(300_000_000), "the boost belongs to the bucket, its price is not subtracted "
+                + JsonConvert.SerializeObject(storedReference));
+        }
+
+        private const string Lvl100Exp = "25353230";
+
+        private SaveAuction EnderDragon(Tier tier, long price, bool tierBoost = false)
+        {
+            var pet = Dupplicate(highestValAuction);
+            pet.Tag = "PET_ENDER_DRAGON";
+            pet.Category = Category.MISC;
+            pet.Tier = tier;
+            pet.HighestBidAmount = price;
+            pet.StartingBid = price;
+            pet.FlatenedNBT = new() { { "exp", Lvl100Exp }, { "candyUsed", "0" } };
+            if (tierBoost)
+                pet.FlatenedNBT["heldItem"] = "PET_ITEM_TIER_BOOST";
+            return pet;
+        }
+
+        private SaveAuction Listing(SaveAuction pet, long startingBid)
+        {
+            var listing = Dupplicate(pet);
+            listing.HighestBidAmount = 0;
+            listing.StartingBid = startingBid;
+            listing.End = DateTime.UtcNow + TimeSpan.FromDays(1);
+            return listing;
+        }
+
+        private void AddDailySales(params SaveAuction[] newestFirst)
+        {
+            for (int i = 0; i < newestFirst.Length; i++)
+            {
+                var sale = Dupplicate(newestFirst[i]);
+                sale.End = DateTime.UtcNow - TimeSpan.FromDays(i + 1);
+                service.AddSoldItem(sale);
+            }
+        }
+
+        private List<LowPricedAuction> ValueFlips()
+            => found.Where(f => f.Finder is LowPricedAuction.FinderType.SNIPER
+                or LowPricedAuction.FinderType.SNIPER_MEDIAN or LowPricedAuction.FinderType.STONKS).ToList();
+
+        /// <summary>
+        /// Boosted sales (displayed LEGENDARY, worth far more than an EPIC plus the boost) used to be stored in the plain
+        /// EPIC bucket minus the boost price and inflated its median, so plain pets got flips with a far too high target.
+        /// </summary>
+        [Test]
+        public void PlainEpicMedianIgnoresTierBoostedSales()
+        {
+            SetBazaarPrice("PET_ITEM_TIER_BOOST", 165_000_000);
+            var plain = EnderDragon(Tier.EPIC, 125_000_000);
+            var boosted330 = EnderDragon(Tier.LEGENDARY, 330_000_000, tierBoost: true);
+            var boosted360 = EnderDragon(Tier.LEGENDARY, 360_000_000, tierBoost: true);
+            // one sale per day, newest first, boosted sales mixed in as on the live market
+            AddDailySales(boosted360, boosted330, plain, boosted360, plain, boosted330, boosted360,
+                plain, boosted330, plain, boosted360, boosted330, plain);
+            service.FinishedUpdate();
+
+            var plainEstimate = service.GetPrice(EnderDragon(Tier.EPIC, 0));
+            plainEstimate.Median.Should().Be(125_000_000, JsonConvert.SerializeObject(plainEstimate));
+            var boostedEstimate = service.GetPrice(EnderDragon(Tier.LEGENDARY, 0, tierBoost: true));
+            boostedEstimate.Median.Should().BeInRange(330_000_000, 360_000_000, "boosted sales value boosted pets at their full price");
+
+            SimulateNewAuction(Listing(EnderDragon(Tier.EPIC, 0), 125_000_000));
+            ValueFlips().Should().BeEmpty("a plain pet listed at its median is no flip: " + JsonConvert.SerializeObject(found, Formatting.Indented));
+        }
+
+        /// <summary>
+        /// A plain pet whose only nearby bucket holds tier boosted sales gets no value from it: not as closest key, not as
+        /// higher or lower value key, not pooled into combined references and not as stonks reference.
+        /// </summary>
+        [TestCase(Tier.EPIC)]
+        [TestCase(Tier.LEGENDARY)]
+        public void PlainPetIsNotValuedFromTierBoostedBucket(Tier tier)
+        {
+            SetBazaarPrice("PET_ITEM_TIER_BOOST", 165_000_000);
+            var boosted = EnderDragon(Tier.LEGENDARY, 300_000_000, tierBoost: true);
+            AddVolume(boosted, 8);
+            TestNewAuction(Listing(boosted, 320_000_000)); // an active boosted lbin
+            found.Clear();
+
+            var plain = EnderDragon(tier, 0);
+            var lookup = service.Lookups[plain.Tag].Lookup;
+            service.FindClosest(lookup, service.KeyFromSaveAuction(plain), plain.Tag).Should().BeEmpty("boosted buckets are never closest to a plain pet");
+            var estimate = service.GetPrice(plain);
+            estimate.Median.Should().Be(0, JsonConvert.SerializeObject(estimate));
+            estimate.Lbin.Price.Should().Be(0, JsonConvert.SerializeObject(estimate));
+
+            SimulateNewAuction(Listing(plain, 100_000_000));
+            ValueFlips().Should().BeEmpty(JsonConvert.SerializeObject(found, Formatting.Indented));
+        }
+
+        /// <summary>
+        /// A tier boosted pet is valued from boosted buckets only, never from a plain bucket plus the boost price.
+        /// </summary>
+        [Test]
+        public void TierBoostedPetIsNotValuedFromPlainBuckets()
+        {
+            SetBazaarPrice("PET_ITEM_TIER_BOOST", 165_000_000);
+            AddVolume(EnderDragon(Tier.EPIC, 125_000_000), 8);
+            AddVolume(EnderDragon(Tier.LEGENDARY, 600_000_000), 8);
+            service.FinishedUpdate();
+
+            var boosted = EnderDragon(Tier.LEGENDARY, 0, tierBoost: true);
+            var estimate = service.GetPrice(boosted);
+            estimate.Median.Should().Be(0, JsonConvert.SerializeObject(estimate));
+
+            SimulateNewAuction(Listing(boosted, 200_000_000));
+            ValueFlips().Should().BeEmpty(JsonConvert.SerializeObject(found, Formatting.Indented));
+        }
+
+        [Test]
+        public void ComparisonValueDoesNotPriceTierBoost()
+        {
+            SetBazaarPrice("PET_ITEM_TIER_BOOST", 165_000_000);
+            var modifiers = new List<KeyValuePair<string, string>> { new("exp", "6"), new(SniperService.PetItemKey, SniperService.TierBoostShorthand) };
+            var values = service.ComparisonValue(new List<Models.Enchant>(), modifiers, "PET_ENDER_DRAGON", null).ToList();
+            values.Single(v => v.Modifier.Key == SniperService.PetItemKey).Value.Should().Be(0,
+                "the boost is shared by both sides of every comparison and never a value difference");
+        }
+
+        /// <summary>
+        /// The closest-bucket estimate scales by the ratio of the modifier values on both sides. The boost is on both
+        /// sides, so pricing it on one side only would scale a boosted pet far below its boosted references.
+        /// </summary>
+        [Test]
+        public void TierBoostedClosestEstimateIsNotScaledByTheBoost()
+        {
+            SetBazaarPrice("PET_ITEM_TIER_BOOST", 165_000_000);
+            // without candy so only the boost could tilt the ratio (candyUsed is valued differently on the two sides)
+            var withUnpricedSkin = EnderDragon(Tier.LEGENDARY, 300_000_000, tierBoost: true);
+            withUnpricedSkin.FlatenedNBT.Remove("candyUsed");
+            withUnpricedSkin.FlatenedNBT["skin"] = "ENDER_DRAGON_UNPRICED";
+            AddVolume(withUnpricedSkin, 8);
+            service.FinishedUpdate();
+
+            var query = EnderDragon(Tier.LEGENDARY, 0, tierBoost: true);
+            query.FlatenedNBT.Remove("candyUsed");
+            var estimate = service.GetPrice(query);
+            estimate.Median.Should().BeGreaterThanOrEqualTo(285_000_000, JsonConvert.SerializeObject(estimate));
+        }
+
+        [Test]
+        public void KeyMissingIsCappedWithoutCleanPrice()
+        {
+            var boosted = service.KeyFromSaveAuction(EnderDragon(Tier.LEGENDARY, 0, tierBoost: true));
+            var plain = service.KeyFromSaveAuction(EnderDragon(Tier.LEGENDARY, 0));
+            var lookup = new PriceLookup { CleanPricePerTier = new() { [Tier.LEGENDARY] = 2_000_000 } };
+            // a boosted pet has no clean price: the starting bid alone is the base, never uncapped
+            SniperService.CapKeyMissing(500_000_000, 10_000_000, lookup, boosted).Should().Be(29_900_000);
+            SniperService.CapKeyMissing(500_000_000, 10_000_000, new PriceLookup(), boosted).Should().Be(29_900_000);
+            // keys without a stored clean price that are not boosted keep their previous behaviour
+            SniperService.CapKeyMissing(500_000_000, 10_000_000, new PriceLookup(), plain).Should().Be(500_000_000);
+            // with a stored clean price the base is lowered to twice the clean price, as before
+            SniperService.CapKeyMissing(500_000_000, 10_000_000, lookup, plain).Should().Be(11_900_000);
+            SniperService.CapKeyMissing(5_000_000, 10_000_000, lookup, plain).Should().Be(5_000_000);
+        }
+
+        /// <summary>
+        /// Held items other than the tier boost stay removable: dropped from the key, price minus removal cost subtracted
+        /// when storing and added back when valuing.
+        /// </summary>
+        [Test]
+        public void OtherHeldItemsStayRemovable()
+        {
+            SetBazaarPrice("PET_ITEM_QUICK_CLAW", 4_000_000);
+            var plain = EnderDragon(Tier.EPIC, 10_000_000);
+            var withClaw = Dupplicate(plain);
+            withClaw.FlatenedNBT["heldItem"] = "PET_ITEM_QUICK_CLAW";
+
+            var key = service.KeyFromSaveAuction(withClaw);
+            key.Should().Be(service.KeyFromSaveAuction(plain), "the held item is not part of the key");
+            key.Modifiers.Should().NotContain(m => m.Key == SniperService.PetItemKey);
+            AddVolume(withClaw, 4);
+            service.FinishedUpdate();
+
+            var addedBack = 4_000_000 - itemService.GetPetItemRemovalCost("PET_ITEM_QUICK_CLAW");
+            var stored = service.Lookups[plain.Tag].Lookup[key].References.Select(r => r.Price).Distinct();
+            stored.Should().Equal(10_000_000 - addedBack);
+            service.GetPrice(plain).Median.Should().Be(10_000_000 - addedBack);
+            service.GetPrice(withClaw).Median.Should().Be(10_000_000);
         }
         [TestCase(Tier.EPIC, 40000000)]
         [TestCase(Tier.LEGENDARY, 8000000)]

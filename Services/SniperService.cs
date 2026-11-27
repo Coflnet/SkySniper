@@ -1195,7 +1195,7 @@ ORDER BY l.`AuctionId`  DESC;
 
         private static IOrderedEnumerable<KeyValuePair<AuctionKey, ReferenceAuctions>> GetClosestLbins(ConcurrentDictionary<AuctionKey, ReferenceAuctions> l, AuctionKeyWithValue itemKey)
         {
-            return l.Where(l => l.Key != null && l.Value?.Price > 0 && l.Value?.Lbin.Price > 0)
+            return l.Where(l => l.Key != null && l.Value?.Price > 0 && l.Value?.Lbin.Price > 0 && !TierBoostDiffers(itemKey, l.Key))
                             .OrderByDescending(m => itemKey.Similarity(m.Key) + Math.Min(m.Value.Volume, 2));
         }
 
@@ -1203,7 +1203,8 @@ ORDER BY l.`AuctionId`  DESC;
         /// R3-READ: zero-alloc single-pass arg-max equivalent of <c>GetClosestLbins(l, itemKey).FirstOrDefault()</c>.
         /// <see cref="ClosestLbin"/> consumes only the top candidate, so building the whole ordered enumerable (a full
         /// sort plus a boxed <see cref="float"/> score key and predicate/selector closures per candidate) is wasted.
-        /// Bit-exact with the LINQ form: same candidate filter (<c>Key != null &amp;&amp; Price &gt; 0 &amp;&amp; Lbin.Price &gt; 0</c>),
+        /// Bit-exact with the LINQ form: same candidate filter (<c>Key != null &amp;&amp; Price &gt; 0 &amp;&amp; Lbin.Price &gt; 0</c>
+        /// and the same tier boost state as the query),
         /// same per-candidate score (<c>itemKey.Similarity(key) + Math.Min(Volume, 2)</c>, computed in <see cref="float"/>
         /// exactly as the LINQ selector), enumerated in the same dictionary order. <c>OrderByDescending</c> is a stable
         /// sort and <c>.FirstOrDefault()</c> takes the first source element among those tied for the maximum, so a
@@ -1218,11 +1219,14 @@ ORDER BY l.`AuctionId`  DESC;
             float bestScore = 0f;
             AuctionKey bestKey = null;
             ReferenceAuctions bestBucket = null;
+            bool queryTierBoost = HasTierBoost(itemKey.Modifiers);
             foreach (var m in l)
             {
                 var v = m.Value;
                 if (m.Key is null || !(v?.Price > 0) || !(v.Lbin.Price > 0))
                     continue;
+                if (HasTierBoost(m.Key.Modifiers) != queryTierBoost)
+                    continue; // tier boosted and plain keys never value each other
                 float score = itemKey.Similarity(m.Key) + Math.Min(v.Volume, 2);
                 if (bestKey is null || score > bestScore)
                 {
@@ -1284,7 +1288,8 @@ ORDER BY l.`AuctionId`  DESC;
             return missingModifiers.Select(m =>
             {
                 if (Constants.AttributeKeys.Contains(m.Key)
-                    || m.Key == "exp" || m.Key == "candyUsed" || KillKeys.Contains(m.Key))
+                    || m.Key == "exp" || m.Key == "candyUsed" || KillKeys.Contains(m.Key)
+                    || IsTierBoostModifier(m)) // part of the item on both sides, never a value difference
                 {
                     return 0;
                 }
@@ -1421,10 +1426,13 @@ ORDER BY l.`AuctionId`  DESC;
             // block-offset split; `in index.VecRef(i)` keeps the 112-byte ScoreVec read zero-copy, so the BnB scan is
             // unchanged byte-for-byte — same age adjust, same upper bound, same first-wins arg-max.
             int qTier = queryVec.Tier, qCount = queryVec.Count;
+            bool qTierBoost = queryVec.HasPetTierBoost;
             long qCap = ClosestScoreKernel.PosCap(in queryVec);
             for (int i = 0; i < index.Count; i++)
             {
                 ref readonly var vec = ref index.VecRef(i);
+                if (vec.HasPetTierBoost != qTierBoost)
+                    continue; // tier boosted and plain keys never value each other
                 int age = index.OldestRef[i] > minDay ? 0 : -10;
                 long ub = qCap + index.Cap[i];
                 int dTier = qTier - vec.Tier; int adt = dTier < 0 ? -dTier : dTier;
@@ -1593,6 +1601,8 @@ ORDER BY l.`AuctionId`  DESC;
             long fullBest = long.MinValue;
             for (int i = 0; i < index.Count; i++)
             {
+                if (index.VecRef(i).HasPetTierBoost != queryVec.HasPetTierBoost)
+                    continue; // same hard exclusion as FindClosestTo
                 long score = ClosestScoreKernel.Score(in queryVec, in index.VecRef(i)) + (index.OldestRef[i] > minDay ? 0 : -10);
                 if (score > fullBest) fullBest = score;
             }
@@ -1608,7 +1618,8 @@ ORDER BY l.`AuctionId`  DESC;
         {
             var minDay = GetDay() - maxAge;
             var values = ComparisonValueForKey(itemTag, itemKey);
-            return l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0 && !l.Key.Modifiers.Any(m => m.Key == "virtual"))
+            return l.Where(l => l.Key != null && l.Value?.References != null && l.Value.Price > 0 && !l.Key.Modifiers.Any(m => m.Key == "virtual")
+                                && !TierBoostDiffers(itemKey, l.Key))
                             .OrderByDescending(m => itemKey.Similarity(m.Key, this, ComparisonValueForKey(itemTag, m.Key), values) + (m.Value.OldestRef > minDay ? 0 : -10));
         }
 
@@ -1631,11 +1642,14 @@ ORDER BY l.`AuctionId`  DESC;
             // Where+OrderBy machinery (predicate/selector closures + lazy enumerators + internal key/map buffers).
             var buf = new Scored[l.Count];
             int n = 0;
+            bool queryTierBoost = HasTierBoost(itemKey.Modifiers);
             foreach (var m in l)
             {
                 var v = m.Value;
                 if (m.Key == null || v?.References == null || !(v.Price > 0) || ModifiersContainVirtual(m.Key.Modifiers))
                     continue;
+                if (HasTierBoost(m.Key.Modifiers) != queryTierBoost)
+                    continue; // tier boosted and plain keys never value each other
                 if (n >= buf.Length) // dict grew during enumeration -> grow so a candidate is never dropped
                     Array.Resize(ref buf, n + 8);
                 int score = itemKey.Similarity(m.Key, this, ComparisonValueForKey(itemTag, m.Key), values)
@@ -1695,11 +1709,14 @@ ORDER BY l.`AuctionId`  DESC;
             int bestScore = 0;
             AuctionKey bestKey = null;
             ReferenceAuctions bestValue = null;
+            bool queryTierBoost = HasTierBoost(itemKey.Modifiers);
             foreach (var m in l)
             {
                 var v = m.Value;
                 if (m.Key == null || v?.References == null || !(v.Price > 0) || ModifiersContainVirtual(m.Key.Modifiers))
                     continue;
+                if (HasTierBoost(m.Key.Modifiers) != queryTierBoost)
+                    continue; // tier boosted and plain keys never value each other
                 int score = itemKey.Similarity(m.Key, this, ComparisonValueForKey(itemTag, m.Key), values)
                             + (v.OldestRef > minDay ? 0 : -10);
                 if (bestKey is null || score > bestScore)
@@ -2128,7 +2145,7 @@ ORDER BY l.`AuctionId`  DESC;
             if (IsDropping(bucket, shortTermPrice, out var rate))
             {
                 shortTermPrice = (long)Math.Max((shortTermPrice * Math.Max(rate, 0.82)),
-                    lookup?.CleanPricePerTier?.GetValueOrDefault(keyCombo.key.Key.Tier) * 0.99 ?? 0);
+                    StoredCleanPriceOrZero(lookup, keyCombo.key?.Key) * 0.99);
             }
             bucket.OldestRef = shortTermList.Take(4).Min(s => s.Day);
             if (shortTermList.Count >= 3 && bucket.OldestRef - shortTermList.First().Day <= -5
@@ -2180,14 +2197,9 @@ ORDER BY l.`AuctionId`  DESC;
                 var volatMedian = medianPrice;
                 var limitedPrice = CapPriceAtHigherLevelKey(keyCombo, medianPrice, bucket);
 
-                var itemTier = keyCombo.key.Key.Tier;
-                if (keyCombo.key.Key.Modifiers.Any(m => m.Value == TierBoostShorthand))
-                {
-                    itemTier--;
-                }
-
                 // check higher value keys for lower price 
                 // refresh clean price before tierval check to prevent stale inflation
+                // (a tier boosted key has no clean price, so plain and boosted never floor each other)
                 lookup.CleanPricePerTier ??= new();
                 var cleanPrice = GetCleanItemPrice(keyCombo.tag, keyCombo.key, lookup, true);
                 if (cleanPrice > 0)
@@ -2203,7 +2215,7 @@ ORDER BY l.`AuctionId`  DESC;
                         limitedPrice = Math.Max(limitedPrice, lookupBucket.Price);
                     }
                 }
-                else if (lookup.CleanPricePerTier?.TryGetValue(itemTier, out var tierval) ?? false)
+                else if (TryGetStoredCleanPrice(lookup, keyCombo.key.Key, keyCombo.key.Key.Tier, out var tierval))
                 {
                     // (removed: a dead `lowest = Lookup.Where(...).OrderBy(...).Take(5).ToList()` that was computed but
                     //  never read — it allocated a KeyValuePair[] buffer (OrderBy) every reprice for the jaded-clean branch.)
@@ -3329,8 +3341,12 @@ ORDER BY l.`AuctionId`  DESC;
             // Persistent per-tier cache (warm hit). Unchanged: tier reduction picks the REDUCED tier the ingest path
             // wrote under, and `force` bypasses this cache exactly as before. This is the ONLY place the reduced tier
             // and the query Modifiers enter the decision; the recompute below is a pure function of (tag, UNREDUCED tier).
+            // A tier boosted pet has no clean price: plain pets must not value it, and its own few boosted variants
+            // would make the clean price one of them (double counting their modifiers in the craft cost).
+            if (HasTierBoost(key.Key.Modifiers))
+                return 0;
             var tier = key.Key.Tier;
-            if (key.Key.Modifiers.Any(m => m.Value == TierBoostShorthand || m.Key == "rarity_upgrades"))
+            if (key.Key.Modifiers.Any(m => m.Key == "rarity_upgrades"))
                 tier = ReduceRarity(tier);
             if (!force && lookup.CleanPricePerTier.TryGetValue(tier, out var cleanPrice))
             {
@@ -4114,11 +4130,6 @@ ORDER BY l.`AuctionId`  DESC;
             if (auction.Tag == "PANDORAS_BOX")
                 // pandoras box tier gets set based on the player
                 tier = Tier.COMMON;
-            // Reduce tier if PET_ITEM_TIER_BOOST was present (it's now removed from key)
-            if (auction.FlatenedNBT?.TryGetValue("heldItem", out var heldItemValue) == true && heldItemValue == "PET_ITEM_TIER_BOOST")
-            {
-                tier = ReduceRarity(tier);
-            }
             if (removedRarity)
             {
                 tier = ReduceRarity(tier);
@@ -4147,8 +4158,8 @@ ORDER BY l.`AuctionId`  DESC;
                 if (!IsRune(auction.Tag))
                     tier = ReduceRarity(tier);
             }
-            // Remove PET_ITEM_TIER_BOOST if it somehow got into modifiers (it shouldn't be in the key)
-            RemoveModifiersByValue(modifiers, "TIER_BOOST");
+            // a held tier boost keys at the displayed tier with petItem=TIER_BOOST (its own bucket, never priced or dropped)
+            SetTierBoostModifier(modifiers, auction);
 
             return Constructkey(auction, enchants, modifiers, shouldIncludeReforge, valueSubstracted, rankElems, tier);
         }
@@ -4914,6 +4925,8 @@ ORDER BY l.`AuctionId`  DESC;
 
         private RankElem ModifierEstimate(IList<KeyValuePair<string, string>> modifiers, string tag, Dictionary<string, string> flatNbt, KeyValuePair<string, string> mod)
         {
+            if (IsTierBoostModifier(mod))
+                return new RankElem(mod, 0); // the tier boost is part of the item (own bucket), not a priced modifier
             var items = GetItemKeysForModifier(tag, mod);
             var sum = 0L;
             foreach (var item in items)
@@ -5352,7 +5365,7 @@ ORDER BY l.`AuctionId`  DESC;
                             && baseKey.Enchants
                     .All(e => k.Enchants != null && k.Enchants.Any(ek => e.Type == ek.Type && ek.Lvl == e.Lvl)) && k.Tier == baseKey.Tier))
                 {
-                    if (item.Modifiers.Any(m => m.Value == TierBoostShorthand))
+                    if (TierBoostDiffers(baseKey, item))
                         continue;
                     if (l.GetValueOrDefault(item)?.Price == 0)
                         continue;
@@ -6152,15 +6165,14 @@ ORDER BY l.`AuctionId`  DESC;
         internal AuctionKeyWithValue GetFullKey(SaveAuction auction)
         {
             (var enchant, var modifiers) = SelectValuable(auction);
-            var tier = auction.Tier;
-            if (auction.FlatenedNBT?.TryGetValue("heldItem", out var heldItem) == true && heldItem == "PET_ITEM_TIER_BOOST")
-                tier = ReduceRarity(tier);
+            modifiers ??= new();
+            SetTierBoostModifier(modifiers, auction);
             var key = new AuctionKeyWithValue()
             {
                 Count = 1,
                 Enchants = new(enchant ?? new()),
-                Modifiers = new(modifiers ?? new()),
-                Tier = tier,
+                Modifiers = new(modifiers),
+                Tier = auction.Tier,
                 Reforge = auction.Reforge
             };
             return key;
@@ -6240,8 +6252,8 @@ ORDER BY l.`AuctionId`  DESC;
                 });
                 return;
             }
-            if (auction.FlatenedNBT.Any(f => f.Value == "PET_ITEM_TIER_BOOST") && !closest.Key.Modifiers.Any(m => m.Key == PetItemKey))
-                return; // probably overvalues tier boost on enderdragon
+            if (TierBoostDiffers(key, closest.Key))
+                return; // tier boosted and plain pets never value each other (FindClosestTo already excludes them)
             if (closest.Key == key)
                 return; // already found - or rather not - by median
             if (closest.Value.Price <= medPrice)
@@ -6255,10 +6267,6 @@ ORDER BY l.`AuctionId`  DESC;
                     return;
                 // risk increases with more hits
                 toSubstract += (long)(closest.Value.Price * 0.1 * Math.Pow(1.05, closest.Value.StonksHits));
-            }
-            if (key.Modifiers.Any(m => m.Value == TierBoostShorthand) && !closest.Key.Modifiers.Any(m => m.Value == TierBoostShorthand))
-            {
-                toSubstract += GetCostForItem("PET_ITEM_TIER_BOOST");
             }
             if (missingModifiers.Count > 0)
             {
@@ -6407,11 +6415,13 @@ ORDER BY l.`AuctionId`  DESC;
                 if (TryGetItemKeyValue(flatNbt, item, out var value))
                 {
                     var itemTag = value.ToUpperInvariant();
+                    if (IsHeldTierBoost(item, itemTag))
+                        continue; // part of the key, never added back
                     long itemPrice = 0;
 
                     if (item.IsPetItem)
                     {
-                        if (TryGetPetItemPrice(itemTag, out itemPrice) && itemTag != "PET_ITEM_TIER_BOOST")
+                        if (TryGetPetItemPrice(itemTag, out itemPrice))
                             itemPrice -= itemService.GetPetItemRemovalCost(itemTag);
                     }
                     else if (TryGetReferencePrice(itemTag, out var price))
@@ -6455,6 +6465,8 @@ ORDER BY l.`AuctionId`  DESC;
                 if (TryGetItemKeyValue(flatNbt, item, out var value))
                 {
                     var itemTag = value.ToUpperInvariant();
+                    if (IsHeldTierBoost(item, itemTag))
+                        continue; // part of the key, never subtracted
 
                     if (item.IsPetItem && BazaarPrices.TryGetValue(itemTag, out var bazaarPrice))
                     {
@@ -6628,14 +6640,7 @@ ORDER BY l.`AuctionId`  DESC;
                     adjustedMedianPrice = Math.Min(adjustedMedianPrice, bucket.Lbin.Price);
                 }
                 var keyMissing = key.ValueSubstract > 5_000_000 ? (key.ValueSubstract - extraValue - 1_000_000) / 2 + MoreIfExpensive(bucket.Price, key) : 0;
-                if (keyMissing > 0 && lookup.CleanPricePerTier.TryGetValue(key.Tier, out var cleanPricePerTier))
-                {
-                    var basePrice = Math.Min(auction.StartingBid, cleanPricePerTier * 2);
-                    // on very cheap items expensive modifiers don't add much value
-                    var adjusted = Math.Min(keyMissing, Math.Max(basePrice * 3 - 100_000, basePrice));
-                    if (adjusted > 0)
-                        keyMissing = adjusted;
-                }
+                keyMissing = CapKeyMissing(keyMissing, auction.StartingBid, lookup, key);
                 props.Add("keyMissing", keyMissing.ToString());
                 FoundAFlip(auction, bucket, LowPricedAuction.FinderType.SNIPER_MEDIAN, adjustedMedianPrice + extraValue + expValue + keyMissing, props, key, extraValue);
             }
@@ -6700,8 +6705,10 @@ ORDER BY l.`AuctionId`  DESC;
             {
                 var maxExp = HighExp(auction.Tag) ? ("7", GoldenDragonMaxExp) : ("6", PetExpMaxlevel);
                 var exp = Math.Min((long)double.Parse(expString), maxExp.Item2);
-                var lvl1Key = new AuctionKey(new(), ItemReferences.Reforge.Any, EmptyPetModifiers.ToList(), Tier.LEGENDARY, 1);
-                var lvl100Key = new AuctionKey(new(), ItemReferences.Reforge.Any, new List<KeyValuePair<string, string>>() { new("exp", maxExp.Item1) }, Tier.LEGENDARY, 1);
+                // exp is priced from pets with the same tier boost state as the key
+                var tierBoost = HasTierBoost(key.Modifiers);
+                var lvl1Key = ExpReferenceKey(EmptyPetModifiers.ToList(), Tier.LEGENDARY, tierBoost);
+                var lvl100Key = ExpReferenceKey(new List<KeyValuePair<string, string>>() { new("exp", maxExp.Item1) }, Tier.LEGENDARY, tierBoost);
                 if (l.TryGetValue(lvl1Key, out var lvl1Bucket) && l.TryGetValue(lvl100Key, out var lvl100Bucket))
                 {
                     var lvl1Price = lvl1Bucket.Price;
@@ -6721,7 +6728,7 @@ ORDER BY l.`AuctionId`  DESC;
                         return expValue / 2; // graceful reduce
                     if (expValue < 0 && accountedFor <= 1)
                     {
-                        var matchingKey = new AuctionKey(new(), ItemReferences.Reforge.Any, EmptyPetModifiers.ToList(), auction.Tier, 1);
+                        var matchingKey = ExpReferenceKey(EmptyPetModifiers.ToList(), auction.Tier, tierBoost);
                         var matchingTier = l.GetValueOrDefault(matchingKey)?.Price ?? 0;
                         return Math.Max(expValue, -matchingTier / 4); // reduce target by max 25% the starting bid
                     }
@@ -7281,8 +7288,8 @@ ORDER BY l.`AuctionId`  DESC;
         }
 
         /// <summary>
-        /// True if <paramref name="toCheck"/> dominates <paramref name="baseKey"/> (same-or-higher tier/count, and every
-        /// base modifier/enchant is covered with an equal-or-greater value). Hot: called per candidate in GetLbinCap and
+        /// True if <paramref name="toCheck"/> dominates <paramref name="baseKey"/> (same-or-higher tier/count, the same
+        /// tier boost state, and every base modifier/enchant is covered with an equal-or-greater value). Hot: called per candidate in GetLbinCap and
         /// the low-reference snipe scan. This is an allocation-free, bit-identical de-LINQ of the original predicate —
         /// the LINQ version (<see cref="IsHigherValueReference"/>) is retained as the oracle and the two are fuzzed for
         /// boolean parity in IsHigherValueTests. Modifier keys are unique within a key, so the inner key-match is at most
@@ -7296,6 +7303,8 @@ ORDER BY l.`AuctionId`  DESC;
                 return false;
             if (baseKey.Count > toCheck.Count)
                 return false;
+            if (TierBoostDiffers(baseKey, toCheck))
+                return false; // tier boosted and plain keys are neither upper nor lower bound of each other
 
             var baseMods = baseKey.Modifiers;
             var checkMods = toCheck.Modifiers;
@@ -7318,7 +7327,7 @@ ORDER BY l.`AuctionId`  DESC;
                         || (other.Value.Contains(m.Value)
                             && !float.TryParse(other.Value, out _)
                             && (other.Value.Contains(' ') || other.Value.Contains(',')));
-                    if (valueOk && MatchesTierBoostOrLowerTier(baseKey, toCheck, m))
+                    if (valueOk)
                     {
                         covered = true;
                         break;
@@ -7350,28 +7359,6 @@ ORDER BY l.`AuctionId`  DESC;
                     if (mods[j].Key == key) return true;
                 return false;
             }
-
-            static bool MatchesTierBoostOrLowerTier(AuctionKey baseKey, AuctionKey toCheck, KeyValuePair<string, string> m)
-            {
-                if (m.Key != "exp")
-                    return true;
-                // De-LINQ'd: the old .Where(...).FirstOrDefault() + .Any(...) allocated Func/enumerator closures per
-                // exp-modifier per candidate (a per-bucket read-path & lower-key allocator). Same semantics (a petItem
-                // =TIER_BOOST modifier present?), bit-exact (IsHigherValueTests fuzz parity gate).
-                if (!HasTierBoostPetItem(toCheck.Modifiers))
-                    return true;
-                return HasTierBoostPetItem(baseKey.Modifiers) || baseKey.Tier < toCheck.Tier;
-            }
-
-            static bool HasTierBoostPetItem(System.Collections.ObjectModel.ReadOnlyCollection<KeyValuePair<string, string>> mods)
-            {
-                if (mods == null)
-                    return false;
-                for (int j = 0; j < mods.Count; j++)
-                    if (mods[j].Key == "petItem" && mods[j].Value == "TIER_BOOST")
-                        return true;
-                return false;
-            }
         }
 
         /// <summary>
@@ -7383,6 +7370,8 @@ ORDER BY l.`AuctionId`  DESC;
             return baseKey.Tier <= toCheck.Tier
                     && (toCheck.Tier != Tier.LEGENDARY || tag != "PET_SPIRIT")
                     && baseKey.Count <= toCheck.Count
+                    && baseKey.Modifiers.Any(m => m.Key == "petItem" && m.Value == "TIER_BOOST")
+                        == toCheck.Modifiers.Any(m => m.Key == "petItem" && m.Value == "TIER_BOOST")
                     && baseKey.Modifiers.All(m => toCheck.Modifiers.Any(other => other.Key == m.Key
                                             && (other.Value == m.Value ||
                                                 float.TryParse(other.Value, out var otherVal)
@@ -7390,22 +7379,10 @@ ORDER BY l.`AuctionId`  DESC;
                                             && float.TryParse(m.Value, out var ownVal) && (InvertedValueKey.Contains(other.Key) ? otherVal < ownVal : otherVal > ownVal)
                                             || other.Value.Contains(m.Value) && !float.TryParse(other.Value, out _)
                                                 && (other.Value.Contains(' ') || other.Value.Contains(','))
-                                            )
-                                            && MatchesTierBoostOrLowerTier(baseKey, toCheck, m))
+                                            ))
                                                 || InvertedValueKey.Contains(m.Key) && !toCheck.Modifiers.Any(other => other.Key == m.Key)
                                             )
                     && baseKey.Enchants.All(e => toCheck.Enchants.Any(other => other.Type == e.Type && other.Lvl >= e.Lvl));
-
-            static bool MatchesTierBoostOrLowerTier(AuctionKey baseKey, AuctionKey toCheck, KeyValuePair<string, string> m)
-            {
-                if (m.Key != "exp")
-                    return true;
-                var toCheckModifiers = toCheck.Modifiers.Where(other => other.Key == "petItem" && other.Value == "TIER_BOOST").FirstOrDefault();
-                if (toCheckModifiers.Key == default)
-                    return true;
-                var res = baseKey.Modifiers.Any(other => other.Key == "petItem" && other.Value == "TIER_BOOST");
-                return res || baseKey.Tier < toCheck.Tier;
-            }
         }
 
         private static bool IsStacksize1Cheaper(double lbinPrice, AuctionKey key, ConcurrentDictionary<AuctionKey, ReferenceAuctions> l)

@@ -518,12 +518,11 @@ namespace Coflnet.Sky.Sniper.Controllers
         public Dictionary<string, long> CleanPrices()
         {
             var dictionary = service.Lookups.SelectMany(l => l.Value.Lookup
-                .Where(l => l.Value.Price > 0)
+                // tier boosted pets are priced as their own item and are never the clean price of a plain pet
+                .Where(l => l.Value.Price > 0 && !SniperService.HasTierBoost(l.Key.Modifiers))
                 .GroupBy(i =>
                 {
                     var tier = i.Key.Tier;
-                    if (i.Key.Modifiers.Any(m => m.Value == SniperService.TierBoostShorthand))
-                        tier = SniperService.ReduceRarity(tier);
                     if (l.Key.StartsWith("PET_") && !l.Key.StartsWith("PET_ITEM_") && !l.Key.StartsWith("PET_SKIN_"))
                         return $"{l.Key}_{tier}_{i.Key.Modifiers?.FirstOrDefault(m => m.Key == "exp").Value switch
                         {

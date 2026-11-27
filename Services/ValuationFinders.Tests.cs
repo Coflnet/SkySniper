@@ -29,7 +29,7 @@ namespace Coflnet.Sky.Sniper.Services
     ///     read; the harness drives many (tag, reduced-tier, force) inputs over populated lookups and asserts the live
     ///     production result is byte-identical to <see cref="SniperService.GetCleanItemPriceForTest"/>'s verbatim
     ///     reference (<c>ValuationFinders.Reference.cs</c>). Covers pet vs non-pet tier selection, the
-    ///     TIER_BOOST/rarity_upgrades tier-reduction branch, the cached-per-tier fast path, and the gem deviders.</item>
+    ///     TIER_BOOST no-clean-price branch, the rarity_upgrades tier-reduction branch, the cached-per-tier fast path, and the gem deviders.</item>
     /// </list>
     ///
     /// Construction mirrors <c>SniperService.Tests.cs</c> Setup (NullLogger to avoid the known flaky-logger NRE,
@@ -385,7 +385,7 @@ namespace Coflnet.Sky.Sniper.Services
                 a.HighestBidAmount = 2_000_000L * (t + 1);
                 AddVolume(a, 8);
             }
-            // a TIER_BOOST bucket (the pet selection excludes TIER_BOOST keys; clean-price tier-reduction branch)
+            // a TIER_BOOST bucket (plain pets exclude it from their clean price; boosted keys have none)
             var boosted = Dupplicate(Base());
             boosted.Tag = tag;
             boosted.Tier = Tier.LEGENDARY;
@@ -400,7 +400,7 @@ namespace Coflnet.Sky.Sniper.Services
         /// <summary>
         /// Drives every live bucket key through both the production GetCleanItemPrice and the verbatim reference, with
         /// and without <c>force</c> (force bypasses the cached-per-tier fast path, exercising the full recompute), and
-        /// asserts byte-equality. Also exercises the TIER_BOOST/rarity_upgrades reduced-tier key branch explicitly.
+        /// asserts byte-equality. Also exercises the TIER_BOOST (no clean price) and rarity_upgrades reduced-tier branches explicitly.
         /// </summary>
         private void AssertCleanPriceParityForAllBuckets(string tag)
         {
@@ -420,11 +420,15 @@ namespace Coflnet.Sky.Sniper.Services
             }
             checkedKeys.Should().BeGreaterThan(0, "must have buckets to check");
 
-            // explicit reduced-tier branch: a key carrying TIER_BOOST must read the reduced-tier clean price identically
+            // explicit tier boost branch: a boosted key has no clean price (plain pets never value it)
             var boostKey = service.ValueKeyForTest(AuctionWith(tag, Tier.LEGENDARY,
-                new() { { SniperService.PetItemKey, SniperService.TierBoostShorthand } }));
-            var (liveB, refB) = service.GetCleanItemPriceForTest(tag, boostKey, lookup, false);
-            liveB.Should().Be(refB, "TIER_BOOST reduced-tier clean price must equal the reference (gates R2-D)");
+                new() { { "heldItem", SniperService.TierBoostItemTag } }));
+            foreach (var force in new[] { false, true })
+            {
+                var (liveB, refB) = service.GetCleanItemPriceForTest(tag, boostKey, lookup, force);
+                liveB.Should().Be(refB, $"TIER_BOOST clean price (force={force}) must equal the reference (gates R2-D)");
+                liveB.Should().Be(0, "a tier boosted pet has no clean price");
+            }
 
             var recombKey = service.ValueKeyForTest(AuctionWith(tag, Tier.LEGENDARY,
                 new() { { "rarity_upgrades", "1" } }));
@@ -492,6 +496,8 @@ namespace Coflnet.Sky.Sniper.Services
             var nbt = new Dictionary<string, string>();
             foreach (var m in key.Modifiers)
                 nbt[m.Key] = m.Value;
+            if (SniperService.HasTierBoost(key.Modifiers))
+                nbt["heldItem"] = SniperService.TierBoostItemTag; // the boost enters the key through the held item
             return new SaveAuction
             {
                 Tag = tag,

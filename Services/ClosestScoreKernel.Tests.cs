@@ -116,6 +116,17 @@ namespace Coflnet.Sky.Sniper.Services
         }
 
         [Test]
+        public void ScoreVec_FlagsTierBoostFromKey()
+        {
+            var interner = new ClosestScoreKernel.Interner();
+            var boosted = Key(4, 1, modifiers: new() { new("exp", "6"), new(SniperService.PetItemKey, SniperService.TierBoostShorthand) });
+            var plain = Key(4, 1, modifiers: new() { new("exp", "6") });
+            // the flag comes from the key itself, even when the priced breakdown leaves the boost out
+            ClosestScoreKernel.Build(boosted, new(), interner).HasPetTierBoost.Should().BeTrue();
+            ClosestScoreKernel.Build(plain, new(), interner).HasPetTierBoost.Should().BeFalse();
+        }
+
+        [Test]
         public void CandyUsed_SameValue_DoesNotAddValue()
         {
             var mods = new List<KeyValuePair<string, string>> { new("candyUsed", "3") };

@@ -17,13 +17,12 @@ namespace Coflnet.Sky.Sniper.Services
         public readonly bool IsInvKey;      // SniperService.InvertedValueKey.Contains(key)
         public readonly bool IsImpCakeYear; // SniperService.ImportantCakeYears.Contains(value)
         public readonly bool HasSpaceOrComma; // value.Contains(' ') || value.Contains(',')
-        public readonly bool IsExpKey;      // key == "exp" (MatchesTierBoost gate, interner-free)
         public readonly string ValRaw;      // raw value string (mode-c substring compare)
         public DomMod(int keyId, int valId, float parsed, bool isNumeric, bool isInvKey, bool isImpCakeYear,
-            bool hasSpaceOrComma, bool isExpKey, string valRaw)
+            bool hasSpaceOrComma, string valRaw)
         {
             KeyId = keyId; ValId = valId; Parsed = parsed; IsNumeric = isNumeric; IsInvKey = isInvKey;
-            IsImpCakeYear = isImpCakeYear; HasSpaceOrComma = hasSpaceOrComma; IsExpKey = isExpKey; ValRaw = valRaw;
+            IsImpCakeYear = isImpCakeYear; HasSpaceOrComma = hasSpaceOrComma; ValRaw = valRaw;
         }
     }
 
@@ -43,7 +42,8 @@ namespace Coflnet.Sky.Sniper.Services
     /// <para>
     /// <b>What "dominates" means.</b> <c>Dominates(b, c)</c> is true iff candidate <c>c</c> is same-or-higher on every
     /// axis of base <c>b</c>: tier, count, every base modifier covered with an equal-or-greater value, and every base
-    /// enchant present at an equal-or-greater level. It is the de-LINQ'd production predicate
+    /// enchant present at an equal-or-greater level; both must also agree on the tier boost
+    /// (<c>petItem=TIER_BOOST</c>), boosted and plain keys never dominate each other. It is the de-LINQ'd production predicate
     /// <see cref="SniperService.IsHigherValue"/> (oracle: <see cref="SniperService.IsHigherValueReference"/>),
     /// re-expressed over interned integer ids so the hot loop is integer compares with no per-call string work.
     /// </para>
@@ -128,8 +128,7 @@ namespace Coflnet.Sky.Sniper.Services
                 bool inv = SniperService.InvertedValueKey.Contains(k);
                 bool impCake = SniperService.ImportantCakeYears.Contains(v);
                 bool hasSC = v != null && (v.Contains(' ') || v.Contains(','));
-                bool isExp = k == "exp";
-                domMods[i] = new DomMod(keyId, interner.Intern(v), num ? parsed : 0f, num, inv, impCake, hasSC, isExp, v);
+                domMods[i] = new DomMod(keyId, interner.Intern(v), num ? parsed : 0f, num, inv, impCake, hasSC, v);
                 ulong bit = 1UL << (keyId & 63);
                 provided |= bit;
                 if (!inv) required |= bit; // RequiredMask: only keys whose absence cannot be excused by the inverted-key rule
@@ -167,27 +166,26 @@ namespace Coflnet.Sky.Sniper.Services
             // 3. count
             if (b.Count > c.Count)
                 return false;
+            // 4. tier boost — boosted and plain keys never bound each other (hard exclusion)
+            if (b.HasPetTierBoost != c.HasPetTierBoost)
+                return false;
 
-            // 4. modifiers — every base modifier covered, or excused by the inverted-key-absent exception.
+            // 5. modifiers — every base modifier covered, or excused by the inverted-key-absent exception.
             var bMods = b.Mods;
             var cMods = c.Mods;
             for (int i = 0; i < bMods.Length; i++)
             {
                 ref readonly var bm = ref bMods[i];
-                bool tierBoostOk = MatchesTierBoost(in b, in c, in bm); // constant per i (mirrors IsHigherValue folding it inside the j-loop)
                 bool covered = false;
-                if (tierBoostOk)
+                int keyId = bm.KeyId;
+                for (int j = 0; j < cMods.Length; j++)
                 {
-                    int keyId = bm.KeyId;
-                    for (int j = 0; j < cMods.Length; j++)
+                    if (cMods[j].KeyId != keyId)
+                        continue;
+                    if (ValueOk(in bm, in b, in cMods[j]))
                     {
-                        if (cMods[j].KeyId != keyId)
-                            continue;
-                        if (ValueOk(in bm, in b, in cMods[j]))
-                        {
-                            covered = true;
-                            break;
-                        }
+                        covered = true;
+                        break;
                     }
                 }
                 // original: covered || (InvertedValueKey.Contains(m.Key) && !check has any mod with key m.Key)
@@ -195,7 +193,7 @@ namespace Coflnet.Sky.Sniper.Services
                     return false;
             }
 
-            // 5. enchants — every base enchant present in check at >= level.
+            // 6. enchants — every base enchant present in check at >= level.
             var bEnchs = b.Enchs;
             var cEnchs = c.Enchs;
             for (int i = 0; i < bEnchs.Length; i++)
@@ -236,20 +234,6 @@ namespace Coflnet.Sky.Sniper.Services
             if (cm.HasSpaceOrComma && !cm.IsNumeric && cm.ValRaw.Contains(bm.ValRaw))
                 return true;
             return false;
-        }
-
-        /// <summary>
-        /// MatchesTierBoostOrLowerTier(base, check, base mod) — only constrains the "exp" modifier:
-        /// if the base mod is not "exp" -> true; else if check has no petItem=TIER_BOOST -> true; else base must itself
-        /// carry petItem=TIER_BOOST OR be of strictly lower tier.
-        /// </summary>
-        private static bool MatchesTierBoost(in DomKey b, in DomKey c, in DomMod bm)
-        {
-            if (!bm.IsExpKey)
-                return true;
-            if (!c.HasPetTierBoost)
-                return true;
-            return b.HasPetTierBoost || b.Tier < c.Tier;
         }
 
         /// <summary>Does check have ANY modifier whose key id == <paramref name="keyId"/>? (the inverted-key-absent exception)</summary>

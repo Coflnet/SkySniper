@@ -139,8 +139,11 @@ namespace Coflnet.Sky.Sniper.Services
         /// </summary>
         private long GetCleanItemPriceReference(string tag, KeyWithValueBreakdown key, PriceLookup lookup, bool force = false)
         {
+            // a tier boosted pet has no clean price (it is never valued from plain pets)
+            if (key.Key.Modifiers.Any(m => m.Key == PetItemKey && m.Value == TierBoostShorthand))
+                return 0;
             var tier = key.Key.Tier;
-            if (key.Key.Modifiers.Any(m => m.Value == TierBoostShorthand || m.Key == "rarity_upgrades"))
+            if (key.Key.Modifiers.Any(m => m.Key == "rarity_upgrades"))
                 tier = ReduceRarity(tier);
             if (!force && lookup.CleanPricePerTier.TryGetValue(tier, out var cleanPrice))
             {

@@ -59,6 +59,8 @@ namespace Coflnet.Sky.Sniper.Services
                 ("I", Key(1,1, mods: M(("unlocked_slots","1,2"))), Key(1,1, mods: M(("unlocked_slots","0,1,2,3")))), // comma substring
                 ("NEW_YEAR_CAKE", Key(1,1, mods: M(("new_years_cake","69"))), Key(1,1, mods: M(("new_years_cake","420")))), // important years
                 ("PET_X", Key(3,1, mods: M(("exp","100"))), Key(5,1, mods: M(("exp","200"),("petItem","TIER_BOOST")))),     // exp + tierboost
+                ("PET_X", Key(3,1, mods: M(("exp","100"),("petItem","TIER_BOOST"))), Key(5,1, mods: M(("exp","200"))) ),    // boosted base, plain check
+                ("PET_X", Key(3,1, mods: M(("exp","100"),("petItem","TIER_BOOST"))), Key(5,1, mods: M(("exp","200"),("petItem","TIER_BOOST")))), // both boosted
                 ("PET_SPIRIT", Key(1,1), Key((int)Tier.LEGENDARY,1)),                                      // PET_SPIRIT legendary rule
                 ("I", Key(1,1, ench: E((EnchantmentType.sharpness,6))), Key(1,1, ench: E((EnchantmentType.sharpness,7)))),  // enchant level
                 ("I", Key(1,1, ench: E((EnchantmentType.sharpness,7))), Key(1,1, ench: E((EnchantmentType.sharpness,6)))),  // enchant level lower
@@ -76,6 +78,29 @@ namespace Coflnet.Sky.Sniper.Services
                 var interner = new ClosestScoreKernel.Interner();
                 DominatorIndex.Dominates(DominatorIndex.BuildDomKey(a, interner), DominatorIndex.BuildDomKey(b, interner), tag == "PET_SPIRIT")
                     .Should().Be(reference, $"columnar kernel: tag={tag} base={Describe(a)} check={Describe(b)}");
+            }
+        }
+
+        [Test]
+        public void TierBoostedAndPlainKeysNeverBoundEachOther()
+        {
+            var plainLow = Key(3, 1, mods: M(("exp", "1")));
+            var plainHigh = Key(5, 1, mods: M(("exp", "6")));
+            var boostedLow = Key(3, 1, mods: M(("exp", "1"), ("petItem", "TIER_BOOST")));
+            var boostedHigh = Key(5, 1, mods: M(("exp", "6"), ("petItem", "TIER_BOOST")));
+            var interner = new ClosestScoreKernel.Interner();
+            foreach (var (a, b, expected) in new[]
+            {
+                (plainLow, boostedHigh, false), // a boosted key is no upper bound of a plain one
+                (boostedLow, plainHigh, false), // a plain key is no upper bound of a boosted one
+                (plainLow, plainHigh, true),
+                (boostedLow, boostedHigh, true),
+            })
+            {
+                service.IsHigherValue("PET_ENDER_DRAGON", a, b).Should().Be(expected, $"base={Describe(a)} check={Describe(b)}");
+                service.IsHigherValueReference("PET_ENDER_DRAGON", a, b).Should().Be(expected, $"reference base={Describe(a)} check={Describe(b)}");
+                DominatorIndex.Dominates(DominatorIndex.BuildDomKey(a, interner), DominatorIndex.BuildDomKey(b, interner), false)
+                    .Should().Be(expected, $"kernel base={Describe(a)} check={Describe(b)}");
             }
         }
 

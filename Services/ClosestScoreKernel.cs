@@ -96,11 +96,15 @@ namespace Coflnet.Sky.Sniper.Services
             public readonly int Tier;
             public readonly int Count;
             public readonly bool HasExpModifier; // key.Modifiers.Any(m => m.Key == "exp")
+            // key.Modifiers has petItem=TIER_BOOST. Keys that differ here never value each other, so the closest
+            // searches skip such candidates outright (a hard exclusion, not part of the score).
+            public readonly bool HasPetTierBoost;
 
             public ScoreVec(int[] enchType, byte[] enchLvl, long[] enchValue,
                 int[] modKeyId, int[] modValId, long[] modValue, bool[] modIsNumeric, float[] modParsed,
                 int[] modImportance, bool[] modIsCandyUsed, bool[] modIsPetTierBoost,
-                bool hasReforge, int reforge, long reforgeValue, int tier, int count, bool hasExpModifier)
+                bool hasReforge, int reforge, long reforgeValue, int tier, int count, bool hasExpModifier,
+                bool hasPetTierBoost)
             {
                 EnchType = enchType; EnchLvl = enchLvl; EnchValue = enchValue;
                 ModKeyId = modKeyId; ModValId = modValId; ModValue = modValue;
@@ -108,6 +112,7 @@ namespace Coflnet.Sky.Sniper.Services
                 ModIsCandyUsed = modIsCandyUsed; ModIsPetTierBoost = modIsPetTierBoost;
                 HasReforge = hasReforge; Reforge = reforge; ReforgeValue = reforgeValue;
                 Tier = tier; Count = count; HasExpModifier = hasExpModifier;
+                HasPetTierBoost = hasPetTierBoost;
             }
         }
 
@@ -178,7 +183,8 @@ namespace Coflnet.Sky.Sniper.Services
                 enchType.ToArray(), enchLvl.ToArray(), enchValue.ToArray(),
                 modKeyId.ToArray(), modValId.ToArray(), modValue.ToArray(), modIsNumeric.ToArray(), modParsed.ToArray(),
                 modImportance.ToArray(), modIsCandy.ToArray(), modIsPtb.ToArray(),
-                hasReforge, reforge, reforgeValue, (int)key.Tier, key.Count, hasExp);
+                hasReforge, reforge, reforgeValue, (int)key.Tier, key.Count, hasExp,
+                SniperService.HasTierBoost(key.Modifiers));
         }
 
         // long GetValueOrDefault(value, defaultVal) — mirrors RankElem.GetValueOrDefault(double).

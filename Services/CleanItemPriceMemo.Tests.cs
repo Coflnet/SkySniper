@@ -90,8 +90,8 @@ namespace Coflnet.Sky.Sniper.Services
                     {
                         foreach (var k in keys)
                             comparisons += AssertParity(tag, lookup, k);
-                        // also drive synthetic reduced-tier keys (TIER_BOOST / rarity_upgrades) per pass
-                        comparisons += AssertParity(tag, lookup, ReducedTierKey(tag, Tier.LEGENDARY, SniperService.PetItemKey, SniperService.TierBoostShorthand));
+                        // also drive a synthetic tier boosted key (no clean price) and a reduced-tier recomb key per pass
+                        comparisons += AssertParity(tag, lookup, ReducedTierKey(tag, Tier.LEGENDARY, "heldItem", SniperService.TierBoostItemTag));
                         comparisons += AssertParity(tag, lookup, ReducedTierKey(tag, Tier.LEGENDARY, "rarity_upgrades", "1"));
                         // and a few tiers that may not have a bucket at all (empty-flatten path)
                         foreach (var t in new[] { Tier.UNKNOWN, Tier.COMMON, Tier.MYTHIC, Tier.DIVINE })
@@ -272,6 +272,8 @@ namespace Coflnet.Sky.Sniper.Services
             var nbt = new Dictionary<string, string>();
             foreach (var m in key.Modifiers)
                 nbt[m.Key] = m.Value;
+            if (SniperService.HasTierBoost(key.Modifiers))
+                nbt["heldItem"] = SniperService.TierBoostItemTag; // the boost enters the key through the held item
             return new SaveAuction
             {
                 Tag = tag,

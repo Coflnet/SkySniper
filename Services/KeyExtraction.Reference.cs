@@ -47,11 +47,6 @@ namespace Coflnet.Sky.Sniper.Services
             if (auction.Tag == "PANDORAS_BOX")
                 // pandoras box tier gets set based on the player
                 tier = Tier.COMMON;
-            // Reduce tier if PET_ITEM_TIER_BOOST was present (it's now removed from key)
-            if (auction.FlatenedNBT?.TryGetValue("heldItem", out var heldItemValue) == true && heldItemValue == "PET_ITEM_TIER_BOOST")
-            {
-                tier = ReduceRarity(tier);
-            }
             if (removedRarity)
             {
                 tier = ReduceRarity(tier);
@@ -72,8 +67,10 @@ namespace Coflnet.Sky.Sniper.Services
                 if (!IsRune(auction.Tag))
                     tier = ReduceRarity(tier);
             }
-            // Remove PET_ITEM_TIER_BOOST if it somehow got into modifiers (it shouldn't be in the key)
+            // a held tier boost keys at the displayed tier with petItem=TIER_BOOST (its own bucket, never priced or dropped)
             modifiers.RemoveAll(m => m.Value == "TIER_BOOST");
+            if (auction.FlatenedNBT?.TryGetValue("heldItem", out var heldItemValue) == true && heldItemValue == "PET_ITEM_TIER_BOOST")
+                modifiers.Add(new KeyValuePair<string, string>(PetItemKey, TierBoostShorthand));
 
             return Constructkey(auction, enchants, modifiers, shouldIncludeReforge, valueSubstracted, rankElems, tier);
         }
@@ -293,6 +290,8 @@ namespace Coflnet.Sky.Sniper.Services
                 taken++;
                 if (NeverDrop.Contains(item.Modifier.Key))
                     continue;
+                if (item.Modifier.Key == PetItemKey && item.Modifier.Value == TierBoostShorthand)
+                    continue; // the tier boost is never dropped
                 if (item.Enchant.Type != 0)
                 {
                     enchants = enchants.Where(x => x.Type != item.Enchant.Type);
@@ -316,11 +315,6 @@ namespace Coflnet.Sky.Sniper.Services
                         valueSubstracted += adjustedRemoveValue;
                     if (item.Modifier.Key == "rarity_upgrades")
                         tier = ReduceRarity(tier);
-                    if (item.Modifier.Value == TierBoostShorthand)
-                    {
-                        tier = ReduceRarity(tier);
-                        valueSubstracted -= item.Value * 2;
-                    }
                 }
             }
             return new AuctionKeyWithValue()

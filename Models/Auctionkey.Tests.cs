@@ -379,9 +379,9 @@ public class AuctionkeyTests
         };
         var key = service.KeyFromSaveAuction(auction, level);
         var modifierList = key.Modifiers;
-        // Tier boost is now removed from key, and tier is reduced instead
-        Assert.That(modifierList.Any(x => x.Value == SniperService.TierBoostShorthand), Is.False, "Tier boost should not be in modifiers");
-        Assert.That(key.Tier, Is.EqualTo(Tier.EPIC), "Tier should be reduced from LEGENDARY to EPIC when tier boost is present");
+        // a tier boosted pet is its own bucket: displayed tier plus petItem=TIER_BOOST, at every drop level
+        Assert.That(modifierList.Count(x => x.Key == SniperService.PetItemKey && x.Value == SniperService.TierBoostShorthand), Is.EqualTo(1), "Tier boost should be in modifiers");
+        Assert.That(key.Tier, Is.EqualTo(Tier.LEGENDARY), "Tier should stay the displayed tier when tier boost is present");
         Assert.That(modifierList.Any(x => x.Value == "0" && x.Key == "candyUsed"));
     }
 

@@ -53,6 +53,8 @@ namespace Coflnet.Sky.Sniper.Models
                 taken++;
                 if (SniperService.NeverDrop.Contains(item.Modifier.Key))
                     continue;
+                if (SniperService.IsTierBoostModifier(item.Modifier))
+                    continue; // the tier boost is part of the item, a reduced key keeps it (own bucket)
                 if (item.Enchant.Type != 0)
                 {
                     droppedEnchantTypes.Add(item.Enchant.Type);
@@ -75,11 +77,6 @@ namespace Coflnet.Sky.Sniper.Models
                         valueSubstracted += adjustedRemoveValue;
                     if (item.Modifier.Key == "rarity_upgrades")
                         tier = SniperService.ReduceRarity(tier);
-                    if (item.Modifier.Value == SniperService.TierBoostShorthand)
-                    {
-                        tier = SniperService.ReduceRarity(tier);
-                        valueSubstracted -= item.Value * 2;
-                    }
                 }
             }
             return new AuctionKeyWithValue()
