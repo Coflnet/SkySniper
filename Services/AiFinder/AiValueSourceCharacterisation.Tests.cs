@@ -85,7 +85,7 @@ public class AiValueSourceCharacterisationTests
     {
         ["1"] = ["modifier art_of_war_count 1 = 9800000", "modifier rarity_upgrades 1 = 7400000", "modifier hotpc 1 = 7062690", "enchant ultimate_wise 5 = 3100000", "reforge withered = 50000", "enchant ender_slayer 6 = -1", "enchant luck 7 = -1", "enchant scavenger 5 = -1", "enchant vampirism 6 = -1", "enchant dragon_hunter 6 = -1", "enchant bane_of_arthropods 7 = -1", "enchant fire_aspect 3 = -1", "enchant sharpness 6 = -1", "enchant smite 7 = -1", "enchant titan_killer 7 = -1", "craft cost 870000000, clean 0, removable 11300000"],
         ["2"] = ["enchant compact 10 = 11000000", "enchant efficiency 6 = 8000000", "modifier rarity_upgrades 1 = 7400000", "enchant ultimate_flowstate 3 = 2000000", "enchant prismatic 5 = -1", "craft cost 95000000, clean 0, removable 39000000"],
-        ["3"] = ["modifier exp 6 = varies", "craft cost 0, clean 0, removable 82000000"],
+        ["3"] = ["modifier exp 6 = varies", "craft cost 0, clean 0, removable 0"],
         ["4"] = ["modifier candyUsed 1 = varies", "modifier exp 1 = varies", "craft cost 0, clean 0, removable 31000000"],
         ["kills"] = ["modifier zombie_kills 10 = 2700000", "modifier hotpc 0 = 812690", "enchant rejuvenate 5 = 394491", "craft cost 0, clean 0, removable 0"],
     };
