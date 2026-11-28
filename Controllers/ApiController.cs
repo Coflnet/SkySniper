@@ -517,46 +517,7 @@ namespace Coflnet.Sky.Sniper.Controllers
         [ResponseCache(Duration = 1800, Location = ResponseCacheLocation.Any, NoStore = false)]
         public Dictionary<string, long> CleanPrices()
         {
-            var dictionary = service.Lookups.SelectMany(l => l.Value.Lookup
-                // tier boosted pets are priced as their own item and are never the clean price of a plain pet
-                .Where(l => l.Value.Price > 0 && !SniperService.HasTierBoost(l.Key.Modifiers))
-                .GroupBy(i =>
-                {
-                    var tier = i.Key.Tier;
-                    if (l.Key.StartsWith("PET_") && !l.Key.StartsWith("PET_ITEM_") && !l.Key.StartsWith("PET_SKIN_"))
-                        return $"{l.Key}_{tier}_{i.Key.Modifiers?.FirstOrDefault(m => m.Key == "exp").Value switch
-                        {
-                            "7" => 100,
-                            "6" => 100,
-                            "5" => 90,
-                            _ => 0,
-                        }}";
-                    if (l.Key == "ATTRIBUTE_SHARD" && i.Key.Modifiers.First().Value == "7")
-                        return $"{l.Key}+{i.Key.Modifiers.First().Key};7";
-                    if (l.Key == "ATTRIBUTE_SHARD" && i.Key.Modifiers.First().Value == "5")
-                        return $"{l.Key}+{i.Key.Modifiers.First().Key};5";
-                    if (l.Key.StartsWith("RUNE_"))
-                        return $"{l.Key}{(i.Key.Modifiers.Count > 0 ? $"_{i.Key.Modifiers.First().Value}" : "")}";
-                    if (i.Key.Modifiers.Any(m => m.Key == "virtual"))
-                        return $"{l.Key}+{i.Key.Modifiers.First(m => m.Key != "virtual").Key};1";
-                    var modifiers = i.Key.Modifiers?.Where(m => Constants.AttributeKeys.Contains(m.Key)).ToList();
-                    if (modifiers.Count > 0)
-                        return $"{l.Key}+{string.Join("_", modifiers.Select(m => m.Key))}";
-                    return l.Key;
-                })
-                .Select(g => (g.Key, g.Where(l => l.Value.TimeToSell > 5).OrderBy(l => l.Value.Price / Math.Min(l.Value.Volume, Math.Max(1, Math.Log(l.Value.Volume) / 2 + 1)))
-                    .Select(l => l.Value.Price / (l.Key.Count == 0 ? 1 : l.Key.Count))
-                    .FirstOrDefault())
-                ))
-                .Where(l => l.Item2 > 0)
-                .ToDictionary(l => l.Key, l => l.Item2);
-            // expand group(s)
-            var hyperion = dictionary["HYPERION"];
-            foreach (var item in SniperService.HyperionGroup)
-            {
-                dictionary[item] = hyperion;
-            }
-            return dictionary;
+            return CleanPriceSelector.Select(service.Lookups);
         }
 
         public class Result
